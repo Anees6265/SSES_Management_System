@@ -1,0 +1,7 @@
+Subject,Topic,Sub Topic,Task Title,Task Type,Priority,Max Marks,Time Days,Measurable Points
+JavaScript,Basics,Variables,Q1 - Explain var/let/const,assessment,medium,5,2,Student should explain difference between var let and const
+JavaScript,Basics,Variables,Q2 - Implement examples,project,medium,10,3,Student should write 5 examples using each
+JavaScript,Basics,Operators,Q1 - Operator quiz,assessment,low,5,1,Student should solve 10 operator problems
+JavaScript,Functions,,Q1 - Write 3 functions,project,high,15,2,Student should write declaration expression and arrow function
+React,Hooks,useState,Q1 - Build counter,project,medium,20,5,Student should build a counter app using useState
+React,Hooks,useEffect,Q1 - Fetch API,project,high,25,7,Student should fetch data from an API using useEffect

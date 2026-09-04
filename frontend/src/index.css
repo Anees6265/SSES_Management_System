@@ -1,0 +1,357 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root, [data-theme="orange"] {
+  --primary: #FDA92D;
+  --primary-light: #FED7AA;
+  --primary-dark: #F97316;
+  --primary-darker: #EA580C;
+  --primary-50: #FFF7ED;
+  --primary-100: #FFEDD5;
+  --ring: #FDA92D;
+  --background: #F8F7F5;
+  --backgroundColor: #FCFDFD;
+  --text-color: #1C252E;
+  --secondary: #8E33FF;
+  --secondary-light: #C684FF;
+  --secondary-dark: #5119B7;
+  --success: #22C55E;
+  --success-light: #77ED8B;
+  --success-dark: #118D57;
+  --warning: #FDA92D;
+  --warning-light: #FFD666;
+  --warning-dark: #FDA92D;
+  --error: #FDA92D;
+  --error-light: #FFCEC3;
+  --error-dark: #B71D18;
+  --info: #00B8D9;
+  --info-light: #61F3F3;
+  --info-dark: #006C9C;
+  --neutral: #F4F6F8;
+  --neutral-light: #DFE3E8;
+  --neutral-dark: #C4CDD5;
+  --neutral-darker: #919EAB;
+  --diagonal-gradient: linear-gradient(45deg, #b1ddefe4 0%, #FFFFFF 33%, #FFFFFF 66%, #e3c2c178 100%);
+}
+
+[data-theme="blue"] {
+  --primary: #3B82F6;
+  --primary-light: #BFDBFE;
+  --primary-dark: #2563EB;
+  --primary-darker: #1D4ED8;
+  --primary-50: #EFF6FF;
+  --primary-100: #DBEAFE;
+  --ring: #3B82F6;
+}
+
+[data-theme="green"] {
+  --primary: #22C55E;
+  --primary-light: #BBF7D0;
+  --primary-dark: #16A34A;
+  --primary-darker: #15803D;
+  --primary-50: #F0FDF4;
+  --primary-100: #DCFCE7;
+  --ring: #22C55E;
+}
+
+[data-theme="purple"] {
+  --primary: #8B5CF6;
+  --primary-light: #DDD6FE;
+  --primary-dark: #7C3AED;
+  --primary-darker: #6D28D9;
+  --primary-50: #F5F3FF;
+  --primary-100: #EDE9FE;
+  --ring: #8B5CF6;
+}
+
+[data-theme="rose"] {
+  --primary: #F43F5E;
+  --primary-light: #FECDD3;
+  --primary-dark: #E11D48;
+  --primary-darker: #BE123C;
+  --primary-50: #FFF1F2;
+  --primary-100: #FFE4E6;
+  --ring: #F43F5E;
+}
+
+[data-theme="teal"] {
+  --primary: #14B8A6;
+  --primary-light: #99F6E4;
+  --primary-dark: #0D9488;
+  --primary-darker: #0F766E;
+  --primary-50: #F0FDFA;
+  --primary-100: #CCFBF1;
+  --ring: #14B8A6;
+}
+
+[data-theme="indigo"] {
+  --primary: #6366F1;
+  --primary-light: #C7D2FE;
+  --primary-dark: #4F46E5;
+  --primary-darker: #4338CA;
+  --primary-50: #EEF2FF;
+  --primary-100: #E0E7FF;
+  --ring: #6366F1;
+}
+*{
+  font-family: 'Inter', sans-serif;
+}
+
+body, html {
+  overflow-x: hidden;
+  max-width: 100vw;
+  background: var(--background);
+}
+
+/* ─── THEME COLOR OVERRIDES — all orange-* Tailwind classes use CSS variables ─── */
+.bg-orange-50  { background-color: var(--primary-50) !important; }
+.bg-orange-100 { background-color: var(--primary-100) !important; }
+.bg-orange-200 { background-color: var(--primary-light) !important; }
+.bg-orange-300 { background-color: var(--primary-light) !important; }
+.bg-orange-400 { background-color: var(--primary) !important; }
+.bg-orange-500 { background-color: var(--primary) !important; }
+.bg-orange-600 { background-color: var(--primary-dark) !important; }
+.bg-orange-700 { background-color: var(--primary-darker) !important; }
+.bg-orange-800 { background-color: var(--primary-darker) !important; }
+
+.text-orange-400 { color: var(--primary) !important; }
+.text-orange-500 { color: var(--primary) !important; }
+.text-orange-600 { color: var(--primary-dark) !important; }
+.text-orange-700 { color: var(--primary-darker) !important; }
+
+.border-orange-100 { border-color: var(--primary-100) !important; }
+.border-orange-200 { border-color: var(--primary-light) !important; }
+.border-orange-400 { border-color: var(--primary) !important; }
+.border-orange-500 { border-color: var(--primary) !important; }
+.border-orange-600 { border-color: var(--primary-dark) !important; }
+
+.ring-orange-400 { --tw-ring-color: var(--primary) !important; }
+.ring-orange-500 { --tw-ring-color: var(--primary) !important; }
+
+.focus\:border-orange-400:focus { border-color: var(--primary) !important; }
+.focus\:ring-orange-400:focus { --tw-ring-color: var(--primary) !important; }
+.focus\:ring-orange-500:focus { --tw-ring-color: var(--primary) !important; }
+
+.hover\:bg-orange-50:hover  { background-color: var(--primary-50) !important; }
+.hover\:bg-orange-100:hover { background-color: var(--primary-100) !important; }
+.hover\:bg-orange-500:hover { background-color: var(--primary) !important; }
+.hover\:bg-orange-600:hover { background-color: var(--primary-dark) !important; }
+
+.hover\:text-orange-500:hover { color: var(--primary) !important; }
+.hover\:text-orange-600:hover { color: var(--primary-dark) !important; }
+
+.hover\:text-white:hover { color: #ffffff !important; }
+
+.from-\[\#FDA92D\] { --tw-gradient-from: var(--primary) !important; }
+.to-\[\#FDB84D\]   { --tw-gradient-to: var(--primary-light) !important; }
+
+/* ─── GLOBAL MODAL/DRAWER BACKDROP BLUR ──────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* ─── SCROLLBAR UTILITIES ─────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* hide scrollbar but keep scroll functional */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── FORM FIELDS ─────────────────────────────────────── */
+.input {
+  @apply border p-2 rounded-md w-full;
+}
+
+.field-standard {
+  @apply h-12 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-orange-400 transition-all duration-200;
+}
+
+.field-standard:disabled {
+  @apply bg-gray-100 cursor-not-allowed;
+}
+
+input, input[type="text"], input[type="search"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], input[type="url"], input[type="date"], input[type="file"] {
+  @apply focus:outline-none focus:border-orange-400 transition-all duration-200;
+}
+
+select, select:not([multiple]) {
+  @apply focus:outline-none focus:border-orange-400 transition-all duration-200 bg-white;
+}
+
+textarea {
+  @apply focus:outline-none focus:border-orange-400 transition-all duration-200;
+}
+
+/* ─── PREVENT BLACK BORDER / OUTLINE ON ALL INPUTS & FILTERS PROJECT-WIDE ─── */
+input, select, textarea, button {
+  outline: none !important;
+}
+
+input:focus, select:focus, textarea:focus, button:focus,
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible,
+input:active, select:active, textarea:active, button:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure no black border on focus or hover globally for inputs, search boxes, and filter dropdowns */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary, #FDA92D) !important;
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: var(--primary-light, #FED7AA) !important;
+}
+
+/* Search inputs and filter select boxes */
+input[type="search"]:focus,
+input[type="search"]:hover,
+.search-input:focus,
+.search-input:hover,
+.filter-input:focus,
+.filter-input:hover {
+  border-color: var(--primary, #FDA92D) !important;
+  outline: none !important;
+}
+
+/* ─── DYNAMIC THEME ACCENT & OPTION STYLING FOR DROPDOWNS ─── */
+select, input[type="radio"], input[type="checkbox"] {
+  accent-color: var(--primary, #FDA92D) !important;
+}
+
+select option {
+  background-color: #ffffff;
+  color: var(--text-color, #1C252E);
+}
+
+select option:checked {
+  background-color: var(--primary, #FDA92D) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px 100px var(--primary, #FDA92D) inset !important;
+}
+
+select option:hover,
+select option:focus,
+select option:active {
+  background-color: var(--primary, #FDA92D) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px 100px var(--primary, #FDA92D) inset !important;
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────────── */
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* ─── RESPONSIVE PAGE LAYOUT ─────────────────────────── */
+/* Padding for pages so content doesn't go under sidebar */
+.page-content {
+  @apply px-3 sm:px-4 md:px-6;
+}
+
+/* Responsive grid for cards */
+.cards-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+}
+
+/* Responsive flex row that wraps on small screens */
+.flex-row-wrap {
+  @apply flex flex-wrap items-center gap-3;
+}
+
+/* Page header row: title left, button right, wraps on mobile */
+.page-header {
+  @apply flex flex-col sm:flex-row sm:items-end justify-between gap-3 py-4 sm:py-5;
+}
+
+/* ─── TABLE RESPONSIVE ────────────────────────────────── */
+.table-wrapper {
+  @apply w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-sm;
+}
+
+/* ─── MODAL / DRAWER ──────────────────────────────────── */
+/* Full width on mobile, max-w-md on desktop */
+.drawer-panel {
+  @apply w-full max-w-full sm:max-w-md;
+}
+
+/* Blur entire page when OrangeButton drawer is open */
+body.drawer-open #root {
+  filter: blur(3px);
+  transition: filter 0.3s ease;
+  pointer-events: none;
+}
+
+/* Drawer itself should NOT be blurred — it's rendered inside fixed z-[60] */
+body.drawer-open .drawer-no-blur {
+  filter: none !important;
+  pointer-events: all;
+}
+
+/* ─── AUTOFILL FIX ────────────────────────────────────── */
+.autofill-detect:-webkit-autofill,
+.autofill-detect:-webkit-autofill:hover,
+.autofill-detect:-webkit-autofill:focus,
+.autofill-detect:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #000 !important;
+}
+
+.autofill-detect:-webkit-autofill ~ label {
+  top: -0.5rem !important;
+  left: 0.5rem !important;
+  font-size: 0.75rem !important;
+  color: #000 !important;
+  background: white !important;
+  padding: 0 4px !important;
+}
+
+/* Glassmorphism login form input labels override */
+.login-field-wrapper label {
+  color: rgba(248, 250, 252, 0.95) !important;
+  font-weight: 600;
+}

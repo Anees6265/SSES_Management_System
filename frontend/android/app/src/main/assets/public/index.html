@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/logo-ssism-BMp9JYY9.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css?family=Poppins" rel="stylesheet">
+    <title>ITEG Management System</title>
+    <script>
+      // Catch all errors
+      window.addEventListener('error', function(e) {
+        console.error('🔴 Global Error:', e.error || e.message);
+        document.body.innerHTML += '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999">Error: ' + (e.error?.message || e.message) + '</div>';
+      });
+      
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('🔴 Unhandled Promise:', e.reason);
+      });
+      
+      console.log('✅ Error handlers loaded');
+    </script>
+    <script type="module" crossorigin src="/assets/index-DN1py9zD.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-DjX3JviP.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CKZd5svR.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

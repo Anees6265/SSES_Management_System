@@ -1,0 +1,19 @@
+Subject,Topic,SubTopic,Task,Time Days,Measurable Points
+JavaScript,Basics,Variables,,,"Understanding of variable declarations"
+JavaScript,Basics,Variables,Q1 - Explain var/let/const,2,Student should explain difference between var let and const with examples
+JavaScript,Basics,Variables,Q2 - Implement examples,3,Student should write 5 examples using each declaration type
+JavaScript,Basics,Operators,,,"Understanding of JavaScript operators"
+JavaScript,Basics,Operators,Q1 - Operator quiz,1,Student should solve 10 operator problems correctly
+JavaScript,Functions,,,,"Understanding of JavaScript functions"
+JavaScript,Functions,,Q1 - Write 3 functions,2,Student should write declaration expression and arrow function examples
+JavaScript,DOM Manipulation,,,,"Understanding of DOM concepts"
+React,Components,Class Components,,,"Understanding of class-based components"
+React,Components,Class Components,Q1 - Build class component,3,Student should create a class component with state and lifecycle methods
+React,Components,Functional Components,,,"Understanding of functional components"
+React,Components,Functional Components,Q1 - Build functional component,2,Student should create functional components with props
+React,Hooks,useState,,,"Understanding of useState hook"
+React,Hooks,useState,Q1 - Build counter,5,Student should build a counter app using useState hook
+React,Hooks,useEffect,,,"Understanding of useEffect hook"
+React,Hooks,useEffect,Q1 - Fetch API,7,Student should fetch data from an API using useEffect hook
+Node.js,Express,Routing,,,"Understanding of Express routing"
+Node.js,Express,Routing,Q1 - Create REST API,10,Student should create a complete REST API with CRUD operations

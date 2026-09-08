@@ -23,13 +23,32 @@ router.post("/reset_password/:token", usercontroller.resetPassword);
 router.get("/get/:id", verifyToken, usercontroller.getUserById);
 
 // Google OAuth
-router.get("/google", passport.authenticate('google', {
-      scope: ['profile', 'email'],
-      prompt: 'select_account',
-    })
-  );
-  
-router.get("/google/callback", passport.authenticate('google', { session: false }), googleAuthCallback);
+router.get("/google", (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({
+      success: false,
+      message: "Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the .env file.",
+    });
+  }
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account',
+  })(req, res, next);
+});
+
+router.get(
+  "/google/callback",
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({
+        success: false,
+        message: "Google OAuth is not configured on the server.",
+      });
+    }
+    passport.authenticate('google', { session: false })(req, res, next);
+  },
+  googleAuthCallback
+);
 
 router.get("/me", verifyToken, usercontroller.getCurrentUser);
 router.get("/all", verifyToken, usercontroller.getAllUsers);

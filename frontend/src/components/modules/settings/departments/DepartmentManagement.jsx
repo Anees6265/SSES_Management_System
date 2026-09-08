@@ -44,10 +44,13 @@ const DepartmentManagement = () => {
     fd.append("universityName", values.universityName);
     fd.append("headOfDepartment", values.headOfDepartment || "");
     fd.append("isActive", values.isActive);
-    const courses = values.allowedCourses
+    const courses = (values.allowedCourses || [])
       .filter(c => c.courseName && c.durationInYears)
       .map(c => ({ ...c, durationInYears: Number(c.durationInYears) }));
     fd.append("allowedCourses", JSON.stringify(courses));
+    if (values.reportConfig) {
+      fd.append("reportConfig", JSON.stringify(values.reportConfig));
+    }
     if (values.logoFile) fd.append("logo", values.logoFile);
     return fd;
   };

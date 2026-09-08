@@ -18,7 +18,7 @@ const departmentSchema = new mongoose.Schema({
     templateType: {
       type: String,
       enum: ["ITEG_STANDARD", "MEG_WEIGHTED", "BEG_CUTOFF", "BTECH_STAGE"],
-      required: true
+      default: "ITEG_STANDARD"
     },
     sections: {
       showTechnicalSkills: { type: Boolean, default: true },

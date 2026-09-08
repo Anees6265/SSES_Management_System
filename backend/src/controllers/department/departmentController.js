@@ -63,17 +63,49 @@ exports.createDepartment = async (req, res) => {
     // 🌩️ Upload Logo
     let logoUrl = null;
     if (req.file) {
-      const result = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          { folder: "department_logos", resource_type: "image" },
-          (error, result) => error ? reject(error) : resolve(result)
-        ).end(req.file.buffer);
-      });
-      logoUrl = result.secure_url;
+      if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              { folder: "department_logos", resource_type: "image" },
+              (error, result) => error ? reject(error) : resolve(result)
+            ).end(req.file.buffer);
+          });
+          logoUrl = result.secure_url;
+        } catch (uploadErr) {
+          console.warn("Cloudinary upload failed, falling back to data URI:", uploadErr.message);
+          const mimeType = req.file.mimetype || 'image/png';
+          logoUrl = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+        }
+      } else {
+        const mimeType = req.file.mimetype || 'image/png';
+        logoUrl = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+      }
+    }
+
+    let reportConfig = req.body.reportConfig;
+    if (typeof reportConfig === 'string') {
+      try { reportConfig = JSON.parse(reportConfig); } catch (_) {}
+    }
+    if (!reportConfig || !reportConfig.templateType) {
+      reportConfig = {
+        templateType: "ITEG_STANDARD",
+        sections: {
+          showTechnicalSkills: true,
+          showSoftSkills: true,
+          showDiscipline: true,
+          showProjects: true,
+          showCareerReadiness: true,
+          showUniversityAcademicHistory: true,
+          showTaskCompletionPercentage: true,
+          showEvaluationBreakdown: true
+        }
+      };
     }
 
     const departmentData = {
       ...req.body,
+      reportConfig,
       allowedCourses: allowedCourses || [],
       code: autoCode
     };
@@ -215,13 +247,24 @@ exports.updateDepartment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid allowedCourses structure." });
     }
     if (req.file) {
-      const result = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          { folder: "department_logos", resource_type: "image" },
-          (error, result) => error ? reject(error) : resolve(result)
-        ).end(req.file.buffer);
-      });
-      updateData.logo = result.secure_url;
+      if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              { folder: "department_logos", resource_type: "image" },
+              (error, result) => error ? reject(error) : resolve(result)
+            ).end(req.file.buffer);
+          });
+          updateData.logo = result.secure_url;
+        } catch (uploadErr) {
+          console.warn("Cloudinary update upload failed, falling back to data URI:", uploadErr.message);
+          const mimeType = req.file.mimetype || 'image/png';
+          updateData.logo = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+        }
+      } else {
+        const mimeType = req.file.mimetype || 'image/png';
+        updateData.logo = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+      }
     }
 
     const department = await Department.findOneAndUpdate(

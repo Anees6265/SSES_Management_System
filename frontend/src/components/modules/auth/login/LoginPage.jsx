@@ -99,10 +99,11 @@ const LoginPage = () => {
 
       {/* College Building Background Image (positioned at bottom with realistic soft fade to white at top) */}
       <div
-        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover md:bg-contain opacity-85"
+        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover opacity-85"
         style={{
           backgroundImage: `url(${singajiBg})`,
           backgroundPosition: "bottom center",
+          backgroundSize: "cover",
         }}
       />
       {/* Soft gradient overlay to achieve the clean, bright white upper section matching the reference design */}

@@ -144,7 +144,10 @@ const PlacementDriveManagement = () => {
 
         {/* Drive Cards Grid */}
         {loading ? (
-          <Loader />
+          <div className="bg-white rounded-2xl border border-slate-200 p-16 flex flex-col items-center justify-center gap-3">
+            <Loader inline={true} />
+            <p className="text-slate-400 text-xs font-semibold">Loading placement drives...</p>
+          </div>
         ) : filteredDrives.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
             <p className="text-slate-500 font-semibold text-sm">No placement drives found.</p>

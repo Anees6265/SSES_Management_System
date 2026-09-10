@@ -103,7 +103,15 @@ exports.getDriveById = async (req, res) => {
 
     if (!drive) return res.status(404).json({ success: false, message: "Drive not found" });
 
-    // Format candidate technology
+    // Fetch resumeURLs from StudentPlacement
+    const studentIds = (drive.shortlistedStudents || []).map(s => s._id);
+    const placements = await StudentPlacement.find({ studentId: { $in: studentIds } }).select("studentId resumeURL").lean();
+    const placementMap = {};
+    placements.forEach(p => {
+      placementMap[p.studentId.toString()] = p.resumeURL;
+    });
+
+    // Format candidate technology & attach resumeURL
     if (Array.isArray(drive.shortlistedStudents)) {
       drive.shortlistedStudents = drive.shortlistedStudents.map(student => {
         let actualTech = "Technology Not Updated";
@@ -115,11 +123,16 @@ exports.getDriveById = async (req, res) => {
           const t = student.techno || student.technology || student.track;
           if (t && typeof t === "string" && t.trim()) actualTech = t.trim();
         }
+
+        const studentResume = placementMap[student._id.toString()] ||
+          (student.documents || []).find(d => (d.title || "").toLowerCase().includes("resume"))?.fileURL || "";
+
         return {
           ...student,
           technology: actualTech,
           techno: student.techno || student.technology || student.track || (actualTech !== "Technology Not Updated" ? actualTech : ""),
-          track: student.track || (actualTech !== "Technology Not Updated" ? actualTech : "")
+          track: student.track || (actualTech !== "Technology Not Updated" ? actualTech : ""),
+          resumeURL: studentResume
         };
       });
     }

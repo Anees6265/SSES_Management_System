@@ -10,6 +10,7 @@ import { useAttendanceErrorHandler } from '../../../hooks/useAttendanceErrorHand
 import { buttonStyles } from '../../../styles/buttonStyles';
 import DatePicker from '../../shared/DatePicker';
 import Header from '../../shared/sidebar/Header';
+import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 
 // Helper function to get current week dates
 const getCurrentWeekDates = () => {
@@ -155,10 +156,6 @@ const AttendanceDetails = () => {
   const itemsPerPage = 10;
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isYearOpen, setIsYearOpen] = useState(false);
-  const [isSubLevelOpen, setIsSubLevelOpen] = useState(false);
-  const [isGenderOpen, setIsGenderOpen] = useState(false);
-  const [isSubDeptOpen, setIsSubDeptOpen] = useState(false);
 
   const years = [
     { value: 'All', label: 'All Years' },
@@ -244,29 +241,6 @@ const AttendanceDetails = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Close dropdowns on clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const dropdowns = document.querySelectorAll('.relative');
-      let clickedInside = false;
-      dropdowns.forEach((dropdown) => {
-        if (dropdown.contains(event.target)) {
-          clickedInside = true;
-        }
-      });
-      if (!clickedInside) {
-        setIsYearOpen(false);
-        setIsSubLevelOpen(false);
-        setIsGenderOpen(false);
-        setIsSubDeptOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const titleText = isGlobalAdmin 
     ? (filters.subDepartmentId && filters.subDepartmentId !== 'All' 
        ? `${subDepts.find(sd => sd._id === filters.subDepartmentId)?.name || 'Department'} Attendance Details`
@@ -311,179 +285,74 @@ const AttendanceDetails = () => {
                 />
               </div>
 
+              {/* Sub-Department Dropdown */}
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSubDeptOpen(!isSubDeptOpen);
-                    setIsYearOpen(false);
-                    setIsSubLevelOpen(false);
-                    setIsGenderOpen(false);
-                  }}
-                  className="peer h-12 w-full border-2 border-gray-300 rounded-md px-3 py-2 leading-tight bg-white text-left focus:outline-none focus:border-orange-400 focus:ring-0 appearance-none flex items-center justify-between cursor-pointer transition-all duration-200 text-sm shadow-sm"
-                >
-                  <span className="text-gray-900 font-medium truncate pr-4">
-                    {subDepts.find(sd => sd._id === filters.subDepartmentId)?.name || 'Select Sub-Dept'}
-                  </span>
-                  <span className={`ml-2 text-xs transition-transform duration-200 text-gray-400 shrink-0 ${isSubDeptOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                <label className="absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none text-xs -top-2 text-gray-500 font-semibold">
+                <SelectDropdown
+                  value={filters.subDepartmentId}
+                  onChange={(val) => handleFilterChange('subDepartmentId', val)}
+                  options={subDepts.map((sd) => ({ value: sd._id, label: sd.name }))}
+                  placeholder="Select Sub-Dept"
+                  className="w-full"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-sm cursor-pointer"
+                />
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-700 font-medium z-10 pointer-events-none">
                   Sub-Department
                 </label>
-                {isSubDeptOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border border-gray-200 bg-white max-h-60 overflow-y-auto">
-                    {subDepts.map((sd) => (
-                      <div
-                        key={sd._id}
-                        onClick={() => {
-                          handleFilterChange('subDepartmentId', sd._id);
-                          setIsSubDeptOpen(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                      >
-                        {sd.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsYearOpen(!isYearOpen);
-                    setIsSubLevelOpen(false);
-                    setIsGenderOpen(false);
-                    setIsSubDeptOpen(false);
-                  }}
-                  className="peer h-12 w-full border-2 border-gray-300 rounded-md px-3 py-2 leading-tight bg-white text-left focus:outline-none focus:border-orange-400 focus:ring-0 appearance-none flex items-center justify-between cursor-pointer transition-all duration-200 text-sm shadow-sm"
-                >
-                  <span className="text-gray-900 font-medium font-medium">
-                    {years.find(y => y.value === filters.year)?.label || 'Select Year'}
-                  </span>
-                  <span className={`ml-2 text-xs transition-transform duration-200 text-gray-400 ${isYearOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                <label className="absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none text-xs -top-2 text-gray-500 font-semibold">
+              {/* Year Dropdown */}
+              <div className="relative">
+                <SelectDropdown
+                  value={filters.year}
+                  onChange={(val) => handleFilterChange('year', val)}
+                  options={years}
+                  placeholder="Select Year"
+                  className="w-full"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-sm cursor-pointer"
+                />
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-700 font-medium z-10 pointer-events-none">
                   Year
                 </label>
-                {isYearOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border border-gray-200 bg-white">
-                    {years.map((year) => (
-                      <div
-                        key={year.value}
-                        onClick={() => {
-                          handleFilterChange('year', year.value);
-                          setIsYearOpen(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                      >
-                        {year.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
+              {/* Sub-Level Dropdown */}
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSubLevelOpen(!isSubLevelOpen);
-                    setIsYearOpen(false);
-                    setIsGenderOpen(false);
-                    setIsSubDeptOpen(false);
-                  }}
-                  className="peer h-12 w-full border-2 border-gray-300 rounded-md px-3 py-2 leading-tight bg-white text-left focus:outline-none focus:border-black focus:ring-0 appearance-none flex items-center justify-between cursor-pointer transition-all duration-200 text-sm shadow-sm"
-                >
-                  <span className="text-gray-900 font-medium truncate pr-4">
-                    {filteredSubLevels.find(sl => sl._id === filters.subLevelId)?.name || 'Select Sub-Level'}
-                  </span>
-                  <span className={`ml-2 text-xs transition-transform duration-200 text-gray-400 shrink-0 ${isSubLevelOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                <label className="absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none text-xs -top-2 text-gray-500 font-semibold">
+                <SelectDropdown
+                  value={filters.subLevelId}
+                  onChange={(val) => handleFilterChange('subLevelId', val)}
+                  options={filteredSubLevels.map((sl) => ({ value: sl._id, label: sl.name }))}
+                  placeholder="Select Sub-Level"
+                  className="w-full"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-sm cursor-pointer"
+                />
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-700 font-medium z-10 pointer-events-none">
                   Sub-Level
                 </label>
-                {isSubLevelOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border border-gray-200 bg-white max-h-60 overflow-y-auto">
-                    {filteredSubLevels.map((sl) => (
-                      <div
-                        key={sl._id}
-                        onClick={() => {
-                          handleFilterChange('subLevelId', sl._id);
-                          setIsSubLevelOpen(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                      >
-                        {sl.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
+              {/* Gender Dropdown */}
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsGenderOpen(!isGenderOpen);
-                    setIsYearOpen(false);
-                    setIsSubLevelOpen(false);
-                    setIsSubDeptOpen(false);
-                  }}
-                  className="peer h-12 w-full border-2 border-gray-300 rounded-md px-3 py-2 leading-tight bg-white text-left focus:outline-none focus:border-orange-400 focus:ring-0 appearance-none flex items-center justify-between cursor-pointer transition-all duration-200 text-sm shadow-sm"
-                >
-                  <span className="text-gray-900 font-medium">
-                    {filters.gender === '' ? 'All' : filters.gender === 'male' ? 'Male' : 'Female'}
-                  </span>
-                  <span className={`ml-2 text-xs transition-transform duration-200 text-gray-400 ${isGenderOpen ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                <label className="absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none text-xs -top-2 text-gray-500 font-semibold">
+                <SelectDropdown
+                  value={filters.gender}
+                  onChange={(val) => handleFilterChange('gender', val)}
+                  options={[
+                    { value: '', label: 'All Genders' },
+                    { value: 'male', label: 'Male' },
+                    { value: 'female', label: 'Female' }
+                  ]}
+                  placeholder="Select Gender"
+                  className="w-full"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-sm cursor-pointer"
+                />
+                <label className="absolute -top-2 left-3 bg-white px-1 text-xs text-gray-700 font-medium z-10 pointer-events-none">
                   Gender
                 </label>
-                {isGenderOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border border-gray-200 bg-white">
-                    <div
-                      onClick={() => {
-                        handleFilterChange('gender', '');
-                        setIsGenderOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                    >
-                      All
-                    </div>
-                    <div
-                      onClick={() => {
-                        handleFilterChange('gender', 'male');
-                        setIsGenderOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                    >
-                      Male
-                    </div>
-                    <div
-                      onClick={() => {
-                        handleFilterChange('gender', 'female');
-                        setIsGenderOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150 text-sm"
-                    >
-                      Female
-                    </div>
-                  </div>
-                )}
               </div>
 
+              {/* Reset Button */}
               <div>
                 <button
+                  type="button"
                   onClick={() => {
                     setDateError('');
                     const currentWeek = getCurrentWeekDates();
@@ -496,7 +365,7 @@ const AttendanceDetails = () => {
                       subDepartmentId: 'All'
                     });
                   }}
-                  className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow active:scale-[0.98] cursor-pointer"
+                  className="w-full h-[42px] bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition-all duration-200 shadow-sm hover:shadow active:scale-[0.98] cursor-pointer flex items-center justify-center"
                 >
                   Reset
                 </button>

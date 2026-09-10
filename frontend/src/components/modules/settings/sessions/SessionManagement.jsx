@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { MdCalendarMonth, MdAdd, MdEdit, MdDelete, MdCheckCircle, MdRadioButtonUnchecked, MdSchedule, MdEventAvailable, MdArchive, MdSearch, MdClose } from "react-icons/md";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { MdCalendarMonth, MdAdd, MdEdit, MdDelete, MdCheckCircle, MdRadioButtonUnchecked, MdSchedule, MdEventAvailable, MdArchive, MdSearch, MdClose, MdExpandMore } from "react-icons/md";
 import { toast } from "react-toastify";
 import {
   useGetAllSessionsQuery,
@@ -20,6 +20,111 @@ const STATUS_TABS = [
   { id: "archived", label: "Archived" },
   { id: "completed", label: "Completed" },
 ];
+
+const SessionStatusBadge = ({ status, onStatusChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const config = {
+    active: {
+      label: "Active",
+      buttonBg: "bg-emerald-50 hover:bg-emerald-100/90 text-emerald-700 border-emerald-200/90 hover:border-emerald-300 shadow-emerald-500/5",
+      dot: (
+        <span className="relative flex h-2 w-2 mr-1.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+      ),
+      dotColor: "bg-emerald-500"
+    },
+    upcoming: {
+      label: "Upcoming",
+      buttonBg: "bg-blue-50 hover:bg-blue-100/90 text-blue-700 border-blue-200/90 hover:border-blue-300 shadow-blue-500/5",
+      dot: <span className="inline-flex rounded-full h-2 w-2 bg-blue-500 mr-1.5 shrink-0"></span>,
+      dotColor: "bg-blue-500"
+    },
+    completed: {
+      label: "Completed",
+      buttonBg: "bg-amber-50 hover:bg-amber-100/90 text-amber-700 border-amber-200/90 hover:border-amber-300 shadow-amber-500/5",
+      dot: <span className="inline-flex rounded-full h-2 w-2 bg-amber-500 mr-1.5 shrink-0"></span>,
+      dotColor: "bg-amber-500"
+    },
+    archived: {
+      label: "Archived",
+      buttonBg: "bg-slate-100 hover:bg-slate-200/80 text-slate-600 border-slate-200/90 hover:border-slate-300",
+      dot: <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 mr-1.5 shrink-0"></span>,
+      dotColor: "bg-slate-400"
+    }
+  };
+
+  const current = config[status] || config.upcoming;
+
+  const options = [
+    { value: "active", label: "Active", dotColor: "bg-emerald-500" },
+    { value: "upcoming", label: "Upcoming", dotColor: "bg-blue-500" },
+    { value: "completed", label: "Completed", dotColor: "bg-amber-500" },
+    { value: "archived", label: "Archived", dotColor: "bg-slate-400" }
+  ];
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`h-8 px-3 rounded-full border text-xs font-bold transition-all duration-200 flex items-center justify-between gap-1.5 shadow-sm hover:shadow cursor-pointer select-none ${current.buttonBg}`}
+        title="Click to update session status"
+      >
+        <div className="flex items-center">
+          {current.dot}
+          <span className="tracking-wide">{current.label}</span>
+        </div>
+        <MdExpandMore
+          size={16}
+          className={`transition-transform duration-200 shrink-0 opacity-75 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-1.5 w-40 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-40 animate-fadeIn">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1">Set Status</p>
+          {options.map((opt) => {
+            const isSelected = opt.value === status;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onStatusChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                  isSelected
+                    ? "bg-slate-100 text-slate-900 font-bold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${opt.dotColor}`}></span>
+                  <span>{opt.label}</span>
+                </div>
+                {isSelected && <MdCheckCircle size={14} className="text-emerald-500" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SessionManagement = () => {
   const [showForm,       setShowForm]       = useState(false);
@@ -144,13 +249,7 @@ const SessionManagement = () => {
     }
   };
 
-  const getStatusSelectClass = (status) => {
-    const base = "text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer focus:outline-none transition-all duration-200 bg-white shadow-2xs hover:shadow-xs appearance-none pr-7 relative select-custom-arrow";
-    if (status === 'active') return `${base} bg-emerald-50 text-emerald-600 border-emerald-200 hover:border-emerald-450`;
-    if (status === 'upcoming') return `${base} bg-blue-50 text-blue-600 border-blue-200 hover:border-blue-450`;
-    if (status === 'archived') return `${base} bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-400`;
-    return `${base} bg-orange-50 text-orange-600 border-orange-200 hover:border-orange-450`;
-  };
+
 
   if (isLoading) return <Loader />;
 
@@ -261,17 +360,9 @@ const SessionManagement = () => {
                   <div className="flex items-center gap-3 flex-shrink-0">
                     
                     {/* Integrated Status Badge Selector */}
-                    <SelectDropdown
-                      value={currentStatus}
-                      onChange={(val) => handleStatusChange(session._id, val)}
-                      options={[
-                        { value: "active", label: "Active" },
-                        { value: "upcoming", label: "Upcoming" },
-                        { value: "archived", label: "Archived" },
-                        { value: "completed", label: "Completed" }
-                      ]}
-                      className="w-32"
-                      buttonClassName={getStatusSelectClass(currentStatus)}
+                    <SessionStatusBadge
+                      status={currentStatus}
+                      onStatusChange={(val) => handleStatusChange(session._id, val)}
                     />
 
                     <button

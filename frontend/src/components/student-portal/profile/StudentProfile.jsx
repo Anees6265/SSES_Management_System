@@ -79,7 +79,7 @@ const ChangePasswordModal = ({ onClose }) => {
                 </div>
                 <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
                     <PasswordField field="currentPassword" label="Current Password" showKey="current" show={show} setShow={setShow} form={form} setForm={setForm} />
-                    <PasswordField field="newPassword"     label="New Password"     showKey="new"     show={show} setShow={setShow} form={form} setForm={setForm} />
+                    <PasswordField field="newPassword" label="New Password" showKey="new" show={show} setShow={setShow} form={form} setForm={setForm} />
                     <PasswordField field="confirmPassword" label="Confirm Password" showKey="confirm" show={show} setShow={setShow} form={form} setForm={setForm} />
                 </form>
                 <div className="flex gap-3 px-5 pb-5">
@@ -88,9 +88,8 @@ const ChangePasswordModal = ({ onClose }) => {
                         Cancel
                     </button>
                     <button onClick={handleSubmit} disabled={isLoading}
-                        className={`flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${
-                            isLoading ? "bg-orange-300 text-white cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600 text-white"
-                        }`}>
+                        className={`flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${isLoading ? "bg-orange-300 text-white cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600 text-white"
+                            }`}>
                         {isLoading
                             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             : <MdCheckCircle size={15} />}
@@ -119,12 +118,12 @@ export default function StudentProfile() {
     const [pwdModal, setPwdModal] = useState(false);
     const fileRef = useRef(null);
 
-    const { data, isLoading, refetch }             = useGetMyStudentProfileQuery();
-    const [updateImage, { isLoading: uploading }]  = useUpdateMyStudentProfileImageMutation();
-    const { data: levelHistoryResponse }           = useGetMyStudentLevelHistoryQuery();
+    const { data, isLoading, refetch } = useGetMyStudentProfileQuery();
+    const [updateImage, { isLoading: uploading }] = useUpdateMyStudentProfileImageMutation();
+    const { data: levelHistoryResponse } = useGetMyStudentLevelHistoryQuery();
 
-    const raw      = data?.data || {};
-    const name     = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
+    const raw = data?.data || {};
+    const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
     const daysInSubLevel = useMemo(() => {
@@ -135,7 +134,7 @@ export default function StudentProfile() {
         let entryDate = null;
         const history = levelHistoryResponse?.data;
         if (Array.isArray(history)) {
-            const currentProgress = history.find(h => 
+            const currentProgress = history.find(h =>
                 (h.subLevelId?._id || h.subLevelId)?.toString() === currentSubLevelId.toString()
             );
             if (currentProgress) {
@@ -164,7 +163,7 @@ export default function StudentProfile() {
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith("image/")) { toast.error("Only image files allowed"); return; }
-        if (file.size > 3 * 1024 * 1024)    { toast.error("Image must be under 3 MB"); return; }
+        if (file.size > 3 * 1024 * 1024) { toast.error("Image must be under 3 MB"); return; }
         const image = await new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (ev) => resolve(ev.target.result);
@@ -186,38 +185,38 @@ export default function StudentProfile() {
     );
 
     const personalFields = [
-        { label: "PR Key",        value: raw.prkey },
-        { label: "First Name",    value: raw.firstName },
-        { label: "Last Name",     value: raw.lastName },
-        { label: "Father Name",   value: raw.fatherName },
-        { label: "Gender",        value: raw.gender },
+        { label: "PR Key", value: raw.prkey },
+        { label: "First Name", value: raw.firstName },
+        { label: "Last Name", value: raw.lastName },
+        { label: "Father Name", value: raw.fatherName },
+        { label: "Gender", value: raw.gender },
         { label: "Date of Birth", value: formatDate(raw.dob) },
-        { label: "Email",         value: raw.email },
-        { label: "Mobile",        value: raw.studentMobile },
+        { label: "Email", value: raw.email },
+        { label: "Mobile", value: raw.studentMobile },
         { label: "Parent Mobile", value: raw.parentMobile },
-        { label: "Village",       value: raw.village },
-        { label: "Address",       value: raw.address },
+        { label: "Village", value: raw.village },
+        { label: "Address", value: raw.address },
     ];
 
     const academicFields = [
-        { label: "Course",           value: raw.course },
-        { label: "Stream",           value: raw.stream },
-        { label: "Category",         value: raw.category },
-        { label: "10th %",           value: raw.percent10 },
-        { label: "12th %",           value: raw.percent12 },
-        { label: "12th Subject",     value: raw.subject12 },
-        { label: "12th Year",        value: raw.year12 },
-        { label: "Current Level",    value: raw.currentLevelId?.name },
+        { label: "Course", value: raw.course },
+        { label: "Stream", value: raw.stream },
+        { label: "Category", value: raw.category },
+        { label: "10th %", value: raw.percent10 },
+        { label: "12th %", value: raw.percent12 },
+        { label: "12th Subject", value: raw.subject12 },
+        { label: "12th Year", value: raw.year12 },
+        { label: "Current Level", value: raw.currentLevelId?.name },
         { label: "Current SubLevel", value: raw.currentSubLevelId?.name ? `${raw.currentSubLevelId.name}${daysInSubLevel ? ` (${daysInSubLevel})` : ''}` : '—' },
-        { label: "Session",          value: raw.sessionId?.name },
-        { label: "Sub Department",   value: raw.subDepartmentId?.name },
+        { label: "Session", value: raw.sessionId?.name },
+        { label: "Sub Department", value: raw.subDepartmentId?.name },
     ];
 
     const statusStyle =
-        raw.status === "Active"  ? "bg-green-50 text-green-600 border border-green-100" :
-        raw.status === "Placed"  ? "bg-purple-50 text-purple-600 border border-purple-100" :
-        raw.status === "Dropped" ? "bg-red-50 text-red-500 border border-red-100" :
-        "bg-gray-50 text-gray-500 border border-gray-200";
+        raw.status === "Active" ? "bg-green-50 text-green-600 border border-green-100" :
+            raw.status === "Placed" ? "bg-purple-50 text-purple-600 border border-purple-100" :
+                raw.status === "Dropped" ? "bg-red-50 text-red-500 border border-red-100" :
+                    "bg-gray-50 text-gray-500 border border-gray-200";
 
     return (
         <div className="space-y-5">
@@ -292,28 +291,28 @@ export default function StudentProfile() {
 
                 {/* Personal Info */}
                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
-                        <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
-                                <MdPerson size={15} className="text-orange-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-800">Personal Information</h3>
-                            </div>
+                    <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                            <MdPerson size={15} className="text-orange-500" />
                         </div>
-                        <InfoGrid fields={personalFields} />
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-800">Personal Information</h3>
+                        </div>
+                    </div>
+                    <InfoGrid fields={personalFields} />
                 </div>
 
                 {/* Academic Info */}
                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
-                        <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
-                                <MdSchool size={15} className="text-violet-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-800">Academic Information</h3>
-                            </div>
+                    <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+                            <MdSchool size={15} className="text-violet-500" />
                         </div>
-                        <InfoGrid fields={academicFields} />
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-800">Academic Information</h3>
+                        </div>
+                    </div>
+                    <InfoGrid fields={academicFields} />
                 </div>
 
 

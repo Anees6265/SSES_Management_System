@@ -28,6 +28,7 @@ const StudentDocuments = React.lazy(() => import("./components/student-portal/do
 const StudentPlacement = React.lazy(() => import("./components/student-portal/placement/StudentPlacement"));
 const StudentReportCard = React.lazy(() => import("./components/student-portal/reportcard/StudentReportCard"));
 const StudentFaculty = React.lazy(() => import("./components/student-portal/faculty/StudentFaculty"));
+const StudentSyllabus = React.lazy(() => import("./components/student-portal/syllabus/StudentSyllabus"));
 
 
 // ✅ Protected Route Component (Admin/Faculty)
@@ -73,6 +74,7 @@ function App() {
           >
             <Route index element={<Navigate to="/student-portal/dashboard" replace />} />
             <Route path="dashboard" element={<StudentDashboard />} />
+            <Route path="syllabus" element={<StudentSyllabus />} />
             <Route path="tasks" element={<StudentTasks />} />
             <Route path="progress" element={<StudentLevelHistory />} />
             <Route path="permissions" element={<StudentPermissions />} />

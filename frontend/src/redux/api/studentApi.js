@@ -55,6 +55,11 @@ export const studentApi = createApi({
       providesTags: ["StudentHistory"],
     }),
 
+    getMyStudentSyllabus: builder.query({
+      query: () => ({ url: "/student-auth/me/syllabus", method: "GET" }),
+      providesTags: ["StudentTasks", "StudentHistory"],
+    }),
+
     getMyStudentSnapshots: builder.query({
       query: (params = "") => ({ url: `/student-auth/me/snapshots${params ? `?${params}` : ""}`, method: "GET" }),
       providesTags: ["StudentSnapshots"],
@@ -112,6 +117,7 @@ export const {
   useGetMyStudentTasksQuery,
   useUpdateMyStudentTaskStatusMutation,
   useGetMyStudentLevelHistoryQuery,
+  useGetMyStudentSyllabusQuery,
   useGetMyStudentSnapshotsQuery,
   useGetMyStudentEventLogQuery,
   useApplyMyPermissionMutation,

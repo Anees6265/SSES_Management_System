@@ -302,62 +302,64 @@ export default function StudentReport() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-16">
-      {/* ── Top App Header ── */}
-      <Header
-        title="Student Performance Report"
-        showBack={true}
-        breadcrumbs={[
-          { label: 'Academics', path: '/student-detail-table' },
-          { label: 'Student Progress', path: '/student-detail-table' },
-          { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
-          { label: 'Report Card' }
-        ]}
-      >
-        <div className="flex items-center gap-2">
-          {/* Print Button */}
-          <button
-            onClick={() => window.print()}
-            title="Print Report"
-            className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
-          >
-            <FaPrint size={15} />
-          </button>
+    <div className="min-h-screen bg-slate-50/50 pb-16 print:min-h-0 print:bg-white print:p-0 print:m-0 print:pb-0">
+      {/* ── Top App Header (Hidden during Print / PDF Export) ── */}
+      <div className="print:hidden">
+        <Header
+          title="Student Performance Report"
+          showBack={true}
+          breadcrumbs={[
+            { label: 'Academics', path: '/student-detail-table' },
+            { label: 'Student Progress', path: '/student-detail-table' },
+            { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
+            { label: 'Report Card' }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            {/* Print Button */}
+            <button
+              onClick={() => window.print()}
+              title="Print Report"
+              className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
+            >
+              <FaPrint size={15} />
+            </button>
 
-          {/* Download PDF Button */}
-          <PDFDownloadLink
-            document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
-            fileName={`${studentData.firstName || 'Student'}_${studentData.lastName || 'Report'}_Report_Card.pdf`}
-            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-200"
-          >
-            {({ loading }) =>
-              loading ? (
-                <span className="flex items-center gap-1.5">
-                  <span className="animate-spin text-sm">⏳</span> Preparing...
-                </span>
-              ) : (
-                <>
-                  <FaDownload size={13} />
-                  <span>Download PDF</span>
-                </>
-              )
-            }
-          </PDFDownloadLink>
+            {/* Download PDF Button */}
+            <PDFDownloadLink
+              document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
+              fileName={`${studentData.firstName || 'Student'}_${studentData.lastName || 'Report'}_Report_Card.pdf`}
+              className="flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-200"
+            >
+              {({ loading }) =>
+                loading ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="animate-spin text-sm">⏳</span> Preparing...
+                  </span>
+                ) : (
+                  <>
+                    <FaDownload size={13} />
+                    <span>Download PDF</span>
+                  </>
+                )
+              }
+            </PDFDownloadLink>
 
-          {/* Edit Button */}
-          <button
-            onClick={() => navigate(`/student/${id}/report/edit`)}
-            title="Edit Report Card"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-orange-200"
-          >
-            <RiEdit2Fill size={15} />
-            <span className="hidden sm:inline">Edit Report</span>
-          </button>
-        </div>
-      </Header>
+            {/* Edit Button */}
+            <button
+              onClick={() => navigate(`/student/${id}/report/edit`)}
+              title="Edit Report Card"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-orange-200"
+            >
+              <RiEdit2Fill size={15} />
+              <span className="hidden sm:inline">Edit Report</span>
+            </button>
+          </div>
+        </Header>
+      </div>
 
       {/* ── Report Card Body Container ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4">
 
         {/* ── Hero Dossier Card ── */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">

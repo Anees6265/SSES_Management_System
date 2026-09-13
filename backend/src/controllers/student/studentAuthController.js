@@ -236,6 +236,217 @@ exports.getMyLevelHistory = async (req, res) => {
   }
 };
 
+// ✅ Get My Syllabus & Previous Level Syllabi (Pure Academic Curriculum - No Tasks)
+exports.getMySyllabus = async (req, res) => {
+  try {
+    const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+    const Level = require("../../models/department/Level");
+    const SubLevel = require("../../models/department/SubLevel");
+
+    const student = await Student.findById(req.user.id)
+      .populate("sessionId", "name startDate endDate")
+      .populate("currentLevelId", "name order subDepartmentId")
+      .populate("currentSubLevelId", "name order levelId")
+      .populate("subDepartmentId", "name departmentId");
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const currentSubLevelId = student.currentSubLevelId?._id || student.currentSubLevelId;
+    const currentSessionId = student.sessionId?._id || student.sessionId;
+
+    // 1. Fetch Current Syllabus Version
+    let currentSyllabus = null;
+    if (student.syllabusVersionId) {
+      currentSyllabus = await SyllabusVersion.findById(student.syllabusVersionId).lean();
+    }
+    if (!currentSyllabus && currentSubLevelId) {
+      currentSyllabus = await SyllabusVersion.findOne({
+        subLevelId: currentSubLevelId,
+        sessionId: currentSessionId,
+        isActive: true,
+      }).sort({ versionNumber: -1 }).lean();
+    }
+
+    // Format Current Level Subjects -> Topics -> SubTopics (pure syllabus, NO tasks)
+    const currentSubjects = (currentSyllabus?.subjects || []).map((subject, sIdx) => ({
+      _id: subject._id,
+      name: subject.name,
+      code: subject.code || "",
+      description: subject.description || "",
+      order: subject.order || sIdx + 1,
+      reportCategory: subject.reportCategory || "",
+      topics: (subject.topics || []).map((topic, tIdx) => ({
+        _id: topic._id,
+        name: topic.name,
+        description: topic.description || "",
+        order: topic.order || tIdx + 1,
+        subTopics: (topic.subTopics || []).map((st, stIdx) => ({
+          _id: st._id,
+          name: st.name,
+          description: st.description || "",
+          order: st.order || stIdx + 1,
+        }))
+      }))
+    }));
+
+    const totalCurrentTopics = currentSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
+    const totalCurrentSubTopics = currentSubjects.reduce(
+      (acc, s) => acc + (s.topics?.reduce((tAcc, t) => tAcc + (t.subTopics?.length || 0), 0) || 0),
+      0
+    );
+
+    const currentLevelData = {
+      levelId: student.currentLevelId?._id,
+      levelName: student.currentLevelId?.name || "Current Level",
+      levelOrder: student.currentLevelId?.order || 1,
+      subLevelId: student.currentSubLevelId?._id,
+      subLevelName: student.currentSubLevelId?.name || "",
+      subLevelOrder: student.currentSubLevelId?.order || 1,
+      syllabusVersion: currentSyllabus ? {
+        _id: currentSyllabus._id,
+        version: currentSyllabus.version,
+        title: currentSyllabus.title || `${student.currentLevelId?.name || "Level"} Syllabus`,
+        status: currentSyllabus.status
+      } : null,
+      subjects: currentSubjects,
+      summary: {
+        totalSubjects: currentSubjects.length,
+        totalTopics: totalCurrentTopics,
+        totalSubTopics: totalCurrentSubTopics
+      }
+    };
+
+    // 2. Hierarchy and Previous Levels
+    const allDeptLevels = await Level.find({
+      subDepartmentId: student.subDepartmentId?._id || student.subDepartmentId,
+      isActive: true
+    }).sort({ order: 1 }).lean();
+
+    const allDeptSubLevels = await SubLevel.find({
+      levelId: { $in: allDeptLevels.map(l => l._id) },
+      isActive: true
+    }).sort({ order: 1 }).lean();
+
+    const sortedSubLevels = allDeptSubLevels.map(sl => {
+      const parentLvl = allDeptLevels.find(l => l._id.toString() === sl.levelId.toString());
+      return {
+        _id: sl._id,
+        name: sl.name,
+        order: sl.order,
+        levelId: sl.levelId,
+        levelName: parentLvl?.name || "",
+        levelOrder: parentLvl?.order || 1
+      };
+    }).sort((a, b) => {
+      if (a.levelOrder !== b.levelOrder) return a.levelOrder - b.levelOrder;
+      return a.order - b.order;
+    });
+
+    const curSubIdStr = currentSubLevelId?.toString();
+    const curLvlOrder = student.currentLevelId?.order || 1;
+    const curSubOrder = student.currentSubLevelId?.order || 1;
+
+    // Identify previous sublevels
+    const prevSubLevels = sortedSubLevels.filter(sl => {
+      if (sl._id.toString() === curSubIdStr) return false;
+      return sl.levelOrder < curLvlOrder || (sl.levelOrder === curLvlOrder && sl.order < curSubOrder);
+    });
+
+    const previousLevels = [];
+    for (const prevSL of prevSubLevels) {
+      // Find syllabus version for this past sublevel
+      let pastSyllabus = await SyllabusVersion.findOne({
+        subLevelId: prevSL._id,
+        sessionId: currentSessionId,
+        isActive: true
+      }).sort({ versionNumber: -1 }).lean();
+
+      if (!pastSyllabus) {
+        pastSyllabus = await SyllabusVersion.findOne({
+          subLevelId: prevSL._id,
+          isActive: true
+        }).sort({ versionNumber: -1 }).lean();
+      }
+
+      const pastSubjects = (pastSyllabus?.subjects || []).map((subject, sIdx) => ({
+        _id: subject._id,
+        name: subject.name,
+        code: subject.code || "",
+        description: subject.description || "",
+        order: subject.order || sIdx + 1,
+        reportCategory: subject.reportCategory || "",
+        topics: (subject.topics || []).map((topic, tIdx) => ({
+          _id: topic._id,
+          name: topic.name,
+          description: topic.description || "",
+          order: topic.order || tIdx + 1,
+          subTopics: (topic.subTopics || []).map((st, stIdx) => ({
+            _id: st._id,
+            name: st.name,
+            description: st.description || "",
+            order: st.order || stIdx + 1,
+          }))
+        }))
+      }));
+
+      const totalTopics = pastSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
+      const totalSubTopics = pastSubjects.reduce(
+        (acc, s) => acc + (s.topics?.reduce((tAcc, t) => tAcc + (t.subTopics?.length || 0), 0) || 0),
+        0
+      );
+
+      previousLevels.push({
+        levelId: prevSL.levelId,
+        levelName: prevSL.levelName,
+        levelOrder: prevSL.levelOrder,
+        subLevelId: prevSL._id,
+        subLevelName: prevSL.name,
+        subLevelOrder: prevSL.order,
+        syllabusVersionTitle: pastSyllabus?.title || `${prevSL.levelName} - ${prevSL.name} Syllabus`,
+        syllabusVersionCode: pastSyllabus?.version || "1.0",
+        totalSubjects: pastSubjects.length,
+        totalTopics: totalTopics,
+        totalSubTopics: totalSubTopics,
+        subjects: pastSubjects
+      });
+    }
+
+    // 3. Roadmap of all levels
+    const roadmap = sortedSubLevels.map(sl => {
+      const isCurrent = sl._id.toString() === curSubIdStr;
+      const isPast = sl.levelOrder < curLvlOrder || (sl.levelOrder === curLvlOrder && sl.order < curSubOrder);
+      return {
+        levelId: sl.levelId,
+        levelName: sl.levelName,
+        subLevelId: sl._id,
+        subLevelName: sl.name,
+        status: isCurrent ? "current" : isPast ? "completed" : "upcoming"
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        student: {
+          _id: student._id,
+          prkey: student.prkey,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          sessionName: student.sessionId?.name || "",
+          course: student.course || "",
+          subDepartmentName: student.subDepartmentId?.name || ""
+        },
+        currentLevel: currentLevelData,
+        previousLevels: previousLevels,
+        roadmap: roadmap
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // ✅ Get My Progress Snapshots (Student)
 exports.getMySnapshots = async (req, res) => {
   try {

@@ -139,26 +139,24 @@ function LevelJourneyStepper({ levels = ['1A', '1B', '1C', '2A', '2B', '2C'], cu
             return (
               <div key={lvl} className="flex flex-col items-center relative z-10">
                 <div
-                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${
-                    isPassed
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${isPassed
                       ? "bg-emerald-500 text-white shadow-emerald-200 shadow-md"
                       : isCurrent
-                      ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white ring-4 ring-orange-100 shadow-md scale-110"
-                      : "bg-white text-slate-400 border border-slate-200"
-                  }`}
+                        ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white ring-4 ring-orange-100 shadow-md scale-110"
+                        : "bg-white text-slate-400 border border-slate-200"
+                    }`}
                 >
                   {isPassed ? <FaCheck className="text-xs" /> : lvl}
                 </div>
 
                 <div className="flex flex-col items-center mt-2">
                   <span
-                    className={`text-[11px] font-bold ${
-                      isCurrent
+                    className={`text-[11px] font-bold ${isCurrent
                         ? "text-orange-600"
                         : isPassed
-                        ? "text-emerald-700"
-                        : "text-slate-400"
-                    }`}
+                          ? "text-emerald-700"
+                          : "text-slate-400"
+                      }`}
                   >
                     {lvl}
                   </span>
@@ -263,7 +261,7 @@ export default function StudentReportCard() {
       {/* ── Header Card ── */}
       <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
         <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-        
+
         <div className="p-5 sm:p-7">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
             <div className="flex items-center gap-3.5">
@@ -569,8 +567,8 @@ export default function StudentReportCard() {
                           level === "Outstanding" || level === "Excellent"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : level === "Very Good"
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200";
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200";
 
                         return (
                           <tr key={idx} className="hover:bg-slate-50/50 transition">
@@ -661,12 +659,12 @@ export default function StudentReportCard() {
                 {(softSkillsSection?.items?.length > 0
                   ? softSkillsSection.items
                   : rc.softSkills?.categories?.length > 0
-                  ? rc.softSkills.categories.map(c => ({
+                    ? rc.softSkills.categories.map(c => ({
                       itemName: c.title,
                       value: ((c.score || 0) / (c.maxMarks || 10)) * 5,
                       subcategories: c.subcategories
                     }))
-                  : [
+                    : [
                       { itemName: "Communication Skills", value: 4.2 },
                       { itemName: "Team Collaboration", value: 4.1 },
                       { itemName: "Presentation Clarity", value: 4.0 },
@@ -699,11 +697,10 @@ export default function StudentReportCard() {
                           {item.subcategories.map((sub, sIdx) => (
                             <span
                               key={sIdx}
-                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
-                                sub.value
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${sub.value
                                   ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                                   : "bg-slate-50 text-slate-400 border-slate-200"
-                              }`}
+                                }`}
                             >
                               {sub.value ? "✓" : "✗"} {sub.name}
                             </span>
@@ -737,12 +734,12 @@ export default function StudentReportCard() {
                 {(interviewSection?.items?.length > 0
                   ? interviewSection.items
                   : [
-                      { itemName: "Technical Knowledge", value: 4.0 },
-                      { itemName: "Articulation & Communication", value: 4.0 },
-                      { itemName: "Confidence & Composure", value: 3.8 },
-                      { itemName: "Problem Solving Approach", value: 4.1 },
-                      { itemName: "Overall Interview Recommendation", value: 4.0 }
-                    ]
+                    { itemName: "Technical Knowledge", value: 4.0 },
+                    { itemName: "Articulation & Communication", value: 4.0 },
+                    { itemName: "Confidence & Composure", value: 3.8 },
+                    { itemName: "Problem Solving Approach", value: 4.1 },
+                    { itemName: "Overall Interview Recommendation", value: 4.0 }
+                  ]
                 ).map((item, idx) => {
                   const score = parseFloat(item.value) || 0;
                   const max = item.maxMarks || 5;
@@ -793,11 +790,11 @@ export default function StudentReportCard() {
               {(careerReadinessSection?.items?.length > 0
                 ? careerReadinessSection.items
                 : [
-                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Created" },
-                    { itemName: "LinkedIn Profile", value: rc.careerReadiness?.linkedinStatus || "Created" },
-                    { itemName: "Aptitude Score", value: rc.careerReadiness?.aptitudeStatus || "In Progress" },
-                    { itemName: "Placement Ready", value: rc.careerReadiness?.placementReady || "Ready" }
-                  ]
+                  { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Created" },
+                  { itemName: "LinkedIn Profile", value: rc.careerReadiness?.linkedinStatus || "Created" },
+                  { itemName: "Aptitude Score", value: rc.careerReadiness?.aptitudeStatus || "In Progress" },
+                  { itemName: "Placement Ready", value: rc.careerReadiness?.placementReady || "Ready" }
+                ]
               ).map((item, idx) => {
                 const val = item.value || "In Progress";
                 const isReady = ["Created", "Updated", "Ready", "Completed"].includes(val);
@@ -834,10 +831,10 @@ export default function StudentReportCard() {
                   const points = rawStrengths
                     ? rawStrengths.split(",").map(p => p.trim()).filter(Boolean)
                     : [
-                        "Consistent task completion and active laboratory participation",
-                        "Sound programming fundamentals and algorithmic problem solving",
-                        "Constructive team peer coordination and leadership"
-                      ];
+                      "Consistent task completion and active laboratory participation",
+                      "Sound programming fundamentals and algorithmic problem solving",
+                      "Constructive team peer coordination and leadership"
+                    ];
 
                   return points.map((pt, idx) => (
                     <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
@@ -864,10 +861,10 @@ export default function StudentReportCard() {
                   const points = rawAreas
                     ? rawAreas.split(",").map(p => p.trim()).filter(Boolean)
                     : [
-                        "Advanced competitive programming and timed coding test practice",
-                        "Mock interview composure and structured technical answering",
-                        "End-to-end fullstack project deployment and system architecture"
-                      ];
+                      "Advanced competitive programming and timed coding test practice",
+                      "Mock interview composure and structured technical answering",
+                      "End-to-end fullstack project deployment and system architecture"
+                    ];
 
                   return points.map((pt, idx) => (
                     <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">

@@ -2,13 +2,14 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
-  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users
+  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
 
 const navItems = [
   { to: "/student-portal/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/student-portal/syllabus",    icon: BookOpen,        label: "My Syllabus" },
   { to: "/student-portal/tasks",        icon: ClipboardList,   label: "My Tasks" },
   { to: "/student-portal/progress",     icon: TrendingUp,      label: "Level History" },
   { to: "/student-portal/permissions",  icon: ShieldCheck,     label: "Permissions" },
@@ -148,16 +149,16 @@ export default function StudentPortalLayout() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden print:h-auto print:overflow-visible print:bg-white print:block">
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 shrink-0">
+      <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 shrink-0 print:hidden">
         <SidebarContent onClose={null} />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 md:hidden print:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <aside className="relative z-50 w-56 h-full bg-white shadow-xl">
             <SidebarContent onClose={() => setSidebarOpen(false)} />
@@ -166,10 +167,10 @@ export default function StudentPortalLayout() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden print:h-auto print:overflow-visible print:block">
 
         {/* Navbar */}
-        <header className="bg-white border-b border-gray-100 px-4 h-14 flex items-center justify-between shrink-0">
+        <header className="bg-white border-b border-gray-100 px-4 h-14 flex items-center justify-between shrink-0 print:hidden">
           <button
             className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
             onClick={() => setSidebarOpen(true)}
@@ -196,7 +197,7 @@ export default function StudentPortalLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 print:h-auto print:overflow-visible print:p-0 print:block">
           <Outlet />
         </main>
       </div>

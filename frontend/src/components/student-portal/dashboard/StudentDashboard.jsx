@@ -87,9 +87,9 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                 <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 w-full lg:w-auto">
                     <div className="relative flex-shrink-0">
                         {raw.image ? (
-                            <img src={raw.image} alt={name} className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-gray-100 shadow-sm" />
+                            <img src={raw.image} alt={name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-gray-100 shadow-sm" />
                         ) : (
-                            <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-base sm:text-xl font-bold border border-orange-100">{initials}</div>
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-base sm:text-xl font-bold border border-orange-100">{initials}</div>
                         )}
                         <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>

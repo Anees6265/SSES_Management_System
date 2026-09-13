@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
   LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen
@@ -70,8 +70,14 @@ const LogoutConfirmationModal = ({ isOpen, onClose, onConfirm }) => {
 
 export default function StudentPortalLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+
+  // Auto-close mobile sidebar whenever route changes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const studentData = JSON.parse(localStorage.getItem("studentData") || "{}");
   const name = `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim() || "Student";
@@ -183,15 +189,29 @@ export default function StudentPortalLayout() {
         <SidebarContent onClose={null} />
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden print:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative z-50 w-56 h-full bg-white shadow-xl">
-            <SidebarContent onClose={() => setSidebarOpen(false)} />
-          </aside>
-        </div>
-      )}
+      {/* Mobile Sidebar with Smooth Slide-in Animation and Backdrop Fade */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden print:hidden transition-all duration-300 ${
+          sidebarOpen ? "pointer-events-auto visible" : "pointer-events-none invisible"
+        }`}
+      >
+        {/* Backdrop with smooth fade in/out */}
+        <div
+          className={`absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+            sidebarOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setSidebarOpen(false)}
+        />
+
+        {/* Drawer with smooth slide from left */}
+        <aside
+          className={`relative z-50 w-64 max-w-[80vw] h-full bg-white shadow-2xl transition-transform duration-300 ease-out transform ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <SidebarContent onClose={() => setSidebarOpen(false)} />
+        </aside>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden print:h-auto print:overflow-visible print:block">
@@ -199,8 +219,9 @@ export default function StudentPortalLayout() {
         {/* Navbar */}
         <header className="bg-white border-b border-gray-100 px-3 sm:px-4 h-14 flex items-center justify-between shrink-0 print:hidden">
           <button
-            className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+            className="md:hidden p-2 rounded-xl text-gray-500 hover:text-orange-600 hover:bg-orange-50 active:scale-95 transition-all duration-150"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Open Navigation Menu"
           >
             <Menu size={20} />
           </button>

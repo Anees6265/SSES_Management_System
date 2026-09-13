@@ -72,7 +72,7 @@ const serializeTask = (task) => {
 };
 
 // Get all active tasks with academic context for management page
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), async (req, res) => {
   try {
     const { priority, type, status, search } = req.query;
     const filter = { deletedAt: null };
@@ -204,7 +204,7 @@ router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =
 });
 
 // Get tasks by level/sublevel (including general tasks)
-router.get("/level/:subLevelId", verifyToken, async (req, res) => {
+router.get("/level/:subLevelId", verifyToken, checkRole([...writeRoles, "placement_officer"]), async (req, res) => {
   try {
     const { subLevelId } = req.params;
     const { syllabusVersionId } = req.query;

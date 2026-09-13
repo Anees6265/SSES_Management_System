@@ -1,12 +1,15 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import CryptoJS from "crypto-js";
 
-const SECRET_KEY = "ITEG@123";
+const SECRET_KEY = import.meta.env.VITE_APP_SECRET_KEY || "ITEG@123";
 const decrypt = (enc) => {
   try {
     if (!enc) return null;
-    return CryptoJS.AES.decrypt(enc, SECRET_KEY).toString(CryptoJS.enc.Utf8) || null;
-  } catch { return null; }
+    const decrypted = CryptoJS.AES.decrypt(enc, SECRET_KEY).toString(CryptoJS.enc.Utf8);
+    return decrypted || enc;
+  } catch {
+    return enc || null;
+  }
 };
 
 export const studentApi = createApi({

@@ -31,12 +31,14 @@ exports.studentLogin = async (req, res) => {
       return res.status(403).json({ message: "Your account has been deactivated. Contact admin." });
 
     let isMatch = false;
-    if (password === "ssism@123") {
-      isMatch = true;
-    } else {
-      if (!student.password)
-        return res.status(403).json({ message: "Password not set. Contact admin to set your password." });
+    if (student.password) {
+      // If student has a password set, strictly verify with bcrypt hash
       isMatch = await bcrypt.compare(password, student.password);
+    } else {
+      // Default initial password only for first-time login when password is not yet set
+      if (password === "ssism@123") {
+        isMatch = true;
+      }
     }
 
     if (!isMatch)
@@ -136,8 +138,15 @@ exports.updateMyProfileImage = async (req, res) => {
   try {
     const { image } = req.body;
     if (!image) return res.status(400).json({ message: "Image is required" });
-    if (!/^data:image\/(png|jpeg|jpg|gif);base64,/.test(image))
-      return res.status(400).json({ message: "Invalid image format" });
+    if (!/^data:image\/(png|jpeg|jpg|webp);base64,/.test(image))
+      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP" });
+
+    // Validate payload size (Max 3MB)
+    const base64Data = image.split(",")[1] || "";
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 3 * 1024 * 1024) {
+      return res.status(400).json({ message: "Profile image exceeds the 3 MB size limit" });
+    }
 
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -175,7 +184,14 @@ exports.changeMyPassword = async (req, res) => {
     const student = await Student.findById(req.user.id).select("password");
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-    const isMatch = await bcrypt.compare(currentPassword, student.password);
+    let isMatch = false;
+    if (student.password) {
+      isMatch = await bcrypt.compare(currentPassword, student.password);
+    } else {
+      // Allow initial default password if password was not set yet
+      isMatch = (currentPassword === "ssism@123");
+    }
+
     if (!isMatch) return res.status(401).json({ message: "Current password is incorrect" });
 
     student.password = await bcrypt.hash(newPassword, 10);
@@ -483,6 +499,23 @@ exports.applyMyPermission = async (req, res) => {
 
     let uploadedImageURL = "";
     if (imageURL) {
+      if (typeof imageURL !== "string") {
+        return res.status(400).json({ message: "Invalid document data format" });
+      }
+
+      if (imageURL.startsWith("data:")) {
+        if (!/^data:(image\/(png|jpeg|jpg|webp)|application\/pdf);base64,/.test(imageURL)) {
+          return res.status(400).json({ message: "Supporting document must be PNG, JPEG, WEBP, or PDF" });
+        }
+        const base64Data = imageURL.split(",")[1] || "";
+        const sizeInBytes = (base64Data.length * 3) / 4;
+        if (sizeInBytes > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Supporting document exceeds the 5 MB size limit" });
+        }
+      } else if (!imageURL.startsWith("https://res.cloudinary.com/")) {
+        return res.status(400).json({ message: "Invalid document source URL" });
+      }
+
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -552,6 +585,20 @@ exports.uploadMyExtraDocument = async (req, res) => {
     if (!["image", "pdf"].includes(fileType))
       return res.status(400).json({ message: "fileType must be 'image' or 'pdf'" });
 
+    // Validate payload size and MIME format
+    if (fileType === "image" && !/^data:image\/(png|jpeg|jpg|webp);base64,/.test(fileData)) {
+      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP" });
+    }
+    if (fileType === "pdf" && !/^data:application\/pdf;base64,/.test(fileData)) {
+      return res.status(400).json({ message: "Invalid PDF format. File must be a valid PDF document" });
+    }
+
+    const base64Data = fileData.split(",")[1] || "";
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 5 * 1024 * 1024) {
+      return res.status(400).json({ message: "Document file size exceeds the 5 MB limit" });
+    }
+
     const student = await Student.findById(req.user.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
 
@@ -568,10 +615,10 @@ exports.uploadMyExtraDocument = async (req, res) => {
     });
 
     const doc = {
-      title,
+      title: title.trim(),
       fileURL: uploadResponse.secure_url,
       fileType,
-      remark: remark || "",
+      remark: remark ? remark.trim() : "",
       isExtra: true,
       uploadedAt: new Date(),
     };

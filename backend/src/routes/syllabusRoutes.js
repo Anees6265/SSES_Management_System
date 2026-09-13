@@ -57,6 +57,12 @@ router.post("/assignments/session-level", verifyToken, checkRole(writeRoles), ta
 router.get("/students/:studentId/tasks", verifyToken, async (req, res) => {
   try {
     const { studentId } = req.params;
+    const isStaff = writeRoles.includes(req.user?.role);
+    const isSelf = req.user?.role === "student" && req.user?.id?.toString() === studentId.toString();
+    if (!isStaff && !isSelf) {
+      return res.status(403).json({ success: false, message: "Access Denied. Unauthorized to view another student's tasks." });
+    }
+
     const { syllabusVersionId, status } = req.query;
     if (!syllabusVersionId) return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
     const query = { studentId, syllabusVersionId, isActive: true };
@@ -71,6 +77,12 @@ router.get("/students/:studentId/tasks", verifyToken, async (req, res) => {
 router.get("/students/:studentId/tasks/summary", verifyToken, async (req, res) => {
   try {
     const { studentId } = req.params;
+    const isStaff = writeRoles.includes(req.user?.role);
+    const isSelf = req.user?.role === "student" && req.user?.id?.toString() === studentId.toString();
+    if (!isStaff && !isSelf) {
+      return res.status(403).json({ success: false, message: "Access Denied. Unauthorized to view another student's task summary." });
+    }
+
     const { syllabusVersionId } = req.query;
     if (!syllabusVersionId) return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
     const tasks = await StudentTask.find({ studentId, syllabusVersionId, isActive: true });

@@ -107,6 +107,15 @@ exports.getStudentThesis = async (req, res) => {
         .json({ success: false, message: "Invalid student ID" });
     }
 
+    const staffRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer"];
+    const isStaff = staffRoles.includes(req.user?.role);
+    const isSelf = req.user?.role === "student" && req.user?.id?.toString() === studentId.toString();
+    if (!isStaff && !isSelf) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Access Denied. Unauthorized to view another student's thesis." });
+    }
+
     const thesis = await StudentThesis.findOne({ studentRef: studentId });
     if (!thesis) {
       return res.status(404).json({

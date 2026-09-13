@@ -74,14 +74,14 @@ export default function StudentSyllabus() {
     }
 
     return (
-        <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-12 print:p-0 print:m-0 print:max-w-none print:space-y-4 print:pb-0 print:block">
+        <div className="flex flex-col gap-3.5 sm:gap-4 pb-10 w-full print:p-0 print:m-0 print:max-w-none print:space-y-4 print:pb-0 print:block">
 
             {/* ── Official Institutional Print Header (Visible ONLY when Printing/PDF) ── */}
-            <div className="hidden print:block border-b-2 border-gray-900 pb-3 mb-4">
+            <div hidden className="hidden print:block border-b-2 border-gray-900 pb-3 mb-4">
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-xl font-black text-gray-900 uppercase tracking-wide">
-                            Sri Singaji Institute of Science & Management
+                            Sant Singaji Institute of Science and Management
                         </h1>
                         <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mt-0.5">
                             Academic Curriculum & Course Syllabus
@@ -922,7 +922,7 @@ export default function StudentSyllabus() {
 
             {/* ── Official Print Document Footer ───────────────────────────────── */}
             <div className="hidden print:flex items-center justify-between border-t border-gray-400 pt-2.5 mt-8 text-[10px] text-gray-600 font-medium">
-                <span>Sri Singaji Institute of Science & Management (SSISM) · Academic Management System</span>
+                <span>Sant Singaji Institute of Science and Management (SSISM) · Academic Management System</span>
                 <span>Page Curriculum Record · Student Copy</span>
             </div>
         </div>

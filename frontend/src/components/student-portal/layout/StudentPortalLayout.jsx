@@ -245,7 +245,7 @@ export default function StudentPortalLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-4 md:p-6 print:h-auto print:overflow-visible print:p-0 print:block">
+        <main className="flex-1 overflow-y-auto px-3.5 sm:px-4 md:px-6 pt-2.5 sm:pt-3.5 md:pt-4 pb-8 sm:pb-10 print:h-auto print:overflow-visible print:p-0 print:block">
           <Outlet />
         </main>
       </div>

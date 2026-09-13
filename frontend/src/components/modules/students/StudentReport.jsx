@@ -157,26 +157,24 @@ function LevelJourneyStepper({ levels = ['1A', '1B', '1C', '2A', '2B', '2C'], cu
             return (
               <div key={lvl} className="flex flex-col items-center relative z-10">
                 <div
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${
-                    isPassed
-                      ? "bg-emerald-500 text-white shadow-emerald-200 shadow-md"
-                      : isCurrent
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${isPassed
+                    ? "bg-emerald-500 text-white shadow-emerald-200 shadow-md"
+                    : isCurrent
                       ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white ring-4 ring-orange-100 shadow-md scale-110"
                       : "bg-white text-slate-400 border border-slate-200"
-                  }`}
+                    }`}
                 >
                   {isPassed ? <FaCheck className="text-xs" /> : lvl}
                 </div>
 
                 <div className="flex flex-col items-center mt-2.5">
                   <span
-                    className={`text-[11px] font-bold ${
-                      isCurrent
-                        ? "text-orange-600"
-                        : isPassed
+                    className={`text-[11px] font-bold ${isCurrent
+                      ? "text-orange-600"
+                      : isPassed
                         ? "text-emerald-700"
                         : "text-slate-400"
-                    }`}
+                      }`}
                   >
                     {lvl}
                   </span>
@@ -359,12 +357,12 @@ export default function StudentReport() {
       </div>
 
       {/* ── Report Card Body Container ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-4 space-y-4 sm:space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4">
 
         {/* ── Hero Dossier Card ── */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
-          
+
           <div className="p-6 sm:p-8">
             {/* Institute Header Watermark & Brand */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
@@ -644,8 +642,8 @@ export default function StudentReport() {
                         level === "Outstanding" || level === "Excellent"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : level === "Very Good"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200";
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200";
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition">
@@ -742,12 +740,12 @@ export default function StudentReport() {
               {(softSkillsSection?.items?.length > 0
                 ? softSkillsSection.items
                 : [
-                    { itemName: "Communication Skills", value: 4.2 },
-                    { itemName: "Team Collaboration", value: 4.1 },
-                    { itemName: "Problem Solving", value: 4.0 },
-                    { itemName: "Presentation Clarity", value: 4.2 },
-                    { itemName: "Professional Punctuality", value: 4.4 }
-                  ]
+                  { itemName: "Communication Skills", value: 4.2 },
+                  { itemName: "Team Collaboration", value: 4.1 },
+                  { itemName: "Problem Solving", value: 4.0 },
+                  { itemName: "Presentation Clarity", value: 4.2 },
+                  { itemName: "Professional Punctuality", value: 4.4 }
+                ]
               ).map((item, idx) => {
                 const score = parseFloat(item.value) || 0;
                 const max = item.maxMarks || 5;
@@ -797,12 +795,12 @@ export default function StudentReport() {
               {(interviewSection?.items?.length > 0
                 ? interviewSection.items
                 : [
-                    { itemName: "Technical Knowledge", value: 4.0 },
-                    { itemName: "Articulation & Communication", value: 4.0 },
-                    { itemName: "Confidence & Composure", value: 3.8 },
-                    { itemName: "Problem Solving Approach", value: 4.1 },
-                    { itemName: "Overall Interview Recommendation", value: 4.0 }
-                  ]
+                  { itemName: "Technical Knowledge", value: 4.0 },
+                  { itemName: "Articulation & Communication", value: 4.0 },
+                  { itemName: "Confidence & Composure", value: 3.8 },
+                  { itemName: "Problem Solving Approach", value: 4.1 },
+                  { itemName: "Overall Interview Recommendation", value: 4.0 }
+                ]
               ).map((item, idx) => {
                 const score = parseFloat(item.value) || 0;
                 const max = item.maxMarks || 5;
@@ -853,11 +851,11 @@ export default function StudentReport() {
             {(careerReadinessSection?.items?.length > 0
               ? careerReadinessSection.items
               : [
-                  { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Created" },
-                  { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Created" },
-                  { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "In Progress" },
-                  { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Ready" }
-                ]
+                { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Created" },
+                { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Created" },
+                { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "In Progress" },
+                { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Ready" }
+              ]
             ).map((item, idx) => {
               const val = item.value || "In Progress";
               const isReady = ["Created", "Updated", "Ready", "Completed"].includes(val);
@@ -866,8 +864,8 @@ export default function StudentReport() {
               const badgeColor = isReady
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                 : isInProgress
-                ? "bg-amber-50 text-amber-700 border-amber-200"
-                : "bg-red-50 text-red-700 border-red-200";
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-red-50 text-red-700 border-red-200";
 
               return (
                 <div key={idx} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 text-center hover:bg-slate-50 transition">
@@ -899,11 +897,11 @@ export default function StudentReport() {
               {(attendanceDisciplineSection?.items?.length > 0
                 ? attendanceDisciplineSection.items
                 : [
-                    { itemName: "Attendance", value: "92%" },
-                    { itemName: "Punctuality", value: "Good" },
-                    { itemName: "Discipline", value: "Excellent" },
-                    { itemName: "Class Conduct", value: "Active" }
-                  ]
+                  { itemName: "Attendance", value: "92%" },
+                  { itemName: "Punctuality", value: "Good" },
+                  { itemName: "Discipline", value: "Excellent" },
+                  { itemName: "Class Conduct", value: "Active" }
+                ]
               ).map((item, idx) => (
                 <div key={idx} className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 text-center">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.itemName}</p>
@@ -967,11 +965,11 @@ export default function StudentReport() {
                 const points = rawStrengths
                   ? rawStrengths.split(",").map(p => p.trim()).filter(Boolean)
                   : [
-                      "Strong programming foundations and algorithmic logic",
-                      "Consistent task submission and active lab participation",
-                      "Effective team communication and peer guidance",
-                      "Curiosity towards emerging technologies and frameworks"
-                    ];
+                    "Strong programming foundations and algorithmic logic",
+                    "Consistent task submission and active lab participation",
+                    "Effective team communication and peer guidance",
+                    "Curiosity towards emerging technologies and frameworks"
+                  ];
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
@@ -999,10 +997,10 @@ export default function StudentReport() {
                 const points = rawAreas
                   ? rawAreas.split(",").map(p => p.trim()).filter(Boolean)
                   : [
-                      "Advanced system design and complex algorithmic interview practice",
-                      "Mock interview confidence and structured answering under time limits",
-                      "Deep-dive portfolio projects demonstrating end-to-end architectures"
-                    ];
+                    "Advanced system design and complex algorithmic interview practice",
+                    "Mock interview confidence and structured answering under time limits",
+                    "Deep-dive portfolio projects demonstrating end-to-end architectures"
+                  ];
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">

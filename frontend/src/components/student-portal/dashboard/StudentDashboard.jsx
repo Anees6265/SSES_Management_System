@@ -46,18 +46,31 @@ const readinessBadge = (s = "") => {
 };
 
 // ── Circular Progress ─────────────────────────────────────────────────────────
-const CircleProgress = ({ pct, size = 56, stroke = 5, color = "#FDA92D" }) => {
-    const r = (size - stroke * 2) / 2;
+const CircleProgress = ({ pct, size = 56, stroke = 4, color = "#FDA92D" }) => {
+    const r = (size - stroke) / 2;
     const circ = 2 * Math.PI * r;
+    const isLarge = size >= 50;
+    const isTiny = size <= 36;
     return (
-        <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+        <div className="relative flex-shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} className="-rotate-90">
                 <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
                 <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color}
                     strokeWidth={stroke} strokeLinecap="round"
                     strokeDasharray={`${(pct / 100) * circ} ${circ}`} />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700">{pct}%</span>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                <span className={`font-black text-gray-800 tracking-tight flex items-baseline justify-center ${
+                    isLarge ? "text-xs" : isTiny ? "text-[9px]" : "text-[10px]"
+                }`}>
+                    {pct}
+                    <span className={`font-bold text-gray-400 ${
+                        isLarge ? "text-[9px] ml-0.5" : "text-[7.5px] ml-px"
+                    }`}>
+                        %
+                    </span>
+                </span>
+            </div>
         </div>
     );
 };
@@ -365,10 +378,24 @@ export default function StudentDashboard() {
                             <div className="space-y-4">
                                 {levelHistory.slice(0, 5).map((item, i) => {
                                     const isCurrent = item.status === "in_progress";
+                                    const isCompleted = item.status === "completed" || (!isCurrent && item.status !== "not_started");
                                     return (
                                         <div key={item._id || i} className="flex items-start gap-3.5">
-                                            <div className={`relative z-10 w-4.5 h-4.5 rounded-full border-2 flex-shrink-0 mt-0.5 w-[18px] h-[18px]
-                                                ${isCurrent ? "bg-orange-500 border-orange-500" : "bg-white border-gray-300"}`} />
+                                            <div className={`relative z-10 w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center
+                                                ${isCurrent
+                                                    ? "bg-orange-50 border-orange-500 ring-2 ring-orange-100"
+                                                    : isCompleted
+                                                    ? "bg-green-50 border-green-500 ring-2 ring-green-100"
+                                                    : "bg-white border-gray-300"}`}
+                                            >
+                                                {isCurrent ? (
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                                ) : isCompleted ? (
+                                                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                ) : (
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                                )}
+                                            </div>
                                             <div className={`flex-1 rounded-xl px-3 py-2.5 border ${isCurrent ? "border-orange-100 bg-orange-50" : "border-gray-100 bg-gray-50"}`}>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className={`text-xs font-bold truncate ${isCurrent ? "text-orange-600" : "text-gray-700"}`}>

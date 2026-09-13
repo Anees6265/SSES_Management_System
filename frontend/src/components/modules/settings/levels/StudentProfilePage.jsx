@@ -572,6 +572,7 @@ const LevelTasksList = ({ studentId, subLevelId }) => {
 const LevelHistoryItem = ({ item, student, idx }) => {
     const [expanded, setExpanded] = useState(false);
     const isCurrent = item.status === "in_progress";
+    const isCompleted = item.status === "completed" || (!isCurrent && item.status !== "not_started");
     const pct = item.totalTasks > 0
         ? Math.round((item.completedTasksCount / item.totalTasks) * 100)
         : 0;
@@ -580,10 +581,18 @@ const LevelHistoryItem = ({ item, student, idx }) => {
         <div className="flex items-start gap-4 relative">
             {/* dot indicator */}
             <div className={`relative z-10 w-4 h-4 rounded-full border-2 mt-1.5 flex-shrink-0 flex items-center justify-center ${isCurrent
-                ? "bg-orange-500 border-orange-500 shadow-md ring-4 ring-orange-500/10"
+                ? "bg-orange-50 border-orange-500 shadow-md ring-4 ring-orange-500/10"
+                : isCompleted
+                ? "bg-emerald-50 border-emerald-500 ring-4 ring-emerald-500/10"
                 : "bg-white border-slate-350"
                 }`}>
-                {!isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-slate-350" />}
+                {isCurrent ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                ) : isCompleted ? (
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                ) : (
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-350" />
+                )}
             </div>
 
             {/* card content */}

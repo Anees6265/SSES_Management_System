@@ -4,18 +4,39 @@ import { MdTrendingUp, MdCheckCircle, MdStar, MdAccessTime } from "react-icons/m
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 // ── Circular Progress ─────────────────────────────────────────────────────────
-const CircleProgress = ({ pct, size = 44, stroke = 4, color = "#FDA92D" }) => {
-    const r = (size - stroke * 2) / 2;
+const CircleProgress = ({ pct, size = 44, stroke = 3, color = "#FDA92D" }) => {
+    // Correct SVG circle radius so stroke fits cleanly inside size without clipping
+    const r = (size - stroke) / 2;
     const circ = 2 * Math.PI * r;
+    const isLarge = size >= 50;
+    const isTiny = size <= 36;
     return (
-        <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+        <div className="relative flex-shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
             <svg width={size} height={size} className="-rotate-90">
                 <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
-                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color}
-                    strokeWidth={stroke} strokeLinecap="round"
-                    strokeDasharray={`${(pct / 100) * circ} ${circ}`} />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={r}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
+                    strokeDasharray={`${(pct / 100) * circ} ${circ}`}
+                />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">{pct}%</span>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                <span className={`font-black text-gray-800 tracking-tight flex items-baseline justify-center ${
+                    isLarge ? "text-xs" : isTiny ? "text-[9px]" : "text-[10px]"
+                }`}>
+                    {pct}
+                    <span className={`font-bold text-gray-400 ${
+                        isLarge ? "text-[9px] ml-0.5" : "text-[7.5px] ml-px"
+                    }`}>
+                        %
+                    </span>
+                </span>
+            </div>
         </div>
     );
 };
@@ -111,6 +132,7 @@ export default function StudentLevelHistory() {
                                 <div className="space-y-4">
                                     {history.map((item, i) => {
                                         const isCurrent = item.status === "in_progress";
+                                        const isCompleted = item.status === "completed" || (!isCurrent && item.status !== "not_started");
                                         const pct = item.totalTasks > 0
                                             ? Math.round((item.completedTasksCount / item.totalTasks) * 100)
                                             : 0;
@@ -118,8 +140,18 @@ export default function StudentLevelHistory() {
                                             <div key={item._id || i} className="flex items-start gap-4">
                                                 {/* dot */}
                                                 <div className={`relative z-10 w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center
-                                                    ${isCurrent ? "bg-orange-500 border-orange-500" : "bg-white border-gray-300"}`}>
-                                                    {!isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
+                                                    ${isCurrent
+                                                        ? "bg-orange-50 border-orange-500 ring-2 ring-orange-100"
+                                                        : isCompleted
+                                                        ? "bg-green-50 border-green-500 ring-2 ring-green-100"
+                                                        : "bg-white border-gray-300"}`}>
+                                                    {isCurrent ? (
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                                    ) : isCompleted ? (
+                                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                    ) : (
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                                    )}
                                                 </div>
 
                                                 {/* card */}
@@ -144,7 +176,7 @@ export default function StudentLevelHistory() {
                                                                 </span>
                                                             }
                                                             {item.totalTasks > 0 && (
-                                                                <CircleProgress pct={pct} size={36} stroke={3.5}
+                                                                <CircleProgress pct={pct} size={40} stroke={2.8}
                                                                     color={isCurrent ? "#FDA92D" : "#22c55e"} />
                                                             )}
                                                         </div>

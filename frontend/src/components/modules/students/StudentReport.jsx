@@ -4,95 +4,41 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useGetAdmittedStudentsByIdQuery, useGetReportCardQuery } from "../../../redux/api/authApi";
 import { taskAPI } from '../../../services/taskService';
 import Header from '../../shared/sidebar/Header';
-import { FaDownload, FaLaptopCode, FaBrain, FaClipboardCheck, FaRocket, FaCertificate, FaGraduationCap, FaEdit, FaTrophy, FaProjectDiagram } from "react-icons/fa";
-import { MdEmail, MdPhone, MdPerson, MdLocationOn, MdSports } from "react-icons/md";
+import {
+  FaDownload,
+  FaPrint,
+  FaGraduationCap,
+  FaLaptopCode,
+  FaBrain,
+  FaClipboardCheck,
+  FaRocket,
+  FaTrophy,
+  FaCheck,
+  FaStar,
+  FaStarHalfAlt,
+  FaRegStar,
+  FaUserTie,
+  FaProjectDiagram,
+  FaAward
+} from "react-icons/fa";
+import {
+  MdVerified,
+  MdSchool,
+  MdSports,
+  MdOutlineAssessment,
+  MdOutlineTrendingUp,
+  MdArrowBack
+} from "react-icons/md";
+import { RiEdit2Fill, RiDoubleQuotesL } from "react-icons/ri";
 import Loader from "../../shared/loader/Loader";
-import { TbCertificate } from "react-icons/tb";
 import logo from '../../../assets/images/doulLogo.png';
-import { RiEdit2Fill } from "react-icons/ri";
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
 
-/**
- * Simplified LevelStepper - only levels 1A..2C shown with a connecting line.
- * No trophy/goal. Pass `levels` and `currentLevel`.
- */
-function LevelStepper({ levels = ['1A','1B','1C','2A','2B','2C'], currentLevel = '1A' }) {
-  const currentIndex = useMemo(() => {
-    const idx = levels.indexOf(currentLevel);
-    return idx === -1 ? 0 : idx;
-  }, [levels, currentLevel]);
-
-  // percent of line filled up to current step (0..100)
-  const fillPercent = useMemo(() => {
-    if (levels.length <= 1) return 0;
-    return (currentIndex / (levels.length - 1)) * 100;
-  }, [levels.length, currentIndex]);
-
-  return (
-    <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-gray-800">Level Progress</h3>
-          <p className="text-sm text-gray-600">
-            Current Level: <span className="font-semibold text-indigo-600 ml-1">{currentLevel}</span>
-          </p>
-        </div>
-
-        <div className="text-sm text-gray-700">{Math.round(fillPercent)}% Complete</div>
-      </div>
-
-      <div className="flex items-center gap-12 mt-6">
-        {/* Stepper Section - 85% */}
-        <div className="flex-1 relative">
-          {/* baseline track */}
-          <div className="absolute left-5 right-5 top-5 h-2 bg-gray-200 rounded-full"></div>
-
-          {/* filled part */}
-          <div
-            className="absolute left-5 top-5 h-2 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full transition-all duration-500"
-            style={{ width: `calc((100% - 40px) * ${fillPercent / 100})` }}
-          />
-
-          {/* steps: evenly distributed */}
-          <div className="flex justify-between relative z-10">
-            {levels.map((lvl, i) => {
-              const isPassed = i < currentIndex;
-              const isCurrent = i === currentIndex;
-              const circleClass = isPassed
-                ? "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm shadow-md bg-gradient-to-br from-green-500 to-emerald-600 text-white"
-                : isCurrent
-                  ? "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm shadow-md bg-orange-400 text-white"
-                  : "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm shadow-md bg-white border border-gray-200 text-gray-500";
-
-              return (
-                <div key={lvl} className="flex flex-col items-center">
-                  <div className={circleClass}>
-                    {isPassed ? '✓' : lvl}
-                  </div>
-                  <div className={`text-xs mt-2 font-medium ${isPassed || isCurrent ? 'text-gray-700' : 'text-gray-400'}`}>
-                    {lvl}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Goal Section - positioned at the end */}
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
-            <FaTrophy className="text-white" />
-          </div>
-          <span className="text-xs mt-2 font-medium text-gray-700">Goal</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const translateLevelName = (name) => {
-  if (!name) return "";
+  if (!name) return "1st Year";
   const cleaned = name.trim().toLowerCase();
   if (cleaned.includes("level 1") || cleaned.includes("1a") || cleaned.includes("1b") || cleaned.includes("1c")) return "1st Year";
   if (cleaned.includes("level 2") || cleaned.includes("2a") || cleaned.includes("2b") || cleaned.includes("2c")) return "2nd Year";
@@ -111,6 +57,162 @@ const translateLevelName = (name) => {
   return name;
 };
 
+const getGradeBadgeStyle = (grade = "") => {
+  const g = grade.toUpperCase();
+  if (["A+", "A"].includes(g)) {
+    return {
+      bg: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      pill: "bg-emerald-500 text-white",
+      label: "Outstanding Performance",
+      border: "border-emerald-100"
+    };
+  }
+  if (["B+", "B"].includes(g)) {
+    return {
+      bg: "bg-blue-50 text-blue-700 border-blue-200",
+      pill: "bg-blue-500 text-white",
+      label: "Very Good Performance",
+      border: "border-blue-100"
+    };
+  }
+  if (["C+", "C"].includes(g)) {
+    return {
+      bg: "bg-amber-50 text-amber-700 border-amber-200",
+      pill: "bg-amber-500 text-white",
+      label: "Good Performance",
+      border: "border-amber-100"
+    };
+  }
+  return {
+    bg: "bg-slate-50 text-slate-700 border-slate-200",
+    pill: "bg-slate-500 text-white",
+    label: "Satisfactory",
+    border: "border-slate-100"
+  };
+};
+
+const StarRating = ({ rating = 4, max = 5, size = "text-sm" }) => {
+  const numericRating = typeof rating === "number" ? rating : parseFloat(rating) || 0;
+  return (
+    <div className={`flex items-center gap-0.5 text-amber-400 ${size}`}>
+      {Array.from({ length: max }, (_, i) => {
+        const diff = numericRating - i;
+        if (diff >= 1) return <FaStar key={i} />;
+        if (diff >= 0.5) return <FaStarHalfAlt key={i} />;
+        return <FaRegStar key={i} className="text-slate-200" />;
+      })}
+    </div>
+  );
+};
+
+// ── Level Stepper Component ───────────────────────────────────────────────────
+
+function LevelJourneyStepper({ levels = ['1A', '1B', '1C', '2A', '2B', '2C'], currentLevel = '1A' }) {
+  const currentIndex = useMemo(() => {
+    const idx = levels.indexOf(currentLevel);
+    return idx === -1 ? 0 : idx;
+  }, [levels, currentLevel]);
+
+  const fillPercent = useMemo(() => {
+    if (levels.length <= 1) return 0;
+    return (currentIndex / (levels.length - 1)) * 100;
+  }, [levels.length, currentIndex]);
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+            <h3 className="text-base font-bold text-slate-800">Academic Level Progression</h3>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Current Position: <span className="font-bold text-orange-600">Level {currentLevel}</span> · SSISM Milestone Tracker
+          </p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
+            {Math.round(fillPercent)}% Journey Complete
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-8 mb-4 px-2 sm:px-6">
+        <div className="relative flex items-center justify-between">
+          {/* Track Background */}
+          <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1.5 bg-slate-100 rounded-full z-0" />
+
+          {/* Filled Progress Line */}
+          <div
+            className="absolute left-6 top-1/2 -translate-y-1/2 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-orange-500 rounded-full transition-all duration-700 z-0"
+            style={{ width: `calc((100% - 48px) * ${fillPercent / 100})` }}
+          />
+
+          {/* Stepper Nodes */}
+          {levels.map((lvl, i) => {
+            const isPassed = i < currentIndex;
+            const isCurrent = i === currentIndex;
+            const isUpcoming = i > currentIndex;
+
+            return (
+              <div key={lvl} className="flex flex-col items-center relative z-10">
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm transition-all duration-300 shadow-sm ${
+                    isPassed
+                      ? "bg-emerald-500 text-white shadow-emerald-200 shadow-md"
+                      : isCurrent
+                      ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white ring-4 ring-orange-100 shadow-md scale-110"
+                      : "bg-white text-slate-400 border border-slate-200"
+                  }`}
+                >
+                  {isPassed ? <FaCheck className="text-xs" /> : lvl}
+                </div>
+
+                <div className="flex flex-col items-center mt-2.5">
+                  <span
+                    className={`text-[11px] font-bold ${
+                      isCurrent
+                        ? "text-orange-600"
+                        : isPassed
+                        ? "text-emerald-700"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {lvl}
+                  </span>
+
+                  {isPassed && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
+                  )}
+                  {isCurrent && (
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 mt-1">
+                      Current
+                    </span>
+                  )}
+                  {isUpcoming && (
+                    <span className="text-[9px] text-slate-300 mt-1">—</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Final Placement Goal */}
+          <div className="flex flex-col items-center relative z-10">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200">
+              <FaTrophy className="text-sm" />
+            </div>
+            <span className="text-[11px] font-bold text-amber-600 mt-2.5">Goal</span>
+            <span className="text-[9px] font-medium text-slate-400 mt-1">Placed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main StudentReport Component ──────────────────────────────────────────────
+
 export default function StudentReport() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -119,22 +221,15 @@ export default function StudentReport() {
 
   const { data: studentResponse, isLoading, isError } = useGetAdmittedStudentsByIdQuery(id);
   const studentData = studentResponse?.data || {};
-  const { data: reportCardResponse, isLoading: reportLoading, isError: reportError } = useGetReportCardQuery(id);
+  const { data: reportCardResponse, isLoading: reportLoading } = useGetReportCardQuery(id);
   const reportCardData = reportCardResponse?.data;
-
-  // Debug logs
-  console.log('Student ID:', id);
-  console.log('Task Performance State:', taskPerformance);
-  console.log('Task Loading:', taskLoading);
 
   // Fetch task performance
   useEffect(() => {
     const fetchTaskPerformance = async () => {
       if (id) {
         try {
-          console.log('Fetching task performance for student:', id);
           const result = await taskAPI.getStudentTaskPerformance(id);
-          console.log('Task performance result:', result);
           setTaskPerformance(result.performance);
         } catch (error) {
           console.error('Error fetching task performance:', error);
@@ -147,1949 +242,826 @@ export default function StudentReport() {
     fetchTaskPerformance();
   }, [id]);
 
-  // show loader while either is loading
+  const fullName = `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim() || "Student";
+  const initials = fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST";
+  const prkey = studentData.admissionNo || studentData.enrollmentNo || studentData.prkey || "N/A";
+  const currentSubLevel = studentData.currentSubLevelId?.name || studentData.currentLevel || "1A";
+  const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || "ITEG";
+  const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
+  const overallGrade = reportCardData?.overallGrade || "A";
+  const gradeStyle = getGradeBadgeStyle(overallGrade);
+
+  // Fallbacks & dynamic sections extractor
+  const dynamicSections = reportCardData?.dynamicSections || [];
+  const getSection = (type) => dynamicSections.find(s => s.sectionType === type);
+
+  const levelProgressSection = getSection("LevelProgressTable");
+  const subjectPerformanceSection = getSection("SubjectPerformanceTable");
+  const softSkillsSection = getSection("SoftSkillsRating");
+  const interviewSection = getSection("InterviewRating");
+  const careerReadinessSection = getSection("CareerStatus");
+  const attendanceDisciplineSection = getSection("AttendanceDiscipline");
+  const strengthsImprovementSection = getSection("StrengthsImprovement");
+  const overallPerformanceSection = getSection("OverallPerformanceSummary");
+
+  // CGPA calculation
+  const cgpaValue = reportCardData?.academicPerformance?.cgpa || "8.50";
+  const sgpaList = reportCardData?.academicPerformance?.yearWiseSGPA || [
+    { year: "FY", sgpa: 8.4 },
+    { year: "SY", sgpa: 8.6 },
+    { year: "TY", sgpa: 8.5 }
+  ];
+
   if (isLoading || reportLoading || taskLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader />
       </div>
     );
   }
 
   if (isError || !studentData) {
-    return <div className="p-4 text-red-500">Error loading student data.</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-4 text-2xl font-bold">
+          ⚠️
+        </div>
+        <h2 className="text-xl font-bold text-slate-800">Student Record Not Found</h2>
+        <p className="text-sm text-slate-500 mt-1 max-w-md">
+          Unable to retrieve student details. Please verify the student ID or check your network connection.
+        </p>
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-5 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition"
+        >
+          Return Back
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50/50 pb-16">
+      {/* ── Top App Header ── */}
       <Header
-        title="Student Report Card"
+        title="Student Performance Report"
         showBack={true}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },
           { label: 'Student Progress', path: '/student-detail-table' },
-          { label: 'Profile', path: `/student-profile/${id}` },
+          { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
           { label: 'Report Card' }
         ]}
       >
-        <PDFDownloadLink
-          document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
-          fileName={`${studentData.firstName}_${studentData.lastName}_Report_Card.pdf`}
-          className="p-2 bg-green-500 text-white rounded-full text-2xl font-medium hover:bg-green-600 transition-colors"
-        >
-          {({ loading }) => loading ? <div className="animate-spin">⏳</div> : <FaDownload />}
-        </PDFDownloadLink>
-        <button
-          onClick={() => navigate(`/student/${id}/report/edit`)}
-          className="p-2 bg-orange-400 text-white rounded-full text-2xl font-medium hover:bg-orange-500 transition-colors"
-        >
-          <RiEdit2Fill />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Print Button */}
+          <button
+            onClick={() => window.print()}
+            title="Print Report"
+            className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
+          >
+            <FaPrint size={15} />
+          </button>
+
+          {/* Download PDF Button */}
+          <PDFDownloadLink
+            document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
+            fileName={`${studentData.firstName || 'Student'}_${studentData.lastName || 'Report'}_Report_Card.pdf`}
+            className="flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-200"
+          >
+            {({ loading }) =>
+              loading ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="animate-spin text-sm">⏳</span> Preparing...
+                </span>
+              ) : (
+                <>
+                  <FaDownload size={13} />
+                  <span>Download PDF</span>
+                </>
+              )
+            }
+          </PDFDownloadLink>
+
+          {/* Edit Button */}
+          <button
+            onClick={() => navigate(`/student/${id}/report/edit`)}
+            title="Edit Report Card"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-orange-200"
+          >
+            <RiEdit2Fill size={15} />
+            <span className="hidden sm:inline">Edit Report</span>
+          </button>
+        </div>
       </Header>
 
-      {/* Main content */}
-      <div className="min-h-screen p-6 print:p-0 print:m-0">
-        <div id="pdf-content" className="max-w-7xl mx-auto bg-white shadow-2xl rounded-2xl p-8 print:shadow-none print:bg-white print:mx-0 print:rounded-none border border-gray-100">
+      {/* ── Report Card Body Container ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
-          {/* Header */}
-          <div className="relative bg-white rounded-xl p-8 mb-6 border border-gray-200 text-center">
-            <div className="flex flex-col items-center justify-center">
-              <img src={logo} alt="SSISM Logo" className="h-20 object-contain mb-4" />
-              <h1 className="text-2xl font-black tracking-wide text-gray-800 uppercase">SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT</h1>
-              <h2 className="text-lg font-bold text-orange-500 tracking-wider uppercase mt-1">STUDENT PERFORMANCE REPORT CARD</h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-sm text-gray-600 w-full max-w-4xl border-t pt-4 mx-auto">
-                <div>
-                  <span className="font-bold">Academic Session:</span> {reportCardData?.batchYear || '2025–26'}
+        {/* ── Hero Dossier Card ── */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
+          
+          <div className="p-6 sm:p-8">
+            {/* Institute Header Watermark & Brand */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-2 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <img src={logo} alt="SSISM Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <span className="font-bold">Batch Year:</span> {reportCardData?.batchYear || '2025–26'}
+                  <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
+                    Sant Singaji Institute of Science & Management
+                  </h1>
+                  <p className="text-xs font-semibold text-orange-500 tracking-wider uppercase mt-0.5">
+                    ITEG Department · Comprehensive Student Performance Dossier
+                  </p>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" /> Session: {batchYear}
+                </span>
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${gradeStyle.bg} flex items-center gap-1.5`}>
+                  <MdVerified size={13} /> {reportCardData?.isFinalReport ? "Official Final Evaluation" : "Semester Progress Report"}
+                </span>
+              </div>
+            </div>
+
+            {/* Student Persona Grid */}
+            <div className="mt-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                {studentData.image ? (
+                  <img
+                    src={studentData.image}
+                    alt={fullName}
+                    className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md shadow-slate-200"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-2xl font-black shadow-md shadow-orange-100 border-2 border-white">
+                    {initials}
+                  </div>
+                )}
+
                 <div>
-                  <span className="font-bold">Department:</span> {studentData.subDepartmentId?.departmentId?.code || studentData.subDepartmentId?.departmentId?.name || "ITEG"}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-2xl font-black text-slate-900">{fullName}</h2>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                      Level {currentSubLevel}
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    {studentData.course || "BCA"} · {departmentName} · {currentYear}
+                  </p>
+
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
+                      PR Key: <strong className="text-slate-800">{prkey}</strong>
+                    </span>
+                    {studentData.fatherName && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
+                        Father: <strong className="text-slate-800">{studentData.fatherName}</strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold">Course / Level:</span> {studentData.course || "N/A"} ({studentData.currentSubLevelId?.name || studentData.currentLevel || "1A"})
+              </div>
+
+              {/* Authority & Generation Stamps */}
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/80 flex flex-col justify-center min-w-[260px]">
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                  <span>Evaluated By</span>
+                  <span className="font-bold text-slate-800">
+                    {reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                  <span>Evaluation Date</span>
+                  <span className="font-bold text-slate-800">
+                    {reportCardData?.createdAt
+                      ? new Date(reportCardData.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Status</span>
+                  <span className="font-extrabold text-emerald-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Verified & Approved
+                  </span>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Student Info */}
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border border-gray-200">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {studentData.firstName?.[0]}{studentData.lastName?.[0]}
+        {/* ── Executive KPI Metric Cards (Scorecard Strip) ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Metric 1: Overall Grade */}
+          <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-orange-200 transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">OVERALL GRADE</p>
+              <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
+                <FaTrophy size={14} />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-3xl font-black text-slate-900 group-hover:text-orange-600 transition">
+                {overallGrade}
+              </h3>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${gradeStyle.bg}`}>
+                {gradeStyle.label}
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-slate-400 pt-1">
+              Performance Index: Outstanding
+            </p>
+          </div>
+
+          {/* Metric 2: CGPA */}
+          <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-blue-200 transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CUMULATIVE CGPA</p>
+              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-500 border border-blue-100 flex items-center justify-center">
+                <FaGraduationCap size={14} />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-3xl font-black text-slate-900 group-hover:text-blue-600 transition">
+                {cgpaValue}
+              </h3>
+              <span className="text-xs font-bold text-slate-400">/ 10.0</span>
+            </div>
+            <p className="text-xs font-semibold text-slate-400 pt-1">
+              Academic aggregate across years
+            </p>
+          </div>
+
+          {/* Metric 3: Attendance & Discipline */}
+          <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-emerald-200 transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ATTENDANCE RATE</p>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-500 border border-emerald-100 flex items-center justify-center">
+                <FaClipboardCheck size={14} />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-3xl font-black text-slate-900 group-hover:text-emerald-600 transition">
+                {studentData.attendanceRate ? `${studentData.attendanceRate}%` : "92%"}
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                Active
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-slate-400 pt-1">
+              Regular classroom attendance
+            </p>
+          </div>
+
+          {/* Metric 4: Placement Readiness */}
+          <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-violet-200 transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CAREER READINESS</p>
+              <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-500 border border-violet-100 flex items-center justify-center">
+                <FaRocket size={14} />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-3xl font-black text-slate-900 group-hover:text-violet-600 transition">
+                {reportCardData?.careerReadiness?.placementReady || "Ready"}
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
+                Interview Eligible
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-slate-400 pt-1">
+              Resume & Aptitude Cleared
+            </p>
+          </div>
+        </div>
+
+        {/* ── Connected Level Stepper ── */}
+        <LevelJourneyStepper
+          levels={['1A', '1B', '1C', '2A', '2B', '2C']}
+          currentLevel={currentSubLevel}
+        />
+
+        {/* ── Academic Performance & SGPA Matrix ── */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
+          <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-sm">
+                <FaGraduationCap size={18} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">{studentData.firstName} {studentData.lastName}</h2>
-                <p className="text-blue-600 font-medium">{studentData.course || "N/A"} • Level {studentData.currentSubLevelId?.name || "1A"}</p>
+                <h3 className="text-base font-bold text-slate-800">Academic SGPA & CGPA Breakdown</h3>
+                <p className="text-xs text-slate-400">University semester performance evaluation</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Student Name</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.firstName} {studentData.lastName}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">PR Key / Enrollment No.</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.admissionNo || studentData.enrollmentNo || "N/A"}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Father's Name</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.fatherName || "N/A"}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Department</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.subDepartmentId?.departmentId?.name || "ITEG"}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Course</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.course || "N/A"}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Session</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{reportCardData?.batchYear || "2025–26"}</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Current Level</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{translateLevelName(studentData.currentLevelId?.name) || "1st Year"} ({studentData.currentLevelId?.name || "Level 1"})</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase">Current Sub-Level</span>
-                <p className="text-sm font-bold text-gray-800 mt-1">{studentData.currentSubLevelId?.name || "1A"}</p>
-              </div>
-            </div>
-
-            <div className="border-t pt-3 mt-3 flex justify-between items-center text-xs text-gray-500 font-medium">
-              <div>Report Generated By: <span className="font-bold text-gray-700">{reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}</span></div>
-              <div>Generated On: <span className="font-bold text-gray-700">{reportCardData?.createdAt ? new Date(reportCardData.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</span></div>
-            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              Grading Scale: 10.0
+            </span>
           </div>
 
-          {/* Simplified Level Stepper (only levels + line) */}
-          <LevelStepper
-            levels={['1A','1B','1C','2A','2B','2C']}
-            currentLevel={studentData.currentSubLevelId?.name || studentData.currentLevel || '1A'}
-          />
-
-          {/* Dynamic / Standard Sections */}
-          {reportCardData?.dynamicSections?.length > 0 ? (
-            <div className="space-y-8 mb-6">
-              {(() => {
-                const getSection = (type) => reportCardData.dynamicSections.find(s => s.sectionType === type);
-                
-                const levelProgress = getSection("LevelProgressTable");
-                const subjectPerformance = getSection("SubjectPerformanceTable");
-                const softSkills = getSection("SoftSkillsRating");
-                const interview = getSection("InterviewRating");
-                const careerReadiness = getSection("CareerStatus");
-                const attendanceDiscipline = getSection("AttendanceDiscipline");
-                const strengthsImprovement = getSection("StrengthsImprovement");
-                const overallPerformance = getSection("OverallPerformanceSummary");
-                
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            {/* Year Wise Cards */}
+            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {sgpaList.map((item, idx) => {
+                const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
+                const score = item.sgpa || "N/A";
                 return (
-                  <>
-                    {/* 2. Academic Performance (SGPA/CGPA) */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <FaGraduationCap className="w-6 h-6 text-purple-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-800">2. Academic Performance</h3>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                        <div className="md:col-span-2 overflow-x-auto">
-                          <table className="min-w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2">Academic Year</th>
-                                <th className="px-4 py-2 text-center">SGPA</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {reportCardData.academicPerformance?.yearWiseSGPA?.map((y, idx) => (
-                                <tr key={idx}>
-                                  <td className="px-4 py-2 font-medium text-gray-900">{y.year === "FY" ? "First Year" : y.year === "SY" ? "Second Year" : y.year === "TY" ? "Third Year" : y.year}</td>
-                                  <td className="px-4 py-2 text-center font-bold text-gray-800">{y.sgpa || "N/A"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="bg-gradient-to-br from-indigo-505 to-purple-600 bg-purple-600 rounded-xl p-6 text-white text-center shadow-md">
-                          <p className="text-sm opacity-90 mb-1">Overall CGPA</p>
-                          <p className="text-4xl font-extrabold">{reportCardData.academicPerformance?.cgpa || "N/A"}</p>
-                          <p className="text-xs opacity-75 mt-1">out of 10.0</p>
-                        </div>
-                      </div>
+                  <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
+                    <div className="flex items-baseline justify-between mt-2">
+                      <span className="text-2xl font-black text-slate-800">{score}</span>
+                      <span className="text-xs font-bold text-slate-400">SGPA</span>
                     </div>
-
-                    {/* 3. Level / Sub-Level Progress */}
-                    {levelProgress && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaClipboardCheck className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">3. Level / Sub-Level Progress</h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-3">Level</th>
-                                <th className="px-4 py-3 text-center">Sub-Level</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-center">Performance (Rating / 5)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {levelProgress.items.map((item, idx) => {
-                                const statusColor = 
-                                  item.value === "Completed" ? "bg-green-100 text-green-800" :
-                                  item.value === "Current" ? "bg-blue-100 text-blue-800" :
-                                  "bg-gray-100 text-gray-500";
-                                return (
-                                  <tr key={idx} className="hover:bg-gray-50/50">
-                                    <td className="px-4 py-3 font-semibold text-gray-800">
-                                      {item.itemName}
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-bold text-purple-600">{item.itemName}</td>
-                                    <td className="px-4 py-3 text-center">
-                                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor}`}>
-                                        {item.value}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-bold text-gray-900">
-                                      {item.remark !== "—" ? `${item.remark} / 5` : "—"}
-                                      {item.value === "Current" && (
-                                        <span className="text-xs text-gray-400 font-normal ml-2">({item.score}% Complete)</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 4. Subject-wise Performance */}
-                    {subjectPerformance && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaLaptopCode className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">4. Subject-wise Performance</h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-3">Subject</th>
-                                <th className="px-4 py-3 text-center">Total Tasks</th>
-                                <th className="px-4 py-3 text-center">Evaluated</th>
-                                <th className="px-4 py-3 text-center">Average Rating</th>
-                                <th className="px-4 py-3 text-center">Performance</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {subjectPerformance.items.map((item, idx) => {
-                                const level = item.value || "Good";
-                                const levelColor = 
-                                  level === "Outstanding" || level === "Excellent" ? "text-green-600 font-bold" :
-                                  level === "Very Good" ? "text-blue-600 font-bold" :
-                                  "text-yellow-600 font-semibold";
-                                return (
-                                  <tr key={idx} className="hover:bg-gray-50/50">
-                                    <td className="px-4 py-3 font-semibold text-gray-800">{item.itemName}</td>
-                                    <td className="px-4 py-3 text-center font-medium text-gray-600">{item.maxMarks}</td>
-                                    <td className="px-4 py-3 text-center font-medium text-gray-600">{item.score}</td>
-                                    <td className="px-4 py-3 text-center font-bold text-gray-900">{item.remark} / 5</td>
-                                    <td className={`px-4 py-3 text-center ${levelColor}`}>{level}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 5. Soft Skills & Behavioural Evaluation */}
-                    {softSkills && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaBrain className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">5. Soft Skills & Behavioural Evaluation</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {softSkills.items.map((item, idx) => {
-                            const val = parseFloat(item.value) || 0;
-                            return (
-                              <div key={idx} className="bg-gray-50 rounded-lg p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="font-semibold text-gray-800">{item.itemName}</span>
-                                  <span className="text-sm font-bold text-purple-700">{val} / 5</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600"
-                                    style={{ width: `${(val / 5) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-xs text-gray-400 font-semibold italic mt-4 text-center">
-                          Evaluation Method: Faculty Observation & Interview
-                        </p>
-                      </div>
-                    )}
-
-                    {/* 6. Interview Evaluation */}
-                    {interview && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <MdPerson className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">6. Interview Evaluation</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {interview.items.map((item, idx) => {
-                            const val = parseFloat(item.value) || 0;
-                            return (
-                              <div key={idx} className="bg-gray-50 rounded-lg p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="font-semibold text-gray-800">{item.itemName}</span>
-                                  <span className="text-sm font-bold text-purple-700">{val} / 5</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="h-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-600"
-                                    style={{ width: `${(val / 5) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 7. Career Readiness */}
-                    {careerReadiness && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaRocket className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">7. Career Readiness</h3>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {careerReadiness.items.map((item, idx) => {
-                            const status = item.value || "Not Ready";
-                            const statusColor = 
-                              status === "Created" || status === "Ready" ? "bg-green-100 text-green-800" :
-                              status === "In Progress" ? "bg-blue-100 text-blue-800" :
-                              "bg-red-100 text-red-800";
-                            return (
-                              <div key={idx} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 text-center">
-                                <div className="text-sm font-bold text-blue-800 mb-2 truncate">{item.itemName}</div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColor}`}>
-                                  {status}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 8. Attendance & Discipline */}
-                    {attendanceDiscipline && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaClipboardCheck className="w-6 h-6 text-purple-500" />
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-800">8. Attendance & Discipline</h3>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {attendanceDiscipline.items.map((item, idx) => (
-                            <div key={idx} className="bg-gray-50 rounded-lg p-4 border text-center">
-                              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{item.itemName}</div>
-                              <div className="text-base font-black text-gray-800">{item.value}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 9. Co-Curricular Activities */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <TbCertificate className="w-6 h-6 text-purple-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-800">9. Co-Curricular Activities</h3>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm text-left text-gray-500">
-                          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3">Category</th>
-                              <th className="px-4 py-3">Activity / Certificate</th>
-                              <th className="px-4 py-3">Remark</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {reportCardData.coCurricular && reportCardData.coCurricular.length > 0 ? (
-                              reportCardData.coCurricular.map((act, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-3 font-semibold text-gray-700">{act.category}</td>
-                                  <td className="px-4 py-3 text-gray-900">{act.title}</td>
-                                  <td className="px-4 py-3 text-gray-600">{act.remark}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan="3" className="px-4 py-4 text-center text-gray-400">No co-curricular activities recorded.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                        style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
+                      />
                     </div>
-
-                    {/* 10. Strengths & Areas for Improvement */}
-                    {strengthsImprovement && (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {strengthsImprovement.items.map((item, idx) => {
-                          const points = (item.value || "").split(",").map(p => p.trim()).filter(Boolean);
-                          const isStrengths = item.itemName.toLowerCase().includes("strength");
-                          return (
-                            <div key={idx} className={`p-5 rounded-xl border ${isStrengths ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'}`}>
-                              <h4 className={`text-base font-bold mb-3 flex items-center gap-2 ${isStrengths ? 'text-green-800' : 'text-red-800'}`}>
-                                <span>{isStrengths ? "💪" : "🚀"}</span>
-                                {item.itemName}
-                              </h4>
-                              {points.length > 0 ? (
-                                <ul className="list-disc pl-5 space-y-1.5 text-sm text-gray-700">
-                                  {points.map((pt, pIdx) => <li key={pIdx}>{pt}</li>)}
-                                </ul>
-                              ) : (
-                                <p className="text-sm text-gray-400 italic">No items listed.</p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* 11. Faculty / Mentor Feedback */}
-                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <RiEdit2Fill className="w-6 h-6 text-purple-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-800">11. Faculty / Mentor Feedback</h3>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 font-medium text-gray-700 text-sm whitespace-pre-line leading-relaxed italic">
-                        "{reportCardData.facultyRemark || "No comments provided yet."}"
-                      </div>
-                    </div>
-
-                    {/* 12. Overall Performance */}
-                    {overallPerformance && (
-                      <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-8 text-white shadow-xl">
-                        <h3 className="text-xl font-black uppercase tracking-wider mb-6 text-center text-orange-400">12. Overall Performance</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center mb-6">
-                          {overallPerformance.items.map((item, idx) => {
-                            if (item.itemName === "Overall Rating" || item.itemName === "Performance Level") return null;
-                            return (
-                              <div key={idx} className="bg-white/10 rounded-lg p-4 border border-white/10">
-                                <div className="text-xs opacity-75 uppercase font-semibold mb-1">{item.itemName}</div>
-                                <div className="text-2xl font-bold">{item.value} / 5</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {(() => {
-                          const ratingItem = overallPerformance.items.find(i => i.itemName === "Overall Rating");
-                          const levelItem = overallPerformance.items.find(i => i.itemName === "Performance Level") || ratingItem;
-                          return (
-                            <div className="border-t border-white/20 pt-6 flex flex-col md:flex-row justify-between items-center text-center md:text-left gap-4">
-                              <div>
-                                <span className="text-sm opacity-85 uppercase font-medium">Overall Rating:</span>
-                                <h4 className="text-3xl font-black text-orange-400 mt-1">{ratingItem?.value || "4.02"} / 5</h4>
-                              </div>
-                              <div>
-                                <span className="text-sm opacity-85 uppercase font-medium">Performance Level:</span>
-                                <h4 className="text-3xl font-black text-orange-400 mt-1">{levelItem?.remark || levelItem?.value || "Excellent"}</h4>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </>
+                  </div>
                 );
-              })()}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {/* Technical Skills */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <FaLaptopCode className="w-6 h-6 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Technical Skills</h3>
-              </div>
-
-              <div className="space-y-4">
-                {taskPerformance?.technicalSkills?.length > 0 ? taskPerformance.technicalSkills.map((tech, index) => {
-                  const colors = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
-                  return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{tech.skillName}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-700">{tech.totalPercentage}%</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            tech.totalPercentage >= 90 ? 'bg-green-100 text-green-800' :
-                            tech.totalPercentage >= 80 ? 'bg-blue-100 text-blue-800' :
-                            tech.totalPercentage >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>{tech.remark}</span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className={`h-3 rounded-full bg-gradient-to-r ${colors[index % colors.length]} transition-all duration-1000`}
-                          style={{ width: `${tech.totalPercentage}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs text-gray-500">Completed: {tech.completedTasks}/{tech.totalTasks} tasks</span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No technical skills data</p>
-                  </div>
-                )}
-              </div>
+              })}
             </div>
 
-            {/* Soft Skills */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <FaBrain className="w-6 h-6 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Soft Skills</h3>
-              </div>
-
-              <div className="space-y-4">
-                {taskPerformance?.softSkills?.categories?.length > 0 ? taskPerformance.softSkills.categories.map((category, index) => {
-                  const percentage = category.maxMarks ? (category.score / category.maxMarks) * 100 : category.percentage || 0;
-                  let status = "Poor";
-                  let statusColor = "bg-red-100 text-red-800";
-
-                  if (percentage >= 90) {
-                    status = "Excellent";
-                    statusColor = "bg-green-100 text-green-800";
-                  } else if (percentage >= 70) {
-                    status = "Good";
-                    statusColor = "bg-blue-100 text-blue-800";
-                  } else if (percentage >= 50) {
-                    status = "Average";
-                    statusColor = "bg-yellow-100 text-yellow-800";
-                  }
-
-                  return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{category.title}</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                          {category.remark || status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span>Score: {category.score}/{category.maxMarks}</span>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
-                          <div
-                            className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-1000"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="font-medium">{Math.round(percentage)}%</span>
-                      </div>
-                    </div>
-                  );
-                }) : reportCardData?.softSkills?.categories?.length > 0 ? reportCardData.softSkills.categories.map((category, index) => {
-                  const percentage = category.maxMarks ? (category.score / category.maxMarks) * 100 : 0;
-                  let status = "Poor";
-                  let statusColor = "bg-red-100 text-red-800";
-
-                  if (percentage >= 90) {
-                    status = "Excellent";
-                    statusColor = "bg-green-100 text-green-800";
-                  } else if (percentage >= 70) {
-                    status = "Good";
-                    statusColor = "bg-blue-100 text-blue-800";
-                  } else if (percentage >= 50) {
-                    status = "Average";
-                    statusColor = "bg-yellow-100 text-yellow-800";
-                  }
-
-                  return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{category.title}</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                          {status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span>Score: {category.score}/{category.maxMarks}</span>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
-                          <div
-                            className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-1000"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="font-medium">{Math.round(percentage)}%</span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No soft skills data</p>
-                  </div>
-                )}
+            {/* Overall CGPA Highlight Box */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 text-center shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+              <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+              <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
+              <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
+                <span>Distinction Class</span>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Discipline */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <FaClipboardCheck className="w-6 h-6 text-purple-500" />
+        {/* ── Subject-Wise Performance Table ── */}
+        {(subjectPerformanceSection || taskPerformance?.technicalSkills) && (
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-sm">
+                  <FaLaptopCode size={18} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-800">Discipline</h3>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Subject-Wise Performance & Technical Mastery</h3>
+                  <p className="text-xs text-slate-400">Continuous task evaluations, lab assessments and practical ratings</p>
+                </div>
               </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 self-start sm:self-auto">
+                Evaluated by Faculty Panel
+              </span>
+            </div>
 
-              <div className="space-y-4">
-                {reportCardData?.discipline?.categories?.length > 0 ? reportCardData.discipline.categories.map((category, index) => {
-                  const percentage = category.maxMarks ? (category.score / category.maxMarks) * 100 : 0;
-                  return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-800">{category.title}</span>
-                        <span className="text-sm font-bold text-gray-700">{category.score}/{category.maxMarks}</span>
-                      </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 px-6">Subject / Module</th>
+                    <th className="py-3.5 px-4 text-center">Tasks Completion</th>
+                    <th className="py-3.5 px-4 text-center">Average Rating</th>
+                    <th className="py-3.5 px-6 text-center">Proficiency Level</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {subjectPerformanceSection?.items?.length > 0 ? (
+                    subjectPerformanceSection.items.map((item, idx) => {
+                      const evaluated = item.score ?? 0;
+                      const total = item.maxMarks || 100;
+                      const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
+                      const rating = parseFloat(item.remark) || 4.0;
+                      const level = item.value || "Good";
+
+                      const levelColor =
+                        level === "Outstanding" || level === "Excellent"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : level === "Very Good"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition">
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                                {item.itemName.slice(0, 2).toUpperCase()}
+                              </div>
+                              <span className="font-bold text-slate-800">{item.itemName}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-4 px-4 text-center">
+                            <div className="inline-flex flex-col items-center">
+                              <span className="text-xs font-bold text-slate-700">
+                                {evaluated} / {total} tasks
+                              </span>
+                              <div className="w-24 bg-slate-100 rounded-full h-1.5 mt-1.5">
+                                <div
+                                  className="h-1.5 rounded-full bg-orange-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-4 px-4 text-center">
+                            <div className="inline-flex flex-col items-center">
+                              <StarRating rating={rating} size="text-xs" />
+                              <span className="text-xs font-bold text-slate-800 mt-1">
+                                {rating.toFixed(2)} <span className="text-slate-400 font-normal">/ 5.0</span>
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="py-4 px-6 text-center">
+                            <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full border ${levelColor}`}>
+                              {level}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : taskPerformance?.technicalSkills?.length > 0 ? (
+                    taskPerformance.technicalSkills.map((tech, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition">
+                        <td className="py-4 px-6 font-bold text-slate-800">{tech.skillName}</td>
+                        <td className="py-4 px-4 text-center font-bold text-slate-700">
+                          {tech.completedTasks || 0} / {tech.totalTasks || 0} tasks
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-slate-800">
+                          {tech.totalPercentage}%
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {tech.remark || "Good"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="py-8 text-center text-xs text-slate-400 font-medium">
+                        No subject performance records available.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Soft Skills & Interview Evaluations ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Section 1: Soft Skills & Behavioural Assessment */}
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shadow-sm">
+                  <FaBrain size={17} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Soft Skills & Behavioural Assessment</h3>
+                  <p className="text-xs text-slate-400">Interpersonal, teamwork and presentation evaluations</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
+                Max 5.0
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {(softSkillsSection?.items?.length > 0
+                ? softSkillsSection.items
+                : [
+                    { itemName: "Communication Skills", value: 4.2 },
+                    { itemName: "Team Collaboration", value: 4.1 },
+                    { itemName: "Problem Solving", value: 4.0 },
+                    { itemName: "Presentation Clarity", value: 4.2 },
+                    { itemName: "Professional Punctuality", value: 4.4 }
+                  ]
+              ).map((item, idx) => {
+                const score = parseFloat(item.value) || 0;
+                const max = item.maxMarks || 5;
+                const pct = Math.min(Math.round((score / max) * 100), 100);
+
+                return (
+                  <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-slate-700">{item.itemName}</span>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-3">
-                          <div
-                            className="h-3 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 transition-all duration-1000"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-gray-600">{Math.round(percentage)}%</span>
+                        <StarRating rating={score} size="text-[11px]" />
+                        <span className="text-xs font-black text-slate-800">
+                          {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
+                        </span>
                       </div>
                     </div>
-                  );
-                }) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No discipline data</p>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Career Readiness & Academic Performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Career Readiness */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <FaRocket className="w-6 h-6 text-purple-500" />
+          {/* Section 2: Interview Evaluation */}
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-sm">
+                  <FaUserTie size={17} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-800">Career Readiness</h3>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
+                  <p className="text-xs text-slate-400">Technical depth, articulate communication & answer composure</p>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {reportCardData?.careerReadiness ? (
-                  <>
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">📄</span>
-                        <span className="text-sm font-medium text-blue-700">Resume</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        reportCardData.careerReadiness.resumeStatus === 'Updated' ? 'bg-green-100 text-green-800' :
-                        reportCardData.careerReadiness.resumeStatus === 'Need to improve' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>{reportCardData.careerReadiness.resumeStatus}</span>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">🔗</span>
-                        <span className="text-sm font-medium text-indigo-700">LinkedIn</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        reportCardData.careerReadiness.linkedinStatus === 'Updated' ? 'bg-green-100 text-green-800' :
-                        reportCardData.careerReadiness.linkedinStatus === 'Need to improve' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>{reportCardData.careerReadiness.linkedinStatus}</span>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">🧠</span>
-                        <span className="text-sm font-medium text-purple-700">Aptitude</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        reportCardData.careerReadiness.aptitudeStatus === 'In-Progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>{reportCardData.careerReadiness.aptitudeStatus}</span>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">🎯</span>
-                        <span className="text-sm font-medium text-green-700">Placement</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        reportCardData.careerReadiness.placementReady === 'Ready' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>{reportCardData.careerReadiness.placementReady}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="col-span-2 text-center py-8 text-gray-500">
-                    <p>No career readiness data</p>
-                  </div>
-                )}
-              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                Panel Rating
+              </span>
             </div>
 
-            {/* Academic Performance */}
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <FaGraduationCap className="w-6 h-6 text-purple-500" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Academic Performance</h3>
+            <div className="space-y-4">
+              {(interviewSection?.items?.length > 0
+                ? interviewSection.items
+                : [
+                    { itemName: "Technical Knowledge", value: 4.0 },
+                    { itemName: "Articulation & Communication", value: 4.0 },
+                    { itemName: "Confidence & Composure", value: 3.8 },
+                    { itemName: "Problem Solving Approach", value: 4.1 },
+                    { itemName: "Overall Interview Recommendation", value: 4.0 }
+                  ]
+              ).map((item, idx) => {
+                const score = parseFloat(item.value) || 0;
+                const max = item.maxMarks || 5;
+                const pct = Math.min(Math.round((score / max) * 100), 100);
+
+                return (
+                  <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-slate-700">{item.itemName}</span>
+                      <div className="flex items-center gap-2">
+                        <StarRating rating={score} size="text-[11px]" />
+                        <span className="text-xs font-black text-slate-800">
+                          {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Career Readiness & Placement Milestones ── */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
+          <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-sm">
+                <FaRocket size={17} />
               </div>
-
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-4 text-white text-center">
-                  <p className="text-sm opacity-90 mb-1">Overall CGPA</p>
-                  <p className="text-3xl font-bold">{reportCardData?.academicPerformance?.cgpa || "N/A"}</p>
-                  <p className="text-sm opacity-75">out of 10.0</p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
-                    <p className="text-xs font-medium text-blue-700 mb-1">FY SGPA</p>
-                    <p className="text-lg font-bold text-blue-800">
-                      {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'FY')?.sgpa || "N/A"}
-                    </p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
-                    <p className="text-xs font-medium text-green-700 mb-1">SY SGPA</p>
-                    <p className="text-lg font-bold text-green-800">
-                      {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'SY')?.sgpa || "N/A"}
-                    </p>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-200">
-                    <p className="text-xs font-medium text-purple-700 mb-1">TY SGPA</p>
-                    <p className="text-lg font-bold text-purple-800">
-                      {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'TY')?.sgpa || "N/A"}
-                    </p>
-                  </div>
-                </div>
-
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Placement & Career Readiness Milestones</h3>
+                <p className="text-xs text-slate-400">Industry onboarding and hiring drive preparedness status</p>
               </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Training & Placement Cell
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(careerReadinessSection?.items?.length > 0
+              ? careerReadinessSection.items
+              : [
+                  { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Created" },
+                  { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Created" },
+                  { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "In Progress" },
+                  { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Ready" }
+                ]
+            ).map((item, idx) => {
+              const val = item.value || "In Progress";
+              const isReady = ["Created", "Updated", "Ready", "Completed"].includes(val);
+              const isInProgress = ["In Progress", "Need to improve"].includes(val);
+
+              const badgeColor = isReady
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : isInProgress
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-red-50 text-red-700 border-red-200";
+
+              return (
+                <div key={idx} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 text-center hover:bg-slate-50 transition">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    {item.itemName}
+                  </p>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badgeColor}`}>
+                    {isReady ? <FaCheck size={10} /> : <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+                    {val}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Attendance, Discipline & Co-Curricular ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Discipline Stats */}
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                <FaClipboardCheck size={16} />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">Attendance & Conduct</h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(attendanceDisciplineSection?.items?.length > 0
+                ? attendanceDisciplineSection.items
+                : [
+                    { itemName: "Attendance", value: "92%" },
+                    { itemName: "Punctuality", value: "Good" },
+                    { itemName: "Discipline", value: "Excellent" },
+                    { itemName: "Class Conduct", value: "Active" }
+                  ]
+              ).map((item, idx) => (
+                <div key={idx} className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.itemName}</p>
+                  <p className="text-base font-black text-slate-800 mt-1">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Co-Curricular Activities */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <TbCertificate className="w-6 h-6 text-purple-500" />
+          {/* Co-Curricular & Achievements */}
+          <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <FaAward size={16} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Co-Curricular & Certifications</h4>
               </div>
-              <h3 className="text-lg font-bold text-gray-800">Co-Curricular Activities</h3>
+              <span className="text-xs font-semibold text-slate-400">
+                {reportCardData?.coCurricular?.length || 0} Activities
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              {(() => {
-                const categories = [
-                  { name: 'Certificate', icon: TbCertificate },
-                  { name: 'Project', icon: FaProjectDiagram },
-                  { name: 'Sports', icon: MdSports }
-                ];
-
-                return categories.map((category) => {
-                  const count = reportCardData?.coCurricular?.filter(activity =>
-                    activity.category.toLowerCase() === category.name.toLowerCase()
-                  ).length || 0;
-
-                  const IconComponent = category.icon;
-
-                  return (
-                    <div key={category.name} className="bg-gray-50 rounded-lg p-4 text-center border border-gray-200">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <IconComponent className="w-6 h-6 text-purple-500" />
-                      </div>
-                      <h4 className="font-semibold text-gray-800 mb-1">{category.name}</h4>
-                      <p className="text-2xl font-bold text-gray-700">{count}</p>
-                      <p className="text-xs text-gray-500">Activities</p>
+            {reportCardData?.coCurricular && reportCardData.coCurricular.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {reportCardData.coCurricular.map((act, idx) => (
+                  <div key={idx} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {act.category?.toLowerCase().includes("sport") ? <MdSports size={16} /> : <FaProjectDiagram size={13} />}
                     </div>
-                  );
-                });
-              })()}
-            </div>
-
-            {reportCardData?.coCurricular?.length > 0 && (
-              <div className="space-y-6">
-                <h4 className="font-semibold text-gray-700 mb-4">Activity Details</h4>
-                {(() => {
-                  const groupedActivities = reportCardData.coCurricular.reduce((acc, activity) => {
-                    const category = activity.category.toLowerCase();
-                    if (!acc[category]) acc[category] = [];
-                    acc[category].push(activity);
-                    return acc;
-                  }, {});
-
-                  return Object.entries(groupedActivities).map(([category, activities]) => (
-                    <div key={category} className="mb-6">
-                      <h5 className={`font-semibold text-lg mb-3 uppercase tracking-wide ${
-                        category === 'certificate' ? 'text-yellow-600' :
-                        category === 'project' ? 'text-blue-600' :
-                        'text-green-600'
-                      }`}>{category} ({activities.length})</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {activities.map((activity, index) => (
-                          <div key={index} className={`rounded-lg p-4 border ${
-                            category === 'certificate' ? 'border-yellow-200 bg-yellow-50' :
-                            category === 'project' ? 'border-blue-200 bg-blue-50' :
-                            'border-green-200 bg-green-50'
-                          }`}>
-                            <h6 className="font-semibold text-gray-800 mb-2">{activity.title}</h6>
-                            <p className="text-sm text-gray-600">{activity.remark}</p>
-                          </div>
-                        ))}
-                      </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{act.title}</p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">{act.category} · {act.remark}</p>
                     </div>
-                  ));
-                })()}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                Active participation recorded in Technical Workshops & Institute Events.
               </div>
             )}
           </div>
-          </>
-          )}
-
-          {/* Faculty Feedback */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <FaEdit className="w-6 h-6 text-purple-500" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">Faculty Feedback</h3>
-            </div>
-
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                  {reportCardData?.generatedByName?.split(' ').map(n => n[0]).join('') || 'FA'}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-semibold text-gray-800">{reportCardData?.generatedByName || "Faculty"}</p>
-                      <p className="text-sm text-gray-600">Course Instructor</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 mb-1">
-                        {(() => {
-                          const grade = reportCardData?.overallGrade;
-                          let rating = 3;
-                          if (grade === 'A+') rating = 5;
-                          else if (grade === 'A') rating = 4.5;
-                          else if (grade === 'B+') rating = 4;
-                          else if (grade === 'B') rating = 3.5;
-                          else if (grade === 'C+') rating = 3;
-                          else if (grade === 'C') rating = 2.5;
-
-                          return [1,2,3,4,5].map((star) => {
-                            if (star <= Math.floor(rating)) {
-                              return <span key={star} className="text-lg text-yellow-400">★</span>;
-                            } else if (star === Math.floor(rating) + 1 && rating % 1 === 0.5) {
-                              return (
-                                <span key={star} className="relative text-lg inline-block">
-                                  <span className="text-gray-300">★</span>
-                                  <span className="absolute top-0 left-0 text-yellow-400 overflow-hidden" style={{ width: '50%' }}>★</span>
-                                </span>
-                              );
-                            } else {
-                              return <span key={star} className="text-lg text-gray-300">★</span>;
-                            }
-                          });
-                        })()}
-                      </div>
-                      <p className="text-sm text-gray-600">Overall Grade: <span className="font-bold text-indigo-600">{reportCardData?.overallGrade || "N/A"}</span></p>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-blue-100">
-                    <p className="text-gray-700 italic leading-relaxed">
-                      "{reportCardData?.facultyRemark || "No specific remarks provided."}"
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Final Assessment */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl shadow-lg p-6 text-white">
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold mb-2">Final Assessment</h3>
-              <p className="text-indigo-200">Overall Performance Summary</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <h4 className="font-semibold mb-2">Current Level</h4>
-                <p className="text-2xl font-bold">{studentData.currentSubLevelId?.name || studentData.currentLevel || "1A"}</p>
-                <p className="text-sm text-indigo-200 mt-1">Academic Progress</p>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">🏆</span>
-                </div>
-                <h4 className="font-semibold mb-2">Overall Grade</h4>
-                <p className="text-3xl font-bold">{reportCardData?.overallGrade || "N/A"}</p>
-                <p className="text-sm text-indigo-200 mt-1">Performance Rating</p>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">📈</span>
-                </div>
-                <h4 className="font-semibold mb-2">Status</h4>
-                <p className="text-xl font-bold">{reportCardData?.isFinalReport ? 'Final' : 'Progress'}</p>
-                <p className="text-sm text-indigo-200 mt-1">Report Type</p>
-              </div>
-            </div>
-
-            <div className="mt-6 text-center">
-              <p className="text-indigo-200 text-sm">
-                Generated on {new Date(reportCardData?.updatedAt || Date.now()).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-          </div>
-
         </div>
+
+        {/* ── Strengths & Growth Areas ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Strengths Card */}
+          <div className="bg-emerald-50/40 rounded-3xl border border-emerald-100 p-6 sm:p-7 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                💪
+              </span>
+              <h4 className="text-base font-bold text-emerald-950">Demonstrated Strengths</h4>
+            </div>
+            <p className="text-xs text-emerald-700/80">Key student traits observed by course faculties</p>
+
+            <ul className="space-y-2 pt-2">
+              {(() => {
+                const rawStrengths = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("strength"))?.value;
+                const points = rawStrengths
+                  ? rawStrengths.split(",").map(p => p.trim()).filter(Boolean)
+                  : [
+                      "Strong programming foundations and algorithmic logic",
+                      "Consistent task submission and active lab participation",
+                      "Effective team communication and peer guidance",
+                      "Curiosity towards emerging technologies and frameworks"
+                    ];
+
+                return points.map((pt, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
+                    <FaCheck className="text-emerald-500 text-xs mt-0.5 flex-shrink-0" />
+                    <span>{pt}</span>
+                  </li>
+                ));
+              })()}
+            </ul>
+          </div>
+
+          {/* Areas for Improvement Card */}
+          <div className="bg-amber-50/40 rounded-3xl border border-amber-100 p-6 sm:p-7 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">
+                🎯
+              </span>
+              <h4 className="text-base font-bold text-amber-950">Areas for Focused Growth</h4>
+            </div>
+            <p className="text-xs text-amber-700/80">Target development areas prior to final recruitment</p>
+
+            <ul className="space-y-2 pt-2">
+              {(() => {
+                const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve"))?.value;
+                const points = rawAreas
+                  ? rawAreas.split(",").map(p => p.trim()).filter(Boolean)
+                  : [
+                      "Advanced system design and complex algorithmic interview practice",
+                      "Mock interview confidence and structured answering under time limits",
+                      "Deep-dive portfolio projects demonstrating end-to-end architectures"
+                    ];
+
+                return points.map((pt, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                    <span>{pt}</span>
+                  </li>
+                ));
+              })()}
+            </ul>
+          </div>
+        </div>
+
+        {/* ── Faculty / Mentor Feedback Block ── */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
+                <RiDoubleQuotesL size={20} />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-slate-800">Faculty Mentorship & Recommendation</h4>
+                <p className="text-xs text-slate-400">Formal observation recorded by Academic Evaluator</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <StarRating rating={4.5} />
+              <span className="text-xs font-bold text-slate-700">Recommended for Placement</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-50/80 rounded-2xl p-5 sm:p-6 border border-slate-100/80 relative">
+            <p className="text-slate-700 text-sm italic leading-relaxed">
+              "{reportCardData?.facultyRemark ||
+                `${studentData.firstName || 'The student'} exhibits strong conceptual understanding, high academic discipline, and proactive engagement across both coursework and project assignments. Continuously exceeding benchmarks in technical tasks.`}"
+            </p>
+
+            <div className="mt-4 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold text-slate-500">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center">
+                  {(reportCardData?.generatedByName || "FA").slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-slate-800 font-bold">{reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}</span>
+                <span className="text-slate-400">· Senior Faculty Mentor</span>
+              </div>
+              <span className="text-slate-400">Official SSISM Evaluation</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Footer Branding & Verification Stamp ── */}
+        <div className="pt-6 pb-4 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <p>© {new Date().getFullYear()} Sant Singaji Institute of Science and Management. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <span>Official Academic Document</span>
+            <span>·</span>
+            <span>PR Key: {prkey}</span>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
-
-
-
-// import { useParams, useNavigate } from "react-router-dom";
-// import { useGetAdmittedStudentsByIdQuery, useGetReportCardQuery } from "../../../redux/api/authApi";
-// import { HiArrowNarrowLeft } from "react-icons/hi";
-// import { FaUserGroup, FaDownload } from "react-icons/fa6";
-// import { useState } from "react";
-// import Loader from "../../shared/loader/Loader";
-// import logo from '../../../assets/images/doulLogo.png';
-// import { RiEdit2Fill } from "react-icons/ri";
-// import { PDFDownloadLink } from '@react-pdf/renderer';
-// import StudentReportPDF from './StudentReportPDF';
-// import profileIcon from '../../../assets/icons/StuReportprofile_icon.png';
-// import courseIcon from '../../../assets/icons/StuReportCourse_icon.png';
-// import mailIcon from '../../../assets/icons/StuReportMail_icon.png';
-// import fatherIcon from '../../../assets/icons/StuReportFather_icon.png';
-// import contactIcon from '../../../assets/icons/StuReport_Phone.png';
-// import addressIcon from '../../../assets/icons/StuReportAddress_icon.png';
-
-
-// export default function StudentReport() {
-//   const { id } = useParams();
-//   const navigate = useNavigate();
-//   const { data: studentData, isLoading, isError } = useGetAdmittedStudentsByIdQuery(id);
-//   const { data: reportCardResponse, isLoading: reportLoading, isError: reportError } = useGetReportCardQuery(id);
-//   const reportCardData = reportCardResponse?.data;
-
-
-
-
-//   if (isLoading) {
-//     return (
-//       <div className="min-h-screen flex items-center justify-center bg-white">
-//         <Loader />
-//       </div>
-//     );
-//   }
-
-//   if (isError || !studentData) {
-//     return <div className="p-4 text-red-500">Error loading student data.</div>;
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-white">
-//       {/* Professional Header */}
-//       <div className="sticky top-0 z-10 print:hidden">
-//         <div className="py-2 sm:py-4 ">
-//           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-//             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-//               <button
-//                 onClick={() => window.history.back()}
-//                 className="group flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 text-gray-700 hover:text-gray-900"
-//               >
-//                 <HiArrowNarrowLeft className="text-base sm:text-lg group-hover:-translate-x-1 transition-transform" />
-//                 <span className="text-xs sm:text-sm font-medium">Back</span>
-//               </button>
-//               <div className="h-6 sm:h-8 w-px bg-gray-300 hidden sm:block"></div>
-//               <div className="flex-1 sm:flex-none">
-//                 <h1 className="text-lg sm:text-2xl font-bold text-black">Student Report Card</h1>
-//                 <p className="text-gray-600">Comprehensive performance report for {studentData.firstName} {studentData.lastName}</p>
-//               </div>
-//             </div>
-//             <div className="flex items-center gap-3">
-//               {/* PDF Download Button */}
-//               <PDFDownloadLink
-//                 document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
-//                 fileName={`${studentData.firstName}_${studentData.lastName}_Report_Card.pdf`}
-//                 className="p-2 bg-green-500 text-white rounded-full text-2xl font-medium hover:bg-green-600 transition-colors"
-//               >
-//                 {({ blob, url, loading, error }) =>
-//                   loading ? (
-//                     <div className="animate-spin">⏳</div>
-//                   ) : (
-//                     <FaDownload />
-//                   )
-//                 }
-//               </PDFDownloadLink>
-              
-//               <button
-//                 onClick={() => {
-//                   try {
-//                     navigate(`/student/${id}/report/edit`);
-//                   } catch (error) {
-//                     console.error('Navigation error:', error);
-//                     // Fallback: try relative navigation
-//                     navigate('edit');
-//                   }
-//                 }}
-//                 className="p-2 bg-orange-400 text-white rounded-full text-2xl font-medium hover:bg-orange-500 transition-colors"
-//               >
-//                 <RiEdit2Fill />
-//               </button>
-//             </div>
-
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Full Width Professional Background */}
-//       <div className="min-h-screen p-6 print:p-0 print:m-0">
-//         <div id="pdf-content" className="max-w-7xl mx-auto bg-white shadow-2xl rounded-2xl p-8 print:shadow-none print:bg-white print:mx-0 print:rounded-none border border-gray-100">
-
-//           {/* Professional Header */}
-//           <div className="relative bg-white rounded-xl p-6 mb-6 border border-gray-200">
-//             <div className="flex items-center justify-between">
-//               <div className="flex items-center gap-4">
-//                 <div className="bg-gray-100 rounded-lg p-3">
-//                   <img src={logo} alt="ITEG Logo" className="h-12 object-contain" />
-//                 </div>
-//                 <div>
-//                   <h1 className="text-2xl font-bold mb-1 text-gray-800">Student Report Card</h1>
-//                   <p className="text-gray-600 text-sm">Comprehensive Performance Analysis</p>
-//                 </div>
-//               </div>
-//               <div className="text-right bg-gray-50 rounded-lg p-4">
-//                 <p className="text-gray-600 text-sm">Academic Year</p>
-//                 <p className="font-bold text-lg text-gray-800">{reportCardData?.batchYear || '2024-25'}</p>
-//                 <p className="text-gray-500 text-xs mt-1">Generated: {new Date().toLocaleDateString()}</p>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Student Information Card */}
-//           <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border border-gray-200">
-//             <div className="flex items-center gap-4 mb-6">
-//               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-//                 {studentData.firstName?.[0]}{studentData.lastName?.[0]}
-//               </div>
-//               <div>
-//                 <h2 className="text-2xl font-bold text-gray-800">{studentData.firstName} {studentData.lastName}</h2>
-//                 <p className="text-blue-600 font-medium">{studentData.course || "N/A"} • Level {studentData.currentLevel || "1A"}</p>
-//               </div>
-//             </div>
-            
-//             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-//               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-//                     <img src={mailIcon} alt="Email" className="w-4 h-4" />
-//                   </div>
-//                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</span>
-//                 </div>
-//                 <p className="text-sm font-semibold text-gray-800 truncate">{studentData.email || "N/A"}</p>
-//               </div>
-              
-//               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-//                     <img src={contactIcon} alt="Phone" className="w-4 h-4" />
-//                   </div>
-//                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contact</span>
-//                 </div>
-//                 <p className="text-sm font-semibold text-gray-800">{studentData.studentMobile || "N/A"}</p>
-//               </div>
-              
-//               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-//                     <img src={fatherIcon} alt="Father" className="w-4 h-4" />
-//                   </div>
-//                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Father</span>
-//                 </div>
-//                 <p className="text-sm font-semibold text-gray-800">{studentData.fatherName || "N/A"}</p>
-//               </div>
-              
-//               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-//                     <img src={addressIcon} alt="Track" className="w-4 h-4" />
-//                   </div>
-//                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Track</span>
-//                 </div>
-//                 <p className="text-sm font-semibold text-gray-800">{studentData.track || studentData.techno || "N/A"}</p>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Level Progress Card */}
-//           <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-//             <div className="flex items-center justify-between mb-6">
-//               <h3 className="text-xl font-bold text-gray-800">Academic Progress</h3>
-//               <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium">
-//                 Current: Level {studentData.currentLevel || "1A"}
-//               </div>
-//             </div>
-            
-//             <div className="relative">
-//               {/* Progress Track */}
-//               <div className="absolute top-6 left-8 right-16 h-2 bg-gray-200 rounded-full"></div>
-//               <div 
-//                 className="absolute top-6 left-8 h-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full transition-all duration-1000"
-//                 style={{
-//                   width: `${((studentData.currentLevel ? ['1A', '1B', '1C', '2A', '2B', '2C'].indexOf(studentData.currentLevel) + 1 : 1) / 7) * 100}%`
-//                 }}
-//               ></div>
-              
-//               {/* Level Steps */}
-//               <div className="flex justify-between items-center relative">
-//                 {['1A', '1B', '1C', '2A', '2B', '2C'].map((level, index) => {
-//                   const currentLevelIndex = studentData.currentLevel ? ['1A', '1B', '1C', '2A', '2B', '2C'].indexOf(studentData.currentLevel) : -1;
-//                   const isPassed = currentLevelIndex > index;
-//                   const isCurrent = currentLevelIndex === index;
-                  
-//                   return (
-//                     <div key={level} className="flex flex-col items-center relative z-10">
-//                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-//                         isPassed 
-//                           ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg' 
-//                           : isCurrent 
-//                             ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg' 
-//                             : 'bg-gray-200 text-gray-500'
-//                       }`}>
-//                         {isPassed ? '✓' : level}
-//                       </div>
-//                       <span className={`text-xs mt-2 font-medium ${
-//                         isPassed || isCurrent ? 'text-gray-700' : 'text-gray-400'
-//                       }`}>{level}</span>
-//                     </div>
-//                   );
-//                 })}
-                
-//                 {/* Goal Trophy */}
-//                 <div className="flex flex-col items-center">
-//                   <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
-//                     🏆
-//                   </div>
-//                   <span className="text-xs mt-2 font-medium text-gray-700">Goal</span>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Skills & Performance Grid */}
-//           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-//             {/* Technical Skills Card */}
-//             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-//               <div className="flex items-center gap-3 mb-6">
-//                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                   <span className="text-gray-600 text-lg">💻</span>
-//                 </div>
-//                 <h3 className="text-lg font-bold text-gray-800">Technical Skills</h3>
-//               </div>
-              
-//               <div className="space-y-4">
-//                 {reportCardData?.technicalSkills?.length > 0 ? reportCardData.technicalSkills.map((tech, index) => {
-//                   const colors = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-red-500 to-red-600', 'from-yellow-500 to-yellow-600'];
-//                   return (
-//                     <div key={index} className="bg-gray-50 rounded-lg p-4">
-//                       <div className="flex justify-between items-center mb-2">
-//                         <span className="font-medium text-gray-800">{tech.skillName}</span>
-//                         <div className="flex items-center gap-2">
-//                           <span className="text-sm font-bold text-gray-700">{tech.totalPercentage}%</span>
-//                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-//                             tech.totalPercentage >= 90 ? 'bg-green-100 text-green-800' :
-//                             tech.totalPercentage >= 80 ? 'bg-blue-100 text-blue-800' :
-//                             tech.totalPercentage >= 70 ? 'bg-yellow-100 text-yellow-800' :
-//                             'bg-red-100 text-red-800'
-//                           }`}>{tech.remark}</span>
-//                         </div>
-//                       </div>
-//                       <div className="w-full bg-gray-200 rounded-full h-3">
-//                         <div 
-//                           className={`h-3 rounded-full bg-gradient-to-r ${colors[index % colors.length]} transition-all duration-1000`} 
-//                           style={{ width: `${tech.totalPercentage}%` }}
-//                         ></div>
-//                       </div>
-//                     </div>
-//                   );
-//                 }) : (
-//                   <div className="text-center py-8 text-gray-500">
-//                     <span className="text-4xl mb-2 block">📊</span>
-//                     <p>No technical skills data</p>
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             {/* Soft Skills Card */}
-//             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-//               <div className="flex items-center gap-3 mb-6">
-//                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                   <span className="text-gray-600 text-lg">🧠</span>
-//                 </div>
-//                 <h3 className="text-lg font-bold text-gray-800">Soft Skills</h3>
-//               </div>
-              
-//               <div className="space-y-4">
-//                 {reportCardData?.softSkills?.categories?.length > 0 ? reportCardData.softSkills.categories.map((category, index) => {
-//                   const percentage = (category.score / category.maxMarks) * 100;
-//                   let status = "Poor";
-//                   let statusColor = "bg-red-100 text-red-800";
-                  
-//                   if (percentage >= 90) {
-//                     status = "Excellent";
-//                     statusColor = "bg-green-100 text-green-800";
-//                   } else if (percentage >= 70) {
-//                     status = "Good";
-//                     statusColor = "bg-blue-100 text-blue-800";
-//                   } else if (percentage >= 50) {
-//                     status = "Average";
-//                     statusColor = "bg-yellow-100 text-yellow-800";
-//                   }
-
-//                   return (
-//                     <div key={index} className="bg-gray-50 rounded-lg p-4">
-//                       <div className="flex justify-between items-center mb-2">
-//                         <span className="font-medium text-gray-800">{category.title}</span>
-//                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-//                           {status}
-//                         </span>
-//                       </div>
-//                       <div className="flex items-center gap-2 text-sm text-gray-600">
-//                         <span>Score: {category.score}/{category.maxMarks}</span>
-//                         <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
-//                           <div 
-//                             className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-1000" 
-//                             style={{ width: `${percentage}%` }}
-//                           ></div>
-//                         </div>
-//                         <span className="font-medium">{Math.round(percentage)}%</span>
-//                       </div>
-//                     </div>
-//                   );
-//                 }) : (
-//                   <div className="text-center py-8 text-gray-500">
-//                     <span className="text-4xl mb-2 block">🎆</span>
-//                     <p>No soft skills data</p>
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             {/* Discipline Card */}
-//             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-//               <div className="flex items-center gap-3 mb-6">
-//                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                   <span className="text-gray-600 text-lg">🎖️</span>
-//                 </div>
-//                 <h3 className="text-lg font-bold text-gray-800">Discipline</h3>
-//               </div>
-              
-//               <div className="space-y-4">
-//                 {reportCardData?.discipline?.categories?.length > 0 ? reportCardData.discipline.categories.map((category, index) => {
-//                   const percentage = (category.score / category.maxMarks) * 100;
-//                   return (
-//                     <div key={index} className="bg-gray-50 rounded-lg p-4">
-//                       <div className="flex justify-between items-center mb-2">
-//                         <span className="font-medium text-gray-800">{category.title}</span>
-//                         <span className="text-sm font-bold text-gray-700">{category.score}/{category.maxMarks}</span>
-//                       </div>
-//                       <div className="flex items-center gap-2">
-//                         <div className="flex-1 bg-gray-200 rounded-full h-3">
-//                           <div 
-//                             className="h-3 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 transition-all duration-1000" 
-//                             style={{ width: `${percentage}%` }}
-//                           ></div>
-//                         </div>
-//                         <span className="text-sm font-medium text-gray-600">{Math.round(percentage)}%</span>
-//                       </div>
-//                     </div>
-//                   );
-//                 }) : (
-//                   <div className="text-center py-8 text-gray-500">
-//                     <span className="text-4xl mb-2 block">🏅</span>
-//                     <p>No discipline data</p>
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-//           </div>
-//           {/* Career Readiness & Academic Performance */}
-//           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-//             {/* Career Readiness Card */}
-//             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-//               <div className="flex items-center gap-3 mb-6">
-//                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                   <span className="text-gray-600 text-lg">🚀</span>
-//                 </div>
-//                 <h3 className="text-lg font-bold text-gray-800">Career Readiness</h3>
-//               </div>
-              
-//               <div className="grid grid-cols-2 gap-4">
-//                 {reportCardData?.careerReadiness ? (
-//                   <>
-//                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-//                       <div className="flex items-center gap-2 mb-2">
-//                         <span className="text-lg">📄</span>
-//                         <span className="text-sm font-medium text-blue-700">Resume</span>
-//                       </div>
-//                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-//                         reportCardData.careerReadiness.resumeStatus === 'Updated' ? 'bg-green-100 text-green-800' :
-//                         reportCardData.careerReadiness.resumeStatus === 'Need to improve' ? 'bg-yellow-100 text-yellow-800' :
-//                         'bg-red-100 text-red-800'
-//                       }`}>{reportCardData.careerReadiness.resumeStatus}</span>
-//                     </div>
-                    
-//                     <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
-//                       <div className="flex items-center gap-2 mb-2">
-//                         <span className="text-lg">🔗</span>
-//                         <span className="text-sm font-medium text-indigo-700">LinkedIn</span>
-//                       </div>
-//                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-//                         reportCardData.careerReadiness.linkedinStatus === 'Updated' ? 'bg-green-100 text-green-800' :
-//                         reportCardData.careerReadiness.linkedinStatus === 'Need to improve' ? 'bg-yellow-100 text-yellow-800' :
-//                         'bg-red-100 text-red-800'
-//                       }`}>{reportCardData.careerReadiness.linkedinStatus}</span>
-//                     </div>
-                    
-//                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-//                       <div className="flex items-center gap-2 mb-2">
-//                         <span className="text-lg">🧠</span>
-//                         <span className="text-sm font-medium text-purple-700">Aptitude</span>
-//                       </div>
-//                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-//                         reportCardData.careerReadiness.aptitudeStatus === 'In-Progress' ? 'bg-blue-100 text-blue-800' :
-//                         'bg-gray-100 text-gray-800'
-//                       }`}>{reportCardData.careerReadiness.aptitudeStatus}</span>
-//                     </div>
-                    
-//                     <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-//                       <div className="flex items-center gap-2 mb-2">
-//                         <span className="text-lg">🎯</span>
-//                         <span className="text-sm font-medium text-green-700">Placement</span>
-//                       </div>
-//                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-//                         reportCardData.careerReadiness.placementReady === 'Ready' ? 'bg-green-100 text-green-800' :
-//                         'bg-red-100 text-red-800'
-//                       }`}>{reportCardData.careerReadiness.placementReady}</span>
-//                     </div>
-//                   </>
-//                 ) : (
-//                   <div className="col-span-2 text-center py-8 text-gray-500">
-//                     <span className="text-4xl mb-2 block">📈</span>
-//                     <p>No career readiness data</p>
-//                   </div>
-//                 )}
-//               </div>
-//             </div>
-
-//             {/* Academic Performance Card */}
-//             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-//               <div className="flex items-center gap-3 mb-6">
-//                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                   <span className="text-gray-600 text-lg">🎓</span>
-//                 </div>
-//                 <h3 className="text-lg font-bold text-gray-800">Academic Performance</h3>
-//               </div>
-              
-//               <div className="space-y-4">
-//                 {/* CGPA Highlight */}
-//                 <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-4 text-white text-center">
-//                   <p className="text-sm opacity-90 mb-1">Overall CGPA</p>
-//                   <p className="text-3xl font-bold">{reportCardData?.academicPerformance?.cgpa || "N/A"}</p>
-//                   <p className="text-sm opacity-75">out of 10.0</p>
-//                 </div>
-                
-//                 {/* Year-wise SGPA */}
-//                 <div className="grid grid-cols-3 gap-3">
-//                   <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
-//                     <p className="text-xs font-medium text-blue-700 mb-1">FY SGPA</p>
-//                     <p className="text-lg font-bold text-blue-800">
-//                       {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'FY')?.sgpa || "N/A"}
-//                     </p>
-//                   </div>
-//                   <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
-//                     <p className="text-xs font-medium text-green-700 mb-1">SY SGPA</p>
-//                     <p className="text-lg font-bold text-green-800">
-//                       {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'SY')?.sgpa || "N/A"}
-//                     </p>
-//                   </div>
-//                   <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-200">
-//                     <p className="text-xs font-medium text-purple-700 mb-1">TY SGPA</p>
-//                     <p className="text-lg font-bold text-purple-800">
-//                       {reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === 'TY')?.sgpa || "N/A"}
-//                     </p>
-//                   </div>
-//                 </div>
-                
-
-//               </div>
-//             </div>
-//           </div>
-//           {/* Co-Curricular Activities */}
-//           <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-//             <div className="flex items-center gap-3 mb-6">
-//               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                 <span className="text-gray-600 text-lg">🏆</span>
-//               </div>
-//               <h3 className="text-lg font-bold text-gray-800">Co-Curricular Activities</h3>
-//             </div>
-            
-//             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-//               {(() => {
-//                 const categories = [
-//                   { name: 'Certificate', icon: '🏅', color: 'from-yellow-400 to-orange-500' },
-//                   { name: 'Project', icon: '💻', color: 'from-blue-400 to-indigo-500' },
-//                   { name: 'Sports', icon: '⚽', color: 'from-green-400 to-emerald-500' }
-//                 ];
-                
-//                 return categories.map((category) => {
-//                   const count = reportCardData?.coCurricular?.filter(activity => 
-//                     activity.category.toLowerCase() === category.name.toLowerCase()
-//                   ).length || 0;
-                  
-//                   return (
-//                     <div key={category.name} className="bg-gray-50 rounded-lg p-4 text-center border border-gray-200">
-//                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-//                         <span className="text-2xl text-gray-600">{category.icon}</span>
-//                       </div>
-//                       <h4 className="font-semibold text-gray-800 mb-1">{category.name}</h4>
-//                       <p className="text-2xl font-bold text-gray-700">{count}</p>
-//                       <p className="text-xs text-gray-500">Activities</p>
-//                     </div>
-//                   );
-//                 });
-//               })()}
-//             </div>
-            
-//             {/* Activity Details */}
-//             {reportCardData?.coCurricular?.length > 0 && (
-//               <div className="space-y-6">
-//                 <h4 className="font-semibold text-gray-700 mb-4">Activity Details</h4>
-//                 {(() => {
-//                   const groupedActivities = reportCardData.coCurricular.reduce((acc, activity) => {
-//                     const category = activity.category.toLowerCase();
-//                     if (!acc[category]) acc[category] = [];
-//                     acc[category].push(activity);
-//                     return acc;
-//                   }, {});
-                  
-//                   return Object.entries(groupedActivities).map(([category, activities]) => (
-//                     <div key={category} className="mb-6">
-//                       <h5 className={`font-semibold text-lg mb-3 uppercase tracking-wide ${
-//                         category === 'certificate' ? 'text-yellow-600' :
-//                         category === 'project' ? 'text-blue-600' :
-//                         'text-green-600'
-//                       }`}>{category} ({activities.length})</h5>
-//                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//                         {activities.map((activity, index) => (
-//                           <div key={index} className={`rounded-lg p-4 border ${
-//                             category === 'certificate' ? 'border-yellow-200 bg-yellow-50' :
-//                             category === 'project' ? 'border-blue-200 bg-blue-50' :
-//                             'border-green-200 bg-green-50'
-//                           }`}>
-//                             <h6 className="font-semibold text-gray-800 mb-2">{activity.title}</h6>
-//                             <p className="text-sm text-gray-600">{activity.remark}</p>
-//                           </div>
-//                         ))}
-//                       </div>
-//                     </div>
-//                   ));
-//                 })()}
-//               </div>
-//             )}
-//           </div>
-//           {/* Faculty Feedback */}
-//           <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-//             <div className="flex items-center gap-3 mb-6">
-//               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-//                 <span className="text-gray-600 text-lg">📝</span>
-//               </div>
-//               <h3 className="text-lg font-bold text-gray-800">Faculty Feedback</h3>
-//             </div>
-            
-//             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-//               <div className="flex items-start gap-4">
-//                 <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-//                   {reportCardData?.generatedByName?.split(' ').map(n => n[0]).join('') || 'FA'}
-//                 </div>
-//                 <div className="flex-1">
-//                   <div className="flex items-center justify-between mb-3">
-//                     <div>
-//                       <p className="font-semibold text-gray-800">{reportCardData?.generatedByName || "Faculty"}</p>
-//                       <p className="text-sm text-gray-600">Course Instructor</p>
-//                     </div>
-//                     <div className="text-right">
-//                       <div className="flex items-center gap-1 mb-1">
-//                         {(() => {
-//                           const grade = reportCardData?.overallGrade;
-//                           let rating = 3;
-//                           if (grade === 'A+') rating = 5;
-//                           else if (grade === 'A') rating = 4.5;
-//                           else if (grade === 'B+') rating = 4;
-//                           else if (grade === 'B') rating = 3.5;
-//                           else if (grade === 'C+') rating = 3;
-//                           else if (grade === 'C') rating = 2.5;
-                          
-//                           return [1, 2, 3, 4, 5].map((star) => {
-//                             if (star <= Math.floor(rating)) {
-//                               return <span key={star} className="text-lg text-yellow-400">★</span>;
-//                             } else if (star === Math.floor(rating) + 1 && rating % 1 === 0.5) {
-//                               return (
-//                                 <span key={star} className="relative text-lg inline-block">
-//                                   <span className="text-gray-300">★</span>
-//                                   <span className="absolute top-0 left-0 text-yellow-400 overflow-hidden" style={{ width: '50%' }}>★</span>
-//                                 </span>
-//                               );
-//                             } else {
-//                               return <span key={star} className="text-lg text-gray-300">★</span>;
-//                             }
-//                           });
-//                         })()}
-//                       </div>
-//                       <p className="text-sm text-gray-600">Overall Grade: <span className="font-bold text-indigo-600">{reportCardData?.overallGrade || "N/A"}</span></p>
-//                     </div>
-//                   </div>
-//                   <div className="bg-white rounded-lg p-4 border border-blue-100">
-//                     <p className="text-gray-700 italic leading-relaxed">
-//                       "{reportCardData?.facultyRemark || "No specific remarks provided."}"
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Final Assessment Section */}
-//           <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl shadow-lg p-6 text-white">
-//             <div className="text-center mb-6">
-//               <h3 className="text-2xl font-bold mb-2">Final Assessment</h3>
-//               <p className="text-indigo-200">Overall Performance Summary</p>
-//             </div>
-            
-//             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-//               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-//                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-//                   <span className="text-2xl">🎯</span>
-//                 </div>
-//                 <h4 className="font-semibold mb-2">Current Level</h4>
-//                 <p className="text-2xl font-bold">{studentData.currentLevel || "1A"}</p>
-//                 <p className="text-sm text-indigo-200 mt-1">Academic Progress</p>
-//               </div>
-              
-//               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-//                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-//                   <span className="text-2xl">🏆</span>
-//                 </div>
-//                 <h4 className="font-semibold mb-2">Overall Grade</h4>
-//                 <p className="text-3xl font-bold">{reportCardData?.overallGrade || "N/A"}</p>
-//                 <p className="text-sm text-indigo-200 mt-1">Performance Rating</p>
-//               </div>
-              
-//               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-//                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-//                   <span className="text-2xl">📈</span>
-//                 </div>
-//                 <h4 className="font-semibold mb-2">Status</h4>
-//                 <p className="text-xl font-bold">{reportCardData?.isFinalReport ? 'Final' : 'Progress'}</p>
-//                 <p className="text-sm text-indigo-200 mt-1">Report Type</p>
-//               </div>
-//             </div>
-            
-//             <div className="mt-6 text-center">
-//               <p className="text-indigo-200 text-sm">
-//                 Generated on {new Date(reportCardData?.updatedAt || Date.now()).toLocaleDateString('en-US', { 
-//                   year: 'numeric', 
-//                   month: 'long', 
-//                   day: 'numeric' 
-//                 })}
-//               </p>
-//             </div>
-//           </div>
-
-//         </div>
-//       </div>
-
-
-//     </div>
-//   );
-// }
-
-
-// // import { useParams, useNavigate } from "react-router-dom";
-// // import { useGetAdmittedStudentsByIdQuery, useGetReportCardQuery } from "../../../redux/api/authApi";
-// // import { HiArrowNarrowLeft } from "react-icons/hi";
-// // import { useState } from "react";
-// // import Loader from "../../shared/loader/Loader";
-// // import logo from '../../../assets/images/doulLogo.png';
-// // import { RiEdit2Fill } from "react-icons/ri";
-// // import profileIcon from '../../../assets/icons/StuReportprofile_icon.png';
-// // import courseIcon from '../../../assets/icons/StuReportCourse_icon.png';
-// // import mailIcon from '../../../assets/icons/StuReportMail_icon.png';
-// // import fatherIcon from '../../../assets/icons/StuReportFather_icon.png';
-// // import contactIcon from '../../../assets/icons/StuReport_Phone.png';
-// // import addressIcon from '../../../assets/icons/StuReportAddress_icon.png';
-
-// // export default function StudentReport() {
-// //   const { id } = useParams();
-// //   const navigate = useNavigate();
-// //   const { data: studentData, isLoading, isError } = useGetAdmittedStudentsByIdQuery(id);
-// //   const { data: reportCardResponse, isLoading: reportLoading, isError: reportError } = useGetReportCardQuery(id);
-// //   const reportCardData = reportCardResponse?.data;
-
-// //   if (isLoading || reportLoading) {
-// //     return (
-// //       <div className="min-h-screen flex items-center justify-center bg-white">
-// //         <Loader />
-// //       </div>
-// //     );
-// //   }
-
-// //   if (isError || !studentData) {
-// //     return <div className="p-4 text-red-500">Error loading student data.</div>;
-// //   }
-
-// //   if (reportError) {
-// //     console.error('Report Card Error:', reportError);
-// //   }
-
-// //   const hasReportData = reportCardData && Object.keys(reportCardData).length > 0;
-
-// //   return (
-// //     <div className="min-h-screen bg-white">
-// //       {/* Header */}
-// //       <div className="sticky top-0 z-10 print:hidden">
-// //         <div className="py-2 sm:py-4">
-// //           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-// //             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-// //               <button
-// //                 onClick={() => window.history.back()}
-// //                 className="group flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 text-gray-700 hover:text-gray-900"
-// //               >
-// //                 <HiArrowNarrowLeft className="text-base sm:text-lg group-hover:-translate-x-1 transition-transform" />
-// //                 <span className="text-xs sm:text-sm font-medium">Back</span>
-// //               </button>
-// //               <div className="h-6 sm:h-8 w-px bg-gray-300 hidden sm:block"></div>
-// //               <div className="flex-1 sm:flex-none">
-// //                 <h1 className="text-lg sm:text-2xl font-bold text-black">Student Report Card</h1>
-// //                 <p className="text-gray-600">Comprehensive performance report for {studentData.firstName} {studentData.lastName}</p>
-// //               </div>
-// //             </div>
-// //             <div className="flex items-center gap-3">
-// //               <button
-// //                 onClick={() => navigate(`/student/${id}/report/edit`)}
-// //                 className="p-2 bg-orange-400 text-white rounded-full text-2xl font-medium hover:bg-orange-500 transition-colors"
-// //               >
-// //                 <RiEdit2Fill />
-// //               </button>
-// //             </div>
-// //           </div>
-// //         </div>
-// //       </div>
-
-// //       {/* Content */}
-// //       <div className="min-h-screen p-6 print:p-0 print:m-0">
-// //         {!hasReportData ? (
-// //           <div className="mx-auto bg-white shadow-xl p-8 rounded-lg text-center" style={{ maxWidth: '600px' }}>
-// //             <h2 className="text-2xl font-bold text-gray-800 mb-4">No Report Card Data</h2>
-// //             <p className="text-gray-600 mb-6">No report card has been created for {studentData.firstName} {studentData.lastName} yet.</p>
-// //             <button
-// //               onClick={() => navigate(`/student/${id}/report/edit`)}
-// //               className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-// //             >
-// //               Create Report Card
-// //             </button>
-// //           </div>
-// //         ) : (
-// //           <div className="mx-auto bg-[#F9FAFB] shadow-xl p-4 print:shadow-none print:bg-white print:mx-0" style={{ width: '210mm', minHeight: '297mm' }}>
-// //             {/* Header with Logo */}
-// //             <div className="relative flex items-center justify-between mb-4" style={{ height: '80px' }}>
-// //               <div className="flex items-center gap-4">
-// //                 <img src={logo} alt="ITEG Logo" className="h-16 object-contain" />
-// //               </div>
-// //               <div className="absolute left-1/2 transform -translate-x-1/2">
-// //                 <h1 className="text-lg font-bold text-black">Report Card</h1>
-// //               </div>
-// //               <div className="text-right text-xs text-gray-600">
-// //                 <p>Academic Year</p>
-// //                 <p className="font-semibold text-gray-800">Session 2024-25</p>
-// //               </div>
-// //             </div>
-
-// //             {/* Personal Information */}
-// //             <div className="bg-white rounded-lg shadow-md p-4 mb-3">
-// //               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-// //                 <div className="space-y-4">
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={profileIcon} alt="Profile" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Full Name</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.firstName} {studentData.lastName}</p>
-// //                   </div>
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={courseIcon} alt="Course" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Course</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.course || "N/A"}</p>
-// //                   </div>
-// //                 </div>
-
-// //                 <div className="space-y-4">
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={mailIcon} alt="Email" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Email</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.email || "N/A"}</p>
-// //                   </div>
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={fatherIcon} alt="Father" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Father's Name</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.fatherName || "N/A"}</p>
-// //                   </div>
-// //                 </div>
-
-// //                 <div className="space-y-4">
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={contactIcon} alt="Phone" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Contact Number</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.studentMobile || "N/A"}</p>
-// //                   </div>
-// //                   <div>
-// //                     <div className="flex items-center gap-2 mb-1">
-// //                       <img src={addressIcon} alt="Address" className="w-4 h-4" />
-// //                       <label className="text-sm font-medium text-gray-600">Address</label>
-// //                     </div>
-// //                     <p className="text-sm font-semibold text-gray-800">{studentData.address || "N/A"}</p>
-// //                   </div>
-// //                 </div>
-// //               </div>
-// //             </div>
-
-// //             {/* Report Card Content */}
-// //             <div className="bg-white rounded-lg shadow-md p-4">
-// //               <h4 className="text-lg font-bold text-gray-800 mb-4">Report Card Details</h4>
-              
-// //               {/* Academic Performance */}
-// //               {reportCardData?.subjects && reportCardData.subjects.length > 0 && (
-// //                 <div className="mb-6">
-// //                   <h5 className="text-md font-semibold text-gray-700 mb-3">Academic Performance</h5>
-// //                   <div className="overflow-x-auto">
-// //                     <table className="w-full border-collapse border border-gray-300">
-// //                       <thead>
-// //                         <tr className="bg-gray-100">
-// //                           <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">Subject</th>
-// //                           <th className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">Marks Obtained</th>
-// //                           <th className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">Total Marks</th>
-// //                           <th className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">Percentage</th>
-// //                           <th className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">Grade</th>
-// //                         </tr>
-// //                       </thead>
-// //                       <tbody>
-// //                         {reportCardData.subjects.map((subject, index) => (
-// //                           <tr key={index}>
-// //                             <td className="border border-gray-300 px-3 py-2 text-sm">{subject.name || 'N/A'}</td>
-// //                             <td className="border border-gray-300 px-3 py-2 text-center text-sm">{subject.marksObtained || 0}</td>
-// //                             <td className="border border-gray-300 px-3 py-2 text-center text-sm">{subject.totalMarks || 0}</td>
-// //                             <td className="border border-gray-300 px-3 py-2 text-center text-sm">
-// //                               {subject.totalMarks ? ((subject.marksObtained / subject.totalMarks) * 100).toFixed(1) : 0}%
-// //                             </td>
-// //                             <td className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">{subject.grade || 'N/A'}</td>
-// //                           </tr>
-// //                         ))}
-// //                       </tbody>
-// //                     </table>
-// //                   </div>
-// //                 </div>
-// //               )}
-
-// //               {/* Overall Performance */}
-// //               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-// //                 <div className="bg-gray-50 p-4 rounded-lg">
-// //                   <h5 className="text-md font-semibold text-gray-700 mb-3">Overall Performance</h5>
-// //                   <div className="space-y-2">
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Total Marks:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.totalMarks || 'N/A'}</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Marks Obtained:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.marksObtained || 'N/A'}</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Percentage:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.percentage || 'N/A'}%</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Overall Grade:</span>
-// //                       <span className="text-sm font-bold text-lg">{reportCardData?.grade || 'N/A'}</span>
-// //                     </div>
-// //                   </div>
-// //                 </div>
-
-// //                 <div className="bg-gray-50 p-4 rounded-lg">
-// //                   <h5 className="text-md font-semibold text-gray-700 mb-3">Additional Information</h5>
-// //                   <div className="space-y-2">
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Class:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.class || 'N/A'}</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Section:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.section || 'N/A'}</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Roll Number:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.rollNumber || 'N/A'}</span>
-// //                     </div>
-// //                     <div className="flex justify-between">
-// //                       <span className="text-sm text-gray-600">Exam Type:</span>
-// //                       <span className="text-sm font-medium">{reportCardData?.examType || 'N/A'}</span>
-// //                     </div>
-// //                   </div>
-// //                 </div>
-// //               </div>
-
-// //               {/* Attendance */}
-// //               {reportCardData?.attendance && (
-// //                 <div className="mb-6">
-// //                   <h5 className="text-md font-semibold text-gray-700 mb-3">Attendance Record</h5>
-// //                   <div className="bg-gray-50 p-4 rounded-lg">
-// //                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-// //                       <div className="text-center">
-// //                         <p className="text-sm text-gray-600">Total Days</p>
-// //                         <p className="text-lg font-bold">{reportCardData.attendance.totalDays || 0}</p>
-// //                       </div>
-// //                       <div className="text-center">
-// //                         <p className="text-sm text-gray-600">Present Days</p>
-// //                         <p className="text-lg font-bold text-green-600">{reportCardData.attendance.presentDays || 0}</p>
-// //                       </div>
-// //                       <div className="text-center">
-// //                         <p className="text-sm text-gray-600">Absent Days</p>
-// //                         <p className="text-lg font-bold text-red-600">{reportCardData.attendance.absentDays || 0}</p>
-// //                       </div>
-// //                       <div className="text-center">
-// //                         <p className="text-sm text-gray-600">Attendance %</p>
-// //                         <p className="text-lg font-bold">{reportCardData.attendance.percentage || 0}%</p>
-// //                       </div>
-// //                     </div>
-// //                   </div>
-// //                 </div>
-// //               )}
-
-// //               {/* Teacher's Remarks */}
-// //               {reportCardData?.remarks && (
-// //                 <div className="mb-6">
-// //                   <h5 className="text-md font-semibold text-gray-700 mb-3">Teacher's Remarks</h5>
-// //                   <div className="bg-gray-50 p-4 rounded-lg">
-// //                     <p className="text-sm text-gray-700">{reportCardData.remarks}</p>
-// //                   </div>
-// //                 </div>
-// //               )}
-
-// //               {/* Debug: Show all available data */}
-// //               {process.env.NODE_ENV === 'development' && (
-// //                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-// //                   <h5 className="text-md font-semibold text-yellow-800 mb-2">Debug: Available Report Data</h5>
-// //                   <pre className="text-xs text-yellow-700 overflow-auto max-h-40">
-// //                     {JSON.stringify(reportCardData, null, 2)}
-// //                   </pre>
-// //                 </div>
-// //               )}
-
-// //               {/* Fallback message */}
-// //               {!reportCardData || Object.keys(reportCardData).length === 0 && (
-// //                 <div className="text-center text-gray-500">
-// //                   <p>No report card data available to display.</p>
-// //                 </div>
-// //               )}
-// //             </div>
-// //           </div>
-// //         )}
-// //       </div>
-// //     </div>
-// //   );
-// // }

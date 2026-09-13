@@ -123,27 +123,54 @@ export default function StudentPortalLayout() {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="px-2 py-3 border-t border-gray-100">
-        <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-xl bg-gray-50">
-          {studentData.image ? (
-            <img src={studentData.image} alt={name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center text-xs font-bold shrink-0">
-              {initials}
+      {/* Student Profile & Logout Footer */}
+      <div className="p-3 border-t border-gray-100 bg-white">
+        <div className="p-2.5 rounded-2xl bg-gray-50/80 border border-gray-100/90 space-y-2.5">
+          {/* User Row (Clickable to Profile) */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/student-portal/profile");
+              if (onClose) onClose();
+            }}
+            className="flex items-center gap-2.5 w-full text-left group"
+            title="View Profile"
+          >
+            <div className="relative shrink-0">
+              {studentData.image ? (
+                <img
+                  src={studentData.image}
+                  alt={name}
+                  className="w-9 h-9 rounded-xl object-cover border border-gray-200 group-hover:border-orange-400 transition-colors shadow-2xs"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black border border-orange-200 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-2xs">
+                  {initials}
+                </div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-800 truncate">{name}</p>
-          </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors">
+                {name}
+              </p>
+              <p className="text-[10px] font-semibold text-gray-400 truncate mt-0.5">
+                {studentData.prkey || "Student Portal"}
+              </p>
+            </div>
+          </button>
+
+          {/* Logout Action Button */}
+          <button
+            type="button"
+            onClick={() => setLogoutModalOpen(true)}
+            className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl text-xs font-bold text-rose-600 bg-white hover:bg-rose-500 hover:text-white border border-rose-200 hover:border-rose-500 transition-all duration-150 shadow-2xs active:scale-[0.98]"
+          >
+            <LogOut size={13} />
+            <span>Logout</span>
+          </button>
         </div>
-        <button
-          onClick={() => setLogoutModalOpen(true)}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-150"
-        >
-          <LogOut size={16} />
-          Logout
-        </button>
       </div>
     </div>
   );

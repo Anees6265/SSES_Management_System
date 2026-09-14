@@ -11,7 +11,11 @@ import {
   MdVisibility,
   MdSearch,
   MdRefresh,
-  MdPictureAsPdf
+  MdPictureAsPdf,
+  MdCheckCircle,
+  MdClose,
+  MdFilterList,
+  MdExpandMore,
 } from "react-icons/md";
 import { HiOutlineBookOpen } from "react-icons/hi";
 import Header from "../../../shared/sidebar/Header";
@@ -86,7 +90,7 @@ const FileUploadField = ({ label, name, accept }) => {
   return (
     <div className="w-full">
       <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label}</label>
-      <label className="flex items-center gap-3 w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:border-orange-400 hover:bg-white transition group">
+      <label className="flex items-center gap-3 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:border-orange-400 hover:bg-white transition group shadow-2xs">
         <MdOutlineUploadFile size={18} className="text-orange-500 flex-shrink-0" />
         <span className={`text-xs truncate flex-1 ${fileName ? "text-slate-800 font-semibold" : "text-slate-400"}`}>
           {fileName || `Select ${label.toLowerCase()}`}
@@ -98,7 +102,7 @@ const FileUploadField = ({ label, name, accept }) => {
               e.preventDefault();
               setFieldValue(name, null);
             }}
-            className="text-slate-400 hover:text-rose-500 transition text-sm leading-none font-bold"
+            className="text-slate-400 hover:text-rose-500 transition text-sm leading-none font-bold p-1"
           >
             x
           </button>
@@ -141,7 +145,7 @@ const CurriculumDrawerForm = ({ sessions, departments, subDepartments, levels, s
       <InputField label="Version" name="version" placeholder="Auto if blank, e.g. v1.0" />
 
       <CustomDropdown label="Session" name="sessionId" variant="card" options={sessionOptions} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CustomDropdown
           label="Department"
           name="departmentId"
@@ -156,7 +160,7 @@ const CurriculumDrawerForm = ({ sessions, departments, subDepartments, levels, s
           options={subDepartmentOptions}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CustomDropdown
           label="Level"
           name="levelId"
@@ -400,8 +404,19 @@ const CurriculumManagement = () => {
   const levelNames = getOptionValues(curriculumRows, "level");
   const statuses = getOptionValues(curriculumRows, "status");
 
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const activeFilterCount = [
+    Boolean(filterYear),
+    Boolean(filterSession),
+    Boolean(filterDept),
+    Boolean(filterSub),
+    Boolean(filterLevel),
+    Boolean(filterStatus),
+  ].filter(Boolean).length;
+
   const hasActiveFilters = Boolean(
-    searchTerm || filterYear || filterSession || filterDept || filterSub || filterLevel || filterStatus
+    searchTerm || activeFilterCount > 0
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
@@ -411,23 +426,24 @@ const CurriculumManagement = () => {
   return (
     <Formik initialValues={INITIAL_VALUES} validationSchema={curriculumSchema} onSubmit={handleUpload}>
       {({ isSubmitting, submitForm, resetForm }) => (
-        <div className="bg-[#F8F9FA] min-h-screen px-8 py-6 space-y-6">
+        <>
+          <Header
+            title="Curriculum Management"
+            subtitle="Manage syllabus and task lists across departments, sessions, and levels"
+            badge={`${curriculumRows.length} curricula`}
+            breadcrumbs={[{ label: "Settings" }, { label: "Curriculum", path: "/curriculum-management" }]}
+          />
 
-          {/* TOP HEADER SECTION */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Curriculum Management</h1>
-              <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                Manage syllabus and task lists across departments, sessions, and levels
-              </p>
-            </div>
+          <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6">
 
-            {!isFaculty && (
-              <div className="flex items-center gap-3">
+            {/* Top Action & Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+              {!isFaculty && (
                 <OrangeButton
                   buttonTitle="+ Upload Curriculum"
                   panelTitle="Upload Curriculum"
                   panelSubtitle="Create a syllabus-version record for a department, session, level, and sub-level"
+                  customButtonClass="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
                   drawerContent={
                     <CurriculumDrawerForm
                       sessions={sessions}
@@ -442,235 +458,345 @@ const CurriculumManagement = () => {
                   onLeftClick={resetForm}
                   onRightClick={submitForm}
                 />
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* FILTER CARD CONTAINER (EXACT REFERENCE UI REPLICA) */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-4">
-            {/* Top Search Bar Row */}
-            <div className="flex items-center h-10 w-full bg-slate-100/60 border border-slate-200/80 rounded-xl px-3.5 shadow-sm hover:border-slate-300 focus-within:border-orange-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
-              <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={18} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                placeholder="Search File Name / Dept / Sub-Dept..."
-                className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"
-              />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72 md:w-80">
+                  <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Search file, dept, level..."
+                    className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setCurrentPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      <MdClose size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Mobile Filters Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters((p) => !p)}
+                  className={`md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                    showMobileFilters || activeFilterCount > 0
+                      ? "bg-orange-50 border-orange-200 text-orange-600"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <MdFilterList size={17} />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-extrabold flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                  <MdExpandMore
+                    size={16}
+                    className={`transition-transform duration-200 ${showMobileFilters ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
             </div>
 
-            {/* Bottom Filter Selectors Row (Spans Full Page Width) */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-1 w-full">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 flex-1 w-full">
-                {/* Academic Year */}
+            {/* Filter Section - Desktop: Grid */}
+            <div className="hidden md:block bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Filter by Parameters
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-6 gap-3">
                 <SelectDropdown
                   value={filterYear}
                   onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Academic Year" },
-                    ...years.map((y) => ({ value: y, label: y }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
-
-                {/* Session */}
                 <SelectDropdown
                   value={filterSession}
                   onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Session" },
-                    ...sessionNames.map((s) => ({ value: s, label: s }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Session" }, ...sessionNames.map((s) => ({ value: s, label: s }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
-
-                {/* Department */}
                 <SelectDropdown
                   value={filterDept}
                   onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Department" },
-                    ...depts.map((d) => ({ value: d, label: d }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
-
-                {/* Sub-Dept */}
                 <SelectDropdown
                   value={filterSub}
                   onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Sub-Dept" },
-                    ...subs.map((sd) => ({ value: sd, label: sd }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Sub-Dept" }, ...subs.map((sd) => ({ value: sd, label: sd }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
-
-                {/* Level */}
                 <SelectDropdown
                   value={filterLevel}
                   onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Level" },
-                    ...levelNames.map((l) => ({ value: l, label: l }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Level" }, ...levelNames.map((l) => ({ value: l, label: l }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
-
-                {/* Status */}
                 <SelectDropdown
                   value={filterStatus}
                   onChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
-                  options={[
-                    { value: "", label: "Status" },
-                    ...statuses.map((st) => ({ value: st, label: st }))
-                  ]}
-                  className="w-full"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-medium transition-colors cursor-pointer focus:outline-none hover:border-slate-350 shadow-sm"
+                  options={[{ value: "", label: "Status" }, ...statuses.map((st) => ({ value: st, label: st }))]}
+                  buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                 />
               </div>
-
-              {/* Reset Filters Link Button */}
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-xs font-extrabold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer whitespace-nowrap pl-2 self-end md:self-center"
-              >
-                Reset Filters
-              </button>
             </div>
-          </div>
 
-          {/* DATA TABLE CONTAINER (EXACT REFERENCE REPLICA) */}
-          <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-            {isLoading ? (
-              <div className="py-20 text-center text-xs font-semibold text-slate-400">Loading curriculum database...</div>
-            ) : isError ? (
-              <div className="py-20 text-center space-y-3">
-                <p className="text-xs font-bold text-rose-500">Failed to load curriculum records</p>
-                <button onClick={refetch} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-sm">
-                  Retry Loading
-                </button>
+            {/* Mobile Filters: Collapsible card */}
+            {showMobileFilters && (
+              <div className="md:hidden bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Filter Options {activeFilterCount > 0 && `(${activeFilterCount} active)`}
+                  </p>
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="text-xs font-bold text-orange-500 hover:text-orange-600 transition cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <SelectDropdown
+                    value={filterYear}
+                    onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                  <SelectDropdown
+                    value={filterSession}
+                    onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Session" }, ...sessionNames.map((s) => ({ value: s, label: s }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                  <SelectDropdown
+                    value={filterDept}
+                    onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                  <SelectDropdown
+                    value={filterSub}
+                    onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Sub-Dept" }, ...subs.map((sd) => ({ value: sd, label: sd }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                  <SelectDropdown
+                    value={filterLevel}
+                    onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Level" }, ...levelNames.map((l) => ({ value: l, label: l }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                  <SelectDropdown
+                    value={filterStatus}
+                    onChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
+                    options={[{ value: "", label: "Status" }, ...statuses.map((st) => ({ value: st, label: st }))]}
+                    buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                  />
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                        <th className="py-4 px-6">ACADEMIC YEAR</th>
-                        <th className="py-4 px-4">SESSION</th>
-                        <th className="py-4 px-6">DEPARTMENT</th>
-                        <th className="py-4 px-6">SUB-DEPARTMENT</th>
-                        <th className="py-4 px-4">LEVEL</th>
-                        <th className="py-4 px-6">SYLLABUS FILE</th>
-                        <th className="py-4 px-6">TASK LIST</th>
-                        <th className="py-4 px-6 text-right">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                      {paginatedData.length > 0 ? (
-                        paginatedData.map((row) => (
-                          <tr key={row.id} className="hover:bg-slate-50/80 transition">
-                            {/* Academic Year */}
-                            <td className="py-4 px-6 font-extrabold text-slate-900">
-                              {row.academicYear}
-                            </td>
-
-                            {/* Session */}
-                            <td className="py-4 px-4 text-slate-600 font-medium">
-                              {row.session}
-                            </td>
-
-                            {/* Department */}
-                            <td className="py-4 px-6 font-bold text-slate-900">
-                              {row.department}
-                            </td>
-
-                            {/* Sub-Department */}
-                            <td className="py-4 px-6 text-slate-600 font-medium">
-                              {row.subDept}
-                            </td>
-
-                            {/* Level */}
-                            <td className="py-4 px-4 text-slate-700 font-bold">
-                              {row.level} ({row.subLevel})
-                            </td>
-
-                            {/* Syllabus File */}
-                            <td className="py-4 px-6">
-                              <FileCell fileName={row.syllabusFile} />
-                            </td>
-
-                            {/* Task List */}
-                            <td className="py-4 px-6">
-                              <FileCell fileName={row.taskList} />
-                            </td>
-
-                            {/* Action Menu */}
-                            <td className="py-4 px-6 text-right">
-                              <ActionMenu row={row} onDelete={handleDelete} />
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={8} className="py-12 text-center text-slate-400">
-                            No curriculum records matching selected filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* TABLE FOOTER / PAGINATION ROW */}
-                <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-semibold text-slate-500">
-                  <div>
-                    Showing {filtered.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + rowsPerPage, filtered.length)} of {filtered.length} results
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold"
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-                      <button
-                        key={pg}
-                        onClick={() => setCurrentPage(pg)}
-                        className={`w-8 h-8 rounded-xl font-bold transition text-xs ${
-                          currentPage === pg
-                            ? "bg-orange-500 text-white shadow-sm"
-                            : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        {pg}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </>
             )}
-          </div>
 
-        </div>
+            {/* DATA CONTAINER */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
+              {isLoading ? (
+                <div className="py-20 text-center text-xs font-semibold text-slate-400">Loading curriculum database...</div>
+              ) : isError ? (
+                <div className="py-20 text-center space-y-3">
+                  <p className="text-xs font-bold text-rose-500">Failed to load curriculum records</p>
+                  <button onClick={refetch} className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer">
+                    Retry Loading
+                  </button>
+                </div>
+              ) : paginatedData.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 px-4 space-y-2">
+                  <HiOutlineBookOpen size={32} className="mx-auto text-slate-300" />
+                  <p className="text-xs font-bold text-slate-700">No curriculum records matching selected filters</p>
+                  <p className="text-[11px] text-slate-400 max-w-sm mx-auto">Try clearing your search query or reset filter selections to see more records.</p>
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="mt-2 text-xs font-bold text-orange-500 hover:text-orange-600 cursor-pointer"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Mobile Cards Layout (block md:hidden) */}
+                  <div className="block md:hidden divide-y divide-slate-100">
+                    {paginatedData.map((row) => (
+                      <div key={row.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition">
+                        {/* Top Row: Year/Session Chip + Status + Action Menu */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
+                              {row.academicYear} • {row.session}
+                            </span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              row.status === "active"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
+                            }`}>
+                              {row.status}
+                            </span>
+                          </div>
+                          <ActionMenu row={row} onDelete={handleDelete} />
+                        </div>
+
+                        {/* Title & Department Hierarchy */}
+                        <div>
+                          <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                            {row.syllabusFile}
+                          </h4>
+                          <p className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+                            <span className="font-bold text-slate-700">{row.department}</span>
+                            <span className="text-slate-300">/</span>
+                            <span>{row.subDept}</span>
+                          </p>
+                          <div className="mt-1.5">
+                            <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {row.level} ({row.subLevel})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* File Reference & Task Count Chips */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                          <div className="bg-slate-50/80 p-2 rounded-xl border border-slate-100">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Syllabus File</p>
+                            <FileCell fileName={row.syllabusFile} />
+                          </div>
+                          <div className="bg-slate-50/80 p-2 rounded-xl border border-slate-100">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Task List</p>
+                            <FileCell fileName={row.taskList} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table Layout (hidden md:block) */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                          <th className="py-4 px-6">ACADEMIC YEAR</th>
+                          <th className="py-4 px-4">SESSION</th>
+                          <th className="py-4 px-6">DEPARTMENT</th>
+                          <th className="py-4 px-6">SUB-DEPARTMENT</th>
+                          <th className="py-4 px-4">LEVEL</th>
+                          <th className="py-4 px-6">SYLLABUS FILE</th>
+                          <th className="py-4 px-6">TASK LIST</th>
+                          <th className="py-4 px-6 text-right">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                        {paginatedData.map((row) => (
+                          <tr key={row.id} className="hover:bg-slate-50/80 transition">
+                            <td className="py-4 px-6 font-extrabold text-slate-900">{row.academicYear}</td>
+                            <td className="py-4 px-4 text-slate-600 font-medium">{row.session}</td>
+                            <td className="py-4 px-6 font-bold text-slate-900">{row.department}</td>
+                            <td className="py-4 px-6 text-slate-600 font-medium">{row.subDept}</td>
+                            <td className="py-4 px-4 text-slate-700 font-bold">{row.level} ({row.subLevel})</td>
+                            <td className="py-4 px-6"><FileCell fileName={row.syllabusFile} /></td>
+                            <td className="py-4 px-6"><FileCell fileName={row.taskList} /></td>
+                            <td className="py-4 px-6 text-right"><ActionMenu row={row} onDelete={handleDelete} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Responsive Pagination Row */}
+                  <div className="px-4 sm:px-6 py-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+                    <div className="text-center sm:text-left text-[11px] sm:text-xs">
+                      Showing <span className="font-bold text-slate-700">{filtered.length > 0 ? startIndex + 1 : 0}</span> to{" "}
+                      <span className="font-bold text-slate-700">{Math.min(startIndex + rowsPerPage, filtered.length)}</span> of{" "}
+                      <span className="font-bold text-slate-700">{filtered.length}</span> results
+                    </div>
+
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Mobile: Condensed page text */}
+                      <div className="sm:hidden px-2 text-xs font-bold text-slate-700">
+                        {currentPage} / {totalPages}
+                      </div>
+
+                      {/* Desktop: Numbered buttons */}
+                      <div className="hidden sm:flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                          <button
+                            type="button"
+                            key={pg}
+                            onClick={() => setCurrentPage(pg)}
+                            className={`w-8 h-8 rounded-xl font-bold transition text-xs cursor-pointer ${
+                              currentPage === pg
+                                ? "bg-orange-500 text-white shadow-2xs"
+                                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
+                            }`}
+                          >
+                            {pg}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+          </div>
+        </>
       )}
     </Formik>
   );

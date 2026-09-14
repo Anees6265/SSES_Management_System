@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { FiCalendar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
-const DatePicker = ({ value, onChange, label, min, max, className = "" }) => {
+const DatePicker = ({ value, onChange, label, min, max, className = "", align = "left" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
@@ -124,7 +124,9 @@ const DatePicker = ({ value, onChange, label, min, max, className = "" }) => {
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 min-w-[280px]">
+        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 min-w-[280px] max-w-[calc(100vw-2rem)] ${
+          align === "right" ? "right-0 sm:left-0 sm:right-auto" : "left-0"
+        }`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <button

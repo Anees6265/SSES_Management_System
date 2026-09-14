@@ -192,28 +192,29 @@ const AttendanceCalendarModal = ({ isOpen, onClose, student, initialDateFrom, in
       panelSubtitle="Attendance Profile & Monthly Calendar"
       showFooter={false}
       maxWidth="sm:max-w-xl"
+      bodyClassName="p-3 sm:p-5"
       drawerContent={
-        <div className="space-y-4 pt-2">
+        <div className="space-y-3 sm:space-y-4">
           {/* Top Progress & Metrics */}
-          <div className="flex items-center justify-between p-4 bg-orange-50/70 border border-orange-100 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-tr from-orange-400 to-amber-500 text-white font-extrabold text-sm shadow-md shrink-0">
+          <div className="flex items-center justify-between p-3 sm:p-4 bg-orange-50/70 border border-orange-100 rounded-xl">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center bg-gradient-to-tr from-orange-400 to-amber-500 text-white font-extrabold text-xs sm:text-sm shadow-md shrink-0">
                 {getInitials(student?.firstName, student?.lastName)}
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
                   {student?.firstName} {student?.lastName}
                 </h3>
-                <p className="text-[11px] text-gray-500">Prkey: {student?.prkey || 'N/A'}</p>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 truncate">Prkey: {student?.prkey || 'N/A'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="text-right">
-                <span className="text-[10px] text-gray-400 font-bold uppercase block">Present Rate</span>
-                <span className="text-sm font-extrabold text-gray-900">{attendanceRate}%</span>
+                <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase block">Present Rate</span>
+                <span className="text-xs sm:text-sm font-extrabold text-gray-900">{attendanceRate}%</span>
               </div>
-              <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
-                <svg className="w-10 h-10 transform -rotate-90">
+              <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 transform -rotate-90">
                   <circle
                     cx="20"
                     cy="20"
@@ -237,176 +238,177 @@ const AttendanceCalendarModal = ({ isOpen, onClose, student, initialDateFrom, in
               </div>
             </div>
           </div>
-        <div className="p-5 border-b border-gray-100 bg-slate-50/40 flex-shrink-0 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-xs transition hover:shadow-sm">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Father's Name</span>
-              <span className="font-bold text-gray-800 text-xs sm:text-sm mt-1 block truncate" title={student?.fathersName}>
-                {student?.fathersName || 'N/A'}
-              </span>
-            </div>
-            
-            <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-xs transition hover:shadow-sm">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Mobile Contact</span>
-              <span className="font-bold text-gray-800 text-xs sm:text-sm mt-1 block">
-                {student?.mobile || 'N/A'}
-              </span>
+
+          <div className="p-3 sm:p-4 border border-gray-100 bg-slate-50/60 rounded-xl text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
+              <div className="bg-white border border-gray-100 rounded-xl p-2.5 sm:p-3 shadow-xs">
+                <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Father's Name</span>
+                <span className="font-bold text-gray-800 text-xs sm:text-sm mt-0.5 block truncate" title={student?.fathersName}>
+                  {student?.fathersName || 'N/A'}
+                </span>
+              </div>
+              
+              <div className="bg-white border border-gray-100 rounded-xl p-2.5 sm:p-3 shadow-xs">
+                <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Mobile Contact</span>
+                <span className="font-bold text-gray-800 text-xs sm:text-sm mt-0.5 block truncate">
+                  {student?.mobile || 'N/A'}
+                </span>
+              </div>
+
+              <div className="bg-white border border-gray-100 rounded-xl p-2.5 sm:p-3 shadow-xs col-span-2 sm:col-span-1">
+                <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Scope Range</span>
+                <span className="font-semibold text-gray-700 text-[10px] sm:text-xs mt-1 block bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5 w-fit">
+                  {dateFrom} to {dateTo}
+                </span>
+              </div>
             </div>
 
-            <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-xs transition hover:shadow-sm">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Scope Range</span>
-              <span className="font-semibold text-gray-700 text-[10px] sm:text-xs mt-1.5 block bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5 w-fit">
-                {dateFrom} to {dateTo}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-200/60">
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm transition hover:scale-105">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 pt-2.5 border-t border-gray-200/60">
+              <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 shrink-0"></span>
                 Present: <strong className="ml-1 text-emerald-800">{summary.present}</strong>
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100 shadow-sm transition hover:scale-105">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+              <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 shrink-0"></span>
                 Absent: <strong className="ml-1 text-rose-800">{summary.absent}</strong>
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100 shadow-sm transition hover:scale-105">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+              <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 shrink-0"></span>
                 Holiday: <strong className="ml-1 text-amber-800">{summary.holiday}</strong>
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-sm transition hover:scale-105">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
+              <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5 shrink-0"></span>
                 Weekend: <strong className="ml-1 text-slate-800">{summary.weekend}</strong>
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Calendar Box */}
-        <div className="flex-1 p-5 bg-white">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            <button 
-              onClick={() => changeMonth(-1)} 
-              disabled={!canNavigateMonth(-1)}
-              className={`p-2 rounded-lg border transition duration-200 shadow-xs ${
-                canNavigateMonth(-1) 
-                  ? 'border-gray-200 bg-white hover:bg-slate-50 text-gray-700 hover:border-gray-300 hover:scale-105 active:scale-95' 
-                  : 'border-gray-100 bg-transparent text-gray-300 cursor-not-allowed opacity-40'
-              }`}
-            >
-              <FiChevronLeft className="w-4 h-4" />
-            </button>
-            
-            <div className="flex items-center gap-2">
-              <FiCalendar className="w-4 h-4 text-orange-500" />
-              <h3 className="text-xs font-extrabold text-gray-700 tracking-wider uppercase">
-                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </h3>
-            </div>
-            
-            <button 
-              onClick={() => changeMonth(1)} 
-              disabled={!canNavigateMonth(1)}
-              className={`p-2 rounded-lg border transition duration-200 shadow-xs ${
-                canNavigateMonth(1) 
-                  ? 'border-gray-200 bg-white hover:bg-slate-50 text-gray-700 hover:border-gray-300 hover:scale-105 active:scale-95' 
-                  : 'border-gray-100 bg-transparent text-gray-300 cursor-not-allowed opacity-40'
-              }`}
-            >
-              <FiChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : error ? (
-            <div className="py-4">
-              <AttendanceApiError 
-                message="Attendance APIs are not working. Calendar data is currently unavailable."
-              />
-            </div>
-          ) : (
-            <>
-              {/* Day Titles */}
-              <div className="grid grid-cols-7 gap-2 mb-3">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center font-extrabold text-slate-400 text-[10px] uppercase tracking-wider">
-                    {day}
-                  </div>
-                ))}
+          {/* Calendar Box */}
+          <div className="p-3 sm:p-4 bg-white rounded-xl border border-gray-100 shadow-xs">
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-3 sm:mb-4 bg-slate-50 p-2 sm:p-2.5 rounded-xl border border-slate-100">
+              <button 
+                onClick={() => changeMonth(-1)} 
+                disabled={!canNavigateMonth(-1)}
+                className={`p-1.5 sm:p-2 rounded-lg border transition duration-200 shadow-xs cursor-pointer ${
+                  canNavigateMonth(-1) 
+                    ? 'border-gray-200 bg-white hover:bg-slate-50 text-gray-700 hover:border-gray-300 active:scale-95' 
+                    : 'border-gray-100 bg-transparent text-gray-300 cursor-not-allowed opacity-40'
+                }`}
+                aria-label="Previous Month"
+              >
+                <FiChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+              
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <FiCalendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
+                <h3 className="text-[11px] sm:text-xs font-extrabold text-gray-700 tracking-wider uppercase">
+                  {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h3>
               </div>
               
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {calendar.flat().map((day, index) => {
-                  const isPresent = day.isInRange && day.status === 'present';
-                  const isAbsent = day.isInRange && day.status === 'absent';
-                  const isHoliday = day.isInRange && day.status === 'holiday';
-                  const isWeekend = day.isInRange && day.status === 'weekend';
-                  
-                  let cellClasses = "bg-slate-50/50 border border-slate-100/50 text-gray-300 opacity-30 select-none pointer-events-none relative";
-                  let dot = null;
-                  if (day.isInRange) {
-                    if (isPresent) {
-                      cellClasses = "bg-emerald-50 text-emerald-700 border-2 border-emerald-100 font-bold hover:bg-emerald-100 hover:border-emerald-200 hover:scale-110 hover:shadow-md cursor-pointer";
-                      dot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>;
-                    } else if (isAbsent) {
-                      cellClasses = "bg-rose-50 text-rose-700 border-2 border-rose-100 font-bold hover:bg-rose-100 hover:border-rose-200 hover:scale-110 hover:shadow-md cursor-pointer";
-                      dot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-rose-500"></span>;
-                    } else if (isHoliday) {
-                      cellClasses = "bg-amber-50 text-amber-700 border-2 border-amber-100 font-bold hover:bg-amber-100 hover:border-amber-200 hover:scale-110 hover:shadow-md cursor-pointer";
-                      dot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-amber-500"></span>;
-                    } else if (isWeekend) {
-                      cellClasses = "bg-slate-50 text-slate-500 border border-slate-200 font-semibold hover:bg-slate-100 hover:scale-110 hover:shadow-md cursor-pointer";
-                      dot = <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-slate-400"></span>;
-                    } else {
-                      cellClasses = "bg-white border-2 border-gray-200 text-gray-700 hover:bg-slate-50 hover:border-gray-300 hover:scale-110 hover:shadow-md transition cursor-pointer";
-                    }
-                  } else if (day.isCurrentMonth) {
-                    cellClasses = "bg-white border border-gray-100 text-gray-300 opacity-40 select-none pointer-events-none";
-                  }
+              <button 
+                onClick={() => changeMonth(1)} 
+                disabled={!canNavigateMonth(1)}
+                className={`p-1.5 sm:p-2 rounded-lg border transition duration-200 shadow-xs cursor-pointer ${
+                  canNavigateMonth(1) 
+                    ? 'border-gray-200 bg-white hover:bg-slate-50 text-gray-700 hover:border-gray-300 active:scale-95' 
+                    : 'border-gray-100 bg-transparent text-gray-300 cursor-not-allowed opacity-40'
+                }`}
+                aria-label="Next Month"
+              >
+                <FiChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
 
-                  return (
-                    <div
-                      key={index}
-                      className={`h-11 w-11 mx-auto flex items-center justify-center text-sm rounded-xl transition-all duration-200 relative ${cellClasses}`}
-                    >
-                      <span>{day.date.getDate()}</span>
-                      {dot}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-7 h-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : error ? (
+              <div className="py-4">
+                <AttendanceApiError 
+                  message="Attendance APIs are not working. Calendar data is currently unavailable."
+                />
+              </div>
+            ) : (
+              <>
+                {/* Day Titles */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center font-extrabold text-slate-400 text-[9px] sm:text-[10px] uppercase tracking-wider">
+                      {day}
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+                
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                  {calendar.flat().map((day, index) => {
+                    const isPresent = day.isInRange && day.status === 'present';
+                    const isAbsent = day.isInRange && day.status === 'absent';
+                    const isHoliday = day.isInRange && day.status === 'holiday';
+                    const isWeekend = day.isInRange && day.status === 'weekend';
+                    
+                    let cellClasses = "bg-slate-50/50 border border-slate-100/50 text-gray-300 opacity-30 select-none pointer-events-none relative";
+                    let dot = null;
+                    if (day.isInRange) {
+                      if (isPresent) {
+                        cellClasses = "bg-emerald-50 text-emerald-700 border-2 border-emerald-100 font-bold hover:bg-emerald-100 hover:border-emerald-200 shadow-xs cursor-pointer";
+                        dot = <span className="absolute bottom-0.5 sm:bottom-1 w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-emerald-500"></span>;
+                      } else if (isAbsent) {
+                        cellClasses = "bg-rose-50 text-rose-700 border-2 border-rose-100 font-bold hover:bg-rose-100 hover:border-rose-200 shadow-xs cursor-pointer";
+                        dot = <span className="absolute bottom-0.5 sm:bottom-1 w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-rose-500"></span>;
+                      } else if (isHoliday) {
+                        cellClasses = "bg-amber-50 text-amber-700 border-2 border-amber-100 font-bold hover:bg-amber-100 hover:border-amber-200 shadow-xs cursor-pointer";
+                        dot = <span className="absolute bottom-0.5 sm:bottom-1 w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-amber-500"></span>;
+                      } else if (isWeekend) {
+                        cellClasses = "bg-slate-50 text-slate-500 border border-slate-200 font-semibold hover:bg-slate-100 shadow-xs cursor-pointer";
+                        dot = <span className="absolute bottom-0.5 sm:bottom-1 w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-slate-400"></span>;
+                      } else {
+                        cellClasses = "bg-white border border-gray-200 text-gray-700 hover:bg-slate-50 hover:border-gray-300 transition cursor-pointer";
+                      }
+                    } else if (day.isCurrentMonth) {
+                      cellClasses = "bg-white border border-gray-100 text-gray-300 opacity-40 select-none pointer-events-none";
+                    }
 
-              {/* Redesigned Legend */}
-              <div className="mt-6 flex flex-wrap gap-4 justify-center text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 shadow-xs">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span>Present</span>
+                    return (
+                      <div
+                        key={index}
+                        className={`h-8 w-8 sm:h-10 sm:w-10 mx-auto flex items-center justify-center text-[11px] sm:text-xs rounded-lg sm:rounded-xl transition-all duration-200 relative ${cellClasses}`}
+                      >
+                        <span>{day.date.getDate()}</span>
+                        {dot}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center gap-2 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 shadow-xs">
-                  <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
-                  <span>Absent</span>
+
+                {/* Legend */}
+                <div className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 justify-center text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 shadow-xs">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span>Present</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 shadow-xs">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+                    <span>Absent</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 shadow-xs">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                    <span>Holiday</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 shadow-xs">
+                    <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                    <span>Weekend</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100 shadow-xs">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                  <span>Holiday</span>
-                </div>
-                <div className="flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                  <span>Weekend</span>
-                </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    }
-  />
+      }
+    />
   );
 };
 

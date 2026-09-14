@@ -19,6 +19,7 @@ const OrangeButton = ({
   showFooter = true,
   customFooter,
   maxWidth = "sm:max-w-md",
+  bodyClassName = "p-4 sm:p-6",
 }) => {
   const isControlled = controlledIsOpen !== undefined;
   const [internalIsMounted, setInternalIsMounted] = useState(false);
@@ -136,7 +137,7 @@ const OrangeButton = ({
               </div>
 
               {/* CONTENT */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className={`flex-1 overflow-y-auto ${bodyClassName}`}>
                 {typeof drawerContent === "function" ? drawerContent({ closeDrawer }) : (drawerContent || children)}
               </div>
 

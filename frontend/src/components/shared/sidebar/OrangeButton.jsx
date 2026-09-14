@@ -137,7 +137,7 @@ const OrangeButton = ({
 
               {/* CONTENT */}
               <div className="flex-1 overflow-y-auto p-6">
-                {drawerContent || children}
+                {typeof drawerContent === "function" ? drawerContent({ closeDrawer }) : (drawerContent || children)}
               </div>
 
               {/* FOOTER */}

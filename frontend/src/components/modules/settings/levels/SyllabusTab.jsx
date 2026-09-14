@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import {
   MdCloudUpload, MdCheckCircle, MdExpandMore, MdExpandLess, MdFileDownload, MdInfo,
   MdBook, MdTopic, MdSubject, MdDelete, MdSave, MdEdit, MdVisibility,
-  MdAssignment, MdAdd, MdSearch, MdChevronRight, MdCalendarToday, MdAccessTime, MdPerson,
+  MdAssignment, MdAdd, MdSearch, MdChevronRight, MdCalendarToday, MdAccessTime, MdPerson, MdClose,
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import {
@@ -27,6 +27,7 @@ import {
 import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
+import CommonTable from "../../../shared/table/CommonTable";
 
 /* ─── helpers ─────────────────────────────────────────── */
 const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim());
@@ -241,7 +242,7 @@ const SubjectAccordion = ({ item, index }) => {
 /* ══════════════════════════════════════════════════════════
    MANUAL SYLLABUS FORM (single subject → topics → subtopics)
 ══════════════════════════════════════════════════════════ */
-export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref) => {
+export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClose }, ref) => {
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [subject,           setSubject]           = useState("");
@@ -251,9 +252,6 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref)
   const [createSyllabusVersion] = useCreateSyllabusVersionMutation();
   const { data: sessionsData }  = useGetAllSessionsQuery();
   const sessions = sessionsData?.data || [];
-
-  const ic = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400 bg-white";
-  const lc = "block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5";
 
   const reset = () => {
     setSubject(""); setSelectedSessionId("");
@@ -280,7 +278,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref)
     if (!subject.trim())     { toast.error("Subject name required"); return; }
     const validTopics = topics.filter((t) => t.name.trim());
     if (!validTopics.length) { toast.error("At least one topic required"); return; }
-    if (!selectedSessionId)  { toast.error("Please select a session"); return; }
+    if (!selectedSessionId)  { toast.error("Please select an academic session"); return; }
     if (!subLevel?._id)      { toast.error("SubLevel not found"); return; }
     if (!level?._id)         { toast.error("Level not found"); return; }
     setSaving(true);
@@ -291,7 +289,9 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref)
         subjects: [buildSubjectPayload()],
       }).unwrap();
       toast.success("Subject saved to syllabus!");
-      reset(); onSaved?.();
+      reset(); 
+      onSaved?.();
+      onClose?.();
     } catch (err) {
       toast.error(err?.data?.message || "Failed to save");
     } finally { setSaving(false); }
@@ -300,10 +300,12 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref)
   useImperativeHandle(ref, () => ({ reset, save: handleSave }));
 
   return (
-    <div className="space-y-4 px-1 py-2">
+    <div className="space-y-5">
       {/* Session */}
-      <div>
-        <label className={lc}>Session <span className="text-red-400">*</span></label>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Academic Session <span className="text-red-500">*</span>
+        </label>
         <SelectDropdown
           value={selectedSessionId}
           onChange={(val) => setSelectedSessionId(val)}
@@ -313,60 +315,146 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved }, ref)
       </div>
 
       {/* Subject */}
-      <div>
-        <label className={lc}><MdBook size={12} className="inline mr-1 text-orange-400" />Subject <span className="text-red-400">*</span></label>
-        <input className={ic} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. JavaScript" />
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <MdBook size={14} className="text-orange-500" /> Subject Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 bg-white shadow-xs placeholder-slate-400"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="e.g. JavaScript Programming, Web Development"
+        />
       </div>
 
-      {/* Topics */}
+      {/* Topics & Subtopics */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className={lc}><MdTopic size={12} className="inline mr-1 text-blue-400" />Topics</label>
-          <button type="button" onClick={addTopic} className="text-xs text-orange-500 font-semibold bg-orange-50 px-2.5 py-1 rounded-lg">+ Add Topic</button>
-        </div>
-        {topics.map((topic, ti) => (
-          <div key={ti} className="border border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
-            <div className="flex items-center gap-2">
-              <MdTopic size={14} className="text-blue-400 flex-shrink-0" />
-              <input className={`${ic} flex-1`} value={topic.name} onChange={(e) => updateTopicName(ti, e.target.value)} placeholder={`Topic ${ti + 1}`} />
-              {topics.length > 1 && (
-                <button type="button" onClick={() => removeTopic(ti)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0"><MdDelete size={15} /></button>
-              )}
-            </div>
-            <div className="pl-5 space-y-1.5">
-              {topic.subTopics.map((st, si) => (
-                <div key={si} className="flex items-center gap-2">
-                  <MdSubject size={12} className="text-gray-400 flex-shrink-0" />
-                  <input className={`${ic} flex-1`} value={st} onChange={(e) => updateSubTopic(ti, si, e.target.value)} placeholder={`SubTopic ${si + 1}`} />
-                  {topic.subTopics.length > 1 && (
-                    <button type="button" onClick={() => removeSubTopic(ti, si)} className="p-1 text-gray-300 hover:text-red-400 flex-shrink-0"><MdDelete size={13} /></button>
-                  )}
-                </div>
-              ))}
-              <button type="button" onClick={() => addSubTopic(ti)} className="text-xs text-blue-500 font-medium mt-1">+ Add SubTopic</button>
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <MdTopic size={14} className="text-blue-500" /> Topics & Sub-Topics
+            </label>
+            <p className="text-[11px] text-slate-400">Add learning topics and their lesson milestones</p>
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={addTopic}
+            className="text-xs text-orange-600 font-extrabold bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+          >
+            <MdAdd size={15} /> Add Topic
+          </button>
+        </div>
+
+        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+          {topics.map((topic, ti) => (
+            <div key={ti} className="border border-slate-200/80 rounded-2xl p-4 space-y-3 bg-white shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-black text-[11px] flex items-center justify-center shrink-0 border border-blue-100">
+                  {ti + 1}
+                </span>
+                <input
+                  className="flex-1 h-9 border border-slate-200 rounded-xl px-3 text-xs font-bold focus:outline-none focus:border-orange-400 bg-white"
+                  value={topic.name}
+                  onChange={(e) => updateTopicName(ti, e.target.value)}
+                  placeholder={`Topic ${ti + 1} Name (e.g. Asynchronous JS)`}
+                />
+                {topics.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeTopic(ti)}
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                    title="Delete Topic"
+                  >
+                    <MdDelete size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Subtopics */}
+              <div className="pl-8 space-y-2 border-l-2 border-slate-100 ml-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sub-Topics</p>
+                {topic.subTopics.map((st, si) => (
+                  <div key={si} className="flex items-center gap-2">
+                    <MdSubject size={14} className="text-slate-400 flex-shrink-0" />
+                    <input
+                      className="flex-1 h-8 border border-slate-200/70 rounded-lg px-2.5 text-xs font-medium focus:outline-none focus:border-orange-400 bg-slate-50/50"
+                      value={st}
+                      onChange={(e) => updateSubTopic(ti, si, e.target.value)}
+                      placeholder={`SubTopic ${si + 1} (optional)`}
+                    />
+                    {topic.subTopics.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSubTopic(ti, si)}
+                        className="p-1 text-slate-300 hover:text-rose-400 rounded transition cursor-pointer"
+                      >
+                        <MdDelete size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addSubTopic(ti)}
+                  className="text-[11px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
+                >
+                  + Add SubTopic
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Action Footer */}
+      <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => { reset(); onClose?.(); }}
+          className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !subject.trim() || !selectedSessionId}
+          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer"
+        >
+          {saving ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Saving Subject...</span>
+            </>
+          ) : (
+            <>
+              <MdSave size={16} />
+              <span>Save Subject</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
 });
 ManualSyllabusForm.displayName = "ManualSyllabusForm";
 
-
-export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved }, ref) => {
+/* ══════════════════════════════════════════════════════════
+   EXCEL SYLLABUS UPLOAD (High-UX Drag & Drop + Subject Mapping)
+══════════════════════════════════════════════════════════ */
+export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onClose }, ref) => {
   const fileRef = useRef(null);
+  const [isDragging,       setIsDragging]       = useState(false);
   const [parsing,          setParsing]          = useState(false);
   const [saving,           setSaving]           = useState(false);
   const [hierarchy,        setHierarchy]        = useState([]);
   const [fileName,         setFileName]         = useState("");
   const [selectedSessionId,setSelectedSessionId]= useState("");
-  // Subject metadata modal state
-  const [showMetaModal,    setShowMetaModal]    = useState(false);
   const [subjectMeta,      setSubjectMeta]      = useState([]); // [{ name, includeInReportCard, reportCategory }]
+  const [showPreview,      setShowPreview]      = useState(false);
 
-  const [uploadCombined]        = useUploadCombinedSyllabusMutation();
-  const { data: sessionsData }  = useGetAllSessionsQuery();
+  const [uploadCombined]       = useUploadCombinedSyllabusMutation();
+  const { data: sessionsData } = useGetAllSessionsQuery();
   const sessions = sessionsData?.data || [];
 
   const totalSubjects  = hierarchy.length;
@@ -378,357 +466,399 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved }, re
     return a + stTasks + topicTasks;
   }, 0), 0);
 
-  const reset = () => { setHierarchy([]); setFileName(""); setSelectedSessionId(""); setSubjectMeta([]); setShowMetaModal(false); };
+  const reset = () => {
+    setHierarchy([]);
+    setFileName("");
+    setSelectedSessionId("");
+    setSubjectMeta([]);
+    setShowPreview(false);
+  };
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
+  const processFile = async (file) => {
     if (!file) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) { 
-      toast.error("Please upload .xlsx, .xls or .csv file"); 
-      return; 
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
+      toast.error("Please upload an Excel (.xlsx, .xls) or .csv file");
+      return;
     }
-    setParsing(true); 
-    setHierarchy([]); 
+    setParsing(true);
+    setHierarchy([]);
     setFileName(file.name);
     try {
       const rows = await parseExcel(file);
-      if (!rows.length) { 
-        toast.error("File is empty or has no data rows"); 
-        return; 
+      if (!rows.length) {
+        toast.error("File is empty or contains no data rows");
+        return;
       }
-      
-      // Validate required columns
       const firstRow = rows[0];
-      const hasSubject = Object.keys(firstRow).some(key => 
-        key.toLowerCase().includes('subject'));
-      const hasTopic = Object.keys(firstRow).some(key => 
-        key.toLowerCase().includes('topic'));
-      
+      const hasSubject = Object.keys(firstRow).some(k => k.toLowerCase().includes("subject"));
+      const hasTopic = Object.keys(firstRow).some(k => k.toLowerCase().includes("topic"));
       if (!hasSubject || !hasTopic) {
         toast.error("Excel file must contain 'Subject' and 'Topic' columns");
         return;
       }
-      
       const parsed = buildHierarchy(rows);
-      if (!parsed.length) { 
-        toast.error("No valid data found. Please check your Excel format and column names"); 
-        return; 
+      if (!parsed.length) {
+        toast.error("No valid hierarchy found. Please check column names");
+        return;
       }
       setHierarchy(parsed);
-      // Initialize subjectMeta with defaults for each parsed subject
-      setSubjectMeta(parsed.map(s => ({ name: s.subject, includeInReportCard: false, reportCategory: "" })));
-      toast.success(`Parsed ${parsed.length} subject(s) successfully`);
-    } catch (error) { 
-      console.error('Excel parsing error:', error);
-      toast.error("Failed to parse Excel file. Please check the file format"); 
-    }
-    finally { 
-      setParsing(false); 
-      e.target.value = ""; 
+      setSubjectMeta(parsed.map(s => ({ name: s.subject, includeInReportCard: true, reportCategory: "technical" })));
+      toast.success(`Successfully parsed ${parsed.length} subject(s) with ${parsed.reduce((a, s) => a + s.topics.length, 0)} topics`);
+    } catch (err) {
+      console.error("Excel parse error:", err);
+      toast.error("Failed to parse Excel file. Please ensure valid format");
+    } finally {
+      setParsing(false);
     }
   };
 
-  // Step 1: validate → open metadata modal
-  const handleSaveClick = () => {
-    if (!hierarchy.length)   { toast.error("No data to save"); return; }
-    if (!subLevel?._id)      { toast.error("SubLevel not found"); return; }
-    if (!level?._id)         { toast.error("Level not found"); return; }
-    if (!selectedSessionId)  { toast.error("Please select a session"); return; }
-    setShowMetaModal(true);
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0];
+    processFile(file);
+    e.target.value = "";
   };
 
-  // Step 2: called from modal after metadata confirmed
-  const handleSave = async (confirmedMeta) => {
+  const handleSave = async (confirmedMeta = subjectMeta) => {
+    if (!hierarchy.length)  { toast.error("Please upload a valid Excel file first"); return; }
+    if (!selectedSessionId) { toast.error("Please select an academic session"); return; }
+    if (!subLevel?._id)     { toast.error("SubLevel not found"); return; }
+    if (!level?._id)        { toast.error("Level not found"); return; }
+
+    const invalid = confirmedMeta.find(s => s.includeInReportCard && !s.reportCategory);
+    if (invalid) {
+      toast.error(`Please select a category for "${invalid.name}" in Report Card Settings`);
+      return;
+    }
+
     setSaving(true);
     try {
       const taskRows = buildTaskRows(hierarchy);
       const res = await uploadCombined({
-        sessionId:  selectedSessionId,
-        levelId:    level._id,
-        subLevelId: subLevel._id,
-        tasks:      taskRows,
+        sessionId:   selectedSessionId,
+        levelId:     level._id,
+        subLevelId:  subLevel._id,
+        tasks:       taskRows,
         subjectMeta: confirmedMeta,
       }).unwrap();
-      toast.success(res.message || "Syllabus + Tasks saved!");
+
+      toast.success(res.message || "Syllabus & Tasks uploaded successfully!");
       if (res.data?.errors?.length) {
         res.data.errors.forEach(e => toast.warn(e, { autoClose: 8000 }));
       }
       reset();
       onSaved?.();
+      onClose?.();
     } catch (err) {
-      const errorMessage = err?.data?.message || err?.message || "Failed to save";
-      toast.error(errorMessage);
+      const msg = err?.data?.message || err?.message || "Failed to save syllabus";
+      toast.error(msg);
       if (err?.data?.errors?.length) {
         err.data.errors.forEach(e => toast.warn(e, { autoClose: 8000 }));
       }
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  useImperativeHandle(ref, () => ({ reset, save: handleSaveClick }));
+  useImperativeHandle(ref, () => ({ reset, save: () => handleSave(subjectMeta) }));
 
   return (
-    <>
-    {/* ── Report Card Metadata Drawer ── */}
-    <OrangeButton
-      isOpen={showMetaModal}
-      onClose={() => setShowMetaModal(false)}
-      panelTitle="Report Card Settings"
-      panelSubtitle="Configure each subject for report card generation"
-      leftBtnText="Back"
-      rightBtnText={saving ? "Saving..." : "Confirm & Save"}
-      onLeftClick={() => setShowMetaModal(false)}
-      onRightClick={() => {
-        const invalid = subjectMeta.find(s => s.includeInReportCard && !s.reportCategory);
-        if (invalid) { toast.error(`Select category for "${invalid.name}"`); return; }
-        setShowMetaModal(false);
-        handleSave(subjectMeta);
-      }}
-      drawerContent={
-        <div className="space-y-3">
-          {subjectMeta.map((sm, idx) => (
-            <div key={sm.name} className="border border-gray-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <MdBook size={15} className="text-orange-500 flex-shrink-0" />
-                <span className="text-sm font-bold text-gray-800">{sm.name}</span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Include this subject in Report Card?</p>
-                <div className="flex gap-2">
-                  {[true, false].map((val) => (
-                    <button
-                      key={String(val)}
-                      type="button"
-                      onClick={() => setSubjectMeta(prev => prev.map((s, i) =>
-                        i === idx ? { ...s, includeInReportCard: val, reportCategory: val ? s.reportCategory : "" } : s
-                      ))}
-                      className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${
-                        sm.includeInReportCard === val
-                          ? val ? "bg-green-50 border-green-400 text-green-700" : "bg-gray-100 border-gray-300 text-gray-600"
-                          : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"
-                      }`}
-                    >
-                      {val ? "✓ Yes" : "✗ No"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {sm.includeInReportCard && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Category</p>
-                  <div className="flex gap-2">
-                    {["technical", "softskill"].map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSubjectMeta(prev => prev.map((s, i) =>
-                          i === idx ? { ...s, reportCategory: cat } : s
-                        ))}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition ${
-                          sm.reportCategory === cat
-                            ? cat === "technical"
-                              ? "bg-blue-50 border-blue-400 text-blue-700"
-                              : "bg-purple-50 border-purple-400 text-purple-700"
-                            : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"
-                        }`}
-                      >
-                        {cat === "technical" ? "💻 Technical" : "🤝 Soft Skill"}
-                      </button>
-                    ))}
-                  </div>
-                  {sm.includeInReportCard && !sm.reportCategory && (
-                    <p className="text-[11px] text-red-400 mt-1">Please select a category</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      }
-    />
-    <div className="space-y-6 text-xs font-semibold">
-      {/* STEP 1: DOWNLOAD TEMPLATE */}
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50/20 border border-amber-200/60 rounded-2xl p-5 space-y-4 shadow-sm transition hover:shadow-md duration-300">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <h4 className="text-sm font-black text-amber-950 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[11px] font-black shadow-sm shrink-0">1</span>
-              Step 1: Download Excel Template
-            </h4>
-            <p className="text-xs text-amber-900/80 leading-relaxed font-medium">
-              Use this standard sheet format to load your Syllabus and Tasks together in one go.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={downloadSyllabusTemplate}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] text-white px-4 py-2.5 rounded-xl font-extrabold shadow-sm transition duration-150 whitespace-nowrap cursor-pointer text-xs"
-          >
-            <MdFileDownload size={18} /> Template (.xlsx)
-          </button>
-        </div>
-
-        <div className="border-t border-amber-200/50 pt-3.5">
-          <p className="text-[10px] font-black text-amber-900 uppercase tracking-wider mb-2">Required & Optional Columns:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white/80 border border-amber-100 rounded-xl p-2.5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-              <div>
-                <span className="font-bold text-amber-950 block text-[11px]">Subject, Topic</span>
-                <span className="text-[10px] text-green-700 font-extrabold uppercase bg-green-50 px-1.5 py-0.5 rounded">Mandatory</span>
-              </div>
-            </div>
-            <div className="bg-white/80 border border-amber-100 rounded-xl p-2.5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
-              <div>
-                <span className="font-bold text-amber-950 block text-[11px]">SubTopic, Task</span>
-                <span className="text-[10px] text-gray-600 font-extrabold uppercase bg-gray-100 px-1.5 py-0.5 rounded">Optional</span>
-              </div>
-            </div>
-            <div className="bg-white/80 border border-amber-100 rounded-xl p-2.5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-              <div>
-                <span className="font-bold text-amber-950 block text-[11px]">Time Days</span>
-                <span className="text-[10px] text-blue-750 font-extrabold bg-blue-50 px-1.5 py-0.5 rounded">Expected duration</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* STEP 2: UPLOAD FILE */}
-      <div className="space-y-3">
-        <label className="text-sm font-black text-slate-800 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-[11px] font-black shadow-sm shrink-0">2</span>
-          Step 2: Upload Excel File
+    <div className="space-y-5 text-xs font-semibold">
+      {/* 1. SESSION SELECTION */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Target Academic Session <span className="text-red-500">*</span>
         </label>
-        <div 
-          onClick={() => fileRef.current?.click()} 
-          className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition duration-300 shadow-sm hover:shadow active:scale-[0.99] group ${
-            fileName 
-              ? "border-emerald-400 bg-emerald-50/10 hover:bg-emerald-50/20" 
-              : "border-slate-300 bg-slate-50/40 hover:border-orange-500 hover:bg-orange-50/10"
-          }`}
-        >
-          {parsing ? (
-            <div className="flex flex-col items-center gap-2.5 py-3">
-              <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-bold text-slate-500">Reading file, please wait...</p>
-            </div>
-          ) : (
-            <>
-              {fileName ? (
-                <MdCheckCircle size={36} className="text-emerald-500 mb-2 drop-shadow-sm" />
-              ) : (
-                <MdCloudUpload size={36} className="text-slate-400 group-hover:text-orange-500 transition duration-300 mb-2" />
-              )}
-              <p className="text-xs font-extrabold text-slate-700">
-                {fileName ? "File loaded successfully" : "Click to select or drop Excel file"}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">Supports .xlsx, .xls and .csv</p>
-              {fileName && (
-                <span className="mt-3 text-xs bg-emerald-100 text-emerald-800 font-black px-3.5 py-1.5 rounded-full border border-emerald-200 shadow-sm/5">
-                  📄 {fileName}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-blue-500 text-blue-900 rounded-r-2xl shadow-sm/5 p-4 flex gap-3 items-start">
-          <span className="text-base">💡</span>
-          <p className="text-xs font-medium leading-relaxed text-blue-950">
-            <strong className="font-bold text-blue-900">Tip:</strong> You can upload subjects, topics, and tasks all at once using a single Excel sheet.
-          </p>
-        </div>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
+        <SelectDropdown
+          value={selectedSessionId}
+          onChange={(val) => setSelectedSessionId(val)}
+          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+          placeholder="-- Select Session --"
+        />
       </div>
 
-      {/* STEP 3: PREVIEW & SAVE */}
-      {hierarchy.length > 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-          <div className="space-y-1.5">
-            <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-[11px] font-black shadow-sm shrink-0">3</span>
-              Step 3: Select Session & Save
-            </h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Review the parsed structures and map them to the target academic session.
+      {/* 2. TEMPLATE DOWNLOAD BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+            <MdFileDownload size={22} />
+          </div>
+          <div>
+            <h4 className="text-xs font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
+            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
+              Download the official Excel template with column headers and sample data.
             </p>
           </div>
+        </div>
+        <button
+          type="button"
+          onClick={downloadSyllabusTemplate}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer self-start sm:self-center"
+        >
+          <MdFileDownload size={16} />
+          <span>Template (.xlsx)</span>
+        </button>
+      </div>
 
-          <div className="bg-white border border-slate-100 rounded-xl p-3.5 space-y-2">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">File summary:</p>
-            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-700">
-              <span className="bg-orange-50 border border-orange-100 text-orange-600 px-2.5 py-1 rounded-lg">
-                {totalSubjects} Subjects
-              </span>
-              <span className="bg-blue-50 border border-blue-100 text-blue-600 px-2.5 py-1 rounded-lg">
-                {totalTopics} Topics
-              </span>
-              {totalSubTopics > 0 && (
-                <span className="bg-purple-50 border border-purple-100 text-purple-600 px-2.5 py-1 rounded-lg">
-                  {totalSubTopics} SubTopics
-                </span>
-              )}
-              {totalTasks > 0 && (
-                <span className="bg-emerald-50 border border-emerald-100 text-emerald-600 px-2.5 py-1 rounded-lg">
-                  {totalTasks} Tasks detected
-                </span>
-              )}
+      {/* 3. UPLOAD DROPZONE */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+          Upload Excel File <span className="text-red-500">*</span>
+        </label>
+        
+        {parsing ? (
+          <div className="border-2 border-dashed border-orange-300 bg-orange-50/30 rounded-2xl p-10 flex flex-col items-center justify-center gap-3">
+            <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold text-slate-700">Reading and validating Excel columns...</p>
+            <p className="text-[10px] text-slate-400">Parsing subjects, topics, and sub-topics</p>
+          </div>
+        ) : !fileName ? (
+          <div
+            onClick={() => fileRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) processFile(file);
+            }}
+            className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 text-center ${
+              isDragging
+                ? "border-orange-500 bg-orange-50/30 scale-[1.01]"
+                : "border-slate-200 bg-slate-50/50 hover:border-orange-400 hover:bg-orange-50/10"
+            }`}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2.5">
+              <MdCloudUpload size={26} />
             </div>
-            
-            {/* Subject badges preview */}
-            <div className="flex flex-wrap gap-1 mt-2">
-              {hierarchy.map((s) => (
-                <span key={s.subject} className="text-[10px] bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md font-semibold text-slate-600">
-                  {s.subject} ({s.topics.length} topics)
-                </span>
+            <p className="text-xs font-black text-slate-800">
+              Click to choose Excel file or drag & drop here
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1 font-medium">
+              Supported formats: .xlsx, .xls, .csv
+            </p>
+            <div className="mt-3 flex items-center gap-1.5 flex-wrap justify-center text-[10px] font-bold text-slate-500">
+              <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md">Subject *</span>
+              <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md">Topic *</span>
+              <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md text-slate-400 font-medium">SubTopic (opt)</span>
+              <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md text-slate-400 font-medium">Task (opt)</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                <MdCheckCircle size={22} />
+              </div>
+              <div>
+                <p className="text-xs font-black text-slate-900 truncate max-w-xs">{fileName}</p>
+                <p className="text-[11px] text-emerald-700 font-semibold">File loaded & verified</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { reset(); setTimeout(() => fileRef.current?.click(), 100); }}
+              className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-bold transition hover:bg-slate-50 cursor-pointer shadow-2xs"
+            >
+              Change File
+            </button>
+          </div>
+        )}
+
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileInput} />
+      </div>
+
+      {/* 4. PARSED SUMMARY CHIPS */}
+      {hierarchy.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
+              <p className="text-lg font-black text-slate-900">{totalSubjects}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
+              <p className="text-lg font-black text-slate-900">{totalTopics}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Topics</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
+              <p className="text-lg font-black text-slate-900">{totalSubTopics}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SubTopics</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
+              <p className="text-lg font-black text-slate-900">{totalTasks}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tasks</p>
+            </div>
+          </div>
+
+          {/* 5. INLINE REPORT CARD SETTINGS */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div>
+                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <MdBook className="text-orange-500" size={16} /> Report Card Settings
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
+                  Configure which subjects appear on student report cards & their evaluation category
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {subjectMeta.map((sm, idx) => (
+                <div key={sm.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <MdBook size={15} className="text-orange-400 flex-shrink-0" />
+                    <span className="text-xs font-extrabold text-slate-800">{sm.name}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">({hierarchy[idx]?.topics?.length || 0} topics)</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Include Toggle */}
+                    <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: true, reportCategory: s.reportCategory || "technical" } : s))}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${sm.includeInReportCard ? "bg-emerald-500 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                      >
+                        ✓ Report Card
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: false, reportCategory: "" } : s))}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${!sm.includeInReportCard ? "bg-slate-200 text-slate-700" : "text-slate-500 hover:bg-slate-50"}`}
+                      >
+                        Exclude
+                      </button>
+                    </div>
+
+                    {/* Category Selector */}
+                    {sm.includeInReportCard && (
+                      <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "technical" } : s))}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${sm.reportCategory === "technical" ? "bg-blue-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                        >
+                          💻 Technical
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "softskill" } : s))}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${sm.reportCategory === "softskill" ? "bg-purple-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                        >
+                          🤝 Soft Skill
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-700">Syllabus Session</label>
-            <SelectDropdown
-              value={selectedSessionId}
-              onChange={(val) => setSelectedSessionId(val)}
-              options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
-              placeholder="-- Select Session --"
-            />
-          </div>
-
-          <div className="flex gap-2.5 pt-1">
-            <button 
-              onClick={handleSaveClick} 
-              disabled={saving} 
-              className="flex-1 flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-xs font-extrabold py-2.5 rounded-xl transition shadow-xs cursor-pointer"
+          {/* 6. COLLAPSIBLE HIERARCHY PREVIEW */}
+          <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-700 cursor-pointer"
             >
-              <MdSave size={16} />{saving ? "Saving..." : "Save Syllabus + Tasks"}
+              <span>View Topics & Tasks Details ({totalTopics} topics)</span>
+              {showPreview ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
             </button>
-            <button 
-              onClick={reset} 
-              className="px-4 py-2.5 text-xs text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 font-bold transition cursor-pointer"
-            >
-              Clear
-            </button>
+            {showPreview && (
+              <div className="p-3 max-h-56 overflow-y-auto space-y-2 bg-slate-50/40">
+                {hierarchy.map((item, i) => (
+                  <SubjectAccordion key={item.subject} item={item} index={i} />
+                ))}
+              </div>
+            )}
           </div>
-
-          <div className="space-y-2 max-h-52 overflow-y-auto border-t border-slate-200/50 pt-3">
-            <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Uploaded Data Preview:</p>
-            {hierarchy.map((item, i) => (
-              <SubjectAccordion key={item.subject} item={item} index={i} />
-            ))}
-          </div>
-        </div>
+        </>
       )}
+
+      {/* 7. UNIFIED ACTION FOOTER */}
+      <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => { reset(); onClose?.(); }}
+          className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSave(subjectMeta)}
+          disabled={saving || !hierarchy.length || !selectedSessionId}
+          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer"
+        >
+          {saving ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Importing Syllabus...</span>
+            </>
+          ) : (
+            <>
+              <MdSave size={16} />
+              <span>Save & Upload Syllabus</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
-    </>
   );
 });
 SyllabusUploadDrawer.displayName = "SyllabusUploadDrawer";
 
+/* ══════════════════════════════════════════════════════════
+   UNIFIED MODAL CONTENT (Tabs for Excel & Manual + Responsive Width)
+══════════════════════════════════════════════════════════ */
+export const SyllabusUploadModalContent = ({ level, subLevel, onSaved, onClose }) => {
+  const [mode, setMode] = useState("excel");
+
+  return (
+    <div className="space-y-5">
+      {/* Segmented Mode Switcher */}
+      <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+        <button
+          type="button"
+          onClick={() => setMode("excel")}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+            mode === "excel"
+              ? "bg-white text-orange-600 shadow-sm"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <MdCloudUpload size={16} />
+          <span>Excel Upload (Recommended)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("manual")}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+            mode === "manual"
+              ? "bg-white text-orange-600 shadow-sm"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <MdBook size={16} />
+          <span>Manual Entry</span>
+        </button>
+      </div>
+
+      {mode === "excel" ? (
+        <SyllabusUploadDrawer level={level} subLevel={subLevel} onSaved={onSaved} onClose={onClose} />
+      ) : (
+        <ManualSyllabusForm level={level} subLevel={subLevel} onSaved={onSaved} onClose={onClose} />
+      )}
+    </div>
+  );
+};
+
 /* ─── Topic/SubTopic table for one version ──────────────── */
-const VersionTopicTable = ({ versionId, searchTerm, activeSubject }) => {
+const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
   const { data, isLoading } = useGetSyllabusVersionWithHierarchyQuery(versionId, { skip: !versionId });
+  const [viewMode, setViewMode] = useState("topics"); // "topics" | "detailed"
 
   const rows = useMemo(() => {
     if (!data?.data?.subjects) return [];
@@ -742,7 +872,7 @@ const VersionTopicTable = ({ versionId, searchTerm, activeSubject }) => {
             result.push({ _id: String(st._id), subject: subject.name, topic: topic.name, subTopic: st.name, topicIdStr });
           });
         } else {
-          result.push({ _id: topicIdStr, subject: subject.name, topic: topic.name, subTopic: "\u2514", topicIdStr });
+          result.push({ _id: topicIdStr, subject: subject.name, topic: topic.name, subTopic: "—", topicIdStr });
         }
       });
     });
@@ -778,6 +908,137 @@ const VersionTopicTable = ({ versionId, searchTerm, activeSubject }) => {
     return Object.values(groups);
   }, [filtered]);
 
+  const topicColumns = useMemo(() => [
+    {
+      key: "sno",
+      label: "S.NO",
+      align: "center",
+      render: (row) => (
+        <span className="inline-flex w-7 h-7 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold items-center justify-center">
+          {row.sno}
+        </span>
+      ),
+    },
+    {
+      key: "subject",
+      label: "SUBJECT",
+      render: (row) => (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50/90 border border-orange-200/70 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          {row.subject}
+        </span>
+      ),
+    },
+    {
+      key: "topic",
+      label: "TOPIC NAME",
+      render: (row) => (
+        <div className="flex items-center gap-2.5 py-1">
+          <span className="p-1.5 rounded-lg bg-orange-50 text-orange-500 border border-orange-100 flex-shrink-0">
+            <MdTopic size={15} />
+          </span>
+          <span className="font-bold text-sm text-slate-800">
+            {row.topic}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "subTopics",
+      label: "SUBTOPICS",
+      render: (row) => {
+        const subs = row.subTopics || [];
+        if (!subs.length) {
+          return (
+            <span className="text-xs text-slate-400 italic">
+              Covers core topic directly (No subtopics)
+            </span>
+          );
+        }
+        return (
+          <div className="flex flex-wrap items-center gap-1.5 py-1 max-w-xl">
+            {subs.map((sub, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/70 text-slate-700 text-xs font-medium hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                <span>{sub}</span>
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      key: "subTopicCount",
+      label: "TOTAL SUBTOPICS",
+      align: "center",
+      render: (row) => (
+        <span className="inline-block text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-full whitespace-nowrap">
+          {row.subTopics?.length || 0} {row.subTopics?.length === 1 ? "Subtopic" : "Subtopics"}
+        </span>
+      ),
+    },
+  ], []);
+
+  const detailedColumns = useMemo(() => [
+    {
+      key: "sno",
+      label: "S.NO",
+      align: "center",
+      render: (row) => (
+        <span className="inline-flex w-7 h-7 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold items-center justify-center">
+          {row.sno}
+        </span>
+      ),
+    },
+    {
+      key: "subject",
+      label: "SUBJECT",
+      render: (row) => (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50/90 border border-orange-200/70 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          {row.subject}
+        </span>
+      ),
+    },
+    {
+      key: "topic",
+      label: "TOPIC",
+      render: (row) => (
+        <div className="flex items-center gap-2 py-1">
+          <MdTopic size={15} className="text-orange-500 flex-shrink-0" />
+          <span className="font-bold text-sm text-slate-800">{row.topic}</span>
+        </div>
+      ),
+    },
+    {
+      key: "subTopic",
+      label: "SUBTOPIC",
+      render: (row) => (
+        <div className="flex items-center gap-2 py-1">
+          <MdSubject size={15} className="text-slate-400 flex-shrink-0" />
+          <span className={`text-sm font-medium ${row.subTopic === "—" ? "text-slate-400 italic" : "text-slate-800"}`}>
+            {row.subTopic === "—" ? "Direct Topic" : row.subTopic}
+          </span>
+        </div>
+      ),
+    },
+  ], []);
+
+  const tableData = useMemo(() => {
+    if (viewMode === "topics") {
+      return groupedTopics.map((g, idx) => ({
+        ...g,
+        sno: idx + 1,
+        subTopicCount: g.subTopics?.length || 0,
+      }));
+    }
+    return filtered.map((r, idx) => ({
+      ...r,
+      sno: idx + 1,
+    }));
+  }, [viewMode, groupedTopics, filtered]);
+
   if (isLoading) return (
     <div className="flex justify-center py-20">
       <div className="w-9 h-9 border-[3.5px] border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -797,49 +1058,46 @@ const VersionTopicTable = ({ versionId, searchTerm, activeSubject }) => {
   );
 
   return (
-    <div className="p-4 bg-gray-50/20 grid grid-cols-1 md:grid-cols-2 gap-4">
-      {groupedTopics.map((item, idx) => (
-        <div key={item.topicIdStr} className="bg-white border border-slate-150 rounded-xl p-5 hover:shadow-lg hover:border-orange-300/40 hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between border-l-4 border-l-orange-500/80">
-          <div>
-            {/* Header: Topic Title & Subject Badge */}
-            <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-100/70">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex w-7 h-7 rounded-lg bg-orange-50 text-orange-600 text-xs font-black items-center justify-center border border-orange-100/50 flex-shrink-0 mt-0.5 shadow-sm/5">
-                  {idx + 1}
-                </span>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[9px] font-black text-orange-600 bg-orange-50/70 border border-orange-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {item.subject}
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-extrabold text-slate-800 mt-1.5 leading-snug tracking-tight">{item.topic}</h4>
-                </div>
-              </div>
-              <span className="text-[9.5px] font-black text-slate-500 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-full uppercase tracking-wider flex-shrink-0 shadow-sm/5">
-                {item.subTopics.length} {item.subTopics.length === 1 ? "Subtopic" : "Subtopics"}
-              </span>
-            </div>
-
-            {/* Subtopics collection */}
-            {item.subTopics.length > 0 ? (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {item.subTopics.map((sub, sIdx) => (
-                  <span key={sIdx} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/50 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200/40 transition-all duration-150 text-[11px] font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-350 flex-shrink-0" />
-                    <span>{sub}</span>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-400 font-medium italic">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                <span>Covers core topic content directly</span>
-              </div>
-            )}
-          </div>
+    <div className="p-4 space-y-3">
+      {/* View Mode Toggle Bar */}
+      <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setViewMode("topics")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === "topics"
+                ? "bg-white text-orange-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Topic View ({groupedTopics.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("detailed")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === "detailed"
+                ? "bg-white text-orange-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Detailed Subtopics ({filtered.length})
+          </button>
         </div>
-      ))}
+        <span className="text-xs text-slate-400 font-medium">
+          Total {viewMode === "topics" ? groupedTopics.length : filtered.length} records
+        </span>
+      </div>
+
+      {/* CommonTable */}
+      <CommonTable
+        columns={viewMode === "topics" ? topicColumns : detailedColumns}
+        data={tableData}
+        pagination={true}
+        rowsPerPage={10}
+        emptyMessage="No syllabus topics found"
+      />
     </div>
   );
 };
@@ -1066,17 +1324,118 @@ function formatTimeAgo(dateString) {
       return "Just now";
     }
 
+/* ─── Task Detail Modal for viewing full task info ────────────────── */
+const TaskDetailModal = ({ task, onClose }) => {
+  if (!task) return null;
+  const measurePoints = splitNumberedPoints(task.measurablePoints);
+  const typeKey = task.type || "assessment";
+  const priorityKey = (task.priority || "medium").toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-start justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-full">
+              Task Details
+            </span>
+            <h3 className="text-base font-black text-slate-850 mt-1.5 leading-snug">
+              {task.title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <MdClose size={20} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto space-y-5 text-sm">
+          {/* Badges row */}
+          <div className="flex flex-wrap gap-2">
+            <span className={`inline-block text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${TYPE_BADGE[typeKey] || "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+              {typeKey}
+            </span>
+            <span className="inline-block text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+              Priority: {priorityKey}
+            </span>
+            {task.timeDays && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                <MdAccessTime size={13} /> {task.timeDays} Day{task.timeDays > 1 ? "s" : ""}
+              </span>
+            )}
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                <MdCalendarToday size={13} /> Due: {new Date(task.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+            )}
+          </div>
+
+          {/* Subject & Topic path */}
+          <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Curriculum Mapping</p>
+            <div className="flex items-center flex-wrap gap-2 text-xs font-semibold text-slate-700">
+              <span className="text-orange-600 font-bold">{task.subjectName || "Subject"}</span>
+              <MdChevronRight size={14} className="text-slate-300" />
+              <span>{task.topicName || "Topic"}</span>
+              {task.subTopicName && (
+                <>
+                  <MdChevronRight size={14} className="text-slate-300" />
+                  <span className="text-slate-500">{task.subTopicName}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Measurable Points */}
+          <div>
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Measurable Points</p>
+            {measurePoints.length > 0 && measurePoints[0] ? (
+              <div className="bg-orange-50/30 border border-orange-100/60 rounded-xl p-4">
+                <ul className="space-y-2">
+                  {measurePoints.map((pt, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed font-medium">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">No specific measurable points provided for this task.</p>
+            )}
+          </div>
+
+          {/* Metadata */}
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+            <span>Assigned By: <strong className="text-gray-600">{task.assignedByName || "System"}</strong></span>
+            {task.createdAt && <span>Created: {formatTimeAgo(task.createdAt)}</span>}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 text-xs font-bold bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId, activeSubjectName }) => {
   const { data, isLoading } = useGetTasksBySyllabusVersionQuery(versionId, { skip: !versionId });
   const allTasks = data?.tasks || data?.data || [];
-
-  console.log("VersionTasksTable render debug:", {
-    versionId,
-    activeSubjectId,
-    activeSubjectName,
-    allTasksLength: allTasks.length,
-    allTasks
-  });
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const tasks = useMemo(() => {
     let filteredTasks = allTasks;
@@ -1098,6 +1457,168 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
     );
   }, [allTasks, searchTerm, activeSubjectId, activeSubjectName]);
 
+  const taskColumns = useMemo(() => [
+    {
+      key: "sno",
+      label: "S.NO",
+      align: "center",
+      render: (row) => (
+        <span className="inline-flex w-7 h-7 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold items-center justify-center">
+          {row.sno}
+        </span>
+      ),
+    },
+    {
+      key: "title",
+      label: "TASK TITLE",
+      render: (row) => (
+        <div className="flex flex-col gap-1 py-1 max-w-sm">
+          <span
+            onClick={() => setSelectedTask(row)}
+            className="font-bold text-sm text-slate-800 hover:text-orange-600 transition-colors cursor-pointer leading-snug"
+          >
+            {row.title}
+          </span>
+          <div className="flex items-center gap-2 flex-wrap text-[10px] text-gray-400">
+            {row.dueDate && (
+              <span className="inline-flex items-center gap-1 font-semibold text-gray-500 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-full">
+                <MdCalendarToday size={10} className="text-gray-400" />
+                Due: {new Date(row.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+            )}
+            {row.createdAt && (
+              <span>{formatTimeAgo(row.createdAt)}</span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "subjectName",
+      label: "SUBJECT",
+      render: (row) => (
+        <span className="inline-block text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200/60 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          {row.subjectName || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "topicName",
+      label: "TOPIC / SUBTOPIC",
+      render: (row) => (
+        <div className="flex flex-col gap-0.5 text-xs py-1">
+          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+            <MdTopic size={14} className="text-orange-500 flex-shrink-0" />
+            <span>{row.topicName || "—"}</span>
+          </div>
+          {row.subTopicName && (
+            <div className="flex items-center gap-1 text-slate-500 pl-4 text-[11px]">
+              <MdSubject size={12} className="text-slate-400 flex-shrink-0" />
+              <span>{row.subTopicName}</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      label: "TYPE",
+      align: "center",
+      render: (row) => {
+        const typeKey = row.type || "assessment";
+        return (
+          <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm/5 ${TYPE_BADGE[typeKey] || "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+            {typeKey}
+          </span>
+        );
+      },
+    },
+    {
+      key: "priority",
+      label: "PRIORITY",
+      align: "center",
+      render: (row) => {
+        const pKey = (row.priority || "medium").toLowerCase();
+        const priorityStyles = {
+          high: { badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
+          medium: { badge: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+          low: { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+        };
+        const st = priorityStyles[pKey] || priorityStyles.medium;
+        return (
+          <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm/5 ${st.badge}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+            {pKey}
+          </span>
+        );
+      },
+    },
+    {
+      key: "timeDays",
+      label: "DURATION",
+      align: "center",
+      render: (row) => (
+        <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+          {row.timeDays ? (
+            <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+              <MdAccessTime size={12} className="text-gray-400" />
+              {row.timeDays}d
+            </span>
+          ) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "measurablePoints",
+      label: "MEASURABLE POINTS",
+      render: (row) => {
+        const points = splitNumberedPoints(row.measurablePoints);
+        if (!points.length || !points[0]) return <span className="text-xs text-slate-300">—</span>;
+        return (
+          <div className="max-w-xs space-y-1 py-1">
+            {points.slice(0, 2).map((pt, i) => (
+              <div key={i} className="flex items-start gap-1.5 text-xs text-slate-600 leading-snug">
+                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                <span className="line-clamp-2">{pt}</span>
+              </div>
+            ))}
+            {points.length > 2 && (
+              <button
+                type="button"
+                onClick={() => setSelectedTask(row)}
+                className="text-[10px] text-orange-500 font-bold hover:underline cursor-pointer"
+              >
+                +{points.length - 2} more points
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "actions",
+      label: "ACTION",
+      align: "center",
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setSelectedTask(row)}
+          className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
+          title="View Details"
+        >
+          <MdVisibility size={16} />
+        </button>
+      ),
+    },
+  ], []);
+
+  const tableData = useMemo(() => {
+    return tasks.map((t, idx) => ({
+      ...t,
+      sno: idx + 1,
+    }));
+  }, [tasks]);
+
   if (isLoading) return (
     <div className="flex justify-center py-20">
       <div className="w-9 h-9 border-[3.5px] border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -1110,127 +1631,33 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
         <MdAssignment size={36} className="text-orange-400" />
       </div>
       <h3 className="text-base font-bold text-gray-800 mb-1">No tasks added yet</h3>
-      <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">Add tasks from the button above to populate this syllabus version.</p>
+      <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+        {searchTerm ? "No tasks matching your search." : "Add tasks from the button above to populate this syllabus version."}
+      </p>
     </div>
   );
 
   return (
-    <div className="p-4 bg-gray-50/20 space-y-4">
-      {tasks.map((task, idx) => {
-        const measurePoints = splitNumberedPoints(task.measurablePoints);
-        const priorityKey   = (task.priority || "medium").toLowerCase();
-        const typeKey       = task.type || "assessment";
-        
-        // Define priority styles for accents
-        const priorityStyles = {
-          high: {
-            border: "border-l-4 border-l-rose-500/80 hover:border-rose-500",
-            badge: "bg-rose-50 text-rose-700 border-rose-100",
-            dot: "bg-rose-500"
-          },
-          medium: {
-            border: "border-l-4 border-l-amber-500/80 hover:border-amber-500",
-            badge: "bg-amber-50 text-amber-700 border-amber-100",
-            dot: "bg-amber-500"
-          },
-          low: {
-            border: "border-l-4 border-l-emerald-500/80 hover:border-emerald-500",
-            badge: "bg-emerald-50 text-emerald-700 border-emerald-100",
-            dot: "bg-emerald-500"
-          }
-        };
-        const style = priorityStyles[priorityKey] || priorityStyles.medium;
-
-        return (
-          <div key={task._id} className={`bg-white border border-gray-150 rounded-xl p-5 hover:shadow-md hover:scale-[1.005] transition-all duration-300 flex flex-col md:flex-row md:items-start justify-between gap-5 ${style.border}`}>
-            {/* Left side: Task Title, Topic path, badges */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex w-7 h-7 rounded-lg bg-slate-50 text-slate-600 text-xs font-black items-center justify-center border border-slate-200/65 flex-shrink-0 mt-0.5 shadow-sm">
-                  {idx + 1}
-                </span>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-extrabold text-gray-800 leading-snug tracking-tight">{task.title}</h4>
-                  {task.dueDate && (
-                    <span className="inline-flex items-center gap-1.5 mt-2.5 text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200/50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      <MdCalendarToday size={11} className="text-gray-400" />
-                      Due: {new Date(task.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Breadcrumbs for Topic & Subtopic */}
-              <div className="flex items-center flex-wrap gap-1.5 mt-3.5 text-[11px] text-gray-600 bg-slate-50 border border-slate-150/40 rounded-xl px-3 py-1.5 w-fit font-semibold font-sans">
-                <span className="p-0.5 rounded bg-orange-50 text-orange-500 border border-orange-100/50 flex-shrink-0 flex items-center justify-center">
-                  <MdTopic size={12} />
-                </span>
-                <span className="text-gray-700">{task.topicName || "—"}</span>
-                {task.subTopicName && (
-                  <>
-                    <MdChevronRight size={14} className="text-gray-300" />
-                    <span className="p-0.5 rounded bg-white text-gray-400 border border-gray-150 flex items-center justify-center">
-                      <MdSubject size={10} />
-                    </span>
-                    <span className="text-gray-500">{task.subTopicName}</span>
-                  </>
-                )}
-              </div>
-
-              {/* Badges row */}
-              <div className="flex flex-wrap gap-2 mt-4">
-                <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm/5 ${TYPE_BADGE[typeKey] || "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                  {typeKey}
-                </span>
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm/5 ${style.badge}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${style.dot}`} />
-                  {priorityKey}
-                </span>
-                {task.timeDays ? (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-gray-500 bg-gray-50 border border-gray-200/50 px-2.5 py-0.5 rounded-full">
-                    <MdAccessTime size={11} className="text-gray-400" />
-                    {task.timeDays} day{task.timeDays > 1 ? "s" : ""}
-                  </span>
-                ) : null}
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200/50 px-2.5 py-0.5 rounded-full">
-                  <MdPerson size={11} className="text-gray-400" />
-                  By: {task.assignedByName || "System"}
-                </span>
-                {task.createdAt && (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-gray-400 whitespace-nowrap ml-1">
-                    {formatTimeAgo(task.createdAt)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Right side: Measurable Points list (if present) */}
-            {measurePoints.length > 0 && measurePoints[0] && (
-              <div className="md:w-[38%] w-full md:border-l md:border-t-0 border-t border-gray-100 md:pl-5 md:pt-0 pt-4 flex-shrink-0">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Measurable Points</p>
-                <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 shadow-sm/5">
-                  <ul className="space-y-1.5">
-                    {measurePoints.map((pt, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-gray-600 leading-relaxed font-medium">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
-                        <span>{pt}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Footer */}
-      <div className="p-4 bg-white border border-gray-150 rounded-2xl text-xs text-gray-500 font-semibold shadow-sm/5">
-        Total <span className="font-bold text-gray-700">{tasks.length}</span> tasks
-        {searchTerm && allTasks.length !== tasks.length && (
-          <span className="ml-1 text-gray-400">(filtered from {allTasks.length})</span>
-        )}
+    <div className="p-4 space-y-3">
+      <CommonTable
+        columns={taskColumns}
+        data={tableData}
+        pagination={true}
+        rowsPerPage={10}
+        emptyMessage="No tasks found"
+      />
+      <div className="flex items-center justify-between text-xs text-gray-500 px-2 py-1">
+        <span>
+          Total <strong className="text-gray-700 font-bold">{tasks.length}</strong> tasks
+          {allTasks.length !== tasks.length && (
+            <span className="ml-1 text-gray-400">(filtered from {allTasks.length})</span>
+          )}
+        </span>
       </div>
+
+      {selectedTask && (
+        <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+      )}
     </div>
   );
 };
@@ -1530,7 +1957,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
   return (
     <>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* Top bar: search + session filter + Add Task button */}
+        {/* Top bar: search + session filter + version filter + Add Task button */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-white">
           <div className="flex flex-1 flex-wrap items-center gap-3">
             {/* Search Input Container */}
@@ -1549,7 +1976,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
             </div>
 
             {/* Session Select Container */}
-            <div className="min-w-[185px]">
+            <div className="min-w-[160px]">
               <SelectDropdown
                 value={selectedSessionId}
                 onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); }}
@@ -1557,36 +1984,31 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
                 placeholder="All Sessions"
               />
             </div>
+
+            {/* Version Select Container */}
+            {allVersions.length > 1 && (
+              <div className="min-w-[150px]">
+                <SelectDropdown
+                  value={currentVersionId}
+                  onChange={(val) => setActiveVersionId(val)}
+                  options={allVersions.map((v) => ({
+                    value: v._id,
+                    label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
+                  }))}
+                  placeholder="Select Version"
+                />
+              </div>
+            )}
           </div>
 
           <button
             onClick={() => setShowTaskModal(true)}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-500/10"
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-500/10 cursor-pointer"
           >
             <MdAdd size={18} />
             <span>Add Task</span>
           </button>
         </div>
-
-        {/* Version selector (Pills layout) */}
-        {allVersions.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/55 rounded-xl border border-gray-150/45 m-4">
-            {allVersions.map((v) => (
-              <button
-                key={v._id}
-                onClick={() => setActiveVersionId(v._id)}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 ${
-                  currentVersionId === v._id
-                    ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
-                    : "border-transparent text-gray-555 hover:text-gray-800 hover:bg-gray-100/50"
-                }`}
-              >
-                <MdBook size={13} className={currentVersionId === v._id ? "text-orange-500" : "text-gray-400"} />
-                <span>{v.title || v.version}</span>
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Subject tabs (Pill selectors) */}
         {subjectsList.length > 0 && (
@@ -1662,34 +2084,37 @@ const EmptyUploadState = ({ level, subLevel, onSaved }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition hover:shadow-md"
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer"
           >
             <MdCloudUpload size={16} /> Upload Syllabus
           </button>
-          <a
-            href="/syllabus_template.csv"
-            download="syllabus_template.csv"
-            className="flex items-center gap-2 text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-6 py-2.5 rounded-xl transition"
+          <button
+            type="button"
+            onClick={downloadSyllabusTemplate}
+            className="flex items-center gap-2 text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-6 py-2.5 rounded-xl transition cursor-pointer"
           >
-            ⬇ Browse Template
-          </a>
+            <MdFileDownload size={16} /> Download Template
+          </button>
         </div>
       ) : (
-        <div className="w-full max-w-md text-left mt-2">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-gray-700">Upload Syllabus</span>
+        <div className="w-full max-w-3xl text-left mt-4 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-black text-slate-900">Upload Syllabus Curriculum</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Import Excel syllabus or add manual subjects</p>
+            </div>
             <button
-              onClick={() => { setShowUpload(false); drawerRef.current?.reset(); }}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              onClick={() => setShowUpload(false)}
+              className="text-xs text-slate-400 hover:text-slate-700 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
             >
-              ✕ Cancel
+              ✕ Close
             </button>
           </div>
-          <SyllabusUploadDrawer
-            ref={drawerRef}
+          <SyllabusUploadModalContent
             level={level}
             subLevel={subLevel}
             onSaved={() => { setShowUpload(false); onSaved?.(); }}
+            onClose={() => setShowUpload(false)}
           />
         </div>
       )}
@@ -1765,10 +2190,10 @@ const SyllabusTab = ({ level, subLevel }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
 
-      {/* Top bar: search + session */}
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-gray-100">
+      {/* Top bar: search + session dropdown + version + session info + actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-gray-100 bg-white">
         {/* Search Container */}
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
             <MdSearch size={18} />
           </span>
@@ -1780,54 +2205,74 @@ const SyllabusTab = ({ level, subLevel }) => {
           />
         </div>
 
-        {/* Session Container */}
-        <div className="min-w-[185px]">
-          <SelectDropdown
-            value={selectedSessionId}
-            onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); setSearchTerm(""); }}
-            options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
-            placeholder="All Sessions"
-          />
+        {/* Right side controls: All Sessions dropdown + Version selector + Session badge + Status + Actions */}
+        <div className="flex items-center gap-2.5 flex-wrap ml-auto">
+          {/* Session Dropdown */}
+          <div className="min-w-[150px]">
+            <SelectDropdown
+              value={selectedSessionId}
+              onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); setSearchTerm(""); }}
+              options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+              placeholder="All Sessions"
+            />
+          </div>
+
+          {/* Version Selector (Dropdown if multiple, or badge if single) */}
+          {allVersions.length > 1 ? (
+            <div className="min-w-[145px]">
+              <SelectDropdown
+                value={currentVersionId}
+                onChange={(val) => { setActiveVersionId(val); setSearchTerm(""); }}
+                options={allVersions.map((v) => ({
+                  value: v._id,
+                  label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
+                }))}
+                placeholder="Select Version"
+              />
+            </div>
+          ) : currentVersionDoc ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700">
+              <MdBook size={14} className="text-orange-500" />
+              <span>{currentVersionDoc.title || currentVersionDoc.version || "v1.0"}</span>
+            </div>
+          ) : null}
+
+          {/* Session Info (kis session ka syllabus hai) */}
+          {currentVersionDoc?.sessionId?.name && (
+            <span className="text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200/70 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+              Session: <strong className="text-gray-800 font-bold">{currentVersionDoc.sessionId.name}</strong>
+            </span>
+          )}
+
+          {/* Version Status Badge */}
+          {currentVersionDoc && (
+            <StatusBadge status={currentVersionDoc.status} />
+          )}
+
+          {/* Activate button if draft */}
+          {currentVersionDoc?.status === "draft" && (
+            <button
+              type="button"
+              onClick={() => handleActivate(currentVersionDoc._id)}
+              className="text-xs px-3 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 font-bold transition border border-green-200 cursor-pointer"
+            >
+              Activate
+            </button>
+          )}
+
+          {/* Delete button if not active */}
+          {currentVersionDoc && currentVersionDoc.status !== "active" && (
+            <button
+              type="button"
+              onClick={() => handleDelete(currentVersionDoc._id)}
+              className="p-1.5 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition cursor-pointer"
+              title="Delete version"
+            >
+              <MdDelete size={16} />
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Version selector (Pills layout) */}
-      {allVersions.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 m-4">
-          {allVersions.map((v) => (
-            <button
-              key={v._id}
-              onClick={() => { setActiveVersionId(v._id); setSearchTerm(""); }}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 ${
-                currentVersionId === v._id
-                  ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
-                  : "border-transparent text-gray-550 hover:text-gray-800 hover:bg-gray-100/50"
-              }`}
-            >
-              <MdBook size={13} className={currentVersionId === v._id ? "text-orange-500" : "text-gray-400"} />
-              <span>{v.title || v.version}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Version status bar */}
-      {currentVersionDoc && (
-        <div className="flex items-center gap-3 px-5 py-3 bg-[#F8F7F5] border-b border-gray-100 flex-wrap">
-          <StatusBadge status={currentVersionDoc.status} />
-          <span className="text-xs text-gray-400 font-medium">Session: {currentVersionDoc.sessionId?.name || "—"}</span>
-          <div className="flex items-center gap-2 ml-auto">
-            {currentVersionDoc.status === "draft" && (
-              <button onClick={() => handleActivate(currentVersionDoc._id)} className="text-xs px-3.5 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 font-bold transition border border-green-200">Activate</button>
-            )}
-            {currentVersionDoc.status !== "active" && (
-              <button onClick={() => handleDelete(currentVersionDoc._id)} className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition">
-                <MdDelete size={15} />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Subject tabs (Pill selectors) */}
       {subjectsList.length > 0 && (

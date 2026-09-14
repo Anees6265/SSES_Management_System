@@ -414,55 +414,40 @@ const LeaveRequests = () => {
               {
                 label: "Total Requests",
                 value: counts.total,
-                color: "text-indigo-600",
-                bg: "bg-indigo-50/50",
-                border: "border-indigo-100",
-                hoverBorder: "hover:border-indigo-200",
+                statusKey: "all",
                 icon: <Inbox className="text-indigo-500" size={20} />,
-                gradient: "from-indigo-500/5 to-transparent",
               },
               {
                 label: "Pending",
                 value: counts.pending,
-                color: "text-amber-600",
-                bg: "bg-amber-50/50",
-                border: "border-amber-100",
-                hoverBorder: "hover:border-amber-200",
+                statusKey: "pending",
                 icon: <Clock className="text-amber-500" size={20} />,
                 pulse: counts.pending > 0,
-                gradient: "from-amber-500/5 to-transparent",
               },
               {
                 label: "Approved",
                 value: counts.approved,
-                color: "text-emerald-600",
-                bg: "bg-emerald-50/50",
-                border: "border-emerald-100",
-                hoverBorder: "hover:border-emerald-200",
+                statusKey: "approved",
                 icon: <CheckCircle className="text-emerald-500" size={20} />,
-                gradient: "from-emerald-500/5 to-transparent",
               },
               {
                 label: "Rejected",
                 value: counts.rejected,
-                color: "text-rose-600",
-                bg: "bg-rose-50/50",
-                border: "border-rose-100",
-                hoverBorder: "hover:border-rose-200",
+                statusKey: "rejected",
                 icon: <XCircle className="text-rose-500" size={20} />,
-                gradient: "from-rose-500/5 to-transparent",
               },
             ].map((item) => (
               <div
                 key={item.label}
-                className={`relative overflow-hidden rounded-2xl border ${item.border} ${item.hoverBorder} ${item.bg} bg-gradient-to-br ${item.gradient} p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md`}
+                onClick={() => setActiveTab(item.statusKey)}
+                className="relative overflow-hidden rounded-2xl border border-gray-100 hover:border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-black tracking-tight text-gray-955">{item.value}</p>
+                    <p className="text-2xl font-black tracking-tight text-gray-900">{item.value}</p>
                     <p className="mt-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider">{item.label}</p>
                   </div>
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-gray-100">
+                  <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 shadow-xs">
                     {item.icon}
                     {item.pulse && (
                       <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2">

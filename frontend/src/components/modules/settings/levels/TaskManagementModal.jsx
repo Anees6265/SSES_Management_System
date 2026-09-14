@@ -1,7 +1,11 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
-import { MdAdd, MdEdit, MdDelete, MdAssignment, MdBook, MdTopic, MdSubject } from "react-icons/md";
+import {
+  MdAdd, MdEdit, MdDelete, MdAssignment, MdBook, MdTopic, MdSubject,
+  MdSearch, MdCalendarToday, MdAccessTime, MdCloudUpload,
+  MdCheckCircle, MdChevronRight, MdFileDownload
+} from "react-icons/md";
 import {
   useGetSyllabusVersionsBySubLevelQuery,
   useGetSyllabusVersionWithHierarchyQuery,
@@ -14,8 +18,12 @@ import {
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import { TaskUploadDrawer } from "./SyllabusTab";
 
-const TASK_TYPES = ["assessment", "project", "assignment", "practice", "reading", "other"];
+const TASK_TYPES = ["assessment", "project", "assignment", "practice", "reading", "writtenExam", "interview", "presentation", "learning", "other"];
 const PRIORITIES = ["low", "medium", "high"];
+
+const selectCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium text-gray-800 disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer";
+const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder-gray-400 font-medium text-gray-800";
+const labelCls = "block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5";
 
 const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) => {
   const [activeTab, setActiveTab] = useState("add"); // add, manage
@@ -27,6 +35,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
   const [selectedTopicId, setSelectedTopicId] = useState("");
   const [selectedSubTopicId, setSelectedSubTopicId] = useState("");
   const [editingTask, setEditingTask] = useState(null);
+  const [manageSearch, setManageSearch] = useState("");
 
   const [taskForm, setTaskForm] = useState({
     title: "",
@@ -128,8 +137,8 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
           payload.subTopicId = selectedSubTopicId;
         }
       } else {
-        payload.levelId = level._id;
-        payload.subLevelId = subLevel._id;
+        payload.levelId = level?._id;
+        payload.subLevelId = subLevel?._id;
         payload.isGeneralTask = true;
       }
 
@@ -181,189 +190,229 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
       await deleteTask(taskId).unwrap();
       toast.success("Task deleted successfully!");
       refetchTasks();
+      onSuccess?.();
     } catch (error) {
       toast.error(error?.data?.message || "Failed to delete task");
     }
   };
 
+  const filteredTasks = useMemo(() => {
+    if (!manageSearch.trim()) return allTasks;
+    const q = manageSearch.toLowerCase();
+    return allTasks.filter(t =>
+      t.title?.toLowerCase().includes(q) ||
+      t.subjectName?.toLowerCase().includes(q) ||
+      t.topicName?.toLowerCase().includes(q) ||
+      t.subTopicName?.toLowerCase().includes(q) ||
+      t.type?.toLowerCase().includes(q)
+    );
+  }, [allTasks, manageSearch]);
+
   return (
     <OrangeButton
       isOpen={isOpen}
-      onClose={onClose}
-      panelTitle="Task Management"
-      panelSubtitle={`${level?.name || ""} - ${subLevel?.name || ""}`}
+      onClose={() => { resetForm(); onClose?.(); }}
+      panelTitle={editingTask ? "Edit Task" : "Task Management"}
+      panelSubtitle={subLevel?.name ? `${level?.name || "Level"} · ${subLevel.name}` : (level?.name || "Tasks")}
       showFooter={false}
-      maxWidth="sm:max-w-xl"
+      maxWidth="sm:max-w-2xl lg:max-w-3xl"
       drawerContent={
-        <div className="space-y-4">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200">
+        <div className="space-y-5 pb-6">
+          {/* Top Tabs */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
             <button
+              type="button"
               onClick={() => setActiveTab("add")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "add"
-                  ? "border-orange-500 text-orange-600 bg-orange-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "add"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
             >
-              <MdAdd size={16} className="inline mr-1" />
-              {editingTask ? "Edit Task" : "Add Task"}
+              <MdAdd size={16} />
+              <span>{editingTask ? "Edit Task" : "Add Task"}</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("manage")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "manage"
-                  ? "border-orange-500 text-orange-600 bg-orange-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "manage"
+                  ? "bg-white text-orange-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
             >
-              <MdEdit size={16} className="inline mr-1" />
-              Manage Tasks ({allTasks.length})
+              <MdAssignment size={16} />
+              <span>Manage Tasks ({allTasks.length})</span>
             </button>
           </div>
 
           {activeTab === "add" ? (
-            <div className="space-y-4 pt-2">
+            <div className="space-y-5">
               {/* Add mode selector */}
               {!editingTask && (
-                <div className="flex gap-1 bg-[#F8F7F5] border border-gray-200 p-1 rounded-xl">
+                <div className="flex bg-slate-100/70 p-1 rounded-xl border border-slate-200/60">
                   <button
                     type="button"
                     onClick={() => setAddMode("manual")}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${addMode === "manual" ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                      }`}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      addMode === "manual"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    Single Task
+                    <MdEdit size={14} /> Single Task Entry
                   </button>
                   <button
                     type="button"
                     onClick={() => setAddMode("bulk")}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${addMode === "bulk" ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                      }`}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      addMode === "bulk"
+                        ? "bg-white text-orange-600 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    Bulk Upload
+                    <MdCloudUpload size={14} /> Bulk Excel Upload
                   </button>
                 </div>
               )}
 
               {addMode === "manual" || editingTask ? (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Task Type Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Task Type</label>
-                    <div className="grid grid-cols-2 gap-3">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Task Scope Selection */}
+                  <div className="space-y-2">
+                    <label className={labelCls}>Task Scope & Category</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setTaskType("syllabus")}
-                        className={`p-3 border rounded-xl text-left transition ${taskType === "syllabus"
-                            ? "border-orange-500 bg-orange-50 text-orange-700"
-                            : "border-gray-200 hover:border-orange-300"
-                          }`}
+                        className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
+                          taskType === "syllabus"
+                            ? "border-orange-500 bg-orange-50/50 shadow-sm ring-2 ring-orange-500/20"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
                       >
-                        <MdBook size={18} className="mb-1" />
-                        <div className="font-medium text-sm">Syllabus Task</div>
-                        <div className="text-xs text-gray-500">Link to topic</div>
+                        <div className={`p-2 rounded-xl flex-shrink-0 ${taskType === "syllabus" ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500"}`}>
+                          <MdBook size={18} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-900">Syllabus Task</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Link to subject, topic & lesson</p>
+                        </div>
                       </button>
                       <button
                         type="button"
                         onClick={() => setTaskType("general")}
-                        className={`p-3 border rounded-xl text-left transition ${taskType === "general"
-                            ? "border-blue-500 bg-blue-50 text-blue-700"
-                            : "border-gray-200 hover:border-blue-300"
-                          }`}
+                        className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
+                          taskType === "general"
+                            ? "border-blue-500 bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
                       >
-                        <MdAssignment size={18} className="mb-1" />
-                        <div className="font-medium text-sm">General Task</div>
-                        <div className="text-xs text-gray-500">For all students</div>
+                        <div className={`p-2 rounded-xl flex-shrink-0 ${taskType === "general" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"}`}>
+                          <MdAssignment size={18} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-900">General Task</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Activity for all students in sublevel</p>
+                        </div>
                       </button>
                     </div>
                   </div>
 
-                  {/* Syllabus Selection */}
+                  {/* Syllabus Hierarchy Selection */}
                   {taskType === "syllabus" && (
-                    <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <h3 className="font-medium text-sm text-gray-800">Select Syllabus Topic</h3>
-
-                      {/* Session */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Session</label>
-                        <select
-                          value={selectedSessionId}
-                          onChange={(e) => setSelectedSessionId(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                        >
-                          <option value="">All Sessions</option>
-                          {sessions.map(s => (
-                            <option key={s._id} value={s._id}>{s.name}</option>
-                          ))}
-                        </select>
+                    <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60">
+                        <MdBook size={16} className="text-orange-500" />
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Curriculum Hierarchy</h4>
                       </div>
 
-                      {/* Version */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Syllabus Version</label>
-                        <select
-                          value={selectedVersionId}
-                          onChange={(e) => setSelectedVersionId(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                        >
-                          <option value="">Select Version</option>
-                          {versions.map(v => (
-                            <option key={v._id} value={v._id}>
-                              {v.title || v.version} ({v.status})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Subject */}
-                      {selectedVersionId && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Session */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                          <label className={labelCls}>Academic Session</label>
                           <select
-                            value={selectedSubjectId}
-                            onChange={(e) => {
-                              setSelectedSubjectId(e.target.value);
-                              setSelectedTopicId("");
-                              setSelectedSubTopicId("");
-                            }}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                            value={selectedSessionId}
+                            onChange={(e) => setSelectedSessionId(e.target.value)}
+                            className={selectCls}
                           >
-                            <option value="">Select Subject</option>
-                            {subjects.map(s => (
+                            <option value="">All Sessions</option>
+                            {sessions.map(s => (
                               <option key={s._id} value={s._id}>{s.name}</option>
                             ))}
                           </select>
                         </div>
-                      )}
 
-                      {/* Topic */}
-                      {selectedSubjectId && (
+                        {/* Version */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Topic *</label>
+                          <label className={labelCls}>Syllabus Version *</label>
                           <select
-                            value={selectedTopicId}
-                            onChange={(e) => {
-                              setSelectedTopicId(e.target.value);
-                              setSelectedSubTopicId("");
-                            }}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                            value={selectedVersionId}
+                            onChange={(e) => setSelectedVersionId(e.target.value)}
+                            className={selectCls}
                             required
                           >
-                            <option value="">Select Topic</option>
-                            {topics.map(t => (
-                              <option key={t._id} value={t._id}>{t.name}</option>
+                            <option value="">Select Version</option>
+                            {versions.map(v => (
+                              <option key={v._id} value={v._id}>
+                                {v.title || v.version} ({v.status})
+                              </option>
                             ))}
                           </select>
                         </div>
-                      )}
+
+                        {/* Subject */}
+                        {selectedVersionId && (
+                          <div>
+                            <label className={labelCls}>Subject *</label>
+                            <select
+                              value={selectedSubjectId}
+                              onChange={(e) => {
+                                setSelectedSubjectId(e.target.value);
+                                setSelectedTopicId("");
+                                setSelectedSubTopicId("");
+                              }}
+                              className={selectCls}
+                              required
+                            >
+                              <option value="">-- Select Subject --</option>
+                              {subjects.map(s => (
+                                <option key={s._id} value={s._id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Topic */}
+                        {selectedSubjectId && (
+                          <div>
+                            <label className={labelCls}>Topic *</label>
+                            <select
+                              value={selectedTopicId}
+                              onChange={(e) => {
+                                setSelectedTopicId(e.target.value);
+                                setSelectedSubTopicId("");
+                              }}
+                              className={selectCls}
+                              required
+                            >
+                              <option value="">-- Select Topic --</option>
+                              {topics.map(t => (
+                                <option key={t._id} value={t._id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
 
                       {/* SubTopic */}
                       {selectedTopicId && subTopics.length > 0 && (
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">SubTopic (Optional)</label>
+                          <label className={labelCls}>SubTopic (Optional)</label>
                           <select
                             value={selectedSubTopicId}
                             onChange={(e) => setSelectedSubTopicId(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                            className={selectCls}
                           >
                             <option value="">No SubTopic (Topic Level Task)</option>
                             {subTopics.map(st => (
@@ -373,184 +422,218 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                         </div>
                       )}
 
-                      {/* Summary Path Info */}
+                      {/* Path Preview */}
                       {selectedTopicId && (
-                        <div className="mt-3 p-3 bg-white border border-gray-150 rounded-xl">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Selected Path</p>
-                          <div className="flex items-center gap-2 text-xs flex-wrap">
-                            <MdBook size={14} className="text-orange-500" />
-                            <span>{subjects.find(s => s._id === selectedSubjectId)?.name}</span>
-                            <span className="text-gray-400">›</span>
-                            <MdTopic size={14} className="text-blue-500" />
-                            <span>{topics.find(t => t._id === selectedTopicId)?.name}</span>
-                            {selectedSubTopicId && (
-                              <>
-                                <span className="text-gray-400">›</span>
-                                <MdSubject size={14} className="text-green-500" />
-                                <span>{subTopics.find(st => st._id === selectedSubTopicId)?.name}</span>
-                              </>
-                            )}
-                          </div>
+                        <div className="p-3 bg-white border border-orange-100 rounded-xl flex items-center gap-2 text-xs flex-wrap">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-orange-500">Path:</span>
+                          <span className="font-bold text-slate-800">{subjects.find(s => s._id === selectedSubjectId)?.name}</span>
+                          <MdChevronRight size={14} className="text-slate-300" />
+                          <span className="font-bold text-slate-800">{topics.find(t => t._id === selectedTopicId)?.name}</span>
+                          {selectedSubTopicId && (
+                            <>
+                              <MdChevronRight size={14} className="text-slate-300" />
+                              <span className="font-semibold text-slate-600">{subTopics.find(st => st._id === selectedSubTopicId)?.name}</span>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Task Details */}
-                  <div className="space-y-4">
-                    <h3 className="font-medium text-sm text-gray-800">Task Information</h3>
+                  {/* Task Details Card */}
+                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                      <MdEdit size={16} className="text-orange-500" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Task Information</h4>
+                    </div>
 
+                    {/* Title */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Task Title *
-                      </label>
+                      <label className={labelCls}>Task Title *</label>
                       <input
                         type="text"
                         value={taskForm.title}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                        placeholder="Enter task title"
+                        className={inputCls}
+                        placeholder="e.g. Build Counter Component with useState"
                         required
                       />
                     </div>
 
+                    {/* Description */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                      <label className={labelCls}>Description (Optional)</label>
                       <textarea
                         value={taskForm.description}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                        className={inputCls}
                         rows={3}
-                        placeholder="Task description (optional)"
+                        placeholder="Detailed instructions or guidelines for this task..."
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Type & Priority */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                        <label className={labelCls}>Task Type</label>
                         <select
                           value={taskForm.type}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, type: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                          className={selectCls}
                         >
                           {TASK_TYPES.map(type => (
-                            <option key={type} value={type}>{type}</option>
+                            <option key={type} value={type}>{type.toUpperCase()}</option>
                           ))}
                         </select>
                       </div>
+
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
-                        <select
-                          value={taskForm.priority}
-                          onChange={(e) => setTaskForm(prev => ({ ...prev, priority: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                        >
-                          {PRIORITIES.map(priority => (
-                            <option key={priority} value={priority}>{priority}</option>
-                          ))}
-                        </select>
+                        <label className={labelCls}>Priority</label>
+                        <div className="flex gap-2">
+                          {PRIORITIES.map(priority => {
+                            const active = taskForm.priority === priority;
+                            const colors = {
+                              high: active ? "bg-rose-50 border-rose-500 text-rose-700 ring-1 ring-rose-500" : "hover:border-rose-300 text-slate-600",
+                              medium: active ? "bg-amber-50 border-amber-500 text-amber-700 ring-1 ring-amber-500" : "hover:border-amber-300 text-slate-600",
+                              low: active ? "bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500" : "hover:border-emerald-300 text-slate-600",
+                            };
+                            return (
+                              <button
+                                key={priority}
+                                type="button"
+                                onClick={() => setTaskForm(prev => ({ ...prev, priority }))}
+                                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all uppercase tracking-wider cursor-pointer ${colors[priority]}`}
+                              >
+                                {priority}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Metrics Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Max Marks</label>
+                        <label className={labelCls}>Max Marks</label>
                         <input
                           type="number"
                           value={taskForm.maxMarks}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, maxMarks: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                          className={inputCls}
                           min="1"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Time (Days)</label>
+                        <label className={labelCls}>Duration (Days)</label>
                         <input
                           type="number"
                           value={taskForm.timeDays}
                           onChange={(e) => setTaskForm(prev => ({ ...prev, timeDays: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                          className={inputCls}
                           min="1"
-                          placeholder="Optional"
+                          placeholder="e.g. 3"
+                        />
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Due Date</label>
+                        <input
+                          type="date"
+                          value={taskForm.dueDate}
+                          onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                          className={inputCls}
                         />
                       </div>
                     </div>
 
+                    {/* Measurable Points */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Due Date (Optional)</label>
-                      <input
-                        type="date"
-                        value={taskForm.dueDate}
-                        onChange={(e) => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Measurable Points</label>
+                      <label className={labelCls}>Measurable Outcomes & Criteria</label>
                       <textarea
                         value={taskForm.measurablePoints}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, measurablePoints: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                        rows={2}
-                        placeholder="Measurable outcomes..."
+                        className={inputCls}
+                        rows={3}
+                        placeholder="1. Student can define state&#10;2. Student correctly handles onClick events"
                       />
+                      <p className="text-[11px] text-slate-400 mt-1">Separate points with new lines or numbers (1., 2., etc.)</p>
                     </div>
                   </div>
 
-                  {/* Submit Buttons */}
-                  <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  {/* Actions footer */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
+                      className="px-5 py-3 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
                     >
-                      Reset
+                      {editingTask ? "Cancel Edit" : "Reset Form"}
                     </button>
                     <button
                       type="submit"
                       disabled={creating || updating}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 active:scale-[0.99] disabled:opacity-50 text-white text-xs font-bold py-3 px-6 rounded-xl transition shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-2"
                     >
-                      {creating || updating ? "Saving..." : editingTask ? "Update Task" : "Create Task"}
+                      {creating || updating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Saving Task...</span>
+                        </>
+                      ) : editingTask ? (
+                        <>
+                          <MdCheckCircle size={16} />
+                          <span>Update Task</span>
+                        </>
+                      ) : (
+                        <>
+                          <MdAdd size={16} />
+                          <span>Create Task</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <h3 className="font-medium text-sm text-gray-800">Select Syllabus Version</h3>
-
-                    {/* Session */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Session</label>
-                      <select
-                        value={selectedSessionId}
-                        onChange={(e) => setSelectedSessionId(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                      >
-                        <option value="">All Sessions</option>
-                        {sessions.map(s => (
-                          <option key={s._id} value={s._id}>{s.name}</option>
-                        ))}
-                      </select>
+                /* Bulk Upload Mode */
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60">
+                      <MdCloudUpload size={16} className="text-orange-500" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">Select Syllabus Target for Bulk Upload</h4>
                     </div>
 
-                    {/* Version */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Syllabus Version</label>
-                      <select
-                        value={selectedVersionId}
-                        onChange={(e) => setSelectedVersionId(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-                      >
-                        <option value="">Select Version</option>
-                        {versions.map(v => (
-                          <option key={v._id} value={v._id}>
-                            {v.title || v.version} ({v.status})
-                          </option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelCls}>Session</label>
+                        <select
+                          value={selectedSessionId}
+                          onChange={(e) => setSelectedSessionId(e.target.value)}
+                          className={selectCls}
+                        >
+                          <option value="">All Sessions</option>
+                          {sessions.map(s => (
+                            <option key={s._id} value={s._id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Syllabus Version *</label>
+                        <select
+                          value={selectedVersionId}
+                          onChange={(e) => setSelectedVersionId(e.target.value)}
+                          className={selectCls}
+                        >
+                          <option value="">Select Version</option>
+                          {versions.map(v => (
+                            <option key={v._id} value={v._id}>
+                              {v.title || v.version} ({v.status})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -565,87 +648,115 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                       }}
                     />
                   ) : (
-                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                      Please select a session and syllabus version above to upload tasks in bulk.
-                    </p>
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-700 font-medium">
+                      Please select an academic session and syllabus version above to unlock bulk Excel upload.
+                    </div>
                   )}
                 </div>
               )}
             </div>
           ) : (
             /* Manage Tasks Tab */
-            <div className="pt-2">
-              <div className="mb-4">
-                <p className="text-xs text-gray-500">
-                  {allTasks.length} task(s) found for this level
-                </p>
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <MdSearch size={18} />
+                </span>
+                <input
+                  type="text"
+                  value={manageSearch}
+                  onChange={(e) => setManageSearch(e.target.value)}
+                  placeholder="Search tasks by title, subject, topic..."
+                  className="w-full pl-10 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
+                />
               </div>
 
-              {allTasks.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  <MdAssignment size={40} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm font-medium text-gray-600">No tasks found</p>
-                  <p className="text-xs text-gray-400 mt-1">Create tasks using the Add Task tab</p>
+              {filteredTasks.length === 0 ? (
+                <div className="text-center py-16 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                  <MdAssignment size={36} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm font-bold text-slate-700">No tasks found</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {manageSearch ? "Try adjusting your search query" : "Create your first task using the Add Task tab"}
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {allTasks.map(task => (
-                    <div key={task._id} className="border border-gray-200 rounded-xl p-4 hover:border-orange-200 transition bg-white shadow-sm">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-sm text-gray-800">{task.title}</h4>
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${task.priority === "high" ? "bg-red-100 text-red-700" :
-                                task.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                                  "bg-green-100 text-green-700"
-                              }`}>
-                              {task.priority}
+                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+                  {filteredTasks.map(task => {
+                    const pKey = (task.priority || "medium").toLowerCase();
+                    const pColors = {
+                      high: "bg-rose-50 text-rose-700 border-rose-200",
+                      medium: "bg-amber-50 text-amber-700 border-amber-200",
+                      low: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    };
+                    return (
+                      <div
+                        key={task._id}
+                        className="border border-slate-200/80 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all bg-white flex flex-col sm:flex-row items-start justify-between gap-4"
+                      >
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-extrabold text-sm text-slate-800 leading-snug">{task.title}</h4>
+                            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${pColors[pKey] || pColors.medium}`}>
+                              {pKey}
                             </span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                               {task.type}
                             </span>
                           </div>
 
                           {task.topicName && (
-                            <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-1">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
                               <MdTopic size={13} className="text-orange-500" />
-                              <span>{task.subjectName} › {task.topicName}</span>
-                              {task.subTopicName && <span>› {task.subTopicName}</span>}
+                              <span className="font-semibold text-slate-700">{task.subjectName}</span>
+                              <MdChevronRight size={13} className="text-slate-300" />
+                              <span className="text-slate-600">{task.topicName}</span>
+                              {task.subTopicName && (
+                                <>
+                                  <MdChevronRight size={13} className="text-slate-300" />
+                                  <span className="text-slate-400">{task.subTopicName}</span>
+                                </>
+                              )}
                             </div>
                           )}
 
                           {task.description && (
-                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-xs text-slate-500 line-clamp-2">{task.description}</p>
                           )}
 
-                          <div className="flex items-center gap-3 text-[11px] text-gray-500">
-                            {task.maxMarks && <span>Max: {task.maxMarks} marks</span>}
-                            {task.timeDays && <span>Time: {task.timeDays}d</span>}
+                          <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1 flex-wrap">
+                            {task.maxMarks && <span>Max: <strong className="text-slate-600">{task.maxMarks}</strong> marks</span>}
+                            {task.timeDays && <span>Time: <strong className="text-slate-600">{task.timeDays}</strong>d</span>}
                             {task.dueDate && (
-                              <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                              <span className="inline-flex items-center gap-1 text-gray-500">
+                                <MdCalendarToday size={11} />
+                                Due: {new Date(task.dueDate).toLocaleDateString()}
+                              </span>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 ml-2">
+                        <div className="flex items-center gap-1.5 self-end sm:self-center">
                           <button
+                            type="button"
                             onClick={() => handleEdit(task)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition cursor-pointer"
                             title="Edit Task"
                           >
                             <MdEdit size={16} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(task._id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
                             title="Delete Task"
                           >
                             <MdDelete size={16} />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

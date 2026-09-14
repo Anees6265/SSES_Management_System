@@ -10,6 +10,7 @@ const SelectDropdown = ({
   className = "",
   buttonClassName = "",
   disabled = false,
+  align = "left",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -50,7 +51,7 @@ const SelectDropdown = ({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1.5 min-w-full w-max max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar">
+        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1.5 min-w-full w-max max-w-[calc(100vw-2rem)] max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar`}>
           {options.map((opt) => {
             const isSelected = String(opt.value) === String(value);
             return (

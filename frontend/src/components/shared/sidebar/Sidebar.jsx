@@ -68,6 +68,7 @@ const Sidebar = ({ children }) => {
   useEffect(() => {
     const newMenus = getActiveMenus(location.pathname);
     setOpenMenus(newMenus);
+    closeMobileSidebar?.();
   }, [location.pathname]);
 
 
@@ -290,21 +291,39 @@ const Sidebar = ({ children }) => {
 
   return (
     <>
-      {/* ── MOBILE OVERLAY DRAWER ── */}
-      {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={closeMobileSidebar} />
-          <aside className="relative w-64 h-full bg-white border-r border-gray-200 flex flex-col z-10">
-            <div className="flex items-center justify-between px-4 py-5">
-              <img src={logo} alt="Logo" className="h-16 w-auto" />
-              <button onClick={closeMobileSidebar} className="text-gray-500 hover:text-gray-700">
-                <HiChevronLeft size={22} />
-              </button>
-            </div>
-            <NavContent onClose={closeMobileSidebar} />
-          </aside>
-        </div>
-      )}
+      {/* ── MOBILE OVERLAY DRAWER WITH SMOOTH SLIDE ANIMATION ── */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden transition-all duration-300 ${
+          isMobileOpen ? "pointer-events-auto visible" : "pointer-events-none invisible"
+        }`}
+      >
+        {/* Backdrop with smooth fade in/out */}
+        <div
+          className={`absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+            isMobileOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={closeMobileSidebar}
+        />
+
+        {/* Drawer with smooth slide from left */}
+        <aside
+          className={`relative z-50 w-64 max-w-[85vw] h-full bg-white shadow-2xl border-r border-gray-200 flex flex-col transition-transform duration-300 ease-out transform ${
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between px-4 py-5">
+            <img src={logo} alt="Logo" className="h-16 w-auto" />
+            <button 
+              onClick={closeMobileSidebar} 
+              className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+              aria-label="Close Sidebar"
+            >
+              <HiChevronLeft size={22} />
+            </button>
+          </div>
+          <NavContent onClose={closeMobileSidebar} />
+        </aside>
+      </div>
 
 
       {/* ── DESKTOP SIDEBAR ── */}
@@ -338,7 +357,7 @@ const Sidebar = ({ children }) => {
 
       {/* ── MAIN CONTENT ── */}
       <main
-        className={`bg-[#F8F7F5] min-h-screen transition-all duration-300 ${
+        className={`bg-[#F8F7F5] min-h-screen min-w-0 overflow-x-hidden transition-all duration-300 ${
           isOpen ? "lg:ml-64" : "lg:ml-16"
         }`}
       >

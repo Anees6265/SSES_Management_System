@@ -15,7 +15,7 @@ import { useGetAllSessionsQuery } from "../../../redux/api/authApi";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 // ── Reusable Stat Card ───────────────────────────────────────
-const StatCard = ({ title, value, icon, color, sub, trend, trendColor, onClick }) => {
+const StatCard = ({ title, value, icon, color, sub, trend, trendColor, onClick, className = "" }) => {
   const bgStyles = {
     blue:   "bg-blue-50 text-blue-600",
     green:  "bg-green-50 text-green-600",
@@ -28,21 +28,21 @@ const StatCard = ({ title, value, icon, color, sub, trend, trendColor, onClick }
   return (
     <div 
       onClick={onClick}
-      className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-between min-h-[140px] transition hover:shadow-md ${onClick ? "cursor-pointer hover:border-orange-300" : ""}`}
+      className={`bg-white rounded-xl border border-gray-100 shadow-xs p-3.5 sm:p-5 flex flex-col justify-between transition hover:shadow-md ${onClick ? "cursor-pointer hover:border-orange-300 active:scale-[0.99]" : ""} ${className}`}
     >
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm text-gray-500 font-semibold">{title}</p>
-          <p className="text-3xl font-extrabold text-gray-800 mt-2">{value ?? "—"}</p>
+      <div className="flex justify-between items-start gap-1.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] sm:text-xs text-gray-500 font-semibold truncate leading-tight">{title}</p>
+          <p className="text-xl sm:text-3xl font-extrabold text-gray-800 mt-1 truncate">{value ?? "—"}</p>
         </div>
-        <div className={`${bgStyles} p-3 rounded-xl text-2xl shrink-0`}>
+        <div className={`${bgStyles} p-2 sm:p-3 rounded-lg sm:rounded-xl text-lg sm:text-2xl shrink-0`}>
           {icon}
         </div>
       </div>
       {trend && (
-        <div className="flex items-center gap-1 mt-4 text-xs font-semibold">
+        <div className="flex items-center gap-1 mt-2.5 sm:mt-4 text-[10px] sm:text-xs font-semibold flex-wrap">
           <span className={trendColor || "text-gray-400"}>{trend}</span>
-          {sub && <span className="text-gray-400 font-normal">{sub}</span>}
+          {sub && <span className="text-gray-400 font-normal truncate">{sub}</span>}
         </div>
       )}
     </div>
@@ -50,8 +50,8 @@ const StatCard = ({ title, value, icon, color, sub, trend, trendColor, onClick }
 };
 
 // ── Skeleton ─────────────────────────────────────────────────
-const Skel = ({ h = "h-32" }) => (
-  <div className={`${h} bg-gray-100 rounded-xl animate-pulse`} />
+const Skel = ({ h = "h-28 sm:h-32", className = "" }) => (
+  <div className={`${h} bg-gray-100 rounded-xl animate-pulse ${className}`} />
 );
 
 // ── Section Label ────────────────────────────────────────────
@@ -136,27 +136,27 @@ const CourseYearMatrixTable = ({ matrix }) => {
 
   return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h3 className="font-bold text-gray-700 text-base">Course-wise & Year-wise Student Strength</h3>
+          <h3 className="font-bold text-gray-700 text-sm sm:text-base">Course-wise & Year-wise Student Strength</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Student counts distributed by course (BCA, BBA, B.Com, etc.) and year of study (1st, 2nd, 3rd, 4th Year)
+            Student counts distributed by course (BCA, BBA, B.Com, etc.) and year of study
           </p>
         </div>
-        <div className="flex bg-gray-100 p-1 rounded-lg self-start sm:self-auto">
+        <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
           <button
             onClick={() => setViewMode("level")}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold transition-all text-center ${
               viewMode === "level"
                 ? "bg-white text-gray-800 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            By Year (1st, 2nd, 3rd...)
+            By Year
           </button>
           <button
             onClick={() => setViewMode("session")}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold transition-all text-center ${
               viewMode === "session"
                 ? "bg-white text-gray-800 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
@@ -168,16 +168,16 @@ const CourseYearMatrixTable = ({ matrix }) => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+        <table className="w-full min-w-[550px] text-xs sm:text-sm">
+          <thead className="bg-gray-50 text-gray-500 text-[11px] sm:text-xs uppercase font-semibold">
             <tr>
-              <th className="px-5 py-3 text-left">Course / Sub-Department</th>
+              <th className="px-3.5 sm:px-5 py-3 text-left">Course / Sub-Department</th>
               {columns.map((col) => (
-                <th key={col.id} className="px-5 py-3 text-center">
+                <th key={col.id} className="px-3 sm:px-5 py-3 text-center">
                   {col.name}
                 </th>
               ))}
-              <th className="px-5 py-3 text-center bg-gray-50/50 font-bold text-gray-700">Total</th>
+              <th className="px-3 sm:px-5 py-3 text-center bg-gray-50/50 font-bold text-gray-700">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -188,11 +188,11 @@ const CourseYearMatrixTable = ({ matrix }) => {
               );
               return (
                 <tr key={course.id} className="transition hover:bg-slate-50">
-                  <td className="px-5 py-4 font-semibold text-gray-800">{course.name}</td>
+                  <td className="px-3.5 sm:px-5 py-3 sm:py-4 font-semibold text-gray-800">{course.name}</td>
                   {columns.map((col) => {
                     const count = getStudentCount(course.id, col.id);
                     return (
-                      <td key={col.id} className="px-5 py-4 text-center text-gray-600 font-medium">
+                      <td key={col.id} className="px-3 sm:px-5 py-3 sm:py-4 text-center text-gray-600 font-medium">
                         {count > 0 ? (
                           <span className="inline-block bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-xs font-semibold">
                             {count}
@@ -203,20 +203,20 @@ const CourseYearMatrixTable = ({ matrix }) => {
                       </td>
                     );
                   })}
-                  <td className="px-5 py-4 text-center font-bold text-blue-600 bg-blue-50/20">
+                  <td className="px-3 sm:px-5 py-3 sm:py-4 text-center font-bold text-blue-600 bg-blue-50/20">
                     {rowTotal}
                   </td>
                 </tr>
               );
             })}
             <tr className="bg-gray-50/60 font-bold">
-              <td className="px-5 py-4 text-gray-700 uppercase text-xs">Grand Total</td>
+              <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-gray-700 uppercase text-[11px] sm:text-xs">Grand Total</td>
               {colTotals.map((total, idx) => (
-                <td key={idx} className="px-5 py-4 text-center text-gray-800">
+                <td key={idx} className="px-3 sm:px-5 py-3 sm:py-4 text-center text-gray-800">
                   {total}
                 </td>
               ))}
-              <td className="px-5 py-4 text-center text-blue-700 bg-blue-50/40 text-base">
+              <td className="px-3 sm:px-5 py-3 sm:py-4 text-center text-blue-700 bg-blue-50/40 text-sm sm:text-base">
                 {grandTotal}
               </td>
             </tr>
@@ -359,18 +359,24 @@ const AdminDashboard = () => {
     return (
       <div className="bg-slate-50 min-h-screen">
         {/* Header Section */}
-        <div className="bg-white border-b px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Department Dashboard</h1>
-            <p className="text-xs font-semibold text-orange-500 uppercase tracking-wider mt-0.5">
-              {departmentName} - {departmentSubtext}
-            </p>
-          </div>
-
-          {/* Filters & Actions */}
-          <div className="flex flex-wrap items-center gap-3">
+        <Header
+          title="Department Dashboard"
+          subtitle={`${departmentName} — ${departmentSubtext}`}
+          badge={departmentName}
+          showBack={false}
+          actions={
+            <button 
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shrink-0 shadow-2xs"
+              onClick={() => setShowNotification(!showNotification)}
+              title="Notifications"
+            >
+              <MdNotificationsNone size={19} />
+            </button>
+          }
+        >
+          <div className="grid grid-cols-2 gap-2 w-full lg:flex lg:w-auto lg:items-center lg:gap-3">
             {/* Filter Badges */}
-            <div className="hidden lg:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-2">
               <span className="border border-orange-200 bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
                 Session: {academicYearLabel.replace("AY ", "")}
                 <MdClose 
@@ -396,14 +402,15 @@ const AdminDashboard = () => {
                   return { value: s._id, label: `${label} (${statusText})` };
                 })
               ]}
-              className="min-w-[180px] w-auto"
-              buttonClassName="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 focus:outline-none hover:border-orange-450 cursor-pointer flex items-center justify-between gap-2"
+              className="w-full lg:w-auto lg:min-w-[170px]"
+              buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
             />
 
             {/* Level Select */}
             <SelectDropdown
               value={selectedLevel}
               onChange={(val) => setSelectedLevel(val)}
+              align="right"
               options={[
                 { value: "All", label: "All Levels" },
                 { value: "Level 1", label: "Level 1" },
@@ -411,29 +418,21 @@ const AdminDashboard = () => {
                 { value: "Level 3", label: "Level 3" },
                 { value: "Level 4", label: "Level 4" }
               ]}
-              className="min-w-[120px] w-auto"
-              buttonClassName="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 focus:outline-none hover:border-orange-455 cursor-pointer flex items-center justify-between gap-2"
+              className="w-full lg:w-auto lg:min-w-[120px]"
+              buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
             />
-
-            {/* Notification Bell */}
-            <button 
-              className="p-2 border rounded-lg text-gray-500 hover:text-orange-500 hover:border-orange-200 transition bg-white"
-              onClick={() => setShowNotification(!showNotification)}
-            >
-              <MdNotificationsNone size={20} />
-            </button>
           </div>
-        </div>
+        </Header>
 
         {/* Notification Toast panel */}
         {showNotification && (
-          <div className="mx-6 mt-4 p-4 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl text-sm flex justify-between items-center shadow-sm">
+          <div className="mx-3 sm:mx-6 mt-3 sm:mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl text-xs sm:text-sm flex justify-between items-center shadow-sm gap-2">
             <span>Welcome back! Logged in as <strong>{userObj.name}</strong> ({role.toUpperCase()}) for the {departmentName} department.</span>
-            <button onClick={() => setShowNotification(false)} className="text-lg hover:text-orange-900"><MdClose /></button>
+            <button onClick={() => setShowNotification(false)} className="text-lg hover:text-orange-900 shrink-0"><MdClose /></button>
           </div>
         )}
 
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg">
               {error}
@@ -441,8 +440,8 @@ const AdminDashboard = () => {
           )}
 
           {/* ── Top row 5 Stats Cards ───────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {loading ? Array(5).fill(0).map((_, i) => <Skel key={i} />) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+            {loading ? Array(5).fill(0).map((_, i) => <Skel key={i} className={i === 4 ? "col-span-2 sm:col-span-1" : ""} />) : (
               <>
                 <StatCard 
                   title="Total Students" 
@@ -493,28 +492,29 @@ const AdminDashboard = () => {
                   trendColor="text-gray-500"
                   sub="active instructors"
                   onClick={() => navigate("/user-management")}
+                  className="col-span-2 sm:col-span-1"
                 />
               </>
             )}
           </div>
 
           {/* ── Middle Row: Level Distribution & Task Completion ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column: Student Level Distribution */}
-            <div className="lg:col-span-2 bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-700 text-base">Student Distribution by Level</h3>
+            <div className="lg:col-span-2 min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 className="font-bold text-gray-700 text-sm sm:text-base">Student Distribution by Level</h3>
                 <span className="text-xs text-gray-400 font-semibold cursor-pointer">···</span>
               </div>
-              <div className="w-full h-64">
+              <div className="w-full h-56 sm:h-64">
                 {loading ? <Skel h="h-full" /> : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={distributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart data={distributionData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                       <Tooltip cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="students" fill="#f97316" radius={[6, 6, 0, 0]} barSize={40} />
+                      <Bar dataKey="students" fill="#f97316" radius={[6, 6, 0, 0]} barSize={32} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -522,9 +522,9 @@ const AdminDashboard = () => {
             </div>
 
             {/* Right Column: Departmental Task Completion */}
-            <div className="bg-white rounded-xl border shadow-sm p-5">
-              <h3 className="font-bold text-gray-700 text-base mb-6">Departmental Task Completion</h3>
-              <div className="space-y-5">
+            <div className="min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5">
+              <h3 className="font-bold text-gray-700 text-sm sm:text-base mb-4 sm:mb-6">Departmental Task Completion</h3>
+              <div className="space-y-4 sm:space-y-5">
                 {[
                   { label: "Curriculum Review", value: 92 },
                   { label: "Faculty Evaluations", value: 78 },
@@ -532,7 +532,7 @@ const AdminDashboard = () => {
                   { label: "Placement Drives", value: 88 }
                 ].map((item, idx) => (
                   <div key={idx} className="space-y-1.5">
-                    <div className="flex justify-between items-center text-sm font-semibold text-gray-700">
+                    <div className="flex justify-between items-center text-xs sm:text-sm font-semibold text-gray-700">
                       <span>{item.label}</span>
                       <span className="text-orange-500">{item.value}%</span>
                     </div>
@@ -546,13 +546,13 @@ const AdminDashboard = () => {
           </div>
 
           {/* ── Bottom Row: Exam Performance Trend ───────────────── */}
-          <div className="bg-white rounded-xl border shadow-sm p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div>
-                <h3 className="font-bold text-gray-700 text-base">Exam Performance Trend</h3>
+                <h3 className="font-bold text-gray-700 text-sm sm:text-base">Exam Performance Trend</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Average GPA across all department modules</p>
               </div>
-              <div className="flex items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
                   <span className="text-gray-600">Current AY</span>
@@ -564,19 +564,19 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="w-full h-80">
+            <div className="w-full h-64 sm:h-80">
               {loading ? <Skel h="h-full" /> : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={gpaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <LineChart data={gpaData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                    <YAxis domain={[0, 4.0]} tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                    <YAxis domain={[0, 4.0]} tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
                       itemStyle={{ color: '#fff' }}
                     />
-                    <Line type="monotone" dataKey="Current" stroke="#f97316" strokeWidth={3} dot={{ fill: '#f97316', strokeWidth: 1 }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="Prev" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: '#cbd5e1', strokeWidth: 1 }} />
+                    <Line type="monotone" dataKey="Current" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', strokeWidth: 1, r: 3 }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="Prev" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: '#cbd5e1', strokeWidth: 1, r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -584,19 +584,19 @@ const AdminDashboard = () => {
           </div>
 
           {/* Course-wise & Year-wise Student Strength Matrix */}
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
           </div>
 
           {/* Quick actions for Department Users */}
-          <div className="bg-white rounded-xl border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="bg-white rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
               <h4 className="font-semibold text-gray-800 text-sm">Download Academic Progress Report</h4>
               <p className="text-xs text-gray-400 mt-0.5">Generate a complete PDF report of curriculum, students, and placements for {departmentName}.</p>
             </div>
             <button 
               onClick={handleDownloadReport}
-              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm"
+              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm w-full sm:w-auto cursor-pointer shrink-0"
             >
               <MdFileDownload size={18} />
               Download Report
@@ -611,20 +611,33 @@ const AdminDashboard = () => {
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header Section */}
-      <div className="bg-white border-b px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {role === "superadmin" ? "Super Admin Dashboard" : "Admin Dashboard"}
-          </h1>
-          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mt-0.5">
-            ITEG MANAGEMENT SYSTEM · SYSTEM-WIDE OVERVIEW
-          </p>
-        </div>
-
-        {/* Filters & Actions */}
-        <div className="flex flex-wrap items-center gap-3">
+      <Header
+        title={role === "superadmin" ? "Super Admin Dashboard" : "Admin Dashboard"}
+        subtitle="ITEG MANAGEMENT SYSTEM · SYSTEM-WIDE OVERVIEW"
+        badge={role === "superadmin" ? "SUPERADMIN" : "ADMIN"}
+        showBack={false}
+        actions={
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={fetchData}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-300 transition bg-white cursor-pointer shrink-0 shadow-2xs"
+              title="Refresh Data"
+            >
+              <MdRefresh className={loading ? "animate-spin" : ""} size={18} />
+            </button>
+            <button 
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-300 transition bg-white cursor-pointer shrink-0 shadow-2xs"
+              onClick={() => setShowNotification(!showNotification)}
+              title="Notifications"
+            >
+              <MdNotificationsNone size={19} />
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-2 gap-2 w-full lg:flex lg:w-auto lg:items-center lg:gap-3">
           {/* Filter Badges */}
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-2">
             <span className="border border-blue-200 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
               Session: {academicYearLabel.replace("AY ", "")}
               <MdClose 
@@ -650,14 +663,15 @@ const AdminDashboard = () => {
                 return { value: s._id, label: `${label} (${statusText})` };
               })
             ]}
-            className="min-w-[180px] w-auto"
-            buttonClassName="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 focus:outline-none hover:border-orange-450 cursor-pointer flex items-center justify-between gap-2"
+            className="w-full lg:w-auto lg:min-w-[170px]"
+            buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-blue-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
           />
 
           {/* Level Select */}
           <SelectDropdown
             value={selectedLevel}
             onChange={(val) => setSelectedLevel(val)}
+            align="right"
             options={[
               { value: "All", label: "All Levels" },
               { value: "Level 1", label: "Level 1" },
@@ -665,38 +679,21 @@ const AdminDashboard = () => {
               { value: "Level 3", label: "Level 3" },
               { value: "Level 4", label: "Level 4" }
             ]}
-            className="min-w-[120px] w-auto"
-            buttonClassName="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 focus:outline-none hover:border-orange-455 cursor-pointer flex items-center justify-between gap-2"
+            className="w-full lg:w-auto lg:min-w-[120px]"
+            buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-blue-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
           />
-
-          {/* Refresh Button */}
-          <button
-            onClick={fetchData}
-            className="p-2 border rounded-lg text-gray-500 hover:text-blue-600 hover:border-blue-200 transition bg-white"
-            title="Refresh Data"
-          >
-            <MdRefresh className={loading ? "animate-spin" : ""} size={20} />
-          </button>
-
-          {/* Notification Bell */}
-          <button 
-            className="p-2 border rounded-lg text-gray-500 hover:text-blue-600 hover:border-blue-200 transition bg-white"
-            onClick={() => setShowNotification(!showNotification)}
-          >
-            <MdNotificationsNone size={20} />
-          </button>
         </div>
-      </div>
+      </Header>
 
       {/* Notification Toast panel */}
       {showNotification && (
-        <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm flex justify-between items-center shadow-sm">
+        <div className="mx-3 sm:mx-6 mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs sm:text-sm flex justify-between items-center shadow-sm gap-2">
           <span>Welcome back! Logged in as <strong>{userObj.name}</strong> ({role.toUpperCase()}) with system-wide privileges.</span>
-          <button onClick={() => setShowNotification(false)} className="text-lg hover:text-blue-900"><MdClose /></button>
+          <button onClick={() => setShowNotification(false)} className="text-lg hover:text-blue-900 shrink-0"><MdClose /></button>
         </div>
       )}
 
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg">
             {error}
@@ -704,8 +701,8 @@ const AdminDashboard = () => {
         )}
 
         {/* ── Top row 5 Stats Cards ───────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {loading ? Array(5).fill(0).map((_, i) => <Skel key={i} />) : (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+          {loading ? Array(5).fill(0).map((_, i) => <Skel key={i} className={i === 4 ? "col-span-2 sm:col-span-1" : ""} />) : (
             <>
               <StatCard 
                 title="Total Students" 
@@ -751,24 +748,25 @@ const AdminDashboard = () => {
                 trend="Steady"
                 trendColor="text-gray-500"
                 sub="registered staff"
+                className="col-span-2 sm:col-span-1"
               />
             </>
           )}
         </div>
 
         {/* ── Middle Row: Department Distribution & Gender Breakdown ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* Left Column: Student & Placement Distribution by Department */}
-          <div className="lg:col-span-2 bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-6">
+          <div className="lg:col-span-2 min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
               <div>
-                <h3 className="font-bold text-gray-700 text-base">Department Student & Placement Stats</h3>
+                <h3 className="font-bold text-gray-700 text-sm sm:text-base">Department Student & Placement Stats</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Total students vs. placed students per sub-department</p>
               </div>
               <span className="text-xs text-gray-400 font-semibold cursor-pointer">···</span>
             </div>
-            <div className="w-full h-72">
+            <div className="w-full h-60 sm:h-72">
               {loading ? <Skel h="h-full" /> : depts.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm">No data available</div>
               ) : (
@@ -777,13 +775,13 @@ const AdminDashboard = () => {
                     name: d.name.length > 15 ? d.name.substring(0, 15) + "..." : d.name,
                     Total: d.total || 0,
                     Placed: d.placed || 0
-                  }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  }))} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                     <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                     <Tooltip cursor={{ fill: '#f8fafc' }} />
-                    <Bar dataKey="Total" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={25} />
-                    <Bar dataKey="Placed" fill="#a855f7" radius={[6, 6, 0, 0]} barSize={25} />
+                    <Bar dataKey="Total" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={22} />
+                    <Bar dataKey="Placed" fill="#a855f7" radius={[6, 6, 0, 0]} barSize={22} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -791,22 +789,22 @@ const AdminDashboard = () => {
           </div>
 
           {/* Right Column: Gender Breakdown */}
-          <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-between">
+          <div className="min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-700 text-base mb-1">Gender Breakdown</h3>
-              <p className="text-xs text-gray-400 mb-6">Distribution across all system users</p>
+              <h3 className="font-bold text-gray-700 text-sm sm:text-base mb-1">Gender Breakdown</h3>
+              <p className="text-xs text-gray-400 mb-4 sm:mb-6">Distribution across all system users</p>
             </div>
             {loading ? <Skel h="h-48" /> : (
-              <div className="space-y-6 my-auto">
+              <div className="space-y-4 sm:space-y-6 my-auto">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 text-blue-600">
                       <div className="bg-blue-50 p-2 rounded-lg text-lg"><FaMale /></div>
-                      <span className="text-sm font-semibold text-gray-700">Male Students</span>
+                      <span className="text-xs sm:text-sm font-semibold text-gray-700">Male Students</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-xl font-extrabold text-blue-600">{g.male ?? 0}</span>
-                      <span className="text-xs text-gray-400 block">{malePct}% of total</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-blue-600">{g.male ?? 0}</span>
+                      <span className="text-[11px] sm:text-xs text-gray-400 block">{malePct}% of total</span>
                     </div>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -818,11 +816,11 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 text-pink-500">
                       <div className="bg-pink-50 p-2 rounded-lg text-lg"><FaFemale /></div>
-                      <span className="text-sm font-semibold text-gray-700">Female Students</span>
+                      <span className="text-xs sm:text-sm font-semibold text-gray-700">Female Students</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-xl font-extrabold text-pink-500">{g.female ?? 0}</span>
-                      <span className="text-xs text-gray-400 block">{femalePct}% of total</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-pink-500">{g.female ?? 0}</span>
+                      <span className="text-[11px] sm:text-xs text-gray-400 block">{femalePct}% of total</span>
                     </div>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -831,21 +829,21 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
-            <div className="border-t pt-4 mt-4 text-center">
-              <span className="text-xs text-gray-400 font-semibold">Total Profiled: {totalGender} students</span>
+            <div className="border-t pt-3 sm:pt-4 mt-3 sm:mt-4 text-center">
+              <span className="text-[11px] sm:text-xs text-gray-400 font-semibold">Total Profiled: {totalGender} students</span>
             </div>
           </div>
         </div>
 
         {/* ── Bottom Row: Department Overview Table & Quick Actions ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* Department-wise Overview Table (Col span 2) */}
-          <div className="lg:col-span-2 bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col justify-between">
+          <div className="lg:col-span-2 min-w-0 bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col justify-between">
             <div>
-              <div className="px-5 py-4 border-b flex items-center justify-between">
+              <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-gray-700 text-base">Department-wise Overview</h3>
+                  <h3 className="font-bold text-gray-700 text-sm sm:text-base">Department-wise Overview</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Key placement metrics by sub-department</p>
                 </div>
                 {!loading && (
@@ -855,16 +853,16 @@ const AdminDashboard = () => {
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                <table className="w-full min-w-[620px] text-xs sm:text-sm">
+                  <thead className="bg-gray-50 text-gray-500 text-[11px] sm:text-xs uppercase font-semibold">
                     <tr>
-                      <th className="px-5 py-3 text-left">Department</th>
-                      <th className="px-5 py-3 text-center">Total</th>
-                      <th className="px-5 py-3 text-center">Active</th>
-                      <th className="px-5 py-3 text-center">Placed</th>
-                      <th className="px-5 py-3 text-center">Dropped</th>
-                      <th className="px-5 py-3 text-left">Placement Rate</th>
-                      <th className="px-5 py-3 text-center"></th>
+                      <th className="px-3.5 sm:px-5 py-3 text-left">Department</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-center">Total</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-center">Active</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-center">Placed</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-center">Dropped</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-left">Placement Rate</th>
+                      <th className="px-3.5 sm:px-5 py-3 text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -872,7 +870,7 @@ const AdminDashboard = () => {
                       Array(4).fill(0).map((_, i) => (
                         <tr key={i}>
                           {Array(7).fill(0).map((_, j) => (
-                            <td key={j} className="px-5 py-4">
+                            <td key={j} className="px-3.5 sm:px-5 py-3 sm:py-4">
                               <div className="h-4 bg-gray-100 rounded animate-pulse" />
                             </td>
                           ))}
@@ -895,12 +893,12 @@ const AdminDashboard = () => {
                             className="transition hover:bg-slate-50 cursor-pointer"
                             onClick={() => navigate(`/placements/department/${d.subDepartmentId}`)}
                           >
-                            <td className="px-5 py-4 font-semibold text-gray-800">{d.name}</td>
-                            <td className="px-5 py-4 text-center text-gray-600 font-medium">{d.total}</td>
-                            <td className="px-5 py-4 text-center text-green-600 font-medium">{d.active}</td>
-                            <td className="px-5 py-4 text-center text-purple-600 font-medium">{d.placed}</td>
-                            <td className="px-5 py-4 text-center text-red-500 font-medium">{d.dropped}</td>
-                            <td className="px-5 py-4">
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 font-semibold text-gray-800">{d.name}</td>
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-center text-gray-600 font-medium">{d.total}</td>
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-center text-green-600 font-medium">{d.active}</td>
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-center text-purple-600 font-medium">{d.placed}</td>
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-center text-red-500 font-medium">{d.dropped}</td>
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-gray-100 rounded-full h-2 min-w-[70px]">
                                   <div className={`${barColor} h-2 rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -908,7 +906,7 @@ const AdminDashboard = () => {
                                 <span className={`text-xs font-bold w-10 text-right ${textColor}`}>{pct}%</span>
                               </div>
                             </td>
-                            <td className="px-5 py-4 text-center">
+                            <td className="px-3.5 sm:px-5 py-3 sm:py-4 text-center">
                               <MdArrowForward className="text-gray-400 hover:text-blue-500 mx-auto transition" />
                             </td>
                           </tr>
@@ -922,12 +920,12 @@ const AdminDashboard = () => {
           </div>
 
           {/* Quick Actions (Col span 1) */}
-          <div className="bg-white rounded-xl border shadow-sm p-5 flex flex-col justify-between">
+          <div className="min-w-0 bg-white rounded-xl border shadow-sm p-4 sm:p-5 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-gray-700 text-base mb-1">Quick System Actions</h3>
-              <p className="text-xs text-gray-400 mb-5">Shortcut shortcuts to management sections</p>
+              <h3 className="font-bold text-gray-700 text-sm sm:text-base mb-1">Quick System Actions</h3>
+              <p className="text-xs text-gray-400 mb-4 sm:mb-5">Shortcut shortcuts to management sections</p>
             </div>
-            <div className="grid grid-cols-1 gap-3 my-auto">
+            <div className="grid grid-cols-1 gap-2.5 sm:gap-3 my-auto">
               {[
                 { label: "Student Progress",     path: "/student-detail-table" },
                 { label: "Placement Candidates", path: "/readiness-status" },
@@ -937,24 +935,24 @@ const AdminDashboard = () => {
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className="border border-slate-100 hover:border-blue-300 bg-white hover:bg-blue-50/30 rounded-xl p-3.5 text-sm font-semibold text-gray-700 flex items-center justify-between transition-all duration-200 transform hover:-translate-y-0.5 shadow-sm"
+                  className="border border-slate-100 hover:border-blue-300 bg-white hover:bg-blue-50/30 rounded-xl p-3 sm:p-3.5 text-xs sm:text-sm font-semibold text-gray-700 flex items-center justify-between transition-all duration-200 transform hover:-translate-y-0.5 shadow-xs cursor-pointer"
                 >
-                  <span className="flex items-center gap-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                    {item.label}
+                  <span className="flex items-center gap-2.5 sm:gap-3">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                    <span className="truncate">{item.label}</span>
                   </span>
-                  <MdArrowForward className="text-gray-400 shrink-0" />
+                  <MdArrowForward className="text-gray-400 shrink-0 ml-2" />
                 </button>
               ))}
             </div>
-            <div className="text-center pt-4 border-t mt-4">
+            <div className="text-center pt-3 sm:pt-4 border-t mt-3 sm:mt-4">
               <span className="text-[11px] text-gray-400 font-semibold">System settings are available in the sidebar</span>
             </div>
           </div>
         </div>
 
         {/* Course-wise & Year-wise Student Strength Matrix */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
         </div>
 

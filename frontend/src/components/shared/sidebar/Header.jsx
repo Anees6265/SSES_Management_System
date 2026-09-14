@@ -5,6 +5,7 @@ import { useSidebar } from "../../../contexts/SidebarContext";
 
 const SIDEBAR_ROOT_PATHS = [
   "/",
+  "/dashboard",
   "/attendance-details",
   "/department-management",
   "/student-detail-table",
@@ -28,6 +29,7 @@ const Header = ({
   title,
   badge,
   subtitle,
+  actions = null,
   children,
   breadcrumbs = [],
   bottomRow = null,
@@ -68,41 +70,55 @@ const Header = ({
   };
 
   return (
-    <header className="sticky top-0 z-10 bg-white shadow-sm">
+    <header className="sticky top-0 z-20 bg-white shadow-xs">
 
       {/* Mobile top bar */}
       <div className="lg:hidden border-b border-gray-200">
-        <div className="flex items-center justify-between px-3 py-2 gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {shouldShowBack ? (
               <button
                 onClick={handleBack}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-md hover:shadow-lg text-gray-600 hover:text-orange-500 transition flex-shrink-0 cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 shadow-xs hover:bg-gray-50 text-gray-600 hover:text-orange-500 transition shrink-0 cursor-pointer"
                 title="Go Back"
                 aria-label="Go Back"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={19} />
               </button>
             ) : openMobileSidebar ? (
               <button
                 onClick={openMobileSidebar}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-md hover:shadow-lg text-gray-600 hover:text-orange-500 transition flex-shrink-0 cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 shadow-xs hover:bg-orange-50 text-gray-700 hover:text-orange-500 transition shrink-0 cursor-pointer"
                 title="Open Sidebar"
                 aria-label="Open Sidebar"
               >
-                <Menu size={18} />
+                <Menu size={20} />
               </button>
             ) : null}
-            <h1 className="text-sm font-semibold text-gray-800 truncate">{title}</h1>
-            {badge && (
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-medium whitespace-nowrap flex-shrink-0">
-                {badge}
-              </span>
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-bold text-gray-800 truncate">{title}</h1>
+                {badge && (
+                  <span className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-semibold whitespace-nowrap shrink-0">
+                    {badge}
+                  </span>
+                )}
+              </div>
+              {subtitle && (
+                <p className="text-[11px] text-gray-400 font-medium truncate mt-0.5">{subtitle}</p>
+              )}
+            </div>
           </div>
+
+          {/* Mobile Right Actions */}
+          {actions && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {actions}
+            </div>
+          )}
         </div>
         {children && (
-          <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 flex-wrap">
+          <div className="px-3 py-2 border-t border-gray-100 bg-gray-50/50 w-full">
             {children}
           </div>
         )}
@@ -110,7 +126,7 @@ const Header = ({
 
       {/* Desktop header */}
       <div className="hidden lg:block">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 gap-3">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {shouldShowBack && (
               <button
@@ -137,8 +153,9 @@ const Header = ({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2.5 flex-shrink-0">
             {children}
+            {actions}
           </div>
         </div>
       </div>

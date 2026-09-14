@@ -67,6 +67,19 @@ const ActionMenu = ({ task, onDelete }) => {
 };
 
 const TaskManagement = () => {
+    const role = (
+        localStorage.getItem("role") ||
+        (() => {
+            try {
+                return JSON.parse(localStorage.getItem("user") || "{}")?.role;
+            } catch {
+                return "";
+            }
+        })() ||
+        ""
+    ).toLowerCase();
+    const isFaculty = role === "faculty";
+
     const [searchTerm, setSearchTerm] = useState("");
     const [filterYear, setFilterYear] = useState("");
     const [filterSession, setFilterSession] = useState("");
@@ -185,14 +198,16 @@ const TaskManagement = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={refetch}
-                        className="h-10 px-5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-sm transition flex items-center gap-2"
-                    >
-                        <MdAdd size={18} /> Add New Task
-                    </button>
-                </div>
+                {!isFaculty && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={refetch}
+                            className="h-10 px-5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-sm transition flex items-center gap-2"
+                        >
+                            <MdAdd size={18} /> Add New Task
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* FILTER CARD CONTAINER (EXACT REFERENCE REPLICA) */}

@@ -1316,6 +1316,16 @@ export const authApi = createApi({
       invalidatesTags: ['Department'],
     }),
 
+    // Update Department Level Passing Criteria
+    updateDepartmentPassingCriteria: builder.mutation({
+      query: ({ id, ...criteria }) => ({
+        url: `/departments/${id}/passing-criteria`,
+        method: "PUT",
+        body: criteria,
+      }),
+      invalidatesTags: ['Department'],
+    }),
+
     // Delete Department
     deleteDepartment: builder.mutation({
       query: (id) => ({
@@ -1609,11 +1619,17 @@ export const authApi = createApi({
 
     // Returns full version with subjects/topics/subtopics embedded
     getSyllabusVersionWithHierarchy: builder.query({
-      query: (id) => ({
-        url: `/syllabus/versions/${id}`,
-        method: 'GET',
-      }),
-      providesTags: (result, error, id) => [{ type: 'SyllabusVersion', id }],
+      query: (id) => {
+        const resolvedId = typeof id === "object" && id !== null ? (id._id || id.id) : id;
+        return {
+          url: `/syllabus/versions/${resolvedId}`,
+          method: 'GET',
+        };
+      },
+      providesTags: (result, error, id) => {
+        const resolvedId = typeof id === "object" && id !== null ? (id._id || id.id) : id;
+        return [{ type: 'SyllabusVersion', id: resolvedId }];
+      },
     }),
 
     getSyllabusVersionsBySession: builder.query({
@@ -2063,6 +2079,7 @@ export const {
   useAddDepartmentMutation,
   useGetAllDepartmentsQuery,
   useUpdateDepartmentMutation,
+  useUpdateDepartmentPassingCriteriaMutation,
   useDeleteDepartmentMutation,
   useAddSubdepartmentMutation,
   useUpdateSubdepartmentMutation,

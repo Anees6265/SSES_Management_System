@@ -198,15 +198,21 @@ const TASK_TYPES = ["assignment", "writtenExam", "interview", "project", "presen
 const PRIORITIES = ["low", "medium", "high"];
 const EMPTY_EXTRA = { title: "", description: "", type: "assessment", priority: "medium", maxMarks: 5, timeDays: "", dueDate: "", measurablePoints: "", subjectName: "" };
 
-const ExtraTaskModal = ({ student, onClose, onSuccess }) => {
+const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) => {
     const [form, setForm] = useState(EMPTY_EXTRA);
     const [assignExtraTask, { isLoading }] = useAssignExtraTaskMutation();
 
+    const rawVersionId = student?.syllabusVersionId;
+    const versionId = typeof rawVersionId === "object" && rawVersionId !== null
+        ? (rawVersionId._id || rawVersionId.id)
+        : (typeof rawVersionId === "string" && rawVersionId.trim() && rawVersionId !== "[object Object]" ? rawVersionId.trim() : null);
+
     const { data: versionData } = useGetSyllabusVersionWithHierarchyQuery(
-        student?.syllabusVersionId,
-        { skip: !student?.syllabusVersionId }
+        versionId,
+        { skip: !versionId }
     );
-    const subjects = versionData?.data?.subjects || [];
+    const versionSubjects = (versionData?.data?.subjects || []).map(s => s?.name).filter(Boolean);
+    const availableSubjects = Array.from(new Set([...versionSubjects, ...(defaultSubjects || [])])).filter(Boolean);
 
     const ic = "w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
     const lc = "block text-xs font-semibold text-slate-700 mb-1";
@@ -215,9 +221,11 @@ const ExtraTaskModal = ({ student, onClose, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.title.trim()) { toast.error("Task title is required"); return; }
+        const studentId = student?._id || student?.id;
+        if (!studentId) { toast.error("Invalid student ID"); return; }
         try {
             await assignExtraTask({
-                id: student._id,
+                id: studentId,
                 title: form.title,
                 description: form.description || undefined,
                 type: form.type,
@@ -235,12 +243,14 @@ const ExtraTaskModal = ({ student, onClose, onSuccess }) => {
         }
     };
 
+    const studentDisplayName = `${student?.firstName || student?.name || "Student"} ${student?.lastName || ""}`.trim();
+
     return (
         <OrangeButton
             isOpen={true}
             onClose={onClose}
             panelTitle="Assign New Task"
-            panelSubtitle={`${student.firstName} ${student.lastName}`}
+            panelSubtitle={studentDisplayName}
             showFooter={false}
             drawerContent={
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -258,7 +268,7 @@ const ExtraTaskModal = ({ student, onClose, onSuccess }) => {
                         <label className={lc}>Subject</label>
                         <select className={ic} value={form.subjectName} onChange={set("subjectName")}>
                             <option value="">Select Subject</option>
-                            {subjects.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
+                            {availableSubjects.map((sName, idx) => <option key={`${sName}-${idx}`} value={sName}>{sName}</option>)}
                         </select>
                     </div>
 
@@ -450,6 +460,7 @@ const StudentTaskBoard = () => {
             {showExtraModal && (
                 <ExtraTaskModal
                     student={student}
+                    defaultSubjects={subjects}
                     onClose={() => setShowExtraModal(false)}
                     onSuccess={() => { setShowExtraModal(false); refetch(); }}
                 />

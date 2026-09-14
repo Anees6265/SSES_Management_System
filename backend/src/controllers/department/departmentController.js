@@ -318,3 +318,94 @@ exports.deleteDepartment = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Update Department Level Passing Criteria (Only HOD for their department, or Superadmin)
+exports.updateDepartmentPassingCriteria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid department ID format" });
+    }
+
+    const userRole = (req.user?.role || "").toLowerCase();
+    const userPosition = (req.user?.position || "").toLowerCase();
+    const isSuperAdmin = userRole === "superadmin" || userRole === "admin";
+    const isHOD = userRole === "hod" || userPosition.includes("hod");
+
+    if (!isSuperAdmin && !isHOD) {
+      return res.status(403).json({
+        success: false,
+        message: "Only Department HOD or Superadmin can update level passing criteria"
+      });
+    }
+
+    // Verify department exists
+    const dept = await Department.findById(id);
+    if (!dept || !dept.isActive) {
+      return res.status(404).json({ success: false, message: "Department not found" });
+    }
+
+    // If HOD, verify department ownership
+    if (!isSuperAdmin && isHOD) {
+      const userDeptId = req.user?.departmentId ? req.user.departmentId.toString() : null;
+      const userDeptName = req.user?.department || "";
+
+      const isMatchingId = userDeptId && userDeptId === id;
+      const isMatchingName = userDeptName && userDeptName.trim().toLowerCase() === dept.name.trim().toLowerCase();
+
+      if (!isMatchingId && !isMatchingName) {
+        return res.status(403).json({
+          success: false,
+          message: `HOD can only update level passing criteria for their own department (${userDeptName || "assigned department"})`
+        });
+      }
+    }
+
+    const { minGpa, minAttendance, backlogLimit, minTaskCompletion } = req.body;
+    const update = {};
+
+    if (minGpa !== undefined) {
+      const gpa = Number(minGpa);
+      if (isNaN(gpa) || gpa < 0 || gpa > 10) {
+        return res.status(400).json({ success: false, message: "Minimum GPA must be a number between 0 and 10" });
+      }
+      update["levelPassingCriteria.minGpa"] = gpa;
+    }
+
+    if (minAttendance !== undefined) {
+      const att = Number(minAttendance);
+      if (isNaN(att) || att < 0 || att > 100) {
+        return res.status(400).json({ success: false, message: "Attendance percentage must be between 0 and 100" });
+      }
+      update["levelPassingCriteria.minAttendance"] = att;
+    }
+
+    if (backlogLimit !== undefined) {
+      update["levelPassingCriteria.backlogLimit"] = String(backlogLimit).trim();
+    }
+
+    if (minTaskCompletion !== undefined) {
+      const taskComp = Number(minTaskCompletion);
+      if (isNaN(taskComp) || taskComp < 0 || taskComp > 100) {
+        return res.status(400).json({ success: false, message: "Task completion percentage must be between 0 and 100" });
+      }
+      update["levelPassingCriteria.minTaskCompletion"] = taskComp;
+    }
+
+    const updatedDept = await Department.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true, runValidators: true }
+    );
+
+    invalidateDeptCache(id);
+
+    res.status(200).json({
+      success: true,
+      message: `Level passing criteria for ${updatedDept.name} updated successfully`,
+      data: updatedDept.levelPassingCriteria
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

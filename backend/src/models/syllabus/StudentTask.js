@@ -29,15 +29,18 @@ const studentTaskSchema = new mongoose.Schema({
   },
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true
+    default: () => new mongoose.Types.ObjectId(),
+    required: false
   },
   subjectId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true
+    default: null,
+    required: false
   },
   topicId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true
+    default: null,
+    required: false
   },
   subTopicId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -54,8 +57,16 @@ const studentTaskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: "" },
   type: { type: String, default: "assignment" },
+  priority: {
+    type: String,
+    enum: ["low", "medium", "high"],
+    default: "medium"
+  },
   mandatory: { type: Boolean, default: true },
-  maxMarks: { type: Number, min: 0, max: 5, default: 5 },
+  maxMarks: { type: Number, min: 0, default: 5 },
+  timeDays: { type: Number, default: null },
+  measurablePoints: { type: String, default: "" },
+  dueDate: { type: Date, default: null },
   status: {
     type: String,
     enum: ["pending", "inProgress", "completed"],

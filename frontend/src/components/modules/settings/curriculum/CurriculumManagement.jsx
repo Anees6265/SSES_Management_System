@@ -250,6 +250,19 @@ const ActionMenu = ({ row, onDelete }) => {
 };
 
 const CurriculumManagement = () => {
+  const role = (
+    localStorage.getItem("role") ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("user") || "{}")?.role;
+      } catch {
+        return "";
+      }
+    })() ||
+    ""
+  ).toLowerCase();
+  const isFaculty = role === "faculty";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [filterSession, setFilterSession] = useState("");
@@ -409,26 +422,28 @@ const CurriculumManagement = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <OrangeButton
-                buttonTitle="+ Upload Curriculum"
-                panelTitle="Upload Curriculum"
-                panelSubtitle="Create a syllabus-version record for a department, session, level, and sub-level"
-                drawerContent={
-                  <CurriculumDrawerForm
-                    sessions={sessions}
-                    departments={departments}
-                    subDepartments={subDepartments}
-                    levels={levels}
-                    subLevels={subLevels}
-                  />
-                }
-                leftBtnText="Cancel"
-                rightBtnText={isSubmitting ? "Uploading..." : "Upload"}
-                onLeftClick={resetForm}
-                onRightClick={submitForm}
-              />
-            </div>
+            {!isFaculty && (
+              <div className="flex items-center gap-3">
+                <OrangeButton
+                  buttonTitle="+ Upload Curriculum"
+                  panelTitle="Upload Curriculum"
+                  panelSubtitle="Create a syllabus-version record for a department, session, level, and sub-level"
+                  drawerContent={
+                    <CurriculumDrawerForm
+                      sessions={sessions}
+                      departments={departments}
+                      subDepartments={subDepartments}
+                      levels={levels}
+                      subLevels={subLevels}
+                    />
+                  }
+                  leftBtnText="Cancel"
+                  rightBtnText={isSubmitting ? "Uploading..." : "Upload"}
+                  onLeftClick={resetForm}
+                  onRightClick={submitForm}
+                />
+              </div>
+            )}
           </div>
 
           {/* FILTER CARD CONTAINER (EXACT REFERENCE UI REPLICA) */}

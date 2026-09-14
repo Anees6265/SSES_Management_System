@@ -16,7 +16,7 @@ const ServerError = () => {
 
       </p>
 
-      {/* Illustration + 405 */}
+      {/* Illustration + 500 */}
       <div className="relative">
         <img
           src={page404} // apna image path yaha lagao
@@ -24,7 +24,7 @@ const ServerError = () => {
           className="w-56 md:w-64 mx-auto"
         />
         <h1 className="absolute inset-0 flex items-center justify-center text-9xl font-bold text-orange-400 opacity-90 pointer-events-none mt-28">
-          405
+          500
         </h1>
       </div>
 

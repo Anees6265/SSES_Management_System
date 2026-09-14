@@ -466,9 +466,9 @@ exports.getStudentTasks = async (req, res) => {
     if (subLevelId === "all") {
       // Return all tasks across all sublevels/syllabus versions
     } else if (subLevelId) {
-      filter.subLevelId = subLevelId;
-    } else {
-      filter.syllabusVersionId = student.syllabusVersionId;
+      filter.$or = [{ subLevelId }, { isExtra: true }];
+    } else if (student.syllabusVersionId) {
+      filter.$or = [{ syllabusVersionId: student.syllabusVersionId }, { isExtra: true }];
     }
     if (status) filter.status = status;
 
@@ -911,14 +911,15 @@ exports.moveToReadyForPlacement = async (req, res) => {
 exports.assignExtraTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, type, maxMarks, subjectName, topicName, notes } = req.body;
+    const { title, description, type, maxMarks, subjectName, topicName, notes, priority, timeDays, measurablePoints, dueDate } = req.body;
 
-    if (!title) return res.status(400).json({ message: "title is required" });
+    if (!title) return res.status(400).json({ success: false, message: "Task title is required" });
 
     const student = await Student.findById(id);
-    if (!student) return res.status(404).json({ message: "Student not found" });
-    if (student.status !== "Active") return res.status(400).json({ message: "Only active students can receive extra tasks" });
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+    if (student.status !== "Active") return res.status(400).json({ success: false, message: "Only active students can receive extra tasks" });
 
+    const extraTaskId = new mongoose.Types.ObjectId();
     const extraTask = await StudentTask.create({
       studentId: student._id,
       // syllabus fields are null for extra tasks
@@ -926,19 +927,23 @@ exports.assignExtraTask = async (req, res) => {
       levelId: student.currentLevelId || null,
       subLevelId: student.currentSubLevelId || null,
       syllabusVersionId: student.syllabusVersionId || null,
-      taskId: null,
-      subjectId: null,
-      topicId: null,
+      taskId: extraTaskId,
+      subjectId: new mongoose.Types.ObjectId(),
+      topicId: new mongoose.Types.ObjectId(),
       subTopicId: null,
       subjectName: subjectName || "Extra",
       topicName: topicName || "Extra Task",
       subTopicName: null,
       taskNodeType: "topic",
-      title,
+      title: title.trim(),
       description: description || "",
       type: type || "assignment",
+      priority: priority || "medium",
       mandatory: false,
       maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
+      timeDays: timeDays ? Number(timeDays) : null,
+      measurablePoints: measurablePoints || "",
+      dueDate: dueDate ? new Date(dueDate) : null,
       notes: notes || "",
       assignedType: "manual",
       assignedBy: req.user?.id || req.user?._id || null,
@@ -950,11 +955,12 @@ exports.assignExtraTask = async (req, res) => {
     });
 
     return res.status(201).json({
+      success: true,
       message: "Extra task assigned successfully",
       data: extraTask,
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 

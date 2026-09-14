@@ -39,6 +39,14 @@ router.get(
 );
 
 router.put(
+  "/:id/passing-criteria",
+  verifyToken,
+  checkRole(["superadmin", "admin", "hod"]),
+  validateObjectId,
+  departmentController.updateDepartmentPassingCriteria
+);
+
+router.put(
   "/:id",
   verifyToken,
   checkRole(allowedRoles),

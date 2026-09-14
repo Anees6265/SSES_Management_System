@@ -140,19 +140,35 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       }
     });
 
-    const MIN_COMPLETION_PERCENT = 85;
+    let minCompletionPercent = 85;
+    if (student.subDepartmentId) {
+      try {
+        const SubDepartment = require("../models/department/SubDepartment");
+        const Department = require("../models/department/Department");
+        const subDept = await SubDepartment.findById(student.subDepartmentId).select("departmentId");
+        if (subDept?.departmentId) {
+          const dept = await Department.findById(subDept.departmentId).select("levelPassingCriteria");
+          if (dept?.levelPassingCriteria?.minTaskCompletion) {
+            minCompletionPercent = dept.levelPassingCriteria.minTaskCompletion;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch department passing criteria, defaulting to 85%:", err.message);
+      }
+    }
+
     const failedSubjects = [];
 
     for (const [subName, stats] of Object.entries(subjectTasks)) {
       const percent = (stats.completed / stats.total) * 100;
-      if (percent < MIN_COMPLETION_PERCENT) {
-        failedSubjects.push(`${subName} (${Math.round(percent)}% completed, minimum ${MIN_COMPLETION_PERCENT}% required)`);
+      if (percent < minCompletionPercent) {
+        failedSubjects.push(`${subName} (${Math.round(percent)}% completed, minimum ${minCompletionPercent}% required)`);
       }
     }
 
     if (failedSubjects.length > 0) {
       throw toClientError(
-        `Promotion blocked. Student must complete at least ${MIN_COMPLETION_PERCENT}% of tasks in each subject. Failed subjects: ${failedSubjects.join(", ")}`,
+        `Promotion blocked. Student must complete at least ${minCompletionPercent}% of tasks in each subject. Failed subjects: ${failedSubjects.join(", ")}`,
         400
       );
     }

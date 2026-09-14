@@ -531,7 +531,7 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
     throw new Error("Student not found");
   }
 
-  const studentTask = await StudentTask.findOne({
+  let studentTask = await StudentTask.findOne({
     studentId,
     taskId,
     sessionId: student.sessionId,
@@ -540,6 +540,14 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
     syllabusVersionId: student.syllabusVersionId,
     isActive: true
   });
+
+  if (!studentTask) {
+    studentTask = await StudentTask.findOne({
+      studentId,
+      $or: [{ taskId }, { _id: taskId }],
+      isActive: true
+    });
+  }
 
   if (!studentTask) {
     throw new Error("Student task not found");

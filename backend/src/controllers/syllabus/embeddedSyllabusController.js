@@ -220,7 +220,11 @@ exports.getAllSyllabusVersions = async (req, res) => {
 
 exports.getSyllabusVersionById = async (req, res) => {
   try {
-    const sv = await SyllabusVersion.findById(req.params.id)
+    const { id } = req.params;
+    if (!id || !ensureObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid syllabus version ID" });
+    }
+    const sv = await SyllabusVersion.findById(id)
       .populate("sessionId", "name startDate endDate status")
       .populate({
         path: "levelId",

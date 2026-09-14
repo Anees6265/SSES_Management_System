@@ -33,6 +33,12 @@ const departmentSchema = new mongoose.Schema({
   },
 
   headOfDepartment: { type: String },
+  levelPassingCriteria: {
+    minGpa: { type: Number, default: 2.5 },
+    minAttendance: { type: Number, default: 75 },
+    backlogLimit: { type: String, default: "Maximum 2 subjects" },
+    minTaskCompletion: { type: Number, default: 85 }
+  },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

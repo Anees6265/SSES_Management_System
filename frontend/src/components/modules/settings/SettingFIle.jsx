@@ -4,7 +4,7 @@ import {
     MdSettings, MdPalette, MdTrendingUp, MdCalendarToday,
     MdLock, MdWarning, MdInfo, MdCheck, MdUpload, MdAdd,
     MdToggleOn, MdToggleOff, MdNotificationsNone, MdSearch,
-    MdEdit, MdDelete, MdClose
+    MdEdit, MdDelete, MdClose, MdSchool, MdSecurity
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import {
@@ -14,6 +14,8 @@ import {
     useUpdateSessionStatusMutation,
     useActivateSessionMutation,
     useDeleteSessionMutation,
+    useGetAllDepartmentsQuery,
+    useUpdateDepartmentPassingCriteriaMutation,
 } from "./../../../redux/api/authApi";
 
 const themes = [
@@ -29,7 +31,21 @@ const SettingFIle = () => {
     const navigate = useNavigate();
     const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem("theme") || "orange");
     const [maintenanceMode, setMaintenanceMode] = useState(false);
-    const [hasUnsaved, setHasUnsaved] = useState(false);
+
+    // User Role & Permission Checks
+    const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const positionRole = (localStorage.getItem("positionRole") || user.position || "").toLowerCase();
+
+    const isSuperAdmin = rawRole === "superadmin";
+    const isHOD = rawRole === "hod" || positionRole.includes("hod") || user.role?.toLowerCase() === "hod";
+
+    // Who can change what?
+    // Theme: EVERYONE who has access to Settings!
+    // Level Passing Criteria: ONLY HOD (for their own department) & SuperAdmin (for any department).
+    // Everything else (Maintenance, Sessions, Lock Academic Year, Logo): ONLY SuperAdmin!
+    const canManageGlobal = isSuperAdmin;
+    const canUpdateCriteria = isSuperAdmin || isHOD;
 
     // Fetch real sessions from API
     const { data: sessionsData, isLoading: sessionsLoading, refetch: refetchSessions } = useGetAllSessionsQuery(true);
@@ -40,6 +56,11 @@ const SettingFIle = () => {
     const [updateSessionStatus] = useUpdateSessionStatusMutation();
     const [activateSession]     = useActivateSessionMutation();
     const [deleteSession]       = useDeleteSessionMutation();
+
+    // Fetch real departments from API
+    const { data: deptData, isLoading: deptsLoading } = useGetAllDepartmentsQuery();
+    const departments = deptData?.data || [];
+    const [updatePassingCriteria, { isLoading: isSavingCriteria }] = useUpdateDepartmentPassingCriteriaMutation();
 
     // Session Modal State
     const [showSessionModal, setShowSessionModal] = useState(false);
@@ -52,46 +73,140 @@ const SettingFIle = () => {
     });
     const [submittingSession, setSubmittingSession] = useState(false);
 
-    // Form states
+    // Department Level Passing Criteria State
+    const [selectedDeptId, setSelectedDeptId] = useState("");
     const [minGpa, setMinGpa] = useState("2.5");
     const [minAttendance, setMinAttendance] = useState("75");
     const [backlogLimit, setBacklogLimit] = useState("Maximum 2 subjects");
+    const [minTaskCompletion, setMinTaskCompletion] = useState("85");
+    const [hasUnsavedCriteria, setHasUnsavedCriteria] = useState(false);
 
+    // Apply active theme to document & localStorage
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", activeTheme);
         localStorage.setItem("theme", activeTheme);
     }, [activeTheme]);
 
+    // Match HOD department or set default department for Superadmin
+    useEffect(() => {
+        if (!departments.length) return;
+
+        if (isHOD) {
+            const userDeptId = user.departmentId ? user.departmentId.toString() : null;
+            const userDeptName = (user.department || "").trim().toLowerCase();
+
+            const myDept = departments.find(d => 
+                (userDeptId && (d._id === userDeptId || d.id === userDeptId)) ||
+                (userDeptName && d.name.trim().toLowerCase() === userDeptName)
+            );
+            if (myDept) {
+                setSelectedDeptId(myDept._id);
+            } else if (!selectedDeptId) {
+                setSelectedDeptId(departments[0]._id);
+            }
+        } else if (!selectedDeptId) {
+            setSelectedDeptId(departments[0]._id);
+        }
+    }, [departments, isHOD, user.departmentId, user.department]);
+
+    // Load department's configured criteria when selectedDeptId changes
+    useEffect(() => {
+        if (!selectedDeptId || !departments.length) return;
+        const currentDept = departments.find(d => d._id === selectedDeptId);
+        if (currentDept) {
+            const criteria = currentDept.levelPassingCriteria || {};
+            setMinGpa(criteria.minGpa !== undefined ? String(criteria.minGpa) : "2.5");
+            setMinAttendance(criteria.minAttendance !== undefined ? String(criteria.minAttendance) : "75");
+            setBacklogLimit(criteria.backlogLimit || "Maximum 2 subjects");
+            setMinTaskCompletion(criteria.minTaskCompletion !== undefined ? String(criteria.minTaskCompletion) : "85");
+            setHasUnsavedCriteria(false);
+        }
+    }, [selectedDeptId, departments]);
+
     const handleThemeChange = (themeId) => {
         setActiveTheme(themeId);
-        setHasUnsaved(true);
+        toast.success(`Theme switched to ${themeId.charAt(0).toUpperCase() + themeId.slice(1)}!`);
     };
 
-    const handleFormChange = () => {
-        setHasUnsaved(true);
+    const handleCriteriaChange = () => {
+        if (canUpdateCriteria) {
+            setHasUnsavedCriteria(true);
+        }
     };
 
-    const handleSaveAll = () => {
-        toast.success("System configuration saved successfully!");
-        setHasUnsaved(false);
+    const handleSaveCriteria = async () => {
+        if (!canUpdateCriteria) {
+            toast.error("Only Department HOD or Superadmin can update level passing criteria.");
+            return;
+        }
+        if (!selectedDeptId) {
+            toast.error("Please select a department first.");
+            return;
+        }
+
+        const gpaNum = parseFloat(minGpa);
+        const attNum = parseFloat(minAttendance);
+        const taskNum = parseFloat(minTaskCompletion);
+
+        if (isNaN(gpaNum) || gpaNum < 0 || gpaNum > 10) {
+            toast.error("Minimum GPA must be a number between 0 and 10.");
+            return;
+        }
+        if (isNaN(attNum) || attNum < 0 || attNum > 100) {
+            toast.error("Attendance percentage must be between 0 and 100.");
+            return;
+        }
+        if (isNaN(taskNum) || taskNum < 0 || taskNum > 100) {
+            toast.error("Task completion percentage must be between 0 and 100.");
+            return;
+        }
+
+        try {
+            await updatePassingCriteria({
+                id: selectedDeptId,
+                minGpa: gpaNum,
+                minAttendance: attNum,
+                backlogLimit,
+                minTaskCompletion: taskNum
+            }).unwrap();
+
+            const deptName = departments.find(d => d._id === selectedDeptId)?.name || "Department";
+            toast.success(`Level passing criteria for ${deptName} updated successfully!`);
+            setHasUnsavedCriteria(false);
+        } catch (err) {
+            toast.error(err?.data?.message || "Failed to update criteria");
+        }
     };
 
-    const handleDiscard = () => {
-        setMinGpa("2.5");
-        setMinAttendance("75");
-        setBacklogLimit("Maximum 2 subjects");
-        setHasUnsaved(false);
+    const handleDiscardCriteria = () => {
+        const currentDept = departments.find(d => d._id === selectedDeptId);
+        if (currentDept) {
+            const criteria = currentDept.levelPassingCriteria || {};
+            setMinGpa(criteria.minGpa !== undefined ? String(criteria.minGpa) : "2.5");
+            setMinAttendance(criteria.minAttendance !== undefined ? String(criteria.minAttendance) : "75");
+            setBacklogLimit(criteria.backlogLimit || "Maximum 2 subjects");
+            setMinTaskCompletion(criteria.minTaskCompletion !== undefined ? String(criteria.minTaskCompletion) : "85");
+        }
+        setHasUnsavedCriteria(false);
         toast.info("Changes discarded.");
     };
 
     // Session CRUD handlers
     const openAddSessionModal = () => {
+        if (!canManageGlobal) {
+            toast.warning("Only Superadmin can add new academic sessions.");
+            return;
+        }
         setEditingSession(null);
         setSessionFormData({ name: "", startDate: "", endDate: "", description: "" });
         setShowSessionModal(true);
     };
 
     const openEditSessionModal = (s) => {
+        if (!canManageGlobal) {
+            toast.warning("Only Superadmin can edit academic sessions.");
+            return;
+        }
         setEditingSession(s);
         setSessionFormData({
             name: s.name,
@@ -104,6 +219,10 @@ const SettingFIle = () => {
 
     const handleSessionSubmit = async (e) => {
         e.preventDefault();
+        if (!canManageGlobal) {
+            toast.error("Only Superadmin can perform session modifications.");
+            return;
+        }
         if (!sessionFormData.name.trim() || !sessionFormData.startDate || !sessionFormData.endDate) {
             toast.error("Name, start date, and end date are required");
             return;
@@ -133,6 +252,10 @@ const SettingFIle = () => {
     };
 
     const handleStatusChange = async (id, newStatus) => {
+        if (!canManageGlobal) {
+            toast.warning("Only Superadmin can change session status.");
+            return;
+        }
         try {
             if (newStatus === 'active') {
                 await activateSession(id).unwrap();
@@ -147,6 +270,10 @@ const SettingFIle = () => {
     };
 
     const handleDeleteSession = async (id) => {
+        if (!canManageGlobal) {
+            toast.warning("Only Superadmin can delete sessions.");
+            return;
+        }
         if (!window.confirm("Delete this session?")) return;
         try {
             await deleteSession(id).unwrap();
@@ -157,29 +284,62 @@ const SettingFIle = () => {
         }
     };
 
+    const selectedDept = departments.find(d => d._id === selectedDeptId);
+
     return (
-        <div className="bg-[#F8F9FA] min-h-screen px-8 py-6 space-y-6 pb-24 relative">
+        <div className="bg-[#F8F9FA] min-h-screen px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24 relative">
 
             {/* TOP HEADER SECTION */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">System Configuration</h1>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">System Configuration</h1>
+                        {isSuperAdmin && (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                                SUPERADMIN
+                            </span>
+                        )}
+                        {isHOD && !isSuperAdmin && (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                                HOD ({user.department || "Department"})
+                            </span>
+                        )}
+                        {!isSuperAdmin && !isHOD && (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                LIMITED PERMISSION
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                        Manage institutional global rules, branding, and academic lifecycles.
+                        {!isSuperAdmin && !isHOD
+                            ? "Settings permissions granted: You can customize your UI theme."
+                            : isHOD && !isSuperAdmin
+                            ? "Configure your department's level passing criteria and personalize UI theme."
+                            : "Manage institutional global rules, branding, and academic lifecycles."}
                     </p>
                 </div>
 
                 {/* Maintenance Mode Toggle Card */}
                 <div className="flex items-center gap-3.5 bg-white border border-slate-100 px-4 py-2.5 rounded-2xl shadow-sm">
                     <div className="text-right">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">MAINTENANCE MODE</p>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                            MAINTENANCE MODE {!canManageGlobal && <span className="text-rose-500">(LOCKED)</span>}
+                        </p>
                         <p className={`text-xs font-extrabold ${maintenanceMode ? "text-amber-600" : "text-emerald-600"}`}>
                             {maintenanceMode ? "Maintenance On" : "System Live"}
                         </p>
                     </div>
                     <button
-                        onClick={() => { setMaintenanceMode(p => !p); setHasUnsaved(true); }}
-                        className="text-slate-400 hover:text-slate-600 transition"
+                        onClick={() => {
+                            if (!canManageGlobal) {
+                                toast.warning("Only Superadmin can toggle maintenance mode.");
+                                return;
+                            }
+                            setMaintenanceMode(p => !p);
+                        }}
+                        disabled={!canManageGlobal}
+                        title={!canManageGlobal ? "Only Superadmin can change maintenance mode" : "Toggle Maintenance Mode"}
+                        className={`transition ${!canManageGlobal ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     >
                         {maintenanceMode ? (
                             <MdToggleOn size={36} className="text-amber-500" />
@@ -190,7 +350,7 @@ const SettingFIle = () => {
                 </div>
             </div>
 
-            {/* 2X2 GRID OF CONFIGURATION CARDS (EXACT REFERENCE ASPECT RATIO) */}
+            {/* 2X2 GRID OF CONFIGURATION CARDS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* CARD 1: Academic Year Management */}
@@ -200,14 +360,25 @@ const SettingFIle = () => {
                             <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
                                 <MdCalendarToday size={18} />
                             </div>
-                            <h3 className="text-base font-black text-slate-900">Academic Year Management</h3>
+                            <div>
+                                <h3 className="text-base font-black text-slate-900">Academic Year Management</h3>
+                                {!canManageGlobal && (
+                                    <span className="text-[10px] font-bold text-slate-400">View Only (Superadmin Restricted)</span>
+                                )}
+                            </div>
                         </div>
-                        <button
-                            onClick={openAddSessionModal}
-                            className="text-xs font-extrabold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-xl"
-                        >
-                            <MdAdd size={16} /> Add New
-                        </button>
+                        {canManageGlobal ? (
+                            <button
+                                onClick={openAddSessionModal}
+                                className="text-xs font-extrabold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-xl"
+                            >
+                                <MdAdd size={16} /> Add New
+                            </button>
+                        ) : (
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                                <MdLock size={12} /> Read-only
+                            </span>
+                        )}
                     </div>
 
                     {/* Cycles List */}
@@ -248,35 +419,45 @@ const SettingFIle = () => {
                                         </div>
 
                                         <div className="flex items-center gap-2 flex-shrink-0">
-                                            {/* Interactive Status Select Dropdown */}
-                                            <select
-                                                value={statusStr}
-                                                onChange={(e) => handleStatusChange(sess._id, e.target.value)}
-                                                className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-80 transition ${statusBadgeCls}`}
-                                                title="Click to edit session status"
-                                            >
-                                                <option value="active">ACTIVE</option>
-                                                <option value="upcoming">UPCOMING</option>
-                                                <option value="archived">ARCHIVED</option>
-                                                <option value="completed">COMPLETED</option>
-                                            </select>
+                                            {/* Interactive Status Select Dropdown (Superadmin only) */}
+                                            {canManageGlobal ? (
+                                                <select
+                                                    value={statusStr}
+                                                    onChange={(e) => handleStatusChange(sess._id, e.target.value)}
+                                                    className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-80 transition ${statusBadgeCls}`}
+                                                    title="Click to edit session status"
+                                                >
+                                                    <option value="active">ACTIVE</option>
+                                                    <option value="upcoming">UPCOMING</option>
+                                                    <option value="archived">ARCHIVED</option>
+                                                    <option value="completed">COMPLETED</option>
+                                                </select>
+                                            ) : (
+                                                <span className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider ${statusBadgeCls}`}>
+                                                    {statusStr.toUpperCase()}
+                                                </span>
+                                            )}
 
-                                            <button
-                                                type="button"
-                                                onClick={() => openEditSessionModal(sess)}
-                                                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                                                title="Edit Session Details"
-                                            >
-                                                <MdEdit size={16} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteSession(sess._id)}
-                                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-                                                title="Delete Session"
-                                            >
-                                                <MdDelete size={16} />
-                                            </button>
+                                            {canManageGlobal && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditSessionModal(sess)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                                                        title="Edit Session Details"
+                                                    >
+                                                        <MdEdit size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteSession(sess._id)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                                        title="Delete Session"
+                                                    >
+                                                        <MdDelete size={16} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -285,67 +466,189 @@ const SettingFIle = () => {
                     </div>
                 </div>
 
-                {/* CARD 2: Promotion Rules */}
+                {/* CARD 2: Department Level Passing Criteria (Only HOD for own dept or Superadmin) */}
                 <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
-                            <MdTrendingUp size={18} />
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
+                                <MdTrendingUp size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-black text-slate-900">Level Passing Criteria</h3>
+                                <p className="text-[11px] font-semibold text-slate-400">Department promotion rules & thresholds</p>
+                            </div>
                         </div>
-                        <h3 className="text-base font-black text-slate-900">Promotion Rules</h3>
+
+                        {/* Status Badge */}
+                        {isSuperAdmin ? (
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                Superadmin Mode
+                            </span>
+                        ) : isHOD ? (
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                <MdCheck size={12} /> HOD Authorized
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                                <MdLock size={12} /> Read-Only
+                            </span>
+                        )}
                     </div>
 
+                    {/* Department Context Selector / Banner */}
+                    {isSuperAdmin ? (
+                        <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl space-y-1.5">
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                                SELECT DEPARTMENT TO CONFIGURE
+                            </label>
+                            <select
+                                value={selectedDeptId}
+                                onChange={(e) => setSelectedDeptId(e.target.value)}
+                                className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs cursor-pointer"
+                            >
+                                {departments.map(d => (
+                                    <option key={d._id} value={d._id}>
+                                        {d.name} {d.code ? `(${d.code})` : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : isHOD ? (
+                        <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-2xl flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <MdSchool size={18} className="text-orange-500 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600">ASSIGNED DEPARTMENT</p>
+                                    <p className="text-xs font-black text-slate-900 truncate">
+                                        {selectedDept?.name || user.department || "Your Department"}
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-orange-700 bg-white border border-orange-200 px-2.5 py-1 rounded-lg shrink-0">
+                                Only HOD Updates
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-2.5 text-xs text-slate-600">
+                            <MdLock size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-bold text-slate-800">Criteria Update Locked</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Sirf perticuller department ke HOD hi apne department ka level pass karne ka criteria update kar sakte hain.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Criteria Input Fields */}
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                                    MINIMUM GPA
+                                    MINIMUM GPA (0 - 10)
                                 </label>
                                 <input
                                     type="text"
                                     value={minGpa}
-                                    onChange={(e) => { setMinGpa(e.target.value); handleFormChange(); }}
-                                    className="w-full h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm"
+                                    disabled={!canUpdateCriteria}
+                                    onChange={(e) => { setMinGpa(e.target.value); handleCriteriaChange(); }}
+                                    className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        canUpdateCriteria
+                                            ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm"
+                                            : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    }`}
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                                    ATTENDANCE %
+                                    ATTENDANCE % (0 - 100)
                                 </label>
                                 <input
                                     type="text"
                                     value={minAttendance}
-                                    onChange={(e) => { setMinAttendance(e.target.value); handleFormChange(); }}
-                                    className="w-full h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm"
+                                    disabled={!canUpdateCriteria}
+                                    onChange={(e) => { setMinAttendance(e.target.value); handleCriteriaChange(); }}
+                                    className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        canUpdateCriteria
+                                            ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm"
+                                            : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    }`}
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                                BACKLOG LIMIT
-                            </label>
-                            <select
-                                value={backlogLimit}
-                                onChange={(e) => { setBacklogLimit(e.target.value); handleFormChange(); }}
-                                className="w-full h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm cursor-pointer"
-                            >
-                                <option value="Maximum 1 subject">Maximum 1 subject</option>
-                                <option value="Maximum 2 subjects">Maximum 2 subjects</option>
-                                <option value="Maximum 3 subjects">Maximum 3 subjects</option>
-                                <option value="No Backlog Allowed">No Backlog Allowed</option>
-                            </select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                                    BACKLOG LIMIT
+                                </label>
+                                <select
+                                    value={backlogLimit}
+                                    disabled={!canUpdateCriteria}
+                                    onChange={(e) => { setBacklogLimit(e.target.value); handleCriteriaChange(); }}
+                                    className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        canUpdateCriteria
+                                            ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm cursor-pointer"
+                                            : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    }`}
+                                >
+                                    <option value="Maximum 1 subject">Maximum 1 subject</option>
+                                    <option value="Maximum 2 subjects">Maximum 2 subjects</option>
+                                    <option value="Maximum 3 subjects">Maximum 3 subjects</option>
+                                    <option value="No Backlog Allowed">No Backlog Allowed</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                                    TASK COMPLETION %
+                                </label>
+                                <input
+                                    type="text"
+                                    value={minTaskCompletion}
+                                    disabled={!canUpdateCriteria}
+                                    onChange={(e) => { setMinTaskCompletion(e.target.value); handleCriteriaChange(); }}
+                                    className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        canUpdateCriteria
+                                            ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-sm"
+                                            : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                                    }`}
+                                />
+                            </div>
                         </div>
+
+                        {/* Save Criteria Button for HOD / Superadmin */}
+                        {canUpdateCriteria && (
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                <p className="text-[11px] font-semibold text-slate-400">
+                                    {hasUnsavedCriteria ? "⚠️ You have unsaved criteria changes" : "Changes will apply to level promotions"}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveCriteria}
+                                    disabled={isSavingCriteria || !hasUnsavedCriteria}
+                                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    {isSavingCriteria ? "Saving..." : "Save Department Criteria"}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* CARD 3: Society Logo & Branding (THEME COLOR SELECTOR) */}
                 <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
-                            <MdPalette size={18} />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
+                                <MdPalette size={18} />
+                            </div>
+                            <h3 className="text-base font-black text-slate-900">Society Logo & Branding</h3>
                         </div>
-                        <h3 className="text-base font-black text-slate-900">Society Logo & Branding</h3>
+                        <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                            Theme Customizer Active
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-5 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
@@ -354,22 +657,38 @@ const SettingFIle = () => {
                         </div>
                         <div className="space-y-1">
                             <h4 className="text-xs font-black text-slate-900">Official Society Logo</h4>
-                            <p className="text-[11px] font-semibold text-slate-400">Upload high-res PNG or SVG. Max 2MB.</p>
-                            <button
-                                type="button"
-                                onClick={() => toast.info("Select new logo file")}
-                                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-sm transition"
-                            >
-                                <MdUpload size={14} /> Change Logo
-                            </button>
+                            <p className="text-[11px] font-semibold text-slate-400">
+                                {canManageGlobal
+                                    ? "Upload high-res PNG or SVG. Max 2MB."
+                                    : "Society logo management is restricted to Superadmin."}
+                            </p>
+                            {canManageGlobal ? (
+                                <button
+                                    type="button"
+                                    onClick={() => toast.info("Select new logo file")}
+                                    className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+                                >
+                                    <MdUpload size={14} /> Change Logo
+                                </button>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg mt-1 border border-slate-200">
+                                    <MdLock size={12} /> Superadmin Only
+                                </span>
+                            )}
                         </div>
                     </div>
 
-                    <div className="space-y-2 pt-1">
-                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                            THEME PRIMARY COLOR
-                        </label>
-                        <div className="flex items-center gap-3">
+                    {/* THEME COLOR SELECTOR - ACCESSIBLE TO ALL USERS WITH SETTINGS PERMISSION */}
+                    <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-700">
+                                THEME PRIMARY COLOR (PERSONAL ACCENT)
+                            </label>
+                            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
+                                Always Editable
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3 pt-1">
                             {themes.map((t) => {
                                 const isActive = activeTheme === t.id;
                                 return (
@@ -378,8 +697,9 @@ const SettingFIle = () => {
                                         type="button"
                                         onClick={() => handleThemeChange(t.id)}
                                         title={t.label}
-                                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${isActive ? "ring-4 ring-orange-200 scale-110 shadow-md" : "hover:scale-105"
-                                            }`}
+                                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                            isActive ? "ring-4 ring-orange-200 scale-110 shadow-md" : "hover:scale-105"
+                                        }`}
                                         style={{ backgroundColor: t.color }}
                                     >
                                         {isActive && <MdCheck size={18} className="text-white" />}
@@ -387,16 +707,26 @@ const SettingFIle = () => {
                                 );
                             })}
                         </div>
+                        <p className="text-[11px] font-medium text-slate-400 mt-1">
+                            Current active theme: <strong className="text-slate-700 capitalize">{activeTheme}</strong>. Applies instantly across all modules.
+                        </p>
                     </div>
                 </div>
 
                 {/* CARD 4: Lock Academic Year */}
                 <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center">
-                            <MdLock size={18} />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center">
+                                <MdLock size={18} />
+                            </div>
+                            <h3 className="text-base font-black text-slate-900">Lock Academic Year</h3>
                         </div>
-                        <h3 className="text-base font-black text-slate-900">Lock Academic Year</h3>
+                        {!canManageGlobal && (
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                                <MdLock size={12} /> Superadmin Only
+                            </span>
+                        )}
                     </div>
 
                     <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100 text-xs font-semibold text-rose-700 flex items-start gap-3">
@@ -413,13 +743,22 @@ const SettingFIle = () => {
                         </div>
                         <button
                             type="button"
+                            disabled={!canManageGlobal}
                             onClick={() => {
+                                if (!canManageGlobal) {
+                                    toast.warning("Only Superadmin can lock an academic year.");
+                                    return;
+                                }
                                 const targetName = sessions[0]?.name || 'Current Session';
                                 if (window.confirm(`Are you sure you want to lock ${targetName}? This cannot be undone.`)) {
                                     toast.success(`${targetName} locked successfully`);
                                 }
                             }}
-                            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition cursor-pointer"
+                            className={`px-5 py-2.5 text-white rounded-xl text-xs font-extrabold shadow-sm transition ${
+                                canManageGlobal
+                                    ? "bg-rose-600 hover:bg-rose-700 cursor-pointer"
+                                    : "bg-slate-300 cursor-not-allowed"
+                            }`}
                         >
                             Lock {sessions[0]?.name || 'Academic Year'}
                         </button>
@@ -428,35 +767,36 @@ const SettingFIle = () => {
 
             </div>
 
-            {/* FLOATING STICKY SAVE BAR */}
-            {hasUnsaved && (
+            {/* FLOATING STICKY SAVE BAR FOR CRITERIA */}
+            {hasUnsavedCriteria && canUpdateCriteria && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-6 border border-slate-800 animate-bounce-short">
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                         <MdInfo size={18} className="text-orange-400" />
-                        <span>You have unsaved changes in System Settings</span>
+                        <span>Unsaved changes in {selectedDept?.name || "Department"} Level Passing Criteria</span>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button
                             type="button"
-                            onClick={handleDiscard}
-                            className="text-xs font-bold text-slate-400 hover:text-white transition"
+                            onClick={handleDiscardCriteria}
+                            className="text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer"
                         >
                             Discard
                         </button>
                         <button
                             type="button"
-                            onClick={handleSaveAll}
-                            className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs rounded-full shadow-md transition"
+                            onClick={handleSaveCriteria}
+                            disabled={isSavingCriteria}
+                            className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs rounded-full shadow-md transition cursor-pointer disabled:opacity-50"
                         >
-                            Save All Settings
+                            {isSavingCriteria ? "Saving..." : "Save Department Criteria"}
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* SESSION ADD / EDIT MODAL */}
-            {showSessionModal && (
+            {/* SESSION ADD / EDIT MODAL (Superadmin Only) */}
+            {showSessionModal && canManageGlobal && (
                 <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white border border-slate-100 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-scale-in">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">

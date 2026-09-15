@@ -30,8 +30,8 @@ import {
 } from "react-icons/fa";
 import { RiDoubleQuotesL } from "react-icons/ri";
 import { useGetMyReportCardQuery, useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
-import { useGetStudentThesisQuery } from "../../../redux/api/authApi";
-import logo from "../../../assets/images/doulLogo.png";
+import collegeLogo from "../../../assets/images/logo-ssism.png";
+import itegLogo from "../../../assets/images/iteg-logo.png";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import StudentReportPDF from "../../modules/students/StudentReportPDF";
 
@@ -238,6 +238,7 @@ export default function StudentReportCard() {
   const currentSubLevel = raw.currentSubLevelId?.name || raw.currentLevel || "1A";
   const currentYear = translateLevelName(raw.currentLevelId?.name || raw.currentLevel);
   const departmentName = raw.subDepartmentId?.name || "ITEG";
+  const departmentLogo = (typeof raw.subDepartmentId?.departmentId?.logo === 'string' && raw.subDepartmentId.departmentId.logo.trim()) ? raw.subDepartmentId.departmentId.logo : itegLogo;
   const batchYear = rc?.batchYear || raw.sessionId?.name || "2025–26";
   const overallGrade = rc?.overallGrade || "A";
 
@@ -268,16 +269,23 @@ export default function StudentReportCard() {
 
         <div className="p-3.5 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 p-1.5 flex items-center justify-center shrink-0 shadow-2xs">
-                <img src={logo} alt="SSISM Logo" className="w-full h-full object-contain" />
+            <div className="flex items-center gap-2.5 sm:gap-3.5 flex-wrap sm:flex-nowrap">
+              {/* College Logo */}
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="SSISM College Logo">
+                <img src={collegeLogo} alt="SSISM Logo" className="w-full h-full object-contain" />
               </div>
+
+              {/* Department Logo */}
+              <div className="h-10 px-2 sm:h-12 sm:px-2.5 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="Department Logo">
+                <img src={departmentLogo} alt="Department Logo" className="h-full w-auto max-w-[75px] sm:max-w-[95px] object-contain" />
+              </div>
+
               <div className="min-w-0">
                 <h1 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight truncate">
                   Sant Singaji Institute of Science and Management
                 </h1>
                 <p className="text-[10px] sm:text-xs font-semibold text-orange-500 uppercase tracking-wider truncate">
-                  Performance Report Card · Session {batchYear}
+                  {departmentName} · Performance Report Card · Session {batchYear}
                 </p>
               </div>
             </div>

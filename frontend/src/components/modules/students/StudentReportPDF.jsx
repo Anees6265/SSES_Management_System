@@ -12,7 +12,8 @@ import {
   G,
 } from "@react-pdf/renderer";
 
-import logo from "../../../assets/images/doulLogo.png";
+import collegeLogo from "../../../assets/images/logo-ssism.png";
+import itegLogo from "../../../assets/images/iteg-logo.png";
 import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
 import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
 import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
@@ -436,15 +437,42 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
       .length,
   }));
 
+  const deptLogo =
+    (typeof studentData?.subDepartmentId?.departmentId?.logo === "string" &&
+      studentData.subDepartmentId.departmentId.logo.trim())
+      ? studentData.subDepartmentId.departmentId.logo
+      : itegLogo;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={{ alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: "#7335DD", paddingBottom: 8, marginBottom: 10 }}>
-          <Image src={logo} style={{ width: 80, height: 50, objectFit: "contain", marginBottom: 4 }} />
-          <Text style={{ fontSize: 13, fontWeight: "bold", color: "#111827", textTransform: "uppercase" }}>SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT</Text>
-          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B", marginTop: 2 }}>STUDENT PERFORMANCE REPORT CARD</Text>
+        <View style={{ borderBottomWidth: 2, borderBottomColor: "#7335DD", paddingBottom: 8, marginBottom: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            {/* College Logo (Left) */}
+            <View style={{ width: 70, height: 50, alignItems: "center", justifyContent: "center" }}>
+              <Image src={collegeLogo} style={{ width: 55, height: 48, objectFit: "contain" }} />
+            </View>
+
+            {/* Institution Title & Details (Center) */}
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: "#111827", textTransform: "uppercase", textAlign: "center" }}>
+                SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT
+              </Text>
+              <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B", marginTop: 2, textAlign: "center", textTransform: "uppercase" }}>
+                STUDENT PERFORMANCE REPORT CARD
+              </Text>
+              <Text style={{ fontSize: 7.5, color: "#4B5563", marginTop: 1, textAlign: "center" }}>
+                Department of {studentData?.subDepartmentId?.departmentId?.name || "Information Technology & Emerging Growth (ITEG)"}
+              </Text>
+            </View>
+
+            {/* Department Logo (Right) */}
+            <View style={{ width: 80, height: 50, alignItems: "center", justifyContent: "center" }}>
+              <Image src={deptLogo} style={{ width: 75, height: 46, objectFit: "contain" }} />
+            </View>
+          </View>
           
-          <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 4, fontSize: 7, color: "#4B5563" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#4B5563" }}>
             <Text>Academic Session: {reportCardData?.batchYear || "2025–26"}</Text>
             <Text>Batch Year: {reportCardData?.batchYear || "2025–26"}</Text>
             <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || "ITEG"}</Text>
@@ -528,28 +556,33 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
             return (
               <View style={{ gap: 8 }}>
-                {/* 2. Academic Performance */}
-                <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>2. Academic Performance</Text>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <View style={{ width: "65%" }}>
-                      <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                        <Text style={{ width: "70%" }}>Academic Year</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
-                      </View>
-                      {reportCardData.academicPerformance?.yearWiseSGPA?.map((y, idx) => (
-                        <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>{y.year === "FY" ? "First Year" : y.year === "SY" ? "Second Year" : y.year === "TY" ? "Third Year" : y.year}</Text>
-                          <Text style={{ width: "30%", textAlign: "center", fontWeight: "bold" }}>{y.sgpa || "N/A"}</Text>
+                {/* 2. Overall Performance */}
+                {overallPerformance && (
+                  <View style={{ backgroundColor: "#312E81", padding: 10, borderRadius: 6, color: "#FFFFFF" }} wrap={false}>
+                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#F59E0B", textAlign: "center", textTransform: "uppercase", marginBottom: 6 }}>2. Overall Performance</Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                      {overallPerformance.items.map((item, idx) => {
+                        if (item.itemName === "Overall Rating" || item.itemName === "Performance Level") return null;
+                        return (
+                          <View key={idx} style={{ width: "23%", backgroundColor: "rgba(255, 255, 255, 0.1)", padding: 4, borderRadius: 4, alignItems: "center" }}>
+                            <Text style={{ fontSize: 7, color: "#E0E7FF" }}>{item.itemName}</Text>
+                            <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 2, color: "#FFFFFF" }}>{item.value} / 5</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                    {(() => {
+                      const ratingItem = overallPerformance.items.find(i => i.itemName === "Overall Rating");
+                      const levelItem = overallPerformance.items.find(i => i.itemName === "Performance Level") || ratingItem;
+                      return (
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.2)", paddingTop: 5, marginTop: 3 }}>
+                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Overall Rating: {ratingItem?.value || "4.02"} / 5</Text>
+                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Performance Level: {levelItem?.remark || levelItem?.value || "Excellent"}</Text>
                         </View>
-                      ))}
-                    </View>
-                    <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
-                      <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>{reportCardData.academicPerformance?.cgpa || "N/A"}</Text>
-                    </View>
+                      );
+                    })()}
                   </View>
-                </View>
+                )}
 
                 {/* 3. Level / Sub-Level Progress */}
                 {levelProgress && (
@@ -595,10 +628,33 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 5. Soft Skills & Behavioural Evaluation */}
+                {/* 5. Academic Performance (SGPA & CGPA) - Moved down below Level & Subject Performance */}
+                <View style={styles.section} wrap={false}>
+                  <Text style={styles.sectionTitle}>5. Academic Performance (University SGPA & CGPA)</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <View style={{ width: "65%" }}>
+                      <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
+                        <Text style={{ width: "70%" }}>Academic Year</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
+                      </View>
+                      {reportCardData.academicPerformance?.yearWiseSGPA?.map((y, idx) => (
+                        <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
+                          <Text style={{ width: "70%" }}>{y.year === "FY" ? "First Year" : y.year === "SY" ? "Second Year" : y.year === "TY" ? "Third Year" : y.year}</Text>
+                          <Text style={{ width: "30%", textAlign: "center", fontWeight: "bold" }}>{y.sgpa || "N/A"}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
+                      <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>{reportCardData.academicPerformance?.cgpa || "N/A"}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 6. Soft Skills & Behavioural Evaluation */}
                 {softSkills && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>5. Soft Skills & Behavioural Evaluation</Text>
+                    <Text style={styles.sectionTitle}>6. Soft Skills & Behavioural Evaluation</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                       {softSkills.items.map((item, idx) => (
                         <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
@@ -613,10 +669,10 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 6. Interview Evaluation */}
+                {/* 7. Interview Evaluation */}
                 {interview && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>6. Interview Evaluation</Text>
+                    <Text style={styles.sectionTitle}>7. Interview Evaluation</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                       {interview.items.map((item, idx) => (
                         <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
@@ -628,10 +684,10 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 7. Career Readiness */}
+                {/* 8. Career Readiness */}
                 {careerReadiness && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>7. Career Readiness</Text>
+                    <Text style={styles.sectionTitle}>8. Career Readiness</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                       {careerReadiness.items.map((item, idx) => (
                         <View key={idx} style={{ width: "23%", backgroundColor: "#EFF6FF", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#BFDBFE", alignItems: "center" }}>
@@ -643,10 +699,10 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 8. Attendance & Discipline */}
+                {/* 9. Attendance & Discipline */}
                 {attendanceDiscipline && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>8. Attendance & Discipline</Text>
+                    <Text style={styles.sectionTitle}>9. Attendance & Discipline</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                       {attendanceDiscipline.items.map((item, idx) => (
                         <View key={idx} style={{ width: "23%", backgroundColor: "#F3F4F6", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center" }}>
@@ -658,9 +714,9 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 9. Co-Curricular Activities */}
+                {/* 10. Co-Curricular Activities */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>9. Co-Curricular Activities</Text>
+                  <Text style={styles.sectionTitle}>10. Co-Curricular Activities</Text>
                   <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
                     <Text style={{ width: "30%" }}>Category</Text>
                     <Text style={{ width: "40%" }}>Activity / Certificate</Text>
@@ -679,7 +735,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   )}
                 </View>
 
-                {/* 10. Strengths & Areas for Improvement */}
+                {/* 11. Strengths & Areas for Improvement */}
                 {strengthsImprovement && (
                   <View style={{ flexDirection: "row", gap: 8 }} wrap={false}>
                     {strengthsImprovement.items.map((item, idx) => (
@@ -691,41 +747,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 11. Faculty / Mentor Feedback */}
+                {/* 12. Faculty / Mentor Feedback */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>11. Faculty / Mentor Feedback</Text>
+                  <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
                   <Text style={{ fontSize: 9, color: "#374151", fontStyle: "italic", lineHeight: 1.4 }}>
                     "{reportCardData.facultyRemark || "No comments provided yet."}"
                   </Text>
                 </View>
-
-                {/* 12. Overall Performance */}
-                {overallPerformance && (
-                  <View style={{ backgroundColor: "#312E81", padding: 12, borderRadius: 6, color: "#FFFFFF" }} wrap={false}>
-                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#F59E0B", textAlign: "center", textTransform: "uppercase", marginBottom: 6 }}>12. Overall Performance</Text>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-                      {overallPerformance.items.map((item, idx) => {
-                        if (item.itemName === "Overall Rating" || item.itemName === "Performance Level") return null;
-                        return (
-                          <View key={idx} style={{ width: "23%", backgroundColor: "rgba(255, 255, 255, 0.1)", padding: 4, borderRadius: 4, alignItems: "center" }}>
-                            <Text style={{ fontSize: 7, color: "#E0E7FF" }}>{item.itemName}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 2, color: "#FFFFFF" }}>{item.value} / 5</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                    {(() => {
-                      const ratingItem = overallPerformance.items.find(i => i.itemName === "Overall Rating");
-                      const levelItem = overallPerformance.items.find(i => i.itemName === "Performance Level") || ratingItem;
-                      return (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.2)", paddingTop: 6, marginTop: 4 }}>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Overall Rating: {ratingItem?.value || "4.02"} / 5</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Performance Level: {levelItem?.remark || levelItem?.value || "Excellent"}</Text>
-                        </View>
-                      );
-                    })()}
-                  </View>
-                )}
               </View>
             );
           })()
@@ -838,43 +866,43 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 </View>
               </View>
             </View>
+
+            {/* Academic Performance (Legacy Fallback) */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Academic Performance</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                {[
+                  { title: "Current Level", val: `Level ${studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"}` },
+                  { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
+                  { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
+                  { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
+                  { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
+                ].map((it, idx) => (
+                  <View
+                    key={idx}
+                    style={{
+                      width: "19.2%",
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderStyle: "solid",
+                      borderColor: "#E5E7EB",
+                      paddingVertical: 8,
+                      paddingHorizontal: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
+                      {it.title}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
+                      {it.val}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </>
         )}
-
-        {/* Academic Performance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Academic Performance</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            {[
-              { title: "Current Level", val: `Level ${studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"}` },
-              { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-              { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-              { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-              { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
-            ].map((it, idx) => (
-              <View
-                key={idx}
-                style={{
-                  width: "19.2%",
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 6,
-                  borderWidth: 1,
-                  borderStyle: "solid",
-                  borderColor: "#E5E7EB",
-                  paddingVertical: 8,
-                  paddingHorizontal: 6,
-                }}
-              >
-                <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
-                  {it.title}
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
-                  {it.val}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* Faculty Feedback */}
         {/* <View style={styles.section}>
@@ -912,29 +940,29 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           </View>
         </View> */}
 
-        {/* Footer */}
-   <View style={styles.footer} fixed>
-  <View style={styles.footerColumn}>
-    <Text style={styles.footerHeading}>Final Status</Text>
-    <Text style={styles.footerValue}>
-      {reportCardData?.finalStatus || "Level 2A"}
-    </Text>
-  </View>
+        {/* Footer: Final Status & Result Summary (Rendered once at the end) */}
+        <View style={styles.footer} wrap={false}>
+          <View style={styles.footerColumn}>
+            <Text style={styles.footerHeading}>Final Status</Text>
+            <Text style={styles.footerValue}>
+              {reportCardData?.finalStatus || "Level 2A"}
+            </Text>
+          </View>
 
-  <View style={styles.footerColumn}>
-    <Text style={styles.footerHeading}>Result</Text>
-    <Text style={styles.footerValue}>
-      {reportCardData?.result || "2A"}
-    </Text>
-  </View>
+          <View style={styles.footerColumn}>
+            <Text style={styles.footerHeading}>Result</Text>
+            <Text style={styles.footerValue}>
+              {reportCardData?.result || "2A"}
+            </Text>
+          </View>
 
-  <View style={styles.footerColumn}>
-    <Text style={styles.footerHeading}>Overall Grade</Text>
-    <Text style={styles.footerValue}>
-      {reportCardData?.overallGrade || "A"}
-    </Text>
-  </View>
-</View>
+          <View style={styles.footerColumn}>
+            <Text style={styles.footerHeading}>Overall Grade</Text>
+            <Text style={styles.footerValue}>
+              {reportCardData?.overallGrade || "A"}
+            </Text>
+          </View>
+        </View>
 
 
       </Page>

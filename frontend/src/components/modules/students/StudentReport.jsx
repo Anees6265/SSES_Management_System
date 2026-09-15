@@ -31,7 +31,8 @@ import {
 } from "react-icons/md";
 import { RiEdit2Fill, RiDoubleQuotesL } from "react-icons/ri";
 import Loader from "../../shared/loader/Loader";
-import logo from '../../../assets/images/doulLogo.png';
+import collegeLogo from '../../../assets/images/logo-ssism.png';
+import itegLogo from '../../../assets/images/iteg-logo.png';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
 
@@ -246,6 +247,7 @@ export default function StudentReport() {
   const currentSubLevel = studentData.currentSubLevelId?.name || studentData.currentLevel || "1A";
   const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
   const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || "ITEG";
+  const departmentLogo = (typeof studentData.subDepartmentId?.departmentId?.logo === 'string' && studentData.subDepartmentId.departmentId.logo.trim()) ? studentData.subDepartmentId.departmentId.logo : itegLogo;
   const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
   const overallGrade = reportCardData?.overallGrade || "A";
   const gradeStyle = getGradeBadgeStyle(overallGrade);
@@ -366,16 +368,23 @@ export default function StudentReport() {
           <div className="p-6 sm:p-8">
             {/* Institute Header Watermark & Brand */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-2 flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <img src={logo} alt="SSISM Logo" className="w-full h-full object-contain" />
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+                {/* College Logo */}
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border border-slate-200/80 p-1.5 flex items-center justify-center flex-shrink-0 shadow-2xs" title="SSISM College Logo">
+                  <img src={collegeLogo} alt="SSISM Logo" className="w-full h-full object-contain" />
                 </div>
+
+                {/* Department Logo */}
+                <div className="h-12 px-2.5 sm:h-14 sm:px-3 rounded-2xl bg-white border border-slate-200/80 p-1.5 flex items-center justify-center flex-shrink-0 shadow-2xs" title="Department Logo">
+                  <img src={departmentLogo} alt="Department Logo" className="h-full w-auto max-w-[85px] sm:max-w-[110px] object-contain" />
+                </div>
+
                 <div>
                   <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
                     Sant Singaji Institute of Science & Management
                   </h1>
                   <p className="text-xs font-semibold text-orange-500 tracking-wider uppercase mt-0.5">
-                    ITEG Department · Comprehensive Student Performance Dossier
+                    {departmentName} · Comprehensive Student Performance Dossier
                   </p>
                 </div>
               </div>
@@ -548,59 +557,6 @@ export default function StudentReport() {
           currentLevel={currentSubLevel}
         />
 
-        {/* ── Academic Performance & SGPA Matrix ── */}
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
-          <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-sm">
-                <FaGraduationCap size={18} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800">Academic SGPA & CGPA Breakdown</h3>
-                <p className="text-xs text-slate-400">University semester performance evaluation</p>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-              Grading Scale: 10.0
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-            {/* Year Wise Cards */}
-            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {sgpaList.map((item, idx) => {
-                const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
-                const score = item.sgpa || "N/A";
-                return (
-                  <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
-                    <div className="flex items-baseline justify-between mt-2">
-                      <span className="text-2xl font-black text-slate-800">{score}</span>
-                      <span className="text-xs font-bold text-slate-400">SGPA</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
-                      <div
-                        className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                        style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Overall CGPA Highlight Box */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 text-center shadow-md relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
-              <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
-              <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
-              <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
-                <span>Distinction Class</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* ── Subject-Wise Performance Table ── */}
         {(subjectPerformanceSection || taskPerformance?.technicalSkills) && (
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -716,6 +672,59 @@ export default function StudentReport() {
             </div>
           </div>
         )}
+
+        {/* ── Academic Performance & SGPA Matrix ── */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
+          <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-sm">
+                <FaGraduationCap size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Academic SGPA & CGPA Breakdown</h3>
+                <p className="text-xs text-slate-400">University semester performance evaluation</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              Grading Scale: 10.0
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+            {/* Year Wise Cards */}
+            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {sgpaList.map((item, idx) => {
+                const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
+                const score = item.sgpa || "N/A";
+                return (
+                  <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
+                    <div className="flex items-baseline justify-between mt-2">
+                      <span className="text-2xl font-black text-slate-800">{score}</span>
+                      <span className="text-xs font-bold text-slate-400">SGPA</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                        style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Overall CGPA Highlight Box */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 text-center shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+              <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+              <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
+              <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
+                <span>Distinction Class</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* ── Soft Skills & Interview Evaluations ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import Header from "../../../shared/sidebar/Header";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useGetSubdepartmentsByDepartmentQuery, useGetAllDepartmentsQuery, useAddSubdepartmentMutation, useUpdateSubdepartmentMutation } from "../../../../redux/api/authApi";
@@ -20,6 +21,50 @@ const DepartmentDetails = () => {
   const location = useLocation();
   const { id: departmentIdParam } = useParams();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1));
+    }
+    if (isRightSwipe) {
+      setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1));
+    }
+  };
+
+  const { user, role: authRole } = useSelector((state) => state.auth || {});
+  const role = (
+    authRole ||
+    user?.role ||
+    localStorage.getItem("role") ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("user") || "{}")?.role;
+      } catch {
+        return "";
+      }
+    })() ||
+    ""
+  ).toLowerCase().trim();
+
+  const canManage = role === "superadmin" || role === "admin";
 
   const stateDept = location.state?.department;
   const { data: allDepartmentsData, isLoading: isDeptsLoading } = useGetAllDepartmentsQuery(undefined, {
@@ -70,22 +115,23 @@ const DepartmentDetails = () => {
 
   return (
     <>
-      <Formik
-            initialValues={{ name: "", departmentId: department?._id || "", allowedCourses: [], isActive: true }}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-              <Header
-                title={department.name}
-                breadcrumbs={[
-                  { label: "Departments", path: "/department-management" },
-                  { label: department.name }
-                ]}
-              >
-                <OrangeButton
-                  buttonTitle="+ Create Sub-Department"
-                  panelTitle="Add New Subdepartment"
+      {canManage ? (
+        <Formik
+          initialValues={{ name: "", departmentId: department?._id || "", allowedCourses: [], isActive: true }}
+          validationSchema={validationSchema}
+          onSubmit={handleSubmit}
+        >
+          {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
+            <Header
+              title={department.name}
+              breadcrumbs={[
+                { label: "Departments", path: "/department-management" },
+                { label: department.name }
+              ]}
+            >
+              <OrangeButton
+                buttonTitle="+ Create Sub-Department"
+                panelTitle="Add New Subdepartment"
                 drawerContent={
                   <Form className="space-y-4">
                     <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
@@ -123,21 +169,48 @@ const DepartmentDetails = () => {
                 onLeftClick={resetForm}
                 onRightClick={submitForm}
               />
-              </Header>
-            )}
-          </Formik>
+            </Header>
+          )}
+        </Formik>
+      ) : (
+        <Header
+          title={department.name}
+          breadcrumbs={[
+            { label: "Departments", path: "/department-management" },
+            { label: department.name }
+          ]}
+        />
+      )}
 
         {/* Sliding Carousel of Sub-Departments */}
-        <div className="px-6 mt-6 pb-8">
+        <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
           {subdepartments.length === 0 ? (
-            <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl">
-              <MdAccountTree size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">No subdepartments found</p>
+            <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl p-6">
+              <MdAccountTree size={44} className="mx-auto text-gray-300 mb-2.5" />
+              <p className="text-sm font-bold text-gray-700">No subdepartments found</p>
+              <p className="text-xs text-gray-400 mt-1">Add subdepartments to organize levels and courses</p>
             </div>
           ) : (
-            <div className="relative w-full max-w-none mx-auto px-1 md:px-14 flex flex-col items-center">
+            <div className="relative w-full max-w-none mx-auto px-0 md:px-14 flex flex-col items-center">
+              {/* Mobile Subdepartment Counter & Swipe Hint */}
+              {subdepartments.length > 1 && (
+                <div className="w-full flex items-center justify-between gap-2 mb-3 md:hidden px-1">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    {currentIndex + 1} of {subdepartments.length} Sub-Departments
+                  </span>
+                  <span className="text-[10px] text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">
+                    Swipe ⇄
+                  </span>
+                </div>
+              )}
+
               {/* Outer Slider Window */}
-              <div className="w-full overflow-hidden rounded-2xl relative">
+              <div 
+                className="w-full overflow-hidden rounded-2xl relative"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+              >
                 <div 
                   className="flex transition-transform duration-500 ease-in-out"
                   style={{ transform: `translateX(-${Math.min(currentIndex, Math.max(0, subdepartments.length - 1)) * 100}%)` }}
@@ -157,78 +230,80 @@ const DepartmentDetails = () => {
                           state: { departmentId: department._id, subdepartment: subdept, departmentName: department.name }
                         })}
                         onEdit={
-                          <Formik
-                            key={subdept._id}
-                            initialValues={{
-                              name: subdept.name,
-                              departmentId: subdept.departmentId?._id || subdept.departmentId || department._id,
-                              allowedCourses: subdept.allowedCourses || [],
-                              isActive: subdept.isActive
-                            }}
-                            validationSchema={validationSchema}
-                            onSubmit={async (values, { setSubmitting, resetForm }) => {
-                              try {
-                                await updateSubdepartment({
-                                  subdepartmentId: subdept._id,
-                                  name: values.name,
-                                  departmentId: values.departmentId,
-                                  allowedCourses: values.allowedCourses.filter(c => c),
-                                  isActive: values.isActive
-                                }).unwrap();
-                                toast.success("Subdepartment updated successfully!");
-                                resetForm();
-                                refetch();
-                              } catch (error) {
-                                toast.error(error?.data?.message || "Error updating subdepartment");
-                              } finally {
-                                setSubmitting(false);
-                              }
-                            }}
-                          >
-                            {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-                              <OrangeButton
-                                buttonTitle="Edit"
-                                panelTitle="Edit Subdepartment"
-                                customButtonClass="w-full bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
-                                drawerContent={
-                                  <Form className="space-y-4">
-                                    <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
-                                    {/* departmentId hidden — auto-filled */}
-                                    <div>
-                                      <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                                      {departmentCourses.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {departmentCourses.map((course) => (
-                                            <label key={course} className="flex items-center gap-2 cursor-pointer">
-                                              <input
-                                                type="checkbox"
-                                                checked={values.allowedCourses.includes(course)}
-                                                onChange={(e) => {
-                                                  const updated = e.target.checked
-                                                    ? [...values.allowedCourses, course]
-                                                    : values.allowedCourses.filter(c => c !== course);
-                                                  setFieldValue("allowedCourses", updated);
-                                                }}
-                                                className="w-4 h-4 accent-orange-500"
-                                              />
-                                              <span className="text-sm text-gray-700">{course}</span>
-                                            </label>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-gray-400">No courses defined in this department.</p>
-                                      )}
-                                    </div>
-                                    <RadioGroup label="Status" name="isActive" required={false} />
-                                  </Form>
+                          canManage ? (
+                            <Formik
+                              key={subdept._id}
+                              initialValues={{
+                                name: subdept.name,
+                                departmentId: subdept.departmentId?._id || subdept.departmentId || department._id,
+                                allowedCourses: subdept.allowedCourses || [],
+                                isActive: subdept.isActive
+                              }}
+                              validationSchema={validationSchema}
+                              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                try {
+                                  await updateSubdepartment({
+                                    subdepartmentId: subdept._id,
+                                    name: values.name,
+                                    departmentId: values.departmentId,
+                                    allowedCourses: values.allowedCourses.filter(c => c),
+                                    isActive: values.isActive
+                                  }).unwrap();
+                                  toast.success("Subdepartment updated successfully!");
+                                  resetForm();
+                                  refetch();
+                                } catch (error) {
+                                  toast.error(error?.data?.message || "Error updating subdepartment");
+                                } finally {
+                                  setSubmitting(false);
                                 }
-                                leftBtnText="Cancel"
-                                rightBtnText={isSubmitting ? "Updating..." : "Update"}
-                                onLeftClick={resetForm}
-                                onRightClick={submitForm}
-                              />
-                            )}
-                          </Formik>
+                              }}
+                            >
+                              {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
+                                <OrangeButton
+                                  buttonTitle="Edit"
+                                  panelTitle="Edit Subdepartment"
+                                  customButtonClass="w-full bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
+                                  drawerContent={
+                                    <Form className="space-y-4">
+                                      <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
+                                      {/* departmentId hidden — auto-filled */}
+                                      <div>
+                                        <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                                        {departmentCourses.length > 0 ? (
+                                          <div className="space-y-2">
+                                            {departmentCourses.map((course) => (
+                                              <label key={course} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={values.allowedCourses.includes(course)}
+                                                  onChange={(e) => {
+                                                    const updated = e.target.checked
+                                                      ? [...values.allowedCourses, course]
+                                                      : values.allowedCourses.filter(c => c !== course);
+                                                    setFieldValue("allowedCourses", updated);
+                                                  }}
+                                                  className="w-4 h-4 accent-orange-500"
+                                                />
+                                                <span className="text-sm text-gray-700">{course}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs text-gray-400">No courses defined in this department.</p>
+                                        )}
+                                      </div>
+                                      <RadioGroup label="Status" name="isActive" required={false} />
+                                    </Form>
+                                  }
+                                  leftBtnText="Cancel"
+                                  rightBtnText={isSubmitting ? "Updating..." : "Update"}
+                                  onLeftClick={resetForm}
+                                  onRightClick={submitForm}
+                                />
+                              )}
+                            </Formik>
+                          ) : null
                         }
                       />
                     </div>
@@ -236,41 +311,61 @@ const DepartmentDetails = () => {
                 </div>
               </div>
 
-              {/* Slider Navigation Controls */}
+              {/* Desktop Slider Navigation Controls */}
               {subdepartments.length > 1 && (
                 <>
-                  {/* Left Arrow Button */}
+                  {/* Left Arrow Button (Desktop) */}
                   <button
                     onClick={() => setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1))}
-                    className="absolute left-1 md:left-4 top-[50%] transform -translate-y-1/2 bg-white/90 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95"
+                    className="hidden md:flex absolute left-2 md:left-4 top-[50%] transform -translate-y-1/2 bg-white/95 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95 items-center justify-center cursor-pointer"
                     aria-label="Previous Slide"
                   >
                     <HiChevronLeft size={24} />
                   </button>
 
-                  {/* Right Arrow Button */}
+                  {/* Right Arrow Button (Desktop) */}
                   <button
                     onClick={() => setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1))}
-                    className="absolute right-1 md:right-4 top-[50%] transform -translate-y-1/2 bg-white/90 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95"
+                    className="hidden md:flex absolute right-2 md:right-4 top-[50%] transform -translate-y-1/2 bg-white/95 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95 items-center justify-center cursor-pointer"
                     aria-label="Next Slide"
                   >
                     <HiChevronRight size={24} />
                   </button>
+                </>
+              )}
 
-                  {/* Indicators (Dots) */}
-                  <div className="flex gap-2 mt-4">
+              {/* Bottom Pagination & Mobile Nav Arrows */}
+              {subdepartments.length > 1 && (
+                <div className="flex items-center justify-center gap-3 mt-4 sm:mt-5">
+                  <button
+                    onClick={() => setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1))}
+                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-xs border border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-500 active:scale-95 transition cursor-pointer"
+                    aria-label="Previous Slide"
+                  >
+                    <HiChevronLeft size={18} />
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
                     {subdepartments.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentIndex(idx)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                          currentIndex === idx ? 'bg-orange-500 w-6' : 'bg-gray-300 hover:bg-gray-400'
+                        className={`rounded-full transition-all duration-300 cursor-pointer ${
+                          currentIndex === idx ? 'bg-orange-500 w-5 h-2' : 'bg-gray-300 w-2 h-2 hover:bg-gray-400'
                         }`}
                         aria-label={`Slide ${idx + 1}`}
                       />
                     ))}
                   </div>
-                </>
+
+                  <button
+                    onClick={() => setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1))}
+                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-xs border border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-500 active:scale-95 transition cursor-pointer"
+                    aria-label="Next Slide"
+                  >
+                    <HiChevronRight size={18} />
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -357,7 +357,7 @@ export default function StudentReport() {
       </div>
 
       {/* ── Report Card Body Container ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2.5 sm:pt-4 space-y-4 sm:space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4">
+      <div className="w-full px-3.5 sm:px-6 lg:px-8 pt-2.5 sm:pt-4 space-y-4 sm:space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4">
 
         {/* ── Hero Dossier Card ── */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">

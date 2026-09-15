@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 const ActionButtons = ({ onView, onEdit, inactive, variant }) => {
   const isFull = variant === 'fullpage';
   return (
-    <div className={`flex gap-3 mt-auto ${isFull ? 'w-full' : 'px-5 pb-5'}`}>
+    <div className={`flex gap-2.5 sm:gap-3 mt-auto ${isFull ? 'w-full' : 'px-4 sm:px-5 pb-4 sm:pb-5'}`}>
       {onView && (
         <button
           onClick={inactive ? undefined : onView}
@@ -52,34 +52,34 @@ const SubDepartmentCard = ({
 
   if (variant === 'fullpage') {
     return (
-      <div className={`bg-white border rounded-3xl shadow-sm transition-all duration-300 overflow-hidden flex flex-col md:flex-row min-h-[580px] lg:min-h-[calc(100vh-250px)] w-full ${
+      <div className={`bg-white border rounded-2xl sm:rounded-3xl shadow-xs sm:shadow-sm transition-all duration-300 overflow-hidden flex flex-col md:flex-row min-h-0 md:min-h-[520px] lg:min-h-[calc(100vh-250px)] w-full ${
         inactive ? 'border-gray-200 bg-gray-50/50' : 'border-gray-200 hover:border-orange-300'
       }`}>
         
         {/* Left Column: Subdepartment Profile & Quick Stats */}
-        <div className="w-full md:w-5/12 bg-slate-50/80 p-6 lg:p-8 border-b md:border-b-0 md:border-r border-gray-150 flex flex-col justify-between gap-8 flex-shrink-0">
-          <div className="flex flex-col gap-6">
+        <div className="w-full md:w-5/12 bg-slate-50/80 p-4 sm:p-6 lg:p-8 border-b md:border-b-0 md:border-r border-gray-150 flex flex-col justify-between gap-4 sm:gap-6 lg:gap-8 flex-shrink-0">
+          <div className="flex flex-col gap-4 sm:gap-6">
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
+            <div className="flex items-start justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] text-orange-500 font-extrabold uppercase tracking-wider">Sub-Department</span>
-                <h3 className={`text-2xl lg:text-3xl font-black tracking-tight leading-none mt-1 ${inactive ? 'text-gray-400' : 'text-gray-900'}`}>
+                <h3 className={`text-xl sm:text-2xl lg:text-3xl font-black tracking-tight leading-tight mt-1 ${inactive ? 'text-gray-400' : 'text-gray-900'}`}>
                   {title}
                 </h3>
                 {departmentName && (
-                  <p className="text-xs text-gray-500 font-medium mt-1.5 uppercase tracking-wide">
+                  <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wide truncate">
                     Department: <span className="font-semibold text-gray-700">{departmentName}</span>
                   </p>
                 )}
               </div>
               
-              <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border flex-shrink-0 ${
+              <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border flex-shrink-0 ${
                 inactive 
                   ? 'bg-slate-50 text-slate-400 border-slate-200' 
                   : 'bg-emerald-50 text-emerald-700 border-emerald-150'
               }`}>
                 {!inactive && (
-                  <span className="relative flex h-1.5 w-1.5 mr-2">
+                  <span className="relative flex h-1.5 w-1.5 mr-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                   </span>
@@ -91,37 +91,37 @@ const SubDepartmentCard = ({
             <div className="border-t border-gray-200" />
 
             {/* Quick Stats Cards */}
-            <div className="flex flex-col gap-3">
-              <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-2xs flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center">
-                  <HiOutlineUserGroup size={24} />
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-2.5 sm:gap-3">
+              <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-150 shadow-2xs flex items-center gap-2.5 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+                  <HiOutlineUserGroup size={20} className="sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-450 font-extrabold uppercase tracking-wider">Total Admitted Students</p>
-                  <p className="text-xl font-black text-gray-800 mt-0.5">{totalStudents} Students</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] text-gray-450 font-extrabold uppercase tracking-wider truncate">Total Admitted Students</p>
+                  <p className="text-base sm:text-xl font-black text-gray-800 mt-0.5">{totalStudents} Students</p>
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-2xl border border-gray-150 shadow-2xs flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center">
-                  <MdOutlineMenuBook size={24} />
+              <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-150 shadow-2xs flex items-center gap-2.5 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+                  <MdOutlineMenuBook size={20} className="sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-450 font-extrabold uppercase tracking-wider">Approved Courses</p>
-                  <p className="text-xl font-black text-gray-800 mt-0.5">{allowedCourses?.length || 0} Courses</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] sm:text-[10px] text-gray-450 font-extrabold uppercase tracking-wider truncate">Approved Courses</p>
+                  <p className="text-base sm:text-xl font-black text-gray-800 mt-0.5">{allowedCourses?.length || 0} Courses</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Action Buttons in Left Panel */}
-          <div className="mt-auto">
+          <div className="mt-3 sm:mt-auto">
             <ActionButtons onView={onView} onEdit={onEdit} inactive={inactive} variant={variant} />
           </div>
         </div>
 
         {/* Right Column: Detailed Lists & Progress */}
-        <div className="flex-1 p-6 lg:p-8 flex flex-col gap-8 overflow-y-auto">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col gap-5 sm:gap-8 overflow-y-auto">
           
           {/* Section 1: Student Progress / Levels */}
           <div className="flex flex-col gap-3">
@@ -218,7 +218,7 @@ const SubDepartmentCard = ({
     }`}>
       {!inactive && <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 to-amber-500 flex-shrink-0" />}
       
-      <div className="p-5 flex-1 flex flex-col gap-4">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 sm:gap-4">
         {/* Header: Title, Department Subtitle, Status */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

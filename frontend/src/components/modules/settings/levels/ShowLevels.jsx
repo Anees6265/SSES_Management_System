@@ -27,9 +27,9 @@ const ShowLevels = () => {
         subtitle="View all levels across departments and subdepartments"
         showBackButton={false}
       />
-      <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-lg">
-        <div className="px-6">
-          <div className="flex justify-between items-center flex-wrap gap-4 py-4">
+      <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-xl sm:rounded-2xl">
+        <div className="px-3.5 sm:px-6">
+          <div className="flex justify-between items-center flex-wrap gap-3 sm:gap-4 py-3 sm:py-4">
             <Pagination
               rowsPerPage={rowsPerPage}
               searchTerm={searchTerm}
@@ -43,8 +43,8 @@ const ShowLevels = () => {
           </div>
         </div>
         
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-3.5 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
             {allLevels.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Layers className="w-12 h-12 text-gray-300 mx-auto mb-3" />

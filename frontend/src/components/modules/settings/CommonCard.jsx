@@ -1,7 +1,7 @@
 import { MdBusiness } from 'react-icons/md';
 
 const ActionButtons = ({ onView, onEdit, inactive }) => (
-  <div className="flex gap-3 px-5 pb-5 mt-auto">
+  <div className="flex gap-2.5 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5 mt-auto">
     {onView && (
       <button
         onClick={inactive ? undefined : onView}
@@ -116,18 +116,18 @@ const CommonCard = ({
       {/* Top Accent Gradient Line */}
       {!inactive && <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 to-amber-500 flex-shrink-0" />}
       
-      <div className="p-5 flex-1 flex flex-col">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col">
 
         {/* Top row: icon/logo + status badge */}
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-xs border ${
+        <div className="flex items-start justify-between mb-3.5 sm:mb-4">
+          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-xs border ${
             inactive 
               ? 'bg-gray-100 border-gray-250' 
               : 'bg-gradient-to-tr from-orange-50 to-amber-50/50 border-orange-100'
           }`}>
             {logo
               ? <img src={logo} alt={title} className="w-full h-full object-cover" />
-              : <Icon size={24} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
+              : <Icon size={22} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
             }
           </div>
           {status !== undefined && (
@@ -148,7 +148,7 @@ const CommonCard = ({
         </div>
 
         {/* Title */}
-        <h3 className={`text-base sm:text-lg font-extrabold mb-1 min-h-[2.5rem] tracking-tight leading-snug ${
+        <h3 className={`text-base sm:text-lg font-extrabold mb-1 min-h-0 sm:min-h-[2.5rem] tracking-tight leading-snug ${
           inactive ? 'text-gray-400' : 'text-gray-900'
         }`}>
           {title}
@@ -156,24 +156,24 @@ const CommonCard = ({
 
         {/* Description */}
         {description && (
-          <p className={`text-xs min-h-[3rem] font-medium leading-relaxed line-clamp-2 mb-3.5 ${
+          <p className={`text-xs min-h-0 sm:min-h-[3rem] font-medium leading-relaxed line-clamp-2 mb-3 sm:mb-3.5 ${
             inactive ? 'text-gray-400' : 'text-gray-500'
           }`}>{description}</p>
         )}
 
         {/* Divider */}
-        <div className={`border-t my-4 ${inactive ? 'border-gray-150' : 'border-slate-100/70'}`} />
+        <div className={`border-t my-3 sm:my-4 ${inactive ? 'border-gray-150' : 'border-slate-100/70'}`} />
 
         {/* Redesigned Info Items Grid with individual cards */}
         {infoItems && infoItems.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3.5 sm:mb-4 mt-auto">
             {infoItems.map((item, i) => (
-              <div key={i} className={`border rounded-xl p-2.5 flex items-center gap-2.5 transition-all duration-200 ${
+              <div key={i} className={`border rounded-xl p-2 sm:p-2.5 flex items-center gap-2 sm:gap-2.5 transition-all duration-200 ${
                 inactive 
                   ? 'bg-gray-50 border-gray-150' 
                   : 'bg-slate-50/50 border-slate-100/75 hover:bg-white hover:border-orange-100 hover:shadow-xs'
               }`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 border ${
                   inactive 
                     ? 'bg-gray-100 border-gray-200 text-gray-450' 
                     : 'bg-gradient-to-tr from-orange-50 to-amber-50 border-orange-100/40 text-orange-500'

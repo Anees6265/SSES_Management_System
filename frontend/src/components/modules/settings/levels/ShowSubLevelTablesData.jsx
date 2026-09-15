@@ -93,10 +93,12 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 flex-wrap">
-                <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-                <div className="ml-auto flex items-center gap-3 flex-wrap">
-                    <div className="min-w-[150px]">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3">
+                <div className="w-full sm:flex-1">
+                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+                    <div className="flex-1 sm:flex-initial min-w-[140px]">
                         <SessionSelector
                             selectedSessionId={selectedSessionId}
                             onSessionChange={setSelectedSessionId}
@@ -281,9 +283,9 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-150 rounded-2xl p-4 shadow-sm/5">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-150 rounded-2xl p-3 sm:p-4 shadow-2xs">
                 {/* Search Box */}
-                <div className="relative flex-1 min-w-[240px] max-w-md">
+                <div className="relative w-full sm:flex-1 sm:max-w-md">
                     <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
                         <MdSearch size={18} />
                     </span>
@@ -292,14 +294,14 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                         value={progressSearch}
                         onChange={(e) => setProgressSearch(e.target.value)}
                         placeholder="Search by name or ID..."
-                        className="w-full pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
+                        className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
                         style={{ paddingLeft: '2.75rem' }}
                     />
                 </div>
 
                 {/* Filter and Export Actions */}
-                <div className="ml-auto flex items-center gap-3">
-                    <button className="flex items-center gap-2 h-10 px-4 text-sm font-semibold border border-gray-200 rounded-xl bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    <button className="flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border border-gray-200 rounded-xl bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer">
                         <MdFilterList size={16} className="text-gray-400" />
                         <span>Filter</span>
                     </button>
@@ -431,12 +433,12 @@ const ShowSubLevelTablesData = () => {
                 breadcrumbs={breadcrumbs}
                 bottomRow={
                     subLevels.length > 0 ? (
-                        <div className="flex gap-1 overflow-x-auto">
+                        <div className="flex gap-1 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-0.5">
                             {subLevels.map((sl) => (
                                 <button
                                     key={sl._id}
                                     onClick={() => handleTabChange(sl)}
-                                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 ${activeTab?._id === sl._id ? "border-orange-500 text-orange-500 font-semibold" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                                    className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 flex-shrink-0 cursor-pointer ${activeTab?._id === sl._id ? "border-orange-500 text-orange-500 font-semibold" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                                 >
                                     {sl.name}
                                 </button>
@@ -447,7 +449,7 @@ const ShowSubLevelTablesData = () => {
             >
                 {/* Action buttons — only when sublevels exist */}
                 {subLevels.length > 0 && activeSection === "Progress" && (
-                    <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-md hover:bg-orange-50 transition flex-shrink-0">
+                    <button onClick={() => {}} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
                         <MdTableChart size={16} /> Upload Excel
                     </button>
                 )}
@@ -508,7 +510,7 @@ const ShowSubLevelTablesData = () => {
                 )}
             </Header>
 
-            <div className="px-6 pb-10">
+            <div className="px-3.5 sm:px-6 pb-10">
 
                 {/* No sublevels — show prompt */}
                 {subLevels.length === 0 && (
@@ -523,12 +525,12 @@ const ShowSubLevelTablesData = () => {
 
                 {/* Section Tabs — only when sublevels exist */}
                 {subLevels.length > 0 && (
-                    <div className="flex gap-2 w-fit bg-[#E2E8F080] border border-gray-200 p-1.5 rounded-xl mt-5">
+                    <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-fit overflow-x-auto no-scrollbar scrollbar-none bg-slate-100/90 border border-slate-200/80 p-1 sm:p-1.5 rounded-xl mt-3 sm:mt-5">
                         {SECTION_TABS.map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => handleSectionChange(tab)}
-                                className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeSection === tab ? "bg-white text-orange-500 shadow" : "text-gray-600 hover:bg-gray-200"}`}
+                                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 sm:flex-initial text-center cursor-pointer ${activeSection === tab ? "bg-white text-orange-500 shadow-xs font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-white/50"}`}
                             >
                                 {tab}
                             </button>
@@ -538,7 +540,7 @@ const ShowSubLevelTablesData = () => {
 
                 {/* Tab Content — only when sublevels exist */}
                 {subLevels.length > 0 && (
-                    <div className="py-6">
+                    <div className="py-4 sm:py-6">
                         {activeSection === "Students" && (
                             <StudentsTab
                                 subLevel={activeTab}

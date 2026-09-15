@@ -818,7 +818,8 @@ export default function StudentReportForm() {
         ]}
       />
 
-      <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full px-3.5 sm:px-6 lg:px-8 pt-2 sm:pt-3">
+        <form onSubmit={handleSubmit} className="w-full space-y-6">
         {/* Basic Info */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
@@ -1568,7 +1569,8 @@ export default function StudentReportForm() {
         </div>
       </form>
     </div>
-  );
+  </div>
+);
 }
 
 

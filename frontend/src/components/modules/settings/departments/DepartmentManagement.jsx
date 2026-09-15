@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import { MdBusiness, MdOutlinePersonOutline, MdOutlineAddPhotoAlternate } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
+import { FiSearch, FiX } from "react-icons/fi";
 import { useGetAllDepartmentsQuery, useDeleteDepartmentMutation, useAddDepartmentMutation, useUpdateDepartmentMutation } from "../../../../redux/api/authApi";
 import Loader from "../../../shared/loader/Loader";
 import { toast } from "react-toastify";
@@ -21,7 +23,37 @@ const DepartmentManagement = () => {
   const [updateDepartment] = useUpdateDepartmentMutation();
   const [editingDepartment, setEditingDepartment] = useState(null);
 
+  const { user, role: authRole } = useSelector((state) => state.auth || {});
+  const role = (
+    authRole ||
+    user?.role ||
+    localStorage.getItem("role") ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("user") || "{}")?.role;
+      } catch {
+        return "";
+      }
+    })() ||
+    ""
+  ).toLowerCase().trim();
+
+  const canManageDepartment = role === "superadmin" || role === "admin";
+
+  const [searchQuery, setSearchQuery] = useState("");
+
   const departments = [...(departmentsData?.data || [])].sort((a, b) => b.isActive - a.isActive);
+
+  const filteredDepartments = departments.filter((dept) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      dept.name?.toLowerCase().includes(q) ||
+      dept.code?.toLowerCase().includes(q) ||
+      dept.universityName?.toLowerCase().includes(q) ||
+      dept.headOfDepartment?.toLowerCase().includes(q)
+    );
+  });
 
   const validationSchema = Yup.object({
     name: Yup.string().required("Department name is required"),
@@ -98,101 +130,154 @@ const DepartmentManagement = () => {
 
   return (
     <>
-      <Formik
-              key={editingDepartment?._id || 'new'}
-              initialValues={{
-                name: editingDepartment?.name || "",
-                description: editingDepartment?.description || "",
-                universityName: editingDepartment?.universityName || "",
-                headOfDepartment: editingDepartment?.headOfDepartment || "",
-                allowedCourses: editingDepartment?.allowedCourses || [{ courseName: "", durationInYears: "" }],
-                isActive: editingDepartment?.isActive !== undefined ? editingDepartment.isActive : true,
-                logoFile: null,
-                logoPreview: editingDepartment?.logo || ""
-              }}
-              validationSchema={validationSchema}
-              onSubmit={handleDepartmentSubmit}
-              enableReinitialize
+      {canManageDepartment ? (
+        <Formik
+          key={editingDepartment?._id || 'new'}
+          initialValues={{
+            name: editingDepartment?.name || "",
+            description: editingDepartment?.description || "",
+            universityName: editingDepartment?.universityName || "",
+            headOfDepartment: editingDepartment?.headOfDepartment || "",
+            allowedCourses: editingDepartment?.allowedCourses || [{ courseName: "", durationInYears: "" }],
+            isActive: editingDepartment?.isActive !== undefined ? editingDepartment.isActive : true,
+            logoFile: null,
+            logoPreview: editingDepartment?.logo || ""
+          }}
+          validationSchema={validationSchema}
+          onSubmit={handleDepartmentSubmit}
+          enableReinitialize
+        >
+          {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
+            <Header
+              title="Department Management"
+              breadcrumbs={[{ label: "Departments" }]}
             >
-              {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-                <Header
-                  title="Department Management"
-                  breadcrumbs={[{ label: "Departments" }]}
-                >
-                  <OrangeButton
-                    buttonTitle="Add Department"
-                  panelTitle={editingDepartment ? "Edit Department" : "Add New Department"}
-                  drawerContent={
-                    <Form className="space-y-4">
-                      {/* Logo Upload */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Department Logo</label>
-                        <div
-                          className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
-                          onClick={() => document.getElementById('add-logo-input').click()}
-                        >
-                          {values.logoPreview ? (
-                            <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
-                          ) : (
-                            <>
-                              <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
-                              <span className="text-xs text-gray-400">Click to upload logo</span>
-                            </>
+              <OrangeButton
+                buttonTitle="Add Department"
+                panelTitle={editingDepartment ? "Edit Department" : "Add New Department"}
+                drawerContent={
+                  <Form className="space-y-4">
+                    {/* Logo Upload */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Department Logo</label>
+                      <div
+                        className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
+                        onClick={() => document.getElementById('add-logo-input').click()}
+                      >
+                        {values.logoPreview ? (
+                          <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
+                        ) : (
+                          <>
+                            <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
+                            <span className="text-xs text-gray-400">Click to upload logo</span>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        id="add-logo-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setFieldValue("logoFile", file);
+                            setFieldValue("logoPreview", URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <InputField label="Department Name" name="name" placeholder="Enter department name" />
+                    <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
+                    <InputField label="University Name" name="universityName" placeholder="Enter university name" />
+                    <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                      {values.allowedCourses.map((course, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
+                          <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
+                          {values.allowedCourses.length > 1 && (
+                            <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
                           )}
                         </div>
-                        <input
-                          id="add-logo-input"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              setFieldValue("logoFile", file);
-                              setFieldValue("logoPreview", URL.createObjectURL(file));
-                            }
-                          }}
-                        />
-                      </div>
+                      ))}
+                      <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
+                    </div>
 
-                      <InputField label="Department Name" name="name" placeholder="Enter department name" />
-                      <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                      <InputField label="University Name" name="universityName" placeholder="Enter university name" />
-                      <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
+                    <RadioGroup label="Status" name="isActive" required={false} />
+                  </Form>
+                }
+                leftBtnText="Cancel"
+                rightBtnText={isSubmitting ? "Saving..." : (editingDepartment ? "Update Department" : "Add Department")}
+                onLeftClick={() => {
+                  resetForm();
+                  setEditingDepartment(null);
+                }}
+                onRightClick={submitForm}
+              />
+            </Header>
+          )}
+        </Formik>
+      ) : (
+        <Header
+          title="Department Management"
+          breadcrumbs={[{ label: "Departments" }]}
+        />
+      )}
 
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                        {values.allowedCourses.map((course, index) => (
-                          <div key={index} className="flex gap-2 mb-2">
-                            <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
-                            <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
-                            {values.allowedCourses.length > 1 && (
-                              <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
-                            )}
-                          </div>
-                        ))}
-                        <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
-                      </div>
+      <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
+        {/* Search & Header Stats Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="relative flex-1 max-w-md">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search departments by name, university..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-9 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                title="Clear search"
+              >
+                <FiX size={15} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <span className="text-[11px] sm:text-xs font-bold text-gray-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/60 whitespace-nowrap">
+              {filteredDepartments.length} {filteredDepartments.length === 1 ? "Department" : "Departments"}
+            </span>
+          </div>
+        </div>
 
-                      <RadioGroup label="Status" name="isActive" required={false} />
-                    </Form>
-                  }
-                  leftBtnText="Cancel"
-                  rightBtnText={isSubmitting ? "Saving..." : (editingDepartment ? "Update Department" : "Add Department")}
-                  onLeftClick={() => {
-                    resetForm();
-                    setEditingDepartment(null);
-                  }}
-                  onRightClick={submitForm}
-                />
-                </Header>
-              )}
-            </Formik>
-
-      <div className="px-6 mt-6">
-        {/* Departments Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {departments.map((dept) => (
+        {/* Departments Cards Grid or Empty State */}
+        {filteredDepartments.length === 0 ? (
+          <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl p-6">
+            <MdBusiness size={44} className="mx-auto text-gray-300 mb-2.5" />
+            <h3 className="text-sm sm:text-base font-bold text-gray-700">No departments found</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              {searchQuery ? `No matching results for "${searchQuery}"` : "No departments added yet"}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mt-3.5 px-3.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition cursor-pointer"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+            {filteredDepartments.map((dept) => (
               <Formik
                 key={dept._id}
                 initialValues={{
@@ -236,74 +321,77 @@ const DepartmentManagement = () => {
                     ]}
                     onView={() => handleRowClick(dept)}
                     onEdit={
-                      <OrangeButton
-                        buttonTitle="EDIT"
-                        panelTitle="Edit Department"
-                        customButtonClass="w-full bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
-                        drawerContent={
-                          <Form className="space-y-4">
-                            {/* Logo Upload */}
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Department Logo</label>
-                              <div
-                                className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
-                                onClick={() => document.getElementById(`edit-logo-${dept._id}`).click()}
-                              >
-                                {values.logoPreview ? (
-                                  <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
-                                ) : (
-                                  <>
-                                    <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
-                                    <span className="text-xs text-gray-400">Click to upload logo</span>
-                                  </>
-                                )}
-                              </div>
-                              <input
-                                id={`edit-logo-${dept._id}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    setFieldValue("logoFile", file);
-                                    setFieldValue("logoPreview", URL.createObjectURL(file));
-                                  }
-                                }}
-                              />
-                            </div>
-                            <InputField label="Department Name" name="name" placeholder="Enter department name" />
-                            <InputField label="Department Code" name="code" placeholder="Enter department code" disabled={true} />
-                            <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                            <InputField label="University Name" name="universityName" placeholder="Enter university name" />
-                            <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
-                            <div>
-                              <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                              {values.allowedCourses.map((course, index) => (
-                                <div key={index} className="flex gap-2 mb-2">
-                                  <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
-                                  <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
-                                  {values.allowedCourses.length > 1 && (
-                                    <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
+                      canManageDepartment ? (
+                        <OrangeButton
+                          buttonTitle="EDIT"
+                          panelTitle="Edit Department"
+                          customButtonClass="w-full bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
+                          drawerContent={
+                            <Form className="space-y-4">
+                              {/* Logo Upload */}
+                              <div>
+                                <label className="block text-sm font-medium mb-2">Department Logo</label>
+                                <div
+                                  className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
+                                  onClick={() => document.getElementById(`edit-logo-${dept._id}`).click()}
+                                >
+                                  {values.logoPreview ? (
+                                    <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
+                                  ) : (
+                                    <>
+                                      <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
+                                      <span className="text-xs text-gray-400">Click to upload logo</span>
+                                    </>
                                   )}
                                 </div>
-                              ))}
-                              <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
-                            </div>
-                            <RadioGroup label="Status" name="isActive" required={false} />
-                          </Form>
-                        }
-                        leftBtnText="Cancel"
-                        rightBtnText={isSubmitting ? "Updating..." : "Update Department"}
-                        onLeftClick={resetForm}
-                        onRightClick={submitForm}
-                      />
+                                <input
+                                  id={`edit-logo-${dept._id}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      setFieldValue("logoFile", file);
+                                      setFieldValue("logoPreview", URL.createObjectURL(file));
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <InputField label="Department Name" name="name" placeholder="Enter department name" />
+                              <InputField label="Department Code" name="code" placeholder="Enter department code" disabled={true} />
+                              <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
+                              <InputField label="University Name" name="universityName" placeholder="Enter university name" />
+                              <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
+                              <div>
+                                <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                                {values.allowedCourses.map((course, index) => (
+                                  <div key={index} className="flex gap-2 mb-2">
+                                    <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
+                                    <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
+                                    {values.allowedCourses.length > 1 && (
+                                      <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
+                                    )}
+                                  </div>
+                                ))}
+                                <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
+                              </div>
+                              <RadioGroup label="Status" name="isActive" required={false} />
+                            </Form>
+                          }
+                          leftBtnText="Cancel"
+                          rightBtnText={isSubmitting ? "Updating..." : "Update Department"}
+                          onLeftClick={resetForm}
+                          onRightClick={submitForm}
+                        />
+                      ) : null
                     }
                   />
                 )}
               </Formik>
             ))}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -77,6 +77,31 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
         raw: s,
     }));
 
+    const [mobilePage, setMobilePage] = useState(1);
+    const mobilePageSize = 10;
+
+    const searchedStudents = useMemo(() => {
+        if (!searchTerm.trim()) return students;
+        const q = searchTerm.toLowerCase();
+        return students.filter(s =>
+            s.fullName?.toLowerCase().includes(q) ||
+            s.fatherName?.toLowerCase().includes(q) ||
+            s.mobile?.toLowerCase().includes(q) ||
+            s.course?.toLowerCase().includes(q) ||
+            s.prkey?.toLowerCase().includes(q)
+        );
+    }, [students, searchTerm]);
+
+    const totalMobilePages = Math.max(1, Math.ceil(searchedStudents.length / mobilePageSize));
+    const paginatedMobileStudents = useMemo(() => {
+        const start = (mobilePage - 1) * mobilePageSize;
+        return searchedStudents.slice(start, start + mobilePageSize);
+    }, [searchedStudents, mobilePage]);
+
+    useEffect(() => {
+        setMobilePage(1);
+    }, [searchTerm, selectedSessionId, subLevel?._id]);
+
     const columns = [
         ...STUDENT_COLUMNS,
         { label: "Task Board", key: "taskboard", render: (row) => (
@@ -93,12 +118,12 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
 
     return (
         <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
                 <div className="w-full sm:flex-1">
                     <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
-                    <div className="flex-1 sm:flex-initial min-w-[140px]">
+                    <div className="flex-1 sm:flex-initial min-w-[130px]">
                         <SessionSelector
                             selectedSessionId={selectedSessionId}
                             onSessionChange={setSelectedSessionId}
@@ -112,7 +137,7 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
                     <ExportDropdown data={students} sectionName="students" />
                 </div>
             </div>
-            {students.length === 0 ? (
+            {searchedStudents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center bg-white border border-gray-200 rounded-xl">
                     <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-3 border border-orange-100/50">
                         <MdCloudUpload size={28} className="text-orange-400" />
@@ -121,17 +146,112 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
                     <p className="text-xs text-gray-400 max-w-xs mx-auto">No students found matching the selected session or sub-level filters.</p>
                 </div>
             ) : (
-                <CommonTable
-                    key={`students-${subLevel?._id}-${selectedSessionId}`}
-                    columns={columns}
-                    data={students}
-                    editable={false}
-                    pagination={true}
-                    rowsPerPage={10}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    onRowClick={onRowClick}
-                />
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                        <CommonTable
+                            key={`students-${subLevel?._id}-${selectedSessionId}`}
+                            columns={columns}
+                            data={students}
+                            editable={false}
+                            pagination={true}
+                            rowsPerPage={10}
+                            searchTerm={searchTerm}
+                            setSearchTerm={setSearchTerm}
+                            onRowClick={onRowClick}
+                        />
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="md:hidden space-y-3">
+                        {paginatedMobileStudents.map((st) => (
+                            <div
+                                key={st._id}
+                                onClick={() => onRowClick?.(st)}
+                                className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-3"
+                            >
+                                <div className="flex items-start justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <Avatar firstName={st.raw.firstName} lastName={st.raw.lastName} imageUrl={st.raw.image} size="sm" />
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{st.fullName}</h4>
+                                            <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
+                                                PR Key: <strong className="text-gray-700 font-semibold">{st.prkey}</strong>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
+                                        st.status === "Active" ? "bg-green-100 text-green-700" :
+                                        st.status === "Dropped" ? "bg-red-100 text-red-700" :
+                                        st.status === "Placed" ? "bg-purple-100 text-purple-700" :
+                                        "bg-gray-100 text-gray-600"
+                                    }`}>
+                                        {st.status}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                                    <div>
+                                        <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Course</span>
+                                        <span className="font-semibold text-blue-700 mt-0.5 inline-block">{st.course || "N/A"}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Session</span>
+                                        <span className="font-semibold text-orange-600 mt-0.5 inline-block truncate">{st.raw?.sessionId?.name || "N/A"}</span>
+                                    </div>
+                                    {st.fatherName && (
+                                        <div>
+                                            <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Father Name</span>
+                                            <span className="font-medium text-gray-700 mt-0.5 inline-block truncate">{st.fatherName}</span>
+                                        </div>
+                                    )}
+                                    {st.mobile && (
+                                        <div>
+                                            <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Mobile</span>
+                                            <span className="font-medium text-gray-700 mt-0.5 inline-block">{st.mobile}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                                    <span className="text-[11px] font-medium text-gray-400">View details →</span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); onTaskBoard(st); }}
+                                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200 transition cursor-pointer"
+                                    >
+                                        <MdTableChart size={13} /> Task Board
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Mobile Pagination */}
+                        {totalMobilePages > 1 && (
+                            <div className="flex items-center justify-between pt-3 pb-1 px-1 text-xs">
+                                <span className="text-gray-500 font-medium">Page {mobilePage} of {totalMobilePages}</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                                        disabled={mobilePage === 1}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                                    >
+                                        Prev
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
+                                        disabled={mobilePage === totalMobilePages}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );
@@ -139,6 +259,9 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
 
 const ProgressTab = ({ subLevel, onRowClick }) => {
     const [progressSearch, setProgressSearch] = useState("");
+    const [mobilePage, setMobilePage] = useState(1);
+    const mobilePageSize = 10;
+
     const { data, isLoading } = useGetSubLevelProgressQuery(subLevel?._id, { skip: !subLevel?._id });
     const progressList = data?.data || [];
 
@@ -150,6 +273,16 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
             s.prkey.toLowerCase().includes(q)
         );
     }, [progressList, progressSearch]);
+
+    const totalMobilePages = Math.max(1, Math.ceil(filteredProgress.length / mobilePageSize));
+    const paginatedMobileProgress = useMemo(() => {
+        const start = (mobilePage - 1) * mobilePageSize;
+        return filteredProgress.slice(start, start + mobilePageSize);
+    }, [filteredProgress, mobilePage]);
+
+    useEffect(() => {
+        setMobilePage(1);
+    }, [progressSearch, subLevel?._id]);
 
     const PROGRESS_COLUMNS = [
         {
@@ -309,16 +442,135 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                 </div>
             </div>
 
-            <CommonTable
-                key={`progress-${subLevel?._id}`}
-                columns={PROGRESS_COLUMNS}
-                data={filteredProgress}
-                editable={false}
-                pagination={true}
-                rowsPerPage={10}
-                searchTerm={progressSearch}
-                onRowClick={onRowClick}
-            />
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+                <CommonTable
+                    key={`progress-${subLevel?._id}`}
+                    columns={PROGRESS_COLUMNS}
+                    data={filteredProgress}
+                    editable={false}
+                    pagination={true}
+                    rowsPerPage={10}
+                    searchTerm={progressSearch}
+                    onRowClick={onRowClick}
+                />
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="md:hidden space-y-3">
+                {paginatedMobileProgress.map((row) => {
+                    const status = row.currentStatus || "Active";
+                    const statusCls =
+                        status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                        status === "Placed" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                        status === "Dropped" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                        "bg-amber-50 text-amber-700 border-amber-200";
+
+                    const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
+                    const { pending = 0, inProgress = 0 } = row.statusCounters || {};
+                    const subjects = row.subjectProgress || [];
+
+                    return (
+                        <div
+                            key={row._id}
+                            onClick={() => onRowClick?.(row)}
+                            className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-3"
+                        >
+                            <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{row.name}</h4>
+                                        <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
+                                            PR Key: <strong className="text-gray-700 font-semibold">{row.prkey}</strong>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
+                                        {status}
+                                    </span>
+                                    <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                        {row.attendanceRate ?? 100}% Att.
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Task progress bar */}
+                            <div className="space-y-1.5 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-[9.5px] font-bold text-gray-500 uppercase tracking-wider">Task Progress</span>
+                                    <span className="text-xs font-bold text-gray-700">{completed}/{total} ({percentage}%)</span>
+                                </div>
+                                <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-orange-500 rounded-full transition-all duration-300"
+                                        style={{ width: `${percentage}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Status counters & Subjects */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-800 border border-amber-100">
+                                        {pending} Pending
+                                    </span>
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
+                                        {inProgress} In Prog
+                                    </span>
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
+                                        {completed} Done
+                                    </span>
+                                </div>
+
+                                {subjects.length > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        {subjects.map((sub, sIdx) => {
+                                            const colorClass =
+                                                sub.status === "completed" ? "bg-emerald-500" :
+                                                sub.status === "inProgress" ? "bg-orange-500" :
+                                                "bg-gray-200";
+                                            return (
+                                                <div
+                                                    key={sIdx}
+                                                    className={`w-3.5 h-1.5 rounded-full ${colorClass}`}
+                                                    title={`${sub.subjectName}: ${sub.status}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Mobile Pagination */}
+                {totalMobilePages > 1 && (
+                    <div className="flex items-center justify-between pt-3 pb-1 px-1 text-xs">
+                        <span className="text-gray-500 font-medium">Page {mobilePage} of {totalMobilePages}</span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                                disabled={mobilePage === 1}
+                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
+                                disabled={mobilePage === totalMobilePages}
+                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -433,12 +685,16 @@ const ShowSubLevelTablesData = () => {
                 breadcrumbs={breadcrumbs}
                 bottomRow={
                     subLevels.length > 0 ? (
-                        <div className="flex gap-1 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-0.5">
+                        <div className="flex gap-1.5 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-1.5 px-0.5">
                             {subLevels.map((sl) => (
                                 <button
                                     key={sl._id}
                                     onClick={() => handleTabChange(sl)}
-                                    className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2 flex-shrink-0 cursor-pointer ${activeTab?._id === sl._id ? "border-orange-500 text-orange-500 font-semibold" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                                    className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 cursor-pointer ${
+                                        activeTab?._id === sl._id 
+                                            ? "bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs font-bold" 
+                                            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/60"
+                                    }`}
                                 >
                                     {sl.name}
                                 </button>
@@ -447,70 +703,72 @@ const ShowSubLevelTablesData = () => {
                     ) : null
                 }
             >
-                {/* Action buttons — only when sublevels exist */}
-                {subLevels.length > 0 && activeSection === "Progress" && (
-                    <button onClick={() => {}} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
-                        <MdTableChart size={16} /> Upload Excel
-                    </button>
-                )}
-                {subLevels.length > 0 && activeSection === "Syllabus" && (
-                    <OrangeButton
-                        buttonTitle="+ Upload Syllabus"
-                        panelTitle="Upload Syllabus"
-                        panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${activeTab?.name || "SubLevel"}`}
-                        maxWidth="sm:max-w-2xl lg:max-w-3xl"
-                        showFooter={false}
-                        drawerContent={({ closeDrawer }) => (
-                            <SyllabusUploadModalContent
-                                level={level}
-                                subLevel={activeTab}
-                                onClose={closeDrawer}
-                                onSaved={() => {
-                                    closeDrawer();
-                                }}
-                            />
-                        )}
-                    />
-                )}
-                {subLevels.length > 0 && activeSection === "Tasks" ? null : (
-                    /* Always show Add SubLevel button */
-                    <Formik
-                        initialValues={{ name: "", order: "", isActive: true }}
-                        validationSchema={validationSchema}
-                        onSubmit={async (values, { setSubmitting, resetForm }) => {
-                            try {
-                                await addSubLevel({ name: values.name, order: Number(values.order), levelId: level?._id, isActive: values.isActive }).unwrap();
-                                toast.success("SubLevel added successfully!");
-                                resetForm();
-                            } catch (error) {
-                                toast.error(error?.data?.message || "Error adding sublevel");
-                            } finally {
-                                setSubmitting(false);
-                            }
-                        }}
-                    >
-                        {({ isSubmitting, submitForm, resetForm }) => (
-                            <OrangeButton
-                                buttonTitle="+ Add Sub Level"
-                                panelTitle="Add New Sub Level"
-                                drawerContent={
-                                    <Form className="space-y-4">
-                                        <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
-                                        <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
-                                        <RadioGroup label="Status" name="isActive" required={false} />
-                                    </Form>
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+                    {/* Action buttons — only when sublevels exist */}
+                    {subLevels.length > 0 && activeSection === "Progress" && (
+                        <button onClick={() => {}} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
+                            <MdTableChart size={16} /> Upload Excel
+                        </button>
+                    )}
+                    {subLevels.length > 0 && activeSection === "Syllabus" && (
+                        <OrangeButton
+                            buttonTitle="+ Upload Syllabus"
+                            panelTitle="Upload Syllabus"
+                            panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${activeTab?.name || "SubLevel"}`}
+                            maxWidth="sm:max-w-2xl lg:max-w-3xl"
+                            showFooter={false}
+                            drawerContent={({ closeDrawer }) => (
+                                <SyllabusUploadModalContent
+                                    level={level}
+                                    subLevel={activeTab}
+                                    onClose={closeDrawer}
+                                    onSaved={() => {
+                                        closeDrawer();
+                                    }}
+                                />
+                            )}
+                        />
+                    )}
+                    {subLevels.length > 0 && activeSection === "Tasks" ? null : (
+                        /* Always show Add SubLevel button */
+                        <Formik
+                            initialValues={{ name: "", order: "", isActive: true }}
+                            validationSchema={validationSchema}
+                            onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                try {
+                                    await addSubLevel({ name: values.name, order: Number(values.order), levelId: level?._id, isActive: values.isActive }).unwrap();
+                                    toast.success("SubLevel added successfully!");
+                                    resetForm();
+                                } catch (error) {
+                                    toast.error(error?.data?.message || "Error adding sublevel");
+                                } finally {
+                                    setSubmitting(false);
                                 }
-                                leftBtnText="Cancel"
-                                rightBtnText={isSubmitting ? "Adding..." : "Add Sub Level"}
-                                onLeftClick={resetForm}
-                                onRightClick={submitForm}
-                            />
-                        )}
-                    </Formik>
-                )}
+                            }}
+                        >
+                            {({ isSubmitting, submitForm, resetForm }) => (
+                                <OrangeButton
+                                    buttonTitle="+ Add Sub Level"
+                                    panelTitle="Add New Sub Level"
+                                    drawerContent={
+                                        <Form className="space-y-4">
+                                            <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
+                                            <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                                            <RadioGroup label="Status" name="isActive" required={false} />
+                                        </Form>
+                                    }
+                                    leftBtnText="Cancel"
+                                    rightBtnText={isSubmitting ? "Adding..." : "Add Sub Level"}
+                                    onLeftClick={resetForm}
+                                    onRightClick={submitForm}
+                                />
+                            )}
+                        </Formik>
+                    )}
+                </div>
             </Header>
 
-            <div className="px-3.5 sm:px-6 pb-10">
+            <div className="px-3 sm:px-6 pb-10">
 
                 {/* No sublevels — show prompt */}
                 {subLevels.length === 0 && (
@@ -525,16 +783,18 @@ const ShowSubLevelTablesData = () => {
 
                 {/* Section Tabs — only when sublevels exist */}
                 {subLevels.length > 0 && (
-                    <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-fit overflow-x-auto no-scrollbar scrollbar-none bg-slate-100/90 border border-slate-200/80 p-1 sm:p-1.5 rounded-xl mt-3 sm:mt-5">
-                        {SECTION_TABS.map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => handleSectionChange(tab)}
-                                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 sm:flex-initial text-center cursor-pointer ${activeSection === tab ? "bg-white text-orange-500 shadow-xs font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-white/50"}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                    <div className="w-full sm:w-fit overflow-x-auto no-scrollbar scrollbar-none bg-slate-100/90 border border-slate-200/80 p-1 sm:p-1.5 rounded-xl mt-3 sm:mt-5">
+                        <div className="grid grid-cols-4 sm:flex gap-1 sm:gap-2 min-w-[280px]">
+                            {SECTION_TABS.map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => handleSectionChange(tab)}
+                                    className={`px-2 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 text-center cursor-pointer ${activeSection === tab ? "bg-white text-orange-500 shadow-2xs font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-white/50"}`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 

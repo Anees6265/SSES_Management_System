@@ -179,51 +179,51 @@ const SubjectAccordion = ({ item, index }) => {
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen((p) => !p)} className="w-full flex items-center justify-between px-4 py-3 bg-orange-50 hover:bg-orange-100 transition">
-        <div className="flex items-center gap-2">
-          <MdBook size={18} className="text-orange-500 flex-shrink-0" />
-          <span className="font-semibold text-sm text-gray-800">{item.subject}</span>
-          <span className="text-xs text-gray-400 ml-1">({item.topics.length} topics)</span>
+      <button onClick={() => setOpen((p) => !p)} className="w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 bg-orange-50 hover:bg-orange-100 transition gap-2 text-left">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+          <MdBook size={18} className="text-orange-500 shrink-0" />
+          <span className="font-semibold text-xs sm:text-sm text-gray-800 break-words">{item.subject}</span>
+          <span className="text-[11px] sm:text-xs text-gray-400">({item.topics.length} topics)</span>
           {taskCount > 0 && (
-            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-[10px] sm:text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-semibold">
               {taskCount} tasks
             </span>
           )}
         </div>
-        {open ? <MdExpandLess size={18} className="text-gray-400" /> : <MdExpandMore size={18} className="text-gray-400" />}
+        {open ? <MdExpandLess size={18} className="text-gray-400 shrink-0" /> : <MdExpandMore size={18} className="text-gray-400 shrink-0" />}
       </button>
       {open && (
         <div className="divide-y divide-gray-100">
           {item.topics.map((t) => (
             <div key={t.topic}>
-              <button onClick={() => toggleTopic(t.topic)} className="w-full flex items-center justify-between px-6 py-2.5 bg-white hover:bg-gray-50 transition">
-                <div className="flex items-center gap-2">
-                  <MdTopic size={15} className="text-blue-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{t.topic}</span>
-                  {t.subTopics.length > 0 && <span className="text-xs text-gray-400">({t.subTopics.length} subtopics)</span>}
+              <button onClick={() => toggleTopic(t.topic)} className="w-full flex items-center justify-between px-4 sm:px-6 py-2 sm:py-2.5 bg-white hover:bg-gray-50 transition gap-2 text-left">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                  <MdTopic size={15} className="text-blue-400 shrink-0" />
+                  <span className="text-xs sm:text-sm text-gray-700 break-words">{t.topic}</span>
+                  {t.subTopics.length > 0 && <span className="text-[11px] sm:text-xs text-gray-400">({t.subTopics.length} subtopics)</span>}
                 </div>
-                {t.subTopics.length > 0 && (openTopics[t.topic] ? <MdExpandLess size={15} className="text-gray-300" /> : <MdExpandMore size={15} className="text-gray-300" />)}
+                {t.subTopics.length > 0 && (openTopics[t.topic] ? <MdExpandLess size={15} className="text-gray-300 shrink-0" /> : <MdExpandMore size={15} className="text-gray-300 shrink-0" />)}
               </button>
               {openTopics[t.topic] && t.subTopics.length > 0 && (
-                <div className="bg-gray-50 px-10 py-2 space-y-1">
+                <div className="bg-gray-50 px-4 sm:px-10 py-2 space-y-1.5">
                   {t.subTopics.map((st, i) => {
                     const stName = typeof st === "object" ? st.name : st;
                     const hasTask = typeof st === "object" && st.taskTitle;
                     return (
                       <div key={`${stName}-${i}`} className="py-0.5">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <MdSubject size={13} className="text-gray-400 flex-shrink-0" />
-                          <span>{stName}</span>
+                        <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 text-xs text-gray-600 flex-wrap">
+                          <MdSubject size={13} className="text-gray-400 shrink-0 mt-0.5 sm:mt-0" />
+                          <span className="break-words">{stName}</span>
                           {hasTask && (
-                            <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">
+                            <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">
                               <MdAssignment size={11} />{st.taskTitle}
                             </span>
                           )}
                         </div>
                         {hasTask && (
-                          <div className="ml-5 mt-0.5 flex gap-2 flex-wrap">
-                            {st.timeDays && <span className="text-xs text-gray-400">⏱ {st.timeDays} days</span>}
-                            {st.measurablePoints && <span className="text-xs text-gray-400 italic">📋 {st.measurablePoints}</span>}
+                          <div className="ml-3 sm:ml-5 mt-0.5 flex gap-1.5 sm:gap-2 flex-wrap">
+                            {st.timeDays && <span className="text-[11px] sm:text-xs text-gray-400">⏱ {st.timeDays} days</span>}
+                            {st.measurablePoints && <span className="text-[11px] sm:text-xs text-gray-400 italic">📋 {st.measurablePoints}</span>}
                           </div>
                         )}
                       </div>
@@ -329,7 +329,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
 
       {/* Topics & Subtopics */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <MdTopic size={14} className="text-blue-500" /> Topics & Sub-Topics
@@ -339,7 +339,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
           <button
             type="button"
             onClick={addTopic}
-            className="text-xs text-orange-600 font-extrabold bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1"
+            className="text-xs text-orange-600 font-extrabold bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shrink-0 self-start sm:self-auto"
           >
             <MdAdd size={15} /> Add Topic
           </button>
@@ -347,22 +347,22 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
 
         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
           {topics.map((topic, ti) => (
-            <div key={ti} className="border border-slate-200/80 rounded-2xl p-4 space-y-3 bg-white shadow-xs">
+            <div key={ti} className="border border-slate-200/80 rounded-2xl p-3 sm:p-4 space-y-3 bg-white shadow-xs">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-black text-[11px] flex items-center justify-center shrink-0 border border-blue-100">
                   {ti + 1}
                 </span>
                 <input
-                  className="flex-1 h-9 border border-slate-200 rounded-xl px-3 text-xs font-bold focus:outline-none focus:border-orange-400 bg-white"
+                  className="flex-1 h-9 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-xs font-bold focus:outline-none focus:border-orange-400 bg-white"
                   value={topic.name}
                   onChange={(e) => updateTopicName(ti, e.target.value)}
-                  placeholder={`Topic ${ti + 1} Name (e.g. Asynchronous JS)`}
+                  placeholder={`Topic ${ti + 1} Name`}
                 />
                 {topics.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeTopic(ti)}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                    className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer shrink-0"
                     title="Delete Topic"
                   >
                     <MdDelete size={16} />
@@ -371,13 +371,13 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
               </div>
 
               {/* Subtopics */}
-              <div className="pl-8 space-y-2 border-l-2 border-slate-100 ml-3">
+              <div className="pl-3 sm:pl-8 space-y-2 border-l-2 border-slate-100 ml-1.5 sm:ml-3">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sub-Topics</p>
                 {topic.subTopics.map((st, si) => (
-                  <div key={si} className="flex items-center gap-2">
+                  <div key={si} className="flex items-center gap-1.5 sm:gap-2">
                     <MdSubject size={14} className="text-slate-400 flex-shrink-0" />
                     <input
-                      className="flex-1 h-8 border border-slate-200/70 rounded-lg px-2.5 text-xs font-medium focus:outline-none focus:border-orange-400 bg-slate-50/50"
+                      className="flex-1 h-8 border border-slate-200/70 rounded-lg px-2 sm:px-2.5 text-xs font-medium focus:outline-none focus:border-orange-400 bg-slate-50/50"
                       value={st}
                       onChange={(e) => updateSubTopic(ti, si, e.target.value)}
                       placeholder={`SubTopic ${si + 1} (optional)`}
@@ -386,7 +386,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
                       <button
                         type="button"
                         onClick={() => removeSubTopic(ti, si)}
-                        className="p-1 text-slate-300 hover:text-rose-400 rounded transition cursor-pointer"
+                        className="p-1 text-slate-300 hover:text-rose-400 rounded transition cursor-pointer shrink-0"
                       >
                         <MdDelete size={14} />
                       </button>
@@ -407,11 +407,11 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
       </div>
 
       {/* Action Footer */}
-      <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+      <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+          className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer text-center w-full sm:w-auto"
         >
           Cancel
         </button>
@@ -419,7 +419,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
           type="button"
           onClick={handleSave}
           disabled={saving || !subject.trim() || !selectedSessionId}
-          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer"
+          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
         >
           {saving ? (
             <>
@@ -577,10 +577,10 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
       </div>
 
       {/* 2. TEMPLATE DOWNLOAD BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
-            <MdFileDownload size={22} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
+        <div className="flex items-start gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+            <MdFileDownload size={20} />
           </div>
           <div>
             <h4 className="text-xs font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
@@ -592,7 +592,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         <button
           type="button"
           onClick={downloadSyllabusTemplate}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer self-start sm:self-center"
+          className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
         >
           <MdFileDownload size={16} />
           <span>Template (.xlsx)</span>
@@ -606,10 +606,10 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         </label>
         
         {parsing ? (
-          <div className="border-2 border-dashed border-orange-300 bg-orange-50/30 rounded-2xl p-10 flex flex-col items-center justify-center gap-3">
-            <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-bold text-slate-700">Reading and validating Excel columns...</p>
-            <p className="text-[10px] text-slate-400">Parsing subjects, topics, and sub-topics</p>
+          <div className="border-2 border-dashed border-orange-300 bg-orange-50/30 rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-bold text-slate-700 text-center">Reading and validating Excel columns...</p>
+            <p className="text-[10px] text-slate-400 text-center">Parsing subjects, topics, and sub-topics</p>
           </div>
         ) : !fileName ? (
           <div
@@ -622,22 +622,22 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
               const file = e.dataTransfer.files?.[0];
               if (file) processFile(file);
             }}
-            className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 text-center ${
+            className={`border-2 border-dashed rounded-2xl p-5 sm:p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 text-center ${
               isDragging
                 ? "border-orange-500 bg-orange-50/30 scale-[1.01]"
                 : "border-slate-200 bg-slate-50/50 hover:border-orange-400 hover:bg-orange-50/10"
             }`}
           >
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2.5">
-              <MdCloudUpload size={26} />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2 sm:mb-2.5">
+              <MdCloudUpload size={24} />
             </div>
             <p className="text-xs font-black text-slate-800">
               Click to choose Excel file or drag & drop here
             </p>
-            <p className="text-[11px] text-slate-400 mt-1 font-medium">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 font-medium">
               Supported formats: .xlsx, .xls, .csv
             </p>
-            <div className="mt-3 flex items-center gap-1.5 flex-wrap justify-center text-[10px] font-bold text-slate-500">
+            <div className="mt-2.5 sm:mt-3 flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center text-[10px] font-bold text-slate-500">
               <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md">Subject *</span>
               <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md">Topic *</span>
               <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-md text-slate-400 font-medium">SubTopic (opt)</span>
@@ -645,20 +645,20 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-                <MdCheckCircle size={22} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-2xl gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <MdCheckCircle size={20} />
               </div>
-              <div>
-                <p className="text-xs font-black text-slate-900 truncate max-w-xs">{fileName}</p>
-                <p className="text-[11px] text-emerald-700 font-semibold">File loaded & verified</p>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-slate-900 truncate max-w-[180px] sm:max-w-xs">{fileName}</p>
+                <p className="text-[10px] sm:text-[11px] text-emerald-700 font-semibold">File loaded & verified</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => { reset(); setTimeout(() => fileRef.current?.click(), 100); }}
-              className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-bold transition hover:bg-slate-50 cursor-pointer shadow-2xs"
+              className="text-xs text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl font-bold transition hover:bg-slate-50 cursor-pointer shadow-2xs self-end sm:self-auto shrink-0"
             >
               Change File
             </button>
@@ -668,30 +668,29 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileInput} />
       </div>
 
-      {/* 4. PARSED SUMMARY CHIPS */}
       {hierarchy.length > 0 && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
-              <p className="text-lg font-black text-slate-900">{totalSubjects}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-slate-900">{totalSubjects}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
-              <p className="text-lg font-black text-slate-900">{totalTopics}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Topics</p>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-slate-900">{totalTopics}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Topics</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
-              <p className="text-lg font-black text-slate-900">{totalSubTopics}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SubTopics</p>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-slate-900">{totalSubTopics}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">SubTopics</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-2xs">
-              <p className="text-lg font-black text-slate-900">{totalTasks}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tasks</p>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-slate-900">{totalTasks}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tasks</p>
             </div>
           </div>
 
           {/* 5. INLINE REPORT CARD SETTINGS */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 space-y-3 shadow-2xs">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
@@ -705,27 +704,27 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {subjectMeta.map((sm, idx) => (
-                <div key={sm.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <MdBook size={15} className="text-orange-400 flex-shrink-0" />
-                    <span className="text-xs font-extrabold text-slate-800">{sm.name}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">({hierarchy[idx]?.topics?.length || 0} topics)</span>
+                <div key={sm.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-100 bg-slate-50/50 gap-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MdBook size={15} className="text-orange-400 shrink-0" />
+                    <span className="text-xs font-extrabold text-slate-800 truncate">{sm.name}</span>
+                    <span className="text-[10px] text-slate-400 font-medium shrink-0">({hierarchy[idx]?.topics?.length || 0} topics)</span>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
                     {/* Include Toggle */}
                     <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
                       <button
                         type="button"
                         onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: true, reportCategory: s.reportCategory || "technical" } : s))}
-                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${sm.includeInReportCard ? "bg-emerald-500 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                        className={`px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-md transition ${sm.includeInReportCard ? "bg-emerald-500 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
                       >
                         ✓ Report Card
                       </button>
                       <button
                         type="button"
                         onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: false, reportCategory: "" } : s))}
-                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${!sm.includeInReportCard ? "bg-slate-200 text-slate-700" : "text-slate-500 hover:bg-slate-50"}`}
+                        className={`px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-md transition ${!sm.includeInReportCard ? "bg-slate-200 text-slate-700" : "text-slate-500 hover:bg-slate-50"}`}
                       >
                         Exclude
                       </button>
@@ -737,14 +736,14 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
                         <button
                           type="button"
                           onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "technical" } : s))}
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${sm.reportCategory === "technical" ? "bg-blue-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                          className={`px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md transition ${sm.reportCategory === "technical" ? "bg-blue-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
                         >
-                          💻 Technical
+                          💻 Tech
                         </button>
                         <button
                           type="button"
                           onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "softskill" } : s))}
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${sm.reportCategory === "softskill" ? "bg-purple-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
+                          className={`px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md transition ${sm.reportCategory === "softskill" ? "bg-purple-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
                         >
                           🤝 Soft Skill
                         </button>
@@ -761,13 +760,13 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
             <button
               type="button"
               onClick={() => setShowPreview(!showPreview)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-700 cursor-pointer"
+              className="w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 bg-slate-50 hover:bg-slate-100 transition text-xs font-bold text-slate-700 cursor-pointer text-left gap-2"
             >
               <span>View Topics & Tasks Details ({totalTopics} topics)</span>
-              {showPreview ? <MdExpandLess size={18} /> : <MdExpandMore size={18} />}
+              {showPreview ? <MdExpandLess size={18} className="shrink-0" /> : <MdExpandMore size={18} className="shrink-0" />}
             </button>
             {showPreview && (
-              <div className="p-3 max-h-56 overflow-y-auto space-y-2 bg-slate-50/40">
+              <div className="p-2.5 sm:p-3 max-h-56 overflow-y-auto space-y-2 bg-slate-50/40">
                 {hierarchy.map((item, i) => (
                   <SubjectAccordion key={item.subject} item={item} index={i} />
                 ))}
@@ -778,11 +777,11 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
       )}
 
       {/* 7. UNIFIED ACTION FOOTER */}
-      <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+      <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+          className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer text-center"
         >
           Cancel
         </button>
@@ -790,7 +789,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
           type="button"
           onClick={() => handleSave(subjectMeta)}
           disabled={saving || !hierarchy.length || !selectedSessionId}
-          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs flex items-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-center"
         >
           {saving ? (
             <>
@@ -817,31 +816,32 @@ export const SyllabusUploadModalContent = ({ level, subLevel, onSaved, onClose }
   const [mode, setMode] = useState("excel");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Segmented Mode Switcher */}
       <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
         <button
           type="button"
           onClick={() => setMode("excel")}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mode === "excel"
               ? "bg-white text-orange-600 shadow-sm"
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <MdCloudUpload size={16} />
-          <span>Excel Upload (Recommended)</span>
+          <MdCloudUpload size={16} className="shrink-0" />
+          <span className="hidden sm:inline">Excel Upload (Recommended)</span>
+          <span className="sm:hidden">Excel Upload</span>
         </button>
         <button
           type="button"
           onClick={() => setMode("manual")}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             mode === "manual"
               ? "bg-white text-orange-600 shadow-sm"
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <MdBook size={16} />
+          <MdBook size={16} className="shrink-0" />
           <span>Manual Entry</span>
         </button>
       </div>
@@ -1217,7 +1217,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
 
   return (
     <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
           <p className="text-sm font-semibold text-gray-700">Upload Tasks for <span className="text-orange-600">{subjectName} {version}</span></p>
           <p className="text-xs text-gray-400 mt-0.5">Required columns: Subject, Topic, Sub Topic, Task Title, Time Days, Measurable Point</p>
@@ -1225,7 +1225,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
         <a
           href="/task_template.csv"
           download="task_template.csv"
-          className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-semibold bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition"
+          className="flex items-center justify-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-semibold bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition w-full sm:w-auto"
         >
           ⬇ Download Template
         </a>
@@ -1256,14 +1256,14 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
             <span className="font-semibold text-green-600">{rows.length} rows</span> ready to upload
             <span className="ml-3 text-gray-400">Preview: {rows.slice(0, 2).map((r) => r.taskTitle).join(", ")}{rows.length > 2 ? "..." : ""}</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2">
+            <button onClick={reset} className="w-full sm:w-auto px-4 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-center">Clear</button>
             <button
               onClick={handleUpload} disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-sm font-semibold py-2 rounded-lg transition"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-sm font-semibold py-2 rounded-lg transition text-center"
             >
               <MdSave size={15} />{saving ? "Uploading..." : "Upload Tasks"}
             </button>
-            <button onClick={reset} className="px-4 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Clear</button>
           </div>
         </>
       )}
@@ -1638,14 +1638,86 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
   );
 
   return (
-    <div className="p-4 space-y-3">
-      <CommonTable
-        columns={taskColumns}
-        data={tableData}
-        pagination={true}
-        rowsPerPage={10}
-        emptyMessage="No tasks found"
-      />
+    <div className="p-3 sm:p-4 space-y-3">
+      {/* Desktop Table View */}
+      <div className="hidden md:block">
+        <CommonTable
+          columns={taskColumns}
+          data={tableData}
+          pagination={true}
+          rowsPerPage={10}
+          emptyMessage="No tasks found"
+        />
+      </div>
+
+      {/* Mobile Task Cards View */}
+      <div className="md:hidden space-y-3">
+        {tableData.map((t) => {
+          const pKey = (t.priority || "medium").toLowerCase();
+          const priorityBadge =
+            pKey === "high" ? "bg-rose-50 text-rose-700 border-rose-200" :
+            pKey === "low" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+            "bg-amber-50 text-amber-700 border-amber-200";
+          const typeKey = t.type || "assessment";
+
+          return (
+            <div
+              key={t._id || t.sno}
+              onClick={() => setSelectedTask(t)}
+              className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0">
+                    {t.sno}
+                  </span>
+                  <h4 className="font-bold text-sm text-slate-900 leading-snug truncate">{t.title}</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setSelectedTask(t); }}
+                  className="p-1 text-gray-400 hover:text-orange-600 rounded-lg hover:bg-orange-50 shrink-0 cursor-pointer"
+                >
+                  <MdVisibility size={16} />
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                {t.subjectName && (
+                  <span className="font-bold text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {t.subjectName}
+                  </span>
+                )}
+                <span className={`font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${priorityBadge}`}>
+                  {pKey}
+                </span>
+                <span className="font-bold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-600 border-gray-200 uppercase tracking-wider">
+                  {typeKey}
+                </span>
+                {t.timeDays && (
+                  <span className="text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-semibold">
+                    {t.timeDays}d
+                  </span>
+                )}
+              </div>
+
+              {(t.topicName || t.subTopicName) && (
+                <div className="text-xs text-slate-600 bg-slate-50/80 p-2 rounded-xl border border-slate-100 flex items-center gap-1.5 truncate">
+                  <MdTopic size={13} className="text-orange-500 shrink-0" />
+                  <span className="font-semibold truncate">{t.topicName}</span>
+                  {t.subTopicName && (
+                    <>
+                      <span className="text-slate-300">/</span>
+                      <span className="text-slate-500 truncate">{t.subTopicName}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
       <div className="flex items-center justify-between text-xs text-gray-500 px-2 py-1">
         <span>
           Total <strong className="text-gray-700 font-bold">{tasks.length}</strong> tasks
@@ -1958,10 +2030,10 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
     <>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {/* Top bar: search + session filter + version filter + Add Task button */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-white">
-          <div className="flex flex-1 flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-5 py-3 sm:py-4 border-b border-gray-100 bg-white">
+          <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
             {/* Search Input Container */}
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
                 <MdSearch size={18} />
               </span>
@@ -1970,40 +2042,42 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search tasks by title, topic..."
-                className="w-full pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
+                className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
                 style={{ paddingLeft: '2.75rem' }}
               />
             </div>
 
-            {/* Session Select Container */}
-            <div className="min-w-[160px]">
-              <SelectDropdown
-                value={selectedSessionId}
-                onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); }}
-                options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
-                placeholder="All Sessions"
-              />
-            </div>
-
-            {/* Version Select Container */}
-            {allVersions.length > 1 && (
-              <div className="min-w-[150px]">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              {/* Session Select Container */}
+              <div className="flex-1 sm:flex-initial min-w-[135px]">
                 <SelectDropdown
-                  value={currentVersionId}
-                  onChange={(val) => setActiveVersionId(val)}
-                  options={allVersions.map((v) => ({
-                    value: v._id,
-                    label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
-                  }))}
-                  placeholder="Select Version"
+                  value={selectedSessionId}
+                  onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); }}
+                  options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+                  placeholder="All Sessions"
                 />
               </div>
-            )}
+
+              {/* Version Select Container */}
+              {allVersions.length > 1 && (
+                <div className="flex-1 sm:flex-initial min-w-[130px]">
+                  <SelectDropdown
+                    value={currentVersionId}
+                    onChange={(val) => setActiveVersionId(val)}
+                    options={allVersions.map((v) => ({
+                      value: v._id,
+                      label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
+                    }))}
+                    placeholder="Select Version"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <button
             onClick={() => setShowTaskModal(true)}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-500/10 cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-500/10 cursor-pointer w-full sm:w-auto shrink-0"
           >
             <MdAdd size={18} />
             <span>Add Task</span>
@@ -2012,7 +2086,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
 
         {/* Subject tabs (Pill selectors) */}
         {subjectsList.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 m-4">
+          <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
             {subjectsList.map((s) => (
               <button
                 key={s._id}
@@ -2071,33 +2145,33 @@ const EmptyUploadState = ({ level, subLevel, onSaved }) => {
   const drawerRef = useRef(null);
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-      <div className="w-24 h-24 rounded-full bg-orange-50 flex items-center justify-center mb-6">
-        <MdCloudUpload size={44} className="text-orange-400" />
+    <div className="flex flex-col items-center justify-center py-12 sm:py-20 px-4 sm:px-8 text-center">
+      <div className="w-20 sm:w-24 h-20 sm:h-24 rounded-full bg-orange-50 flex items-center justify-center mb-5 sm:mb-6">
+        <MdCloudUpload size={40} className="text-orange-400" />
       </div>
-      <h3 className="text-base font-bold text-gray-800 mb-2">No syllabus uploaded for this level.</h3>
-      <p className="text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
+      <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-2">No syllabus uploaded for this level.</h3>
+      <p className="text-xs sm:text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
         Upload the academic syllabus to get started. Once uploaded, you can assign lessons to specific weeks and track coverage.
       </p>
 
       {!showUpload ? (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold px-5 sm:px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer"
           >
             <MdCloudUpload size={16} /> Upload Syllabus
           </button>
           <button
             type="button"
             onClick={downloadSyllabusTemplate}
-            className="flex items-center gap-2 text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-6 py-2.5 rounded-xl transition cursor-pointer"
+            className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-5 sm:px-6 py-2.5 rounded-xl transition cursor-pointer"
           >
             <MdFileDownload size={16} /> Download Template
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-3xl text-left mt-4 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+        <div className="w-full max-w-3xl text-left mt-4 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3.5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
             <div>
               <h3 className="text-base font-black text-slate-900">Upload Syllabus Curriculum</h3>
@@ -2191,24 +2265,24 @@ const SyllabusTab = ({ level, subLevel }) => {
     <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
 
       {/* Top bar: search + session dropdown + version + session info + actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-gray-100 bg-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 bg-white">
         {/* Search Container */}
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
             <MdSearch size={18} />
           </span>
           <input
             type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search topic or subtopic..."
-            className="w-full pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
+            className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
             style={{ paddingLeft: '2.75rem' }}
           />
         </div>
 
         {/* Right side controls: All Sessions dropdown + Version selector + Session badge + Status + Actions */}
-        <div className="flex items-center gap-2.5 flex-wrap ml-auto">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
           {/* Session Dropdown */}
-          <div className="min-w-[150px]">
+          <div className="flex-1 sm:flex-initial min-w-[130px]">
             <SelectDropdown
               value={selectedSessionId}
               onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); setSearchTerm(""); }}
@@ -2219,7 +2293,7 @@ const SyllabusTab = ({ level, subLevel }) => {
 
           {/* Version Selector (Dropdown if multiple, or badge if single) */}
           {allVersions.length > 1 ? (
-            <div className="min-w-[145px]">
+            <div className="flex-1 sm:flex-initial min-w-[130px]">
               <SelectDropdown
                 value={currentVersionId}
                 onChange={(val) => { setActiveVersionId(val); setSearchTerm(""); }}
@@ -2239,7 +2313,7 @@ const SyllabusTab = ({ level, subLevel }) => {
 
           {/* Session Info (kis session ka syllabus hai) */}
           {currentVersionDoc?.sessionId?.name && (
-            <span className="text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200/70 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200/70 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
               Session: <strong className="text-gray-800 font-bold">{currentVersionDoc.sessionId.name}</strong>
             </span>
           )}
@@ -2276,7 +2350,7 @@ const SyllabusTab = ({ level, subLevel }) => {
 
       {/* Subject tabs (Pill selectors) */}
       {subjectsList.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 m-4">
+        <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
           {subjectsList.map((s) => (
             <button
               key={s.name}

@@ -19,7 +19,7 @@ const OrangeButton = ({
   showFooter = true,
   customFooter,
   maxWidth = "sm:max-w-md",
-  bodyClassName = "p-4 sm:p-6",
+  bodyClassName = "p-3.5 sm:p-6",
 }) => {
   const isControlled = controlledIsOpen !== undefined;
   const [internalIsMounted, setInternalIsMounted] = useState(false);
@@ -118,19 +118,19 @@ const OrangeButton = ({
               ${isOpen ? "translate-x-0" : "translate-x-full"}`}
             >
               {/* HEADER */}
-              <div className="flex items-start justify-between px-6 py-5 border-b bg-gray-50/50">
-                <div>
+              <div className="flex items-start justify-between px-4 sm:px-6 py-3.5 sm:py-5 border-b bg-gray-50/50 gap-3">
+                <div className="min-w-0">
                   {panelTitle && (
-                    <h2 className="text-xl font-semibold text-gray-900">{panelTitle}</h2>
+                    <h2 className="text-base sm:text-xl font-bold text-gray-900 truncate sm:whitespace-normal">{panelTitle}</h2>
                   )}
                   {panelSubtitle && (
-                    <p className="text-sm text-gray-500 mt-1">{panelSubtitle}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">{panelSubtitle}</p>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors shrink-0"
                 >
                   <X size={20} />
                 </button>
@@ -143,7 +143,7 @@ const OrangeButton = ({
 
               {/* FOOTER */}
               {showFooter && (
-                <div className="px-6 py-4 border-t bg-white">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-t bg-white">
                   {customFooter ? (
                     customFooter
                   ) : (

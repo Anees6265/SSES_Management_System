@@ -11,6 +11,8 @@ import {
 import Header from '../../shared/sidebar/Header';
 import Loader from "../../shared/loader/Loader";
 import { toast } from "react-toastify";
+import { FaLock, FaCheckCircle, FaStar, FaSyncAlt } from "react-icons/fa";
+import { taskAPI } from "../../../services/taskService";
 
 const deepClone = (obj) => {
   // Use structuredClone when available (preserves types), fallback to JSON
@@ -105,6 +107,25 @@ export default function StudentReportForm() {
   const [createReportCard, { isLoading: isCreating, error: mutationError }] = useCreateReportCardMutation();
   const [updateReportCard, { isLoading: isUpdating }] = useUpdateReportCardMutation();
   const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const [taskPerformance, setTaskPerformance] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPerformance = async () => {
+      if (id) {
+        try {
+          const res = await taskAPI.getStudentTaskPerformance(id);
+          if (isMounted && res?.performance) {
+            setTaskPerformance(res.performance);
+          }
+        } catch (err) {
+          console.error("Error fetching task performance in form:", err);
+        }
+      }
+    };
+    fetchPerformance();
+    return () => { isMounted = false; };
+  }, [id]);
 
   const [formData, setFormData] = useState({
     batchYear: "",
@@ -230,7 +251,7 @@ export default function StudentReportForm() {
     isFinalReport: false
   });
 
-  const generateDynamicSections = (templateType, student, tasks) => {
+  const generateDynamicSections = (templateType, student, tasks, taskPerf = null) => {
     const resumeStatus = (student?.placement?.resumeURL || student?.resumeURL || student?.resume || student?.resumeUrl || student?.resume_url) ? "Created" : "Not created";
     
     let placementReady = "Not Ready";
@@ -249,7 +270,7 @@ export default function StudentReportForm() {
     const currentSubLevel = student?.currentSubLevelId?.name || student?.currentLevel || "1A";
     const currentIdx = LEVEL_STEPS.indexOf(currentSubLevel);
 
-    // 1. Level Progress Table
+    // 1. Level Progress Table (Automatic / Read-Only)
     const levelProgressSection = {
       sectionName: "Level Progress",
       sectionType: "LevelProgressTable",
@@ -264,22 +285,40 @@ export default function StudentReportForm() {
           ratingStr = "4.10";
         } else if (idx === currentIdx) {
           status = "Current";
-          completion = 60;
+          if (taskPerf?.completionRate !== undefined && taskPerf.completionRate > 0) {
+            completion = taskPerf.completionRate;
+          } else if (tasks?.totalTasks > 0) {
+            completion = Math.round((tasks.completedTasks / tasks.totalTasks) * 100);
+          } else {
+            completion = 60;
+          }
           ratingStr = "3.90";
         }
         return {
-          itemName: lvl, // sublevel name (e.g. "1A")
-          value: status, // status (e.g. "Completed")
-          score: completion, // completion % (e.g. 100)
-          remark: ratingStr, // rating (e.g. "4.10")
-          maxMarks: lvl.startsWith("1") ? 1 : 2 // Level index
+          itemName: lvl,
+          value: status,
+          score: completion,
+          remark: ratingStr,
+          maxMarks: lvl.startsWith("1") ? 1 : 2
         };
       })
     };
 
-    // 2. Subject-wise Performance Table
+    // 2. Subject-wise Performance Table (Automatic / Read-Only)
     const subjectItems = [];
-    if (tasks?.groupedBySubject) {
+
+    // Prioritize taskPerf from /tasks/student/:id/performance if available
+    if (taskPerf?.technicalSkills && taskPerf.technicalSkills.length > 0) {
+      taskPerf.technicalSkills.forEach(skill => {
+        subjectItems.push({
+          itemName: skill.skillName,
+          value: skill.remark || "Good",
+          score: skill.completedTasks || 0,
+          maxMarks: skill.totalTasks || 0,
+          remark: skill.rating ? Number(skill.rating).toFixed(2) : "4.00"
+        });
+      });
+    } else if (tasks?.groupedBySubject) {
       Object.keys(tasks.groupedBySubject).forEach(subjectName => {
         if (subjectName.trim() === "" || subjectName.toLowerCase() === "other") return;
         const subjTasks = tasks.groupedBySubject[subjectName].tasks || [];
@@ -306,13 +345,14 @@ export default function StudentReportForm() {
 
         subjectItems.push({
           itemName: subjectName,
-          value: performance, // performance level
-          score: evaluated, // evaluated tasks
-          maxMarks: total, // total tasks
-          remark: avg.toFixed(2) // avg rating / 5
+          value: performance,
+          score: evaluated,
+          maxMarks: total,
+          remark: avg.toFixed(2)
         });
       });
     }
+
     if (subjectItems.length === 0) {
       subjectItems.push({ itemName: "Python", value: "Excellent", score: 92, maxMarks: 100, remark: "4.12" });
       subjectItems.push({ itemName: "DSA", value: "Very Good", score: 45, maxMarks: 50, remark: "3.90" });
@@ -413,11 +453,11 @@ export default function StudentReportForm() {
     ];
   };
 
-  const autoPopulateFromData = (student, tasks, templateType = "ITEG_STANDARD") => {
+  const autoPopulateFromData = (student, tasks, templateType = "ITEG_STANDARD", taskPerf = null) => {
     if (!student) return {};
 
     const batchYear = student.sessionId?.name || "";
-    const dynamicSections = generateDynamicSections(templateType, student, tasks);
+    const dynamicSections = generateDynamicSections(templateType, student, tasks, taskPerf);
 
     let resumeStatus = "Not created";
     const hasResume = student.placement?.resumeURL || student.resumeURL || student.resume || student.resumeUrl || student.resume_url;
@@ -524,15 +564,15 @@ export default function StudentReportForm() {
 
   // Auto-populate form when creating new report card and data is loaded
   useEffect(() => {
-    if (studentData?.data && tasksData && !existingReportData?.data) {
+    if (studentData?.data && !existingReportData?.data) {
       const templateType = studentData.data.subDepartmentId?.departmentId?.reportConfig?.templateType || "ITEG_STANDARD";
-      const populated = autoPopulateFromData(studentData.data, tasksData, templateType);
+      const populated = autoPopulateFromData(studentData.data, tasksData, templateType, taskPerformance);
       setFormData(prev => ({
         ...prev,
         ...populated
       }));
     }
-  }, [studentData, tasksData, existingReportData]);
+  }, [studentData, tasksData, taskPerformance, existingReportData]);
 
   const handleAutoPopulate = () => {
     if (!studentData?.data) {
@@ -540,15 +580,7 @@ export default function StudentReportForm() {
       return;
     }
     const templateType = studentData.data.subDepartmentId?.departmentId?.reportConfig?.templateType || "ITEG_STANDARD";
-    const populated = autoPopulateFromData(studentData.data, tasksData, templateType);
-
-    // Preserve existing Level Progress section if it exists in current formData
-    const existingLevelProgress = formData.dynamicSections.find(s => s.sectionType === "LevelProgressTable");
-    if (existingLevelProgress && populated.dynamicSections) {
-      populated.dynamicSections = populated.dynamicSections.map(s => 
-        s.sectionType === "LevelProgressTable" ? existingLevelProgress : s
-      );
-    }
+    const populated = autoPopulateFromData(studentData.data, tasksData, templateType, taskPerformance);
 
     setFormData(prev => ({
       ...prev,
@@ -561,6 +593,10 @@ export default function StudentReportForm() {
     setFormData(prev => {
       const next = deepClone(prev);
       const section = next.dynamicSections[sectionIndex];
+      // Disallow manual edits to automated sections
+      if (section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") {
+        return prev;
+      }
       const item = section.items[itemIndex];
       item[field] = val;
       return next;
@@ -571,11 +607,36 @@ export default function StudentReportForm() {
   useEffect(() => {
     if (existingReportData?.data) {
       const reportData = existingReportData.data;
+      const templateType = studentData?.data?.subDepartmentId?.departmentId?.reportConfig?.templateType || reportData.templateType || "ITEG_STANDARD";
+
+      // Always auto-fill LevelProgressTable and SubjectPerformanceTable from real student records
+      const autoSections = generateDynamicSections(templateType, studentData?.data, tasksData, taskPerformance);
+      const autoLevelProgress = autoSections.find(s => s.sectionType === "LevelProgressTable");
+      const autoSubjectPerf = autoSections.find(s => s.sectionType === "SubjectPerformanceTable");
+
+      let resolvedDynamicSections = [];
+      if (reportData.dynamicSections && reportData.dynamicSections.length > 0) {
+        resolvedDynamicSections = reportData.dynamicSections.map(sec => {
+          if (sec.sectionType === "LevelProgressTable" && autoLevelProgress) return autoLevelProgress;
+          if (sec.sectionType === "SubjectPerformanceTable" && autoSubjectPerf) return autoSubjectPerf;
+          return sec;
+        });
+        if (!resolvedDynamicSections.some(s => s.sectionType === "LevelProgressTable") && autoLevelProgress) {
+          resolvedDynamicSections.unshift(autoLevelProgress);
+        }
+        if (!resolvedDynamicSections.some(s => s.sectionType === "SubjectPerformanceTable") && autoSubjectPerf) {
+          const lIdx = resolvedDynamicSections.findIndex(s => s.sectionType === "LevelProgressTable");
+          resolvedDynamicSections.splice(lIdx + 1, 0, autoSubjectPerf);
+        }
+      } else {
+        resolvedDynamicSections = autoSections;
+      }
+
       const next = deepClone({
         batchYear: reportData.batchYear || "",
         generatedByName: reportData.generatedByName || loggedInUser?.name || "",
         templateType: reportData.templateType || "ITEG_STANDARD",
-        dynamicSections: reportData.dynamicSections || [],
+        dynamicSections: resolvedDynamicSections,
         softSkills: {
           sectionTitle: reportData.softSkills?.sectionTitle || "Soft Skills Evaluation (50 Marks)",
           totalSoftSkillMarks: reportData.softSkills?.totalSoftSkillMarks || 0,
@@ -616,7 +677,27 @@ export default function StudentReportForm() {
       // no report found - keep defaults or loggedInUser name
       setFormData(prev => ({ ...prev, generatedByName: loggedInUser?.name || prev.generatedByName }));
     }
-  }, [existingReportData, loggedInUser?.name]);
+  }, [existingReportData, studentData, tasksData, taskPerformance, loggedInUser?.name]);
+
+  // Keep LevelProgress and SubjectPerformance synchronized with live student & task performance
+  useEffect(() => {
+    if (studentData?.data && (tasksData || taskPerformance)) {
+      const templateType = studentData.data.subDepartmentId?.departmentId?.reportConfig?.templateType || formData.templateType || "ITEG_STANDARD";
+      const freshAuto = generateDynamicSections(templateType, studentData.data, tasksData, taskPerformance);
+      const freshLevel = freshAuto.find(s => s.sectionType === "LevelProgressTable");
+      const freshSubject = freshAuto.find(s => s.sectionType === "SubjectPerformanceTable");
+
+      setFormData(prev => {
+        if (!prev.dynamicSections || prev.dynamicSections.length === 0) return prev;
+        const updated = prev.dynamicSections.map(sec => {
+          if (sec.sectionType === "LevelProgressTable" && freshLevel) return freshLevel;
+          if (sec.sectionType === "SubjectPerformanceTable" && freshSubject) return freshSubject;
+          return sec;
+        });
+        return { ...prev, dynamicSections: updated };
+      });
+    }
+  }, [studentData, tasksData, taskPerformance]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -805,7 +886,7 @@ export default function StudentReportForm() {
   }
 
   return (
-    <div className="min-h-screen py-4">
+    <div className="min-h-screen py-2 sm:py-4 bg-slate-50/50">
       <Header
         title={existingReportData?.data ? 'Edit Student Report' : 'Create Student Report'}
         showBack={true}
@@ -818,1731 +899,912 @@ export default function StudentReportForm() {
         ]}
       />
 
-      <div className="w-full px-3.5 sm:px-6 lg:px-8 pt-2 sm:pt-3">
-        <form onSubmit={handleSubmit} className="w-full space-y-6">
-        {/* Basic Info */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Basic Information</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Batch Year <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.batchYear}
-                onChange={(e) => setFormData(prev => ({ ...prev, batchYear: e.target.value }))}
-                placeholder="e.g., 2024-25"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-              />
+      <div className="w-full px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4 max-w-[1600px] mx-auto">
+        <form onSubmit={handleSubmit} className="w-full space-y-4 sm:space-y-6">
+          {/* Basic Info */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800">Basic Information</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoPopulate}
+                  title="Re-fetch and synchronize level and task metrics"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-[11px] sm:text-xs font-semibold transition cursor-pointer"
+                >
+                  <FaSyncAlt className="text-[10px]" /> Re-sync Live Data
+                </button>
+                <span className="text-[11px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  Academic Session
+                </span>
+              </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+                  Batch Year <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.batchYear}
+                  onChange={(e) => setFormData(prev => ({ ...prev, batchYear: e.target.value }))}
+                  placeholder="e.g., 2024-25"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Generated By <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={`Prof. ${formData.generatedByName}`}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-              />
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+                  Generated By <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={`Prof. ${formData.generatedByName}`}
+                  disabled
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-xs sm:text-sm font-medium"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Academic Performance */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4">Academic Performance</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {formData.academicPerformance.yearWiseSGPA.map((year, index) => (
-              <div key={index}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {year.year} SGPA
+          {/* Academic Performance */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800">Academic Performance (SGPA & CGPA)</h3>
+              <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                10.0 Scale
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+              {formData.academicPerformance.yearWiseSGPA.map((year, index) => (
+                <div key={index} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                  <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    {year.year} SGPA
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={year.sgpa}
+                    onChange={(e) => setYearSGPA(index, e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold bg-white text-slate-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              ))}
+              <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-200/60">
+                <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-orange-700 mb-1">
+                  Cumulative CGPA
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  value={year.sgpa}
-                  onChange={(e) => setYearSGPA(index, e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+                  value={formData.academicPerformance.cgpa}
+                  onChange={(e) => setFormData(prev => {
+                    const next = deepClone(prev);
+                    next.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
+                    return next;
+                  })}
+                  placeholder="0.00"
+                  className="w-full px-2.5 py-1.5 border border-orange-300 rounded-lg text-xs sm:text-sm font-black bg-white text-orange-700 focus:outline-none focus:border-orange-500"
                 />
               </div>
-            ))}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CGPA
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.academicPerformance.cgpa}
-                onChange={(e) => setFormData(prev => {
-                  const next = deepClone(prev);
-                  next.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
-                  return next;
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-              />
             </div>
           </div>
-        </div>
 
-        {formData.dynamicSections && formData.dynamicSections.length > 0 ? (
-          <div className="space-y-6">
-            {formData.dynamicSections.map((section, sIdx) => (
-              <div key={sIdx} className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4 text-orange-600 border-b pb-2">{section.sectionName}</h3>
-                
-                {section.sectionType === "LevelProgressTable" && (
-                  <div className="space-y-4">
-                    <div className="hidden md:grid grid-cols-4 gap-4 font-semibold text-gray-700 text-sm mb-2">
-                      <div>Sub-Level</div>
-                      <div>Status</div>
-                      <div>Completion %</div>
-                      <div>Average Rating / 5</div>
+          {formData.dynamicSections && formData.dynamicSections.length > 0 ? (
+            <div className="space-y-4 sm:space-y-6">
+              {formData.dynamicSections.map((section, sIdx) => (
+                <div key={sIdx} className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-bold text-orange-600">{section.sectionName}</h3>
                     </div>
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-b border-gray-100 pb-3 last:border-b-0">
-                        <div className="font-bold text-gray-800">
-                          {item.maxMarks === 1 ? "Level 1" : "Level 2"} - {item.itemName}
-                        </div>
-                        <div>
-                          <select
-                            value={item.value || "Upcoming"}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
-                          >
-                            <option value="Completed">Completed</option>
-                            <option value="Current">Current</option>
-                            <option value="Upcoming">Upcoming</option>
-                          </select>
-                        </div>
-                        <div>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={item.score || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "score", parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="text"
-                            value={item.remark || ""}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "remark", e.target.value)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                            placeholder="e.g. 4.10 or —"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                    {(section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") ? (
+                      <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <FaLock className="text-[10px]" /> Auto-Filled (Read-Only)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                        Editable Section
+                      </span>
+                    )}
                   </div>
-                )}
 
-                {section.sectionType === "SubjectPerformanceTable" && (
-                  <div className="space-y-4">
-                    <div className="hidden md:grid grid-cols-5 gap-4 font-semibold text-gray-700 text-sm mb-2">
-                      <div>Subject</div>
-                      <div>Total Tasks</div>
-                      <div>Evaluated</div>
-                      <div>Avg Rating / 5</div>
-                      <div>Performance Level</div>
-                    </div>
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center border-b border-gray-100 pb-3 last:border-b-0">
-                        <div>
-                          <input
-                            type="text"
-                            value={item.itemName || ""}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "itemName", e.target.value)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.maxMarks || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "maxMarks", parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="number"
-                            min="0"
-                            value={item.score || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "score", parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="5"
-                            value={item.remark || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "remark", e.target.value)}
-                            className="w-full px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                          />
-                        </div>
-                        <div>
-                          <select
-                            value={item.value || "Good"}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
-                          >
-                            <option value="Outstanding">Outstanding</option>
-                            <option value="Excellent">Excellent</option>
-                            <option value="Very Good">Very Good</option>
-                            <option value="Good">Good</option>
-                            <option value="Average">Average</option>
-                          </select>
-                        </div>
+                  {section.sectionType === "LevelProgressTable" && (
+                    <div className="space-y-3">
+                      {/* Read-Only Notice Banner */}
+                      <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-xl text-emerald-800 text-xs">
+                        <FaLock className="shrink-0 text-emerald-600 text-xs sm:text-sm" />
+                        <span>
+                          <strong>Auto-Calculated from Level Tracking:</strong> Sublevel progression, completion percentages, and ratings are automatically generated from student records and cannot be edited.
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
 
-                {section.sectionType === "SoftSkillsRating" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <span className="font-medium text-gray-700">{item.itemName}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="5"
-                            value={item.value || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm"
-                          />
-                          <span className="text-gray-500 text-xs">/ 5</span>
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/30">
+                        <div className="grid grid-cols-4 gap-4 px-4 py-3 bg-slate-100/70 font-bold text-slate-700 text-xs uppercase tracking-wider border-b border-slate-200/80">
+                          <div>Sub-Level</div>
+                          <div>Status</div>
+                          <div>Completion %</div>
+                          <div className="text-right">Average Rating / 5</div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {section.sectionType === "InterviewRating" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <span className="font-medium text-gray-700">{item.itemName}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="5"
-                            value={item.value || 0}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm"
-                          />
-                          <span className="text-gray-500 text-xs">/ 5</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {section.sectionType === "CareerStatus" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <label className="text-xs font-semibold text-gray-500">{item.itemName}</label>
-                        <select
-                          value={item.value || "Not Ready"}
-                          onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm bg-white"
-                        >
-                          <option value="Created">Created</option>
-                          <option value="Not created">Not created</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Not Ready">Not Ready</option>
-                          <option value="Ready">Ready</option>
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {section.sectionType === "AttendanceDiscipline" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <span className="font-medium text-gray-700">{item.itemName}</span>
-                        <input
-                          type="text"
-                          value={item.value || ""}
-                          onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                          className="w-32 px-3 py-1 border border-gray-300 rounded text-sm text-center"
-                          placeholder="e.g. 92% or Good"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {section.sectionType === "StrengthsImprovement" && (
-                  <div className="space-y-4">
-                    {section.items.map((item, idx) => (
-                      <div key={idx} className="flex flex-col gap-1.5">
-                        <label className="text-sm font-semibold text-gray-700">{item.itemName}</label>
-                        <textarea
-                          rows={3}
-                          value={item.value || ""}
-                          onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                          placeholder={`Enter ${item.itemName} (comma separated or comments)...`}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {section.sectionType === "OverallPerformanceSummary" && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {section.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                          <span className="font-medium text-gray-700">{item.itemName}</span>
-                          <div className="flex items-center gap-3">
-                            {item.itemName === "Overall Rating" && (
-                              <select
-                                value={item.remark || "Excellent"}
-                                onChange={(e) => setDynamicItemField(sIdx, idx, "remark", e.target.value)}
-                                className="px-2 py-1 border border-gray-300 rounded text-xs bg-white"
-                              >
-                                <option value="Outstanding">Outstanding</option>
-                                <option value="Excellent">Excellent</option>
-                                <option value="Very Good">Very Good</option>
-                                <option value="Good">Good</option>
-                                <option value="Average">Average</option>
-                              </select>
-                            )}
-                            {item.itemName !== "Performance Level" ? (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  max="5"
-                                  value={item.value || 0}
-                                  onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                                  className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm font-bold"
-                                />
-                                <span className="text-gray-500 text-xs">/ 5</span>
+                        <div className="divide-y divide-slate-100">
+                          {section.items.map((item, idx) => {
+                            const isCompleted = item.value === "Completed";
+                            const isCurrent = item.value === "Current";
+                            return (
+                              <div key={idx} className="grid grid-cols-4 gap-4 items-center px-4 py-3 bg-white hover:bg-slate-50/50 transition">
+                                <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                                  <span className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 font-black text-xs flex items-center justify-center shrink-0">
+                                    {item.itemName}
+                                  </span>
+                                  <span>{item.maxMarks === 1 ? "Level 1" : "Level 2"} - {item.itemName}</span>
+                                </div>
+                                <div>
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                    isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                    isCurrent ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                    "bg-slate-100 text-slate-500 border-slate-200"
+                                  }`}>
+                                    {isCompleted && <FaCheckCircle className="text-[10px]" />}
+                                    {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+                                    {item.value || "Upcoming"}
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                                    <span>{item.score || 0}%</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        isCompleted ? "bg-emerald-500" : isCurrent ? "bg-blue-500" : "bg-slate-300"
+                                      }`}
+                                      style={{ width: `${Math.min(item.score || 0, 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="inline-flex items-center gap-1 font-bold text-sm text-slate-800 bg-amber-50 text-amber-800 border border-amber-200/80 px-2.5 py-1 rounded-lg">
+                                    <FaStar className="text-amber-500 text-xs" />
+                                    {item.remark || "—"}
+                                  </span>
+                                </div>
                               </div>
-                            ) : (
-                              <input
-                                type="text"
-                                value={item.value || ""}
-                                onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                                className="w-32 px-2 py-1 border border-gray-300 rounded text-center text-sm font-bold"
-                                placeholder="e.g. Excellent"
-                              />
-                            )}
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Mobile Responsive Cards */}
+                      <div className="block md:hidden space-y-2.5">
+                        {section.items.map((item, idx) => {
+                          const isCompleted = item.value === "Completed";
+                          const isCurrent = item.value === "Current";
+                          return (
+                            <div key={idx} className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-3 shadow-2xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 font-black text-xs flex items-center justify-center shrink-0">
+                                    {item.itemName}
+                                  </span>
+                                  <span className="font-bold text-xs text-slate-800">
+                                    {item.maxMarks === 1 ? "Level 1" : "Level 2"} - {item.itemName}
+                                  </span>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                  isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                  isCurrent ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                  "bg-slate-100 text-slate-500 border-slate-200"
+                                }`}>
+                                  {isCompleted && <FaCheckCircle className="text-[9px]" />}
+                                  {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+                                  {item.value || "Upcoming"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+                                  <span>Completion</span>
+                                  <span className="font-bold text-slate-800">{item.score || 0}%</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      isCompleted ? "bg-emerald-500" : isCurrent ? "bg-blue-500" : "bg-slate-300"
+                                    }`}
+                                    style={{ width: `${Math.min(item.score || 0, 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                                <span className="text-slate-500 font-medium">Faculty Rating</span>
+                                <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                                  <FaStar className="text-amber-500 text-[10px]" />
+                                  {item.remark || "—"} / 5.0
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {section.sectionType === "SubjectPerformanceTable" && (
+                    <div className="space-y-3">
+                      {/* Read-Only Notice Banner */}
+                      <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-xl text-emerald-800 text-xs">
+                        <FaLock className="shrink-0 text-emerald-600 text-xs sm:text-sm" />
+                        <span>
+                          <strong>Auto-Calculated from Task Evaluations:</strong> Total tasks, evaluated tasks, average ratings, and performance levels are automatically computed from live student task records and cannot be edited.
+                        </span>
+                      </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/30">
+                        <div className="grid grid-cols-5 gap-4 px-4 py-3 bg-slate-100/70 font-bold text-slate-700 text-xs uppercase tracking-wider border-b border-slate-200/80">
+                          <div>Subject</div>
+                          <div className="text-center">Total Tasks</div>
+                          <div className="text-center">Evaluated</div>
+                          <div className="text-center">Avg Rating / 5</div>
+                          <div className="text-right">Performance Level</div>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {section.items.map((item, idx) => {
+                            const perf = item.value || "Good";
+                            return (
+                              <div key={idx} className="grid grid-cols-5 gap-4 items-center px-4 py-3 bg-white hover:bg-slate-50/50 transition">
+                                <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                                  <span>{item.itemName}</span>
+                                </div>
+                                <div className="text-center font-bold text-sm text-slate-700">
+                                  {item.maxMarks || 0}
+                                </div>
+                                <div className="text-center">
+                                  <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {item.score || 0}
+                                  </span>
+                                </div>
+                                <div className="text-center">
+                                  <span className="inline-flex items-center gap-1 font-bold text-sm text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-lg">
+                                    <FaStar className="text-amber-500 text-xs" />
+                                    {item.remark || "4.00"}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                    perf === "Outstanding" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                                    perf === "Excellent" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                    perf === "Very Good" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                    perf === "Good" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                    "bg-slate-100 text-slate-600 border-slate-200"
+                                  }`}>
+                                    {perf}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Mobile Responsive Cards */}
+                      <div className="block md:hidden space-y-2.5">
+                        {section.items.map((item, idx) => {
+                          const perf = item.value || "Good";
+                          return (
+                            <div key={idx} className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                                  {item.itemName}
+                                </span>
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                                  perf === "Outstanding" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                                  perf === "Excellent" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                  perf === "Very Good" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                  perf === "Good" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                  "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}>
+                                  {perf}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">
+                                <div className="bg-slate-50/80 p-2 rounded-lg border border-slate-100">
+                                  <span className="text-[10px] text-slate-500 block font-medium">Tasks Completed</span>
+                                  <span className="font-bold text-slate-800 text-xs">
+                                    {item.score || 0} / {item.maxMarks || 0}
+                                  </span>
+                                </div>
+                                <div className="bg-amber-50/60 p-2 rounded-lg border border-amber-100">
+                                  <span className="text-[10px] text-amber-700 block font-medium">Avg Rating</span>
+                                  <span className="font-bold text-amber-800 text-xs flex items-center gap-1">
+                                    <FaStar className="text-amber-500 text-[10px]" />
+                                    {item.remark || "4.00"} / 5.0
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {section.sectionType === "SoftSkillsRating" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
+                      {section.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                          <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="5"
+                              value={item.value || 0}
+                              onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                              className="w-16 sm:w-20 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                            />
+                            <span className="text-slate-400 text-xs">/ 5</span>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Career Readiness */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Career Readiness</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <SimpleDropdown
-                    label="Resume Status"
-                    value={formData.careerReadiness.resumeStatus}
-                    onChange={(value) => setFormData(prev => {
-                      const next = deepClone(prev);
-                      next.careerReadiness.resumeStatus = value;
-                      return next;
-                    })}
-                    options={[
-                      { value: "", label: "Select Status" },
-                      { value: "Not created", label: "Not created" },
-                      { value: "Need to improve", label: "Need to improve" },
-                      { value: "Updated", label: "Updated" }
-                    ]}
-                  />
-                </div>
-                <div>
-                  <SimpleDropdown
-                    label="LinkedIn Status"
-                    value={formData.careerReadiness.linkedinStatus}
-                    onChange={(value) => setFormData(prev => {
-                      const next = deepClone(prev);
-                      next.careerReadiness.linkedinStatus = value;
-                      return next;
-                    })}
-                    options={[
-                      { value: "", label: "Select Status" },
-                      { value: "Not created", label: "Not created" },
-                      { value: "Need to improve", label: "Need to improve" },
-                      { value: "Updated", label: "Updated" }
-                    ]}
-                  />
-                </div>
-                <div>
-                  <SimpleDropdown
-                    label="Aptitude Status"
-                    value={formData.careerReadiness.aptitudeStatus}
-                    onChange={(value) => setFormData(prev => {
-                      const next = deepClone(prev);
-                      next.careerReadiness.aptitudeStatus = value;
-                      return next;
-                    })}
-                    options={[
-                      { value: "", label: "Select Status" },
-                      { value: "In-Progress", label: "In-Progress" },
-                      { value: "Not Started", label: "Not Started" }
-                    ]}
-                  />
-                </div>
-                <div>
-                  <SimpleDropdown
-                    label="Placement Ready"
-                    value={formData.careerReadiness.placementReady}
-                    onChange={(value) => setFormData(prev => {
-                      const next = deepClone(prev);
-                      next.careerReadiness.placementReady = value;
-                      return next;
-                    })}
-                    options={[
-                      { value: "", label: "Select Status" },
-                      { value: "Ready", label: "Ready" },
-                      { value: "In-process", label: "In-process" },
-                      { value: "Not Ready", label: "Not Ready" }
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
+                  )}
 
-            {/* Co-Curricular Activities */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Co-Curricular Activities</h3>
-              {formData.coCurricular.map((activity, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category
-                    </label>
-                    <input
-                      type="text"
-                      value={activity.category}
-                      onChange={(e) => setCoCurricularField(index, 'category', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      value={activity.title}
-                      onChange={(e) => setCoCurricularField(index, 'title', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Remark
-                    </label>
-                    <input
-                      type="text"
-                      value={activity.remark}
-                      onChange={(e) => setCoCurricularField(index, 'remark', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addCoCurricular}
-                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-              >
-                Add More
-              </button>
-            </div>
-
-            {/* Soft Skills */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Soft Skills Evaluation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {formData.softSkills.categories.map((category, categoryIndex) => (
-                  <div key={categoryIndex} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-bold text-gray-800 mb-3">{category.title}</h4>
-                    <div className="space-y-2 mb-3">
-                      {category.subcategories.map((sub, subIndex) => (
-                        <label key={subIndex} className="flex items-center gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={!!sub.value}
-                            onChange={(e) => updateSoftSkillSubcategory(categoryIndex, subIndex, e.target.checked)}
-                            className="w-5 h-5 rounded border-2 border-gray-300 checked:bg-black checked:border-black focus:ring-2 focus:ring-black appearance-none relative checked:after:content-['✓'] checked:after:text-white checked:after:text-sm checked:after:font-bold checked:after:absolute checked:after:top-0 checked:after:left-1"
-                          />
-                          <span className="text-sm text-gray-700">{sub.name}</span>
-                        </label>
+                  {section.sectionType === "InterviewRating" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
+                      {section.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                          <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="5"
+                              value={item.value || 0}
+                              onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                              className="w-16 sm:w-20 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                            />
+                            <span className="text-slate-400 text-xs">/ 5</span>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Score:</span>
+                  )}
+
+                  {section.sectionType === "CareerStatus" && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                      {section.items.map((item, idx) => (
+                        <div key={idx} className="flex flex-col gap-1 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">{item.itemName}</label>
+                          <select
+                            value={item.value || "Not Ready"}
+                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-bold text-slate-700"
+                          >
+                            <option value="Created">Created</option>
+                            <option value="Not created">Not created</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Not Ready">Not Ready</option>
+                            <option value="Ready">Ready</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {section.sectionType === "AttendanceDiscipline" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                      {section.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                          <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
+                          <input
+                            type="text"
+                            value={item.value || ""}
+                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
+                            className="w-28 sm:w-32 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold text-center bg-white"
+                            placeholder="e.g. 92% or Good"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {section.sectionType === "StrengthsImprovement" && (
+                    <div className="space-y-3 sm:space-y-4">
+                      {section.items.map((item, idx) => (
+                        <div key={idx} className="flex flex-col gap-1.5">
+                          <label className="text-xs sm:text-sm font-bold text-slate-700">{item.itemName}</label>
+                          <textarea
+                            rows={3}
+                            value={item.value || ""}
+                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
+                            placeholder={`Enter ${item.itemName} (comma separated or detailed remarks)...`}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {section.sectionType === "OverallPerformanceSummary" && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
+                        {section.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                            <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.itemName === "Overall Rating" && (
+                                <select
+                                  value={item.remark || "Excellent"}
+                                  onChange={(e) => setDynamicItemField(sIdx, idx, "remark", e.target.value)}
+                                  className="px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white font-semibold text-slate-700"
+                                >
+                                  <option value="Outstanding">Outstanding</option>
+                                  <option value="Excellent">Excellent</option>
+                                  <option value="Very Good">Very Good</option>
+                                  <option value="Good">Good</option>
+                                  <option value="Average">Average</option>
+                                </select>
+                              )}
+                              {item.itemName !== "Performance Level" ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="5"
+                                    value={item.value || 0}
+                                    onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                                    className="w-16 sm:w-20 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                                  />
+                                  <span className="text-slate-400 text-xs">/ 5</span>
+                                </div>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={item.value || ""}
+                                  onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
+                                  className="w-28 sm:w-32 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                                  placeholder="e.g. Excellent"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Career Readiness (Legacy fallback) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-800 pb-2 border-b border-slate-100">Career Readiness</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <SimpleDropdown
+                      label="Resume Status"
+                      value={formData.careerReadiness.resumeStatus}
+                      onChange={(value) => setFormData(prev => {
+                        const next = deepClone(prev);
+                        next.careerReadiness.resumeStatus = value;
+                        return next;
+                      })}
+                      options={[
+                        { value: "", label: "Select Status" },
+                        { value: "Not created", label: "Not created" },
+                        { value: "Need to improve", label: "Need to improve" },
+                        { value: "Updated", label: "Updated" }
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <SimpleDropdown
+                      label="LinkedIn Status"
+                      value={formData.careerReadiness.linkedinStatus}
+                      onChange={(value) => setFormData(prev => {
+                        const next = deepClone(prev);
+                        next.careerReadiness.linkedinStatus = value;
+                        return next;
+                      })}
+                      options={[
+                        { value: "", label: "Select Status" },
+                        { value: "Not created", label: "Not created" },
+                        { value: "Need to improve", label: "Need to improve" },
+                        { value: "Updated", label: "Updated" }
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <SimpleDropdown
+                      label="Aptitude Status"
+                      value={formData.careerReadiness.aptitudeStatus}
+                      onChange={(value) => setFormData(prev => {
+                        const next = deepClone(prev);
+                        next.careerReadiness.aptitudeStatus = value;
+                        return next;
+                      })}
+                      options={[
+                        { value: "", label: "Select Status" },
+                        { value: "In-Progress", label: "In-Progress" },
+                        { value: "Not Started", label: "Not Started" }
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <SimpleDropdown
+                      label="Placement Ready"
+                      value={formData.careerReadiness.placementReady}
+                      onChange={(value) => setFormData(prev => {
+                        const next = deepClone(prev);
+                        next.careerReadiness.placementReady = value;
+                        return next;
+                      })}
+                      options={[
+                        { value: "", label: "Select Status" },
+                        { value: "Ready", label: "Ready" },
+                        { value: "In-process", label: "In-process" },
+                        { value: "Not Ready", label: "Not Ready" }
+                      ]}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Co-Curricular Activities (Legacy fallback) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Co-Curricular Activities</h3>
+                  <button
+                    type="button"
+                    onClick={addCoCurricular}
+                    className="px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition"
+                  >
+                    + Add Activity
+                  </button>
+                </div>
+                {formData.coCurricular.map((activity, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 p-3 bg-slate-50/70 rounded-xl border border-slate-100">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Category</label>
                       <input
-                        type="number"
-                        value={category.score}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value || 0, 10) || 0;
-                          setFormData(prev => {
-                            const next = deepClone(prev);
-                            next.softSkills.categories[categoryIndex].score = v;
-                            return next;
-                          });
-                        }}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:border-blue-500"
+                        type="text"
+                        value={activity.category}
+                        onChange={(e) => setCoCurricularField(index, 'category', e.target.value)}
+                        placeholder="e.g. Workshop"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
                       />
-                      <span className="text-sm text-gray-600">/ {category.maxMarks}</span>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={activity.title}
+                        onChange={(e) => setCoCurricularField(index, 'title', e.target.value)}
+                        placeholder="Event / Activity name"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Remark</label>
+                      <input
+                        type="text"
+                        value={activity.remark}
+                        onChange={(e) => setCoCurricularField(index, 'remark', e.target.value)}
+                        placeholder="Participation remarks"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Discipline */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Discipline Evaluation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {formData.discipline.categories.map((category, categoryIndex) => (
-                  <div key={categoryIndex} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="text-lg font-bold text-gray-800 mb-3">{category.title}</h4>
-                    <div className="space-y-2 mb-3">
-                      {category.subcategories.map((sub, subIndex) => (
-                        <label key={subIndex} className="flex items-center gap-3 cursor-pointer">
+              {/* Soft Skills (Legacy fallback) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-800 pb-2 border-b border-slate-100">Soft Skills Evaluation</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+                  {formData.softSkills.categories.map((category, categoryIndex) => (
+                    <div key={categoryIndex} className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/40 space-y-2.5">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 pb-1 border-b border-slate-200/60">{category.title}</h4>
+                      <div className="space-y-1.5">
+                        {category.subcategories.map((sub, subIndex) => (
+                          <label key={subIndex} className="flex items-center gap-2.5 cursor-pointer py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={!!sub.value}
+                              onChange={(e) => updateSoftSkillSubcategory(categoryIndex, subIndex, e.target.checked)}
+                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+                            />
+                            <span className="text-xs text-slate-700">{sub.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                        <span className="font-semibold text-slate-600">Score:</span>
+                        <div className="flex items-center gap-1.5">
                           <input
-                            type="checkbox"
-                            checked={!!sub.value}
-                            onChange={(e) => updateDisciplineSubcategory(categoryIndex, subIndex, e.target.checked)}
-                            className="w-5 h-5 rounded border-2 border-gray-300 checked:bg-black checked:border-black focus:ring-2 focus:ring-black appearance-none relative checked:after:content-['✓'] checked:after:text-white checked:after:text-sm checked:after:font-bold checked:after:absolute checked:after:top-0 checked:after:left-1"
+                            type="number"
+                            value={category.score}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value || 0, 10) || 0;
+                              setFormData(prev => {
+                                const next = deepClone(prev);
+                                next.softSkills.categories[categoryIndex].score = v;
+                                return next;
+                              });
+                            }}
+                            className="w-16 px-2 py-1 border border-slate-300 rounded-lg text-center font-bold bg-white"
                           />
-                          <span className="text-sm text-gray-700">{sub.name}</span>
-                        </label>
-                      ))}
+                          <span className="text-slate-400">/ {category.maxMarks}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Score:</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Discipline (Legacy fallback) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-800 pb-2 border-b border-slate-100">Discipline Evaluation</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+                  {formData.discipline.categories.map((category, categoryIndex) => (
+                    <div key={categoryIndex} className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/40 space-y-2.5">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 pb-1 border-b border-slate-200/60">{category.title}</h4>
+                      <div className="space-y-1.5">
+                        {category.subcategories.map((sub, subIndex) => (
+                          <label key={subIndex} className="flex items-center gap-2.5 cursor-pointer py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={!!sub.value}
+                              onChange={(e) => updateDisciplineSubcategory(categoryIndex, subIndex, e.target.checked)}
+                              className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+                            />
+                            <span className="text-xs text-slate-700">{sub.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                        <span className="font-semibold text-slate-600">Score:</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={category.score}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value || 0, 10) || 0;
+                              setFormData(prev => {
+                                const next = deepClone(prev);
+                                next.discipline.categories[categoryIndex].score = v;
+                                return next;
+                              });
+                            }}
+                            className="w-16 px-2 py-1 border border-slate-300 rounded-lg text-center font-bold bg-white"
+                          />
+                          <span className="text-slate-400">/ {category.maxMarks}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technical Skills (Legacy fallback) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Technical Skills</h3>
+                  <button
+                    type="button"
+                    onClick={addTechnicalSkill}
+                    className="px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition"
+                  >
+                    + Add Skill
+                  </button>
+                </div>
+                {formData.technicalSkills.map((skill, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Skill Name</label>
+                      <input
+                        type="text"
+                        value={skill.skillName}
+                        onChange={(e) => setTechnicalSkillField(index, 'skillName', e.target.value)}
+                        placeholder="e.g., HTML & CSS"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Theory (Max 10)</label>
                       <input
                         type="number"
-                        value={category.score}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value || 0, 10) || 0;
-                          setFormData(prev => {
-                            const next = deepClone(prev);
-                            next.discipline.categories[categoryIndex].score = v;
-                            return next;
-                          });
-                        }}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:border-blue-500"
+                        max="10"
+                        value={skill.theoryMarks}
+                        onChange={(e) => setTechnicalSkillField(index, 'theoryMarks', e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold bg-white"
                       />
-                      <span className="text-sm text-gray-600">/ {category.maxMarks}</span>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Practical (Max 10)</label>
+                      <input
+                        type="number"
+                        max="10"
+                        value={skill.practicalMarks}
+                        onChange={(e) => setTechnicalSkillField(index, 'practicalMarks', e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Percentage</label>
+                      <input
+                        type="number"
+                        value={skill.totalPercentage}
+                        onChange={(e) => setTechnicalSkillField(index, 'totalPercentage', e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Remark</label>
+                      <input
+                        type="text"
+                        value={skill.remark}
+                        onChange={(e) => setTechnicalSkillField(index, 'remark', e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"
+                        placeholder="e.g. Good"
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Technical Skills */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Technical Skills</h3>
-              {formData.technicalSkills.map((skill, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Skill Name</label>
-                    <input
-                      type="text"
-                      value={skill.skillName}
-                      onChange={(e) => setTechnicalSkillField(index, 'skillName', e.target.value)}
-                      placeholder="e.g., HTML & CSS"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Theory Marks (out of 10)</label>
-                    <input
-                      type="number"
-                      max="10"
-                      value={skill.theoryMarks}
-                      onChange={(e) => setTechnicalSkillField(index, 'theoryMarks', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Practical Marks (out of 10)</label>
-                    <input
-                      type="number"
-                      max="10"
-                      value={skill.practicalMarks}
-                      onChange={(e) => setTechnicalSkillField(index, 'practicalMarks', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Percentage</label>
-                    <input
-                      type="number"
-                      value={skill.totalPercentage}
-                      onChange={(e) => setTechnicalSkillField(index, 'totalPercentage', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Remark</label>
-                    <input
-                      type="text"
-                      value={skill.remark}
-                      onChange={(e) => setTechnicalSkillField(index, 'remark', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addTechnicalSkill}
-                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-              >
-                Add More
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Final Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4">Final Assessment</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Overall Grade <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.overallGrade}
-                onChange={(e) => setFormData(prev => ({ ...prev, overallGrade: e.target.value }))}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-              >
-                <option value="">Select Grade</option>
-                <option value="A+">A+</option>
-                <option value="A">A</option>
-                <option value="B+">B+</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Remark</label>
-              <textarea
-                value={formData.facultyRemark}
-                onChange={(e) => setFormData(prev => ({ ...prev, facultyRemark: e.target.value }))}
-                rows={3}
-                placeholder="Enter faculty remarks about student performance..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Buttons */}
-        <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-
-          {/* Show Submit button only when no existing data */}
-          {!existingReportData?.data && (
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
-            >
-              {isCreating ? 'Submitting...' : 'Submit Report'}
-            </button>
+            </>
           )}
 
-          {/* Show Update button only when existing data is found */}
-          {existingReportData?.data && (
+          {/* Final Section */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800">Final Assessment & Remarks</h3>
+              <span className="text-[11px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Evaluation Summary
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+                  Overall Grade <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={formData.overallGrade}
+                  onChange={(e) => setFormData(prev => ({ ...prev, overallGrade: e.target.value }))}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                >
+                  <option value="">Select Grade</option>
+                  <option value="A+">A+</option>
+                  <option value="A">A</option>
+                  <option value="B+">B+</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">Faculty Remark</label>
+                <textarea
+                  value={formData.facultyRemark}
+                  onChange={(e) => setFormData(prev => ({ ...prev, facultyRemark: e.target.value }))}
+                  rows={3}
+                  placeholder="Enter faculty remarks about student performance..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-2 pb-6">
             <button
               type="button"
-              onClick={async () => {
-                if (!formData.batchYear.trim()) {
-                  toast.error('Please enter batch year');
-                  return;
-                }
-                if (!formData.generatedByName.trim()) {
-                  toast.error('Please enter faculty name');
-                  return;
-                }
-                if (!formData.overallGrade) {
-                  toast.error('Please select overall grade');
-                  return;
-                }
-
-                try {
-                  const reportData = {
-                    studentRef: id,
-                    batchYear: formData.batchYear.trim(),
-                    generatedByName: formData.generatedByName.trim(),
-                    softSkills: {
-                      sectionTitle: "Soft Skills Evaluation (50 Marks)",
-                      totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-                      categories: formData.softSkills.categories.map(cat => ({
-                        title: cat.title,
-                        maxMarks: cat.maxMarks,
-                        score: cat.score || 0,
-                        subcategories: cat.subcategories
-                      }))
-                    },
-                    discipline: {
-                      sectionTitle: "Discipline Evaluation (30 Marks)",
-                      totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-                      categories: formData.discipline.categories.map(cat => ({
-                        title: cat.title,
-                        maxMarks: cat.maxMarks,
-                        score: cat.score || 0,
-                        subcategories: cat.subcategories
-                      }))
-                    },
-                    technicalSkills: formData.technicalSkills
-                      .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
-                      .map(skill => ({
-                        skillName: skill.skillName.trim(),
-                        theoryMarks: skill.theoryMarks || 0,
-                        practicalMarks: skill.practicalMarks || 0,
-                        totalPercentage: skill.totalPercentage || 0,
-                        remark: skill.remark.trim() || "No remarks"
-                      })),
-                    careerReadiness: formData.careerReadiness,
-                    academicPerformance: formData.academicPerformance,
-                    coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
-                    overallGrade: formData.overallGrade,
-                    facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
-                    isFinalReport: formData.isFinalReport
-                  };
-
-                  await updateReportCard({ id: existingReportData.data._id, ...reportData }).unwrap();
-                  toast.success('Report card updated successfully!');
-                  navigate(`/student/${id}/report`);
-                } catch (error) {
-                  console.error('Update Error:', error);
-                  toast.error('Failed to update report card');
-                }
-              }}
-              disabled={isUpdating}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+              onClick={() => navigate(-1)}
+              className="w-full sm:w-auto px-6 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-xs sm:text-sm transition text-center"
             >
-              {isUpdating ? 'Updating...' : 'Update Report'}
+              Cancel
             </button>
-          )}
-        </div>
-      </form>
+
+            {/* Show Submit button only when no existing data */}
+            {!existingReportData?.data && (
+              <button
+                type="submit"
+                disabled={isCreating}
+                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition text-center"
+              >
+                {isCreating ? 'Submitting...' : 'Submit Report'}
+              </button>
+            )}
+
+            {/* Show Update button only when existing data is found */}
+            {existingReportData?.data && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!formData.batchYear.trim()) {
+                    toast.error('Please enter batch year');
+                    return;
+                  }
+                  if (!formData.generatedByName.trim()) {
+                    toast.error('Please enter faculty name');
+                    return;
+                  }
+                  if (!formData.overallGrade) {
+                    toast.error('Please select overall grade');
+                    return;
+                  }
+
+                  try {
+                    const reportData = {
+                      studentRef: id,
+                      batchYear: formData.batchYear.trim(),
+                      generatedByName: formData.generatedByName.trim(),
+                      softSkills: {
+                        sectionTitle: "Soft Skills Evaluation (50 Marks)",
+                        totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
+                        categories: formData.softSkills.categories.map(cat => ({
+                          title: cat.title,
+                          maxMarks: cat.maxMarks,
+                          score: cat.score || 0,
+                          subcategories: cat.subcategories
+                        }))
+                      },
+                      discipline: {
+                        sectionTitle: "Discipline Evaluation (30 Marks)",
+                        totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
+                        categories: formData.discipline.categories.map(cat => ({
+                          title: cat.title,
+                          maxMarks: cat.maxMarks,
+                          score: cat.score || 0,
+                          subcategories: cat.subcategories
+                        }))
+                      },
+                      technicalSkills: formData.technicalSkills
+                        .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
+                        .map(skill => ({
+                          skillName: skill.skillName.trim(),
+                          theoryMarks: skill.theoryMarks || 0,
+                          practicalMarks: skill.practicalMarks || 0,
+                          totalPercentage: skill.totalPercentage || 0,
+                          remark: skill.remark.trim() || "No remarks"
+                        })),
+                      careerReadiness: formData.careerReadiness,
+                      academicPerformance: formData.academicPerformance,
+                      coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
+                      overallGrade: formData.overallGrade,
+                      facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
+                      isFinalReport: formData.isFinalReport
+                    };
+
+                    await updateReportCard({ id: existingReportData.data._id, ...reportData }).unwrap();
+                    toast.success('Report card updated successfully!');
+                    navigate(`/student/${id}/report`);
+                  } catch (error) {
+                    console.error('Update Error:', error);
+                    toast.error('Failed to update report card');
+                  }
+                }}
+                disabled={isUpdating}
+                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition text-center"
+              >
+                {isUpdating ? 'Updating...' : 'Update Report'}
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 }
-
-
-
-// import { useState, useRef, useEffect } from "react";
-// import { useParams, useNavigate } from "react-router-dom";
-// import { useGetAdmittedStudentsByIdQuery, useCreateReportCardMutation, useGetReportCardForEditQuery, useUpdateReportCardMutation } from "../../../redux/api/authApi";
-// import { HiArrowNarrowLeft } from "react-icons/hi";
-// import Loader from "../../shared/loader/Loader";
-// import { toast } from "react-toastify";
-
-// const SimpleDropdown = ({ label, value, onChange, options }) => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const [isFocused, setIsFocused] = useState(false);
-//   const dropdownRef = useRef(null);
-
-//   const hasValue = value !== "";
-//   const selectedOption = options.find(opt => opt.value === value);
-
-//   useEffect(() => {
-//     const handleClickOutside = (e) => {
-//       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-//         setIsOpen(false);
-//       }
-//     };
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   return (
-//     <div className="relative w-full" ref={dropdownRef}>
-//       <button
-//         type="button"
-//         onClick={() => setIsOpen(!isOpen)}
-//         onFocus={() => setIsFocused(true)}
-//         onBlur={() => setIsFocused(false)}
-//         className={`
-//           peer h-12 w-full border border-gray-300 rounded-md
-//           px-3 py-2 leading-tight bg-white text-left
-//           focus:outline-none focus:border-black 
-//           focus:ring-0 appearance-none flex items-center justify-between
-//           cursor-pointer
-//           ${isOpen ? "border-black" : ""}
-//           transition-all duration-200
-//         `}
-//       >
-//         <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
-//           {selectedOption ? selectedOption.label : 'Select'}
-//         </span>
-//         <span className={`ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-//           ▼
-//         </span>
-//       </button>
-
-//       <label
-//         className={`
-//           absolute left-3 bg-white px-1 transition-all duration-200
-//           pointer-events-none
-//           ${isFocused || hasValue || isOpen
-//             ? "text-xs -top-2 text-black"
-//             : "text-gray-500 top-3"}
-//         `}
-//       >
-//         {label}
-//       </label>
-
-//       {isOpen && (
-//         <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border bg-white">
-//           {options.map((option) => (
-//             <div
-//               key={option.value}
-//               onClick={() => {
-//                 onChange(option.value);
-//                 setIsOpen(false);
-//               }}
-//               className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150"
-//             >
-//               {option.label}
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-
-// export default function StudentReportForm() {
-//   const { id } = useParams();
-//   const navigate = useNavigate();
-//   const { data: studentData, isLoading, isError } = useGetAdmittedStudentsByIdQuery(id);
-//   const { data: existingReportData, isLoading: reportLoading, error: reportError } = useGetReportCardForEditQuery(id);
-//   const [createReportCard, { isLoading: isCreating, error: mutationError }] = useCreateReportCardMutation();
-//   const [updateReportCard, { isLoading: isUpdating }] = useUpdateReportCardMutation();
-//   const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-//   console.log('🔍 StudentReportForm - Student ID:', id);
-//   console.log('📄 Report loading:', reportLoading);
-//   console.log('📄 Report error:', reportError);
-//   console.log('📄 Report data:', existingReportData);
-
-//   const [formData, setFormData] = useState({
-//     batchYear: "",
-//     generatedByName: loggedInUser?.name || "",
-//     softSkills: {
-//       sectionTitle: "Soft Skills Evaluation (50 Marks)",
-//       totalSoftSkillMarks: 0,
-//       categories: [
-//         {
-//           title: "Presentation Skills",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Content & Structure", value: false },
-//             { name: "Confidence & Clarity", value: false },
-//             { name: "Body Language", value: false },
-//             { name: "Engagement with Audience", value: false },
-//             { name: "Voice Modulation", value: false }
-//           ]
-//         },
-//         {
-//           title: "Team Collaboration",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Active Participation", value: false },
-//             { name: "Cooperation", value: false },
-//             { name: "Leadership", value: false },
-//             { name: "Task Contribution", value: false },
-//             { name: "Conflict Resolution", value: false }
-//           ]
-//         },
-//         {
-//           title: "Time Management",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Punctuality", value: false },
-//             { name: "Deadline Handling", value: false },
-//             { name: "Task Prioritization", value: false },
-//             { name: "Consistency", value: false },
-//             { name: "Efficiency", value: false }
-//           ]
-//         }
-//       ]
-//     },
-//     discipline: {
-//       sectionTitle: "Discipline Evaluation (30 Marks)",
-//       totalDisciplineMarks: 0,
-//       categories: [
-//         {
-//           title: "Attendance",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Regular Attendance", value: false },
-//             { name: "Leaves with Permission", value: false },
-//             { name: "Class Participation", value: false },
-//             { name: "Punctual Entry", value: false },
-//             { name: "Active Listening", value: false }
-//           ]
-//         },
-//         {
-//           title: "Behaviour",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Politeness", value: false },
-//             { name: "Respect for Faculty", value: false },
-//             { name: "Team Behaviour", value: false },
-//             { name: "Classroom Conduct", value: false },
-//             { name: "Responsibility", value: false }
-//           ]
-//         },
-//         {
-//           title: "Professionalism",
-//           maxMarks: 10,
-//           score: 0,
-//           subcategories: [
-//             { name: "Dress Code", value: false },
-//             { name: "Communication Etiquette", value: false },
-//             { name: "Task Ownership", value: false },
-//             { name: "Timely Submission", value: false },
-//             { name: "Accountability", value: false }
-//           ]
-//         }
-//       ]
-//     },
-//     technicalSkills: [
-//       {
-//         skillName: "",
-//         theoryMarks: 0,
-//         practicalMarks: 0,
-//         totalPercentage: 0,
-//         remark: ""
-//       }
-//     ],
-//     careerReadiness: {
-//       resumeStatus: "",
-//       linkedinStatus: "",
-//       aptitudeStatus: "",
-//       placementReady: ""
-//     },
-//     academicPerformance: {
-//       yearWiseSGPA: [
-//         { year: "FY", sgpa: 0 },
-//         { year: "SY", sgpa: 0 },
-//         { year: "TY", sgpa: 0 }
-//       ],
-//       cgpa: 0
-//     },
-//     coCurricular: [
-//       {
-//         category: "",
-//         title: "",
-//         remark: ""
-//       }
-//     ],
-//     overallGrade: "",
-//     facultyRemark: "",
-//     isFinalReport: false
-//   });
-
-//   // Populate form with existing data when available
-//   useEffect(() => {
-//     console.log('🔍 useEffect triggered - existingReportData:', existingReportData);
-//     if (existingReportData?.data) {
-//       const reportData = existingReportData.data;
-//       console.log('📄 Populating form with existing data:', reportData);
-
-//       setFormData({
-//         batchYear: reportData.batchYear || "",
-//         generatedByName: reportData.generatedByName || loggedInUser?.name || "",
-
-//         // Soft Skills - preserve existing structure and data
-//         softSkills: {
-//           sectionTitle: reportData.softSkills?.sectionTitle || "Soft Skills Evaluation (50 Marks)",
-//           totalSoftSkillMarks: reportData.softSkills?.totalSoftSkillMarks || 0,
-//           categories: reportData.softSkills?.categories?.length > 0
-//             ? reportData.softSkills.categories
-//             : formData.softSkills.categories // fallback to default structure
-//         },
-
-//         // Discipline - preserve existing structure and data
-//         discipline: {
-//           sectionTitle: reportData.discipline?.sectionTitle || "Discipline Evaluation (30 Marks)",
-//           totalDisciplineMarks: reportData.discipline?.totalDisciplineMarks || 0,
-//           categories: reportData.discipline?.categories?.length > 0
-//             ? reportData.discipline.categories
-//             : formData.discipline.categories // fallback to default structure
-//         },
-
-//         // Technical Skills - ensure at least one empty entry for adding more
-//         technicalSkills: reportData.technicalSkills?.length > 0
-//           ? [...reportData.technicalSkills, { skillName: "", theoryMarks: 0, practicalMarks: 0, totalPercentage: 0, remark: "" }]
-//           : [{ skillName: "", theoryMarks: 0, practicalMarks: 0, totalPercentage: 0, remark: "" }],
-
-//         // Career Readiness
-//         careerReadiness: {
-//           resumeStatus: reportData.careerReadiness?.resumeStatus || "",
-//           linkedinStatus: reportData.careerReadiness?.linkedinStatus || "",
-//           aptitudeStatus: reportData.careerReadiness?.aptitudeStatus || "",
-//           placementReady: reportData.careerReadiness?.placementReady || ""
-//         },
-
-//         // Academic Performance
-//         academicPerformance: {
-//           yearWiseSGPA: reportData.academicPerformance?.yearWiseSGPA?.length > 0
-//             ? reportData.academicPerformance.yearWiseSGPA
-//             : [{ year: "FY", sgpa: 0 }, { year: "SY", sgpa: 0 }, { year: "TY", sgpa: 0 }],
-//           cgpa: reportData.academicPerformance?.cgpa || 0
-//         },
-
-//         // Co-Curricular Activities - ensure at least one empty entry for adding more
-//         coCurricular: reportData.coCurricular?.length > 0
-//           ? [...reportData.coCurricular, { category: "", title: "", remark: "" }]
-//           : [{ category: "", title: "", remark: "" }],
-
-//         // Final Assessment
-//         overallGrade: reportData.overallGrade || "",
-//         facultyRemark: reportData.facultyRemark || "",
-//         isFinalReport: reportData.isFinalReport || false
-//       });
-//     } else {
-//       console.log('⚠️ No existing report data found');
-//     }
-//   }, [existingReportData, loggedInUser?.name]);
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-
-//     if (!formData.batchYear.trim()) {
-//       toast.error('Please enter batch year');
-//       return;
-//     }
-//     if (!formData.generatedByName.trim()) {
-//       toast.error('Please enter faculty name');
-//       return;
-//     }
-//     if (!formData.overallGrade) {
-//       toast.error('Please select overall grade');
-//       return;
-//     }
-
-//     try {
-//       const reportData = {
-//         studentRef: id,
-//         batchYear: formData.batchYear.trim(),
-//         generatedByName: formData.generatedByName.trim(),
-//         softSkills: {
-//           sectionTitle: "Soft Skills Evaluation (50 Marks)",
-//           totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-//           categories: formData.softSkills.categories.map(cat => ({
-//             title: cat.title,
-//             maxMarks: cat.maxMarks,
-//             score: cat.score || 0,
-//             subcategories: cat.subcategories
-//           }))
-//         },
-//         discipline: {
-//           sectionTitle: "Discipline Evaluation (30 Marks)",
-//           totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-//           categories: formData.discipline.categories.map(cat => ({
-//             title: cat.title,
-//             maxMarks: cat.maxMarks,
-//             score: cat.score || 0,
-//             subcategories: cat.subcategories
-//           }))
-//         },
-//         technicalSkills: formData.technicalSkills
-//           .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
-//           .map(skill => ({
-//             skillName: skill.skillName.trim(),
-//             theoryMarks: skill.theoryMarks || 0,
-//             practicalMarks: skill.practicalMarks || 0,
-//             totalPercentage: skill.totalPercentage || 0,
-//             remark: skill.remark.trim() || "No remarks"
-//           })),
-//         careerReadiness: formData.careerReadiness,
-//         academicPerformance: formData.academicPerformance,
-//         coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
-//         overallGrade: formData.overallGrade,
-//         facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
-//         isFinalReport: formData.isFinalReport
-//       };
-
-//       console.log('Sending report data to API:', JSON.stringify(reportData, null, 2));
-//       const result = await createReportCard(reportData).unwrap();
-//       console.log('Report card created successfully:', result);
-
-//       toast.success(existingReportData?.data ? 'Report card updated successfully!' : 'Report card created successfully!');
-//       navigate(`/student/${id}/report`);
-//     } catch (error) {
-//       console.error('Submit Error:', error);
-
-//       let errorMsg = 'Failed to create report card';
-//       if (error.status === 400) {
-//         errorMsg = 'Invalid data format. Please check all fields.';
-//       } else if (error.status === 500) {
-//         errorMsg = 'Server error. Please try again later.';
-//       } else if (error.data?.message) {
-//         errorMsg = error.data.message;
-//       }
-
-//       toast.error(errorMsg);
-//     }
-//   };
-
-//   const updateSoftSkillSubcategory = (categoryIndex, subcategoryIndex, value) => {
-//     const newFormData = { ...formData };
-//     newFormData.softSkills.categories[categoryIndex].subcategories[subcategoryIndex].value = value;
-//     setFormData(newFormData);
-//   };
-
-//   const updateDisciplineSubcategory = (categoryIndex, subcategoryIndex, value) => {
-//     const newFormData = { ...formData };
-//     newFormData.discipline.categories[categoryIndex].subcategories[subcategoryIndex].value = value;
-//     setFormData(newFormData);
-//   };
-
-//   if (isLoading || reportLoading) {
-//     return (
-//       <div className="min-h-screen flex items-center justify-center bg-white">
-//         <Loader />
-//       </div>
-//     );
-//   }
-
-//   if (isError || !studentData) {
-//     return <div className="p-4 text-red-500">Error loading student data.</div>;
-//   }
-
-//   return (
-//     <div className="min-h-screen py-4">
-//       {/* Header */}
-//       <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-//         <button
-//           onClick={() => window.history.back()}
-//           className="group flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 text-gray-700 hover:text-gray-900"
-//         >
-//           <HiArrowNarrowLeft className="text-base sm:text-lg group-hover:-translate-x-1 transition-transform" />
-//           <span className="text-xs sm:text-sm font-medium">Back</span>
-//         </button>
-//         <div className="h-6 sm:h-8 w-px bg-gray-300 hidden sm:block"></div>
-//         <div className="flex-1 sm:flex-none">
-//           <h1 className="text-lg sm:text-2xl font-bold text-black">
-//             {existingReportData?.data ? 'Edit Student Report' : 'Create Student Report'}
-//           </h1>
-//           <p className="text-gray-600">
-//             {existingReportData?.data ? 'Edit' : 'Create'} performance report for {studentData.firstName} {studentData.lastName}
-//           </p>
-//         </div>
-//       </div>
-
-
-//       <form onSubmit={handleSubmit} className="max-w-6xl mx-auto space-y-6">
-//         {/* Basic Info */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-2">
-//                 Batch Year <span className="text-red-500">*</span>
-//               </label>
-//               <input
-//                 type="text"
-//                 value={formData.batchYear}
-//                 onChange={(e) => setFormData({ ...formData, batchYear: e.target.value })}
-//                 placeholder="e.g., 2024-25"
-//                 required
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//               />
-//             </div>
-
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-2">
-//                 Generated By <span className="text-red-500">*</span>
-//               </label>
-//               <input
-//                 type="text"
-//                 value={formData.generatedByName}
-//                 onChange={(e) => setFormData({ ...formData, generatedByName: e.target.value })}
-//                 placeholder="Enter faculty name"
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//               />
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Academic Performance */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Academic Performance</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-//             {formData.academicPerformance.yearWiseSGPA.map((year, index) => (
-//               <div key={index}>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">
-//                   {year.year} SGPA
-//                 </label>
-//                 <input
-//                   type="number"
-//                   step="0.01"
-//                   value={year.sgpa}
-//                   onChange={(e) => {
-//                     const newFormData = { ...formData };
-//                     newFormData.academicPerformance.yearWiseSGPA[index].sgpa = parseFloat(e.target.value) || 0;
-
-//                     // Auto-calculate CGPA
-//                     const totalSGPA = newFormData.academicPerformance.yearWiseSGPA.reduce((sum, year) => sum + year.sgpa, 0);
-//                     const validSGPAs = newFormData.academicPerformance.yearWiseSGPA.filter(year => year.sgpa > 0).length;
-//                     newFormData.academicPerformance.cgpa = validSGPAs > 0 ? parseFloat((totalSGPA / validSGPAs).toFixed(2)) : 0;
-
-//                     setFormData(newFormData);
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//             ))}
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-2">
-//                 CGPA
-//               </label>
-//               <input
-//                 type="number"
-//                 step="0.01"
-//                 value={formData.academicPerformance.cgpa}
-//                 onChange={(e) => {
-//                   const newFormData = { ...formData };
-//                   newFormData.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
-//                   setFormData(newFormData);
-//                 }}
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//               />
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Career Readiness */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Career Readiness</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//             <div>
-//               <SimpleDropdown
-//                 label="Resume Status"
-//                 value={formData.careerReadiness.resumeStatus}
-//                 onChange={(value) => {
-//                   const newFormData = { ...formData };
-//                   newFormData.careerReadiness.resumeStatus = value;
-//                   setFormData(newFormData);
-//                 }}
-//                 options={[
-//                   { value: "", label: "Select Status" },
-//                   { value: "Not created", label: "Not created" },
-//                   { value: "Need to improve", label: "Need to improve" },
-//                   { value: "Updated", label: "Updated" }
-//                 ]}
-//               />
-//             </div>
-//             <div>
-//               <SimpleDropdown
-//                 label="LinkedIn Status"
-//                 value={formData.careerReadiness.linkedinStatus}
-//                 onChange={(value) => {
-//                   const newFormData = { ...formData };
-//                   newFormData.careerReadiness.linkedinStatus = value;
-//                   setFormData(newFormData);
-//                 }}
-//                 options={[
-//                   { value: "", label: "Select Status" },
-//                   { value: "Not created", label: "Not created" },
-//                   { value: "Need to improve", label: "Need to improve" },
-//                   { value: "Updated", label: "Updated" }
-//                 ]}
-//               />
-//             </div>
-//             <div>
-//               <SimpleDropdown
-//                 label="Aptitude Status"
-//                 value={formData.careerReadiness.aptitudeStatus}
-//                 onChange={(value) => {
-//                   const newFormData = { ...formData };
-//                   newFormData.careerReadiness.aptitudeStatus = value;
-//                   setFormData(newFormData);
-//                 }}
-//                 options={[
-//                   { value: "", label: "Select Status" },
-//                   { value: "In-Progress", label: "In-Progress" },
-//                   { value: "Not Started", label: "Not Started" }
-//                 ]}
-//               />
-//             </div>
-//             <div>
-//               <SimpleDropdown
-//                 label="Placement Ready"
-//                 value={formData.careerReadiness.placementReady}
-//                 onChange={(value) => {
-//                   const newFormData = { ...formData };
-//                   newFormData.careerReadiness.placementReady = value;
-//                   setFormData(newFormData);
-//                 }}
-//                 options={[
-//                   { value: "", label: "Select Status" },
-//                   { value: "Ready", label: "Ready" },
-//                   { value: "In-process", label: "In-process" },
-//                   { value: "Not Ready", label: "Not Ready" }
-//                 ]}
-//               />
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Co-Curricular Activities */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Co-Curricular Activities</h3>
-//           {formData.coCurricular.map((activity, index) => (
-//             <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">
-//                   Category
-//                 </label>
-//                 <input
-//                   type="text"
-//                   value={activity.category}
-//                   onChange={(e) => {
-//                     const newFormData = { ...formData };
-//                     newFormData.coCurricular[index].category = e.target.value;
-//                     setFormData(newFormData);
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">
-//                   Title
-//                 </label>
-//                 <input
-//                   type="text"
-//                   value={activity.title}
-//                   onChange={(e) => {
-//                     const newFormData = { ...formData };
-//                     newFormData.coCurricular[index].title = e.target.value;
-//                     setFormData(newFormData);
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-2">
-//                   Remark
-//                 </label>
-//                 <input
-//                   type="text"
-//                   value={activity.remark}
-//                   onChange={(e) => {
-//                     const newFormData = { ...formData };
-//                     newFormData.coCurricular[index].remark = e.target.value;
-//                     setFormData(newFormData);
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//             </div>
-//           ))}
-//           <button
-//             type="button"
-//             onClick={() => {
-//               const newFormData = { ...formData };
-//               newFormData.coCurricular.push({ category: "", title: "", remark: "" });
-//               setFormData(newFormData);
-//             }}
-//             className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-//           >
-//             Add More
-//           </button>
-//         </div>
-
-//         {/* Soft Skills */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Soft Skills Evaluation</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-//             {formData.softSkills.categories.map((category, categoryIndex) => (
-//               <div key={categoryIndex} className="border border-gray-200 rounded-lg p-4">
-//                 <h4 className="text-lg font-bold text-gray-800 mb-3">{category.title}</h4>
-//                 <div className="space-y-2 mb-3">
-//                   {category.subcategories.map((sub, subIndex) => (
-//                     <label key={subIndex} className="flex items-center gap-3 cursor-pointer">
-//                       <input
-//                         type="checkbox"
-//                         checked={sub.value}
-//                         onChange={(e) => {
-//                           updateSoftSkillSubcategory(categoryIndex, subIndex, e.target.checked);
-//                           // Auto-calculate score (2 points per checkbox)
-//                           const newFormData = { ...formData };
-//                           const checkedCount = newFormData.softSkills.categories[categoryIndex].subcategories.filter(s => s.value).length;
-//                           newFormData.softSkills.categories[categoryIndex].score = checkedCount * 2;
-//                           setFormData(newFormData);
-//                         }}
-//                         className="w-5 h-5 rounded border-2 border-gray-300 checked:bg-black checked:border-black focus:ring-2 focus:ring-black appearance-none relative checked:after:content-['✓'] checked:after:text-white checked:after:text-sm checked:after:font-bold checked:after:absolute checked:after:top-0 checked:after:left-1"
-//                       />
-//                       <span className="text-sm text-gray-700">{sub.name}</span>
-//                     </label>
-//                   ))}
-//                 </div>
-//                 <div className="flex items-center gap-2">
-//                   <span className="text-sm text-gray-600">Score:</span>
-//                   <input
-//                     type="number"
-//                     value={category.score}
-//                     onChange={(e) => {
-//                       const newFormData = { ...formData };
-//                       newFormData.softSkills.categories[categoryIndex].score = parseInt(e.target.value) || 0;
-//                       setFormData(newFormData);
-//                     }}
-//                     className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:border-blue-500"
-//                   />
-//                   <span className="text-sm text-gray-600">/ {category.maxMarks}</span>
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-
-//         {/* Discipline */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Discipline Evaluation</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-//             {formData.discipline.categories.map((category, categoryIndex) => (
-//               <div key={categoryIndex} className="border border-gray-200 rounded-lg p-4">
-//                 <h4 className="text-lg font-bold text-gray-800 mb-3">{category.title}</h4>
-//                 <div className="space-y-2 mb-3">
-//                   {category.subcategories.map((sub, subIndex) => (
-//                     <label key={subIndex} className="flex items-center gap-3 cursor-pointer">
-//                       <input
-//                         type="checkbox"
-//                         checked={sub.value}
-//                         onChange={(e) => {
-//                           updateDisciplineSubcategory(categoryIndex, subIndex, e.target.checked);
-//                           // Auto-calculate score (2 points per checkbox)
-//                           const newFormData = { ...formData };
-//                           const checkedCount = newFormData.discipline.categories[categoryIndex].subcategories.filter(s => s.value).length;
-//                           newFormData.discipline.categories[categoryIndex].score = checkedCount * 2;
-//                           setFormData(newFormData);
-//                         }}
-//                         className="w-5 h-5 rounded border-2 border-gray-300 checked:bg-black checked:border-black focus:ring-2 focus:ring-black appearance-none relative checked:after:content-['✓'] checked:after:text-white checked:after:text-sm checked:after:font-bold checked:after:absolute checked:after:top-0 checked:after:left-1"
-//                       />
-//                       <span className="text-sm text-gray-700">{sub.name}</span>
-//                     </label>
-//                   ))}
-//                 </div>
-//                 <div className="flex items-center gap-2">
-//                   <span className="text-sm text-gray-600">Score:</span>
-//                   <input
-//                     type="number"
-//                     value={category.score}
-//                     onChange={(e) => {
-//                       const newFormData = { ...formData };
-//                       newFormData.discipline.categories[categoryIndex].score = parseInt(e.target.value) || 0;
-//                       setFormData(newFormData);
-//                     }}
-//                     className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:border-blue-500"
-//                   />
-//                   <span className="text-sm text-gray-600">/ {category.maxMarks}</span>
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-
-//         {/* Technical Skills */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Technical Skills</h3>
-//           {formData.technicalSkills.map((skill, index) => (
-//             <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 border border-gray-200 rounded-lg">
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Skill Name</label>
-//                 <input
-//                   type="text"
-//                   value={skill.skillName}
-//                   onChange={(e) => {
-//                     const newSkills = [...formData.technicalSkills];
-//                     newSkills[index].skillName = e.target.value;
-//                     setFormData({ ...formData, technicalSkills: newSkills });
-//                   }}
-//                   placeholder="e.g., HTML & CSS"
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Theory Marks (out of 10)</label>
-//                 <input
-//                   type="number"
-//                   max="10"
-//                   value={skill.theoryMarks}
-//                   onChange={(e) => {
-//                     const newSkills = [...formData.technicalSkills];
-//                     const theoryMarks = Math.min(parseInt(e.target.value) || 0, 10);
-//                     newSkills[index].theoryMarks = theoryMarks;
-
-//                     // Calculate percentage and remark
-//                     const totalMarks = theoryMarks + newSkills[index].practicalMarks;
-//                     const percentage = Math.round((totalMarks / 20) * 100);
-//                     newSkills[index].totalPercentage = percentage;
-
-//                     // Auto-generate remark
-//                     if (percentage >= 90) newSkills[index].remark = "Excellent";
-//                     else if (percentage >= 80) newSkills[index].remark = "Very Good";
-//                     else if (percentage >= 70) newSkills[index].remark = "Good";
-//                     else if (percentage >= 60) newSkills[index].remark = "Average";
-//                     else if (percentage >= 50) newSkills[index].remark = "Below Average";
-//                     else newSkills[index].remark = "Poor";
-
-//                     setFormData({ ...formData, technicalSkills: newSkills });
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Practical Marks (out of 10)</label>
-//                 <input
-//                   type="number"
-//                   max="10"
-//                   value={skill.practicalMarks}
-//                   onChange={(e) => {
-//                     const newSkills = [...formData.technicalSkills];
-//                     const practicalMarks = Math.min(parseInt(e.target.value) || 0, 10);
-//                     newSkills[index].practicalMarks = practicalMarks;
-
-//                     // Calculate percentage and remark
-//                     const totalMarks = newSkills[index].theoryMarks + practicalMarks;
-//                     const percentage = Math.round((totalMarks / 20) * 100);
-//                     newSkills[index].totalPercentage = percentage;
-
-//                     // Auto-generate remark
-//                     if (percentage >= 90) newSkills[index].remark = "Excellent";
-//                     else if (percentage >= 80) newSkills[index].remark = "Very Good";
-//                     else if (percentage >= 70) newSkills[index].remark = "Good";
-//                     else if (percentage >= 60) newSkills[index].remark = "Average";
-//                     else if (percentage >= 50) newSkills[index].remark = "Below Average";
-//                     else newSkills[index].remark = "Poor";
-
-//                     setFormData({ ...formData, technicalSkills: newSkills });
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Percentage</label>
-//                 <input
-//                   type="number"
-//                   value={skill.totalPercentage}
-//                   onChange={(e) => {
-//                     const newSkills = [...formData.technicalSkills];
-//                     newSkills[index].totalPercentage = parseInt(e.target.value) || 0;
-//                     setFormData({ ...formData, technicalSkills: newSkills });
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700 mb-1">Remark</label>
-//                 <input
-//                   type="text"
-//                   value={skill.remark}
-//                   onChange={(e) => {
-//                     const newSkills = [...formData.technicalSkills];
-//                     newSkills[index].remark = e.target.value;
-//                     setFormData({ ...formData, technicalSkills: newSkills });
-//                   }}
-//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//                 />
-//               </div>
-//             </div>
-//           ))}
-//           <button
-//             type="button"
-//             onClick={() => {
-//               const newFormData = { ...formData };
-//               newFormData.technicalSkills.push({ skillName: "", theoryMarks: 0, practicalMarks: 0, totalPercentage: 0, remark: "" });
-//               setFormData(newFormData);
-//             }}
-//             className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-//           >
-//             Add More
-//           </button>
-//         </div>
-
-//         {/* Final Section */}
-//         <div className="bg-white rounded-lg shadow-md p-6">
-//           <h3 className="text-lg font-semibold mb-4">Final Assessment</h3>
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-2">
-//                 Overall Grade <span className="text-red-500">*</span>
-//               </label>
-//               <select
-//                 value={formData.overallGrade}
-//                 onChange={(e) => setFormData({ ...formData, overallGrade: e.target.value })}
-//                 required
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//               >
-//                 <option value="">Select Grade</option>
-//                 <option value="A+">A+</option>
-//                 <option value="A">A</option>
-//                 <option value="B+">B+</option>
-//                 <option value="B">B</option>
-//                 <option value="C">C</option>
-//               </select>
-//             </div>
-//             <div>
-//               <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Remark</label>
-//               <textarea
-//                 value={formData.facultyRemark}
-//                 onChange={(e) => setFormData({ ...formData, facultyRemark: e.target.value })}
-//                 rows={3}
-//                 placeholder="Enter faculty remarks about student performance..."
-//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
-//               />
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Submit Buttons */}
-//         <div className="flex justify-end gap-4">
-//           <button
-//             type="button"
-//             onClick={() => navigate(-1)}
-//             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-//           >
-//             Cancel
-//           </button>
-          
-//           <button
-//             type="submit"
-//             disabled={isCreating}
-//             className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
-//           >
-//             {isCreating ? 'Submitting...' : 'Submit Report'}
-//           </button>
-          
-//           {existingReportData?.data && (
-//             <button
-//               type="button"
-//               onClick={async () => {
-//                 if (!formData.batchYear.trim()) {
-//                   toast.error('Please enter batch year');
-//                   return;
-//                 }
-//                 if (!formData.generatedByName.trim()) {
-//                   toast.error('Please enter faculty name');
-//                   return;
-//                 }
-//                 if (!formData.overallGrade) {
-//                   toast.error('Please select overall grade');
-//                   return;
-//                 }
-
-//                 try {
-//                   const reportData = {
-//                     studentRef: id,
-//                     batchYear: formData.batchYear.trim(),
-//                     generatedByName: formData.generatedByName.trim(),
-//                     softSkills: {
-//                       sectionTitle: "Soft Skills Evaluation (50 Marks)",
-//                       totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-//                       categories: formData.softSkills.categories.map(cat => ({
-//                         title: cat.title,
-//                         maxMarks: cat.maxMarks,
-//                         score: cat.score || 0,
-//                         subcategories: cat.subcategories
-//                       }))
-//                     },
-//                     discipline: {
-//                       sectionTitle: "Discipline Evaluation (30 Marks)",
-//                       totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-//                       categories: formData.discipline.categories.map(cat => ({
-//                         title: cat.title,
-//                         maxMarks: cat.maxMarks,
-//                         score: cat.score || 0,
-//                         subcategories: cat.subcategories
-//                       }))
-//                     },
-//                     technicalSkills: formData.technicalSkills
-//                       .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
-//                       .map(skill => ({
-//                         skillName: skill.skillName.trim(),
-//                         theoryMarks: skill.theoryMarks || 0,
-//                         practicalMarks: skill.practicalMarks || 0,
-//                         totalPercentage: skill.totalPercentage || 0,
-//                         remark: skill.remark.trim() || "No remarks"
-//                       })),
-//                     careerReadiness: formData.careerReadiness,
-//                     academicPerformance: formData.academicPerformance,
-//                     coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
-//                     overallGrade: formData.overallGrade,
-//                     facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
-//                     isFinalReport: formData.isFinalReport
-//                   };
-
-//                   await updateReportCard({ id: existingReportData.data._id, ...reportData }).unwrap();
-//                   toast.success('Report card updated successfully!');
-//                   navigate(`/student/${id}/report`);
-//                 } catch (error) {
-//                   console.error('Update Error:', error);
-//                   toast.error('Failed to update report card');
-//                 }
-//               }}
-//               disabled={isUpdating}
-//               className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-//             >
-//               {isUpdating ? 'Updating...' : 'Update Report'}
-//             </button>
-//           )}
-//         </div>
-//       </form>
-//     </div>
-//   );
-// }

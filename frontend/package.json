@@ -17,6 +17,7 @@
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.13.4",
     "browser-image-compression": "^2.0.2",
+    "buffer": "^6.0.3",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "face-api.js": "^0.20.0",

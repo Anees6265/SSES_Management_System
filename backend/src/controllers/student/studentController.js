@@ -258,13 +258,23 @@ exports.updateProfileImage = async (req, res) => {
   try {
     const { image } = req.body;
     if (!image) return res.status(400).json({ message: "Image is required" });
-    if (!/^data:image\/(png|jpeg|jpg|gif);base64,/.test(image))
-      return res.status(400).json({ message: "Invalid image format. Must be base64 encoded." });
 
+    // Allow direct HTTP/HTTPS URL
+    if (typeof image === "string" && (image.startsWith("http://") || image.startsWith("https://"))) {
+      const student = await Student.findById(req.params.id);
+      if (!student) return res.status(404).json({ message: "Student not found" });
+      student.image = image;
+      await student.save();
+      return res.status(200).json({ message: "Profile image updated successfully", imageURL: student.image });
+    }
+
+    // Support all valid base64 image formats (PNG, JPEG, JPG, WEBP, GIF, AVIF, SVG, etc.)
+    if (!/^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(image)) {
+      return res.status(400).json({ message: "Invalid image format. Must be a valid base64 encoded image (PNG, JPEG, WEBP, GIF, etc.)." });
+    }
 
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
-
 
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -272,13 +282,12 @@ exports.updateProfileImage = async (req, res) => {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
-
     const uploadResponse = await cloudinary.uploader.upload(image, {
       folder: "student_profiles",
       public_id: `student_${req.params.id}`,
       overwrite: true,
+      resource_type: "image",
     });
-
 
     student.image = uploadResponse.secure_url;
     await student.save();

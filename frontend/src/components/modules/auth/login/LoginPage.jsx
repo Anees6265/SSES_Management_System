@@ -94,7 +94,7 @@ const LoginPage = () => {
   const handleFaceLoginClose = () => setShowFaceLogin(false);
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col justify-between overflow-x-hidden font-sans bg-white selection:bg-orange-500 selection:text-white">
+    <div className="min-h-[100dvh] w-full relative flex flex-col justify-between overflow-x-hidden font-sans bg-white selection:bg-orange-500 selection:text-white">
       {isLoading && <Loader />}
 
       {/* College Building Background Image (positioned at bottom with realistic soft fade to white at top) */}
@@ -116,9 +116,9 @@ const LoginPage = () => {
       />
 
       {/* ── Top Header ────────────────────────────────────────── */}
-      <header className="relative z-10 w-full px-6 sm:px-12 lg:px-16 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Sant Singaji Logo" className="h-10 w-10 object-contain" />
+      <header className="relative z-10 w-full px-4 sm:px-12 lg:px-16 py-3 sm:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <img src={logo} alt="Sant Singaji Logo" className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
           <div className="flex flex-col">
             <span className="text-xs sm:text-sm font-extrabold text-slate-800 tracking-wider uppercase leading-tight">
               SANT SINGAJI
@@ -131,9 +131,9 @@ const LoginPage = () => {
       </header>
 
       {/* ── Main Hero Section ─────────────────────────────────── */}
-      <main className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-between px-6 sm:px-12 lg:px-20 py-4 lg:py-8 gap-8 lg:gap-12">
-        {/* Left Content */}
-        <div className="flex flex-col max-w-xl text-left">
+      <main className="relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center lg:justify-between px-4 sm:px-8 lg:px-20 py-4 sm:py-6 lg:py-8 gap-8 lg:gap-12 w-full">
+        {/* Left Content (Visible on desktop, hidden on mobile) */}
+        <div className="hidden lg:flex flex-col max-w-xl text-left">
           <p className="text-[#E67E22] font-bold text-sm sm:text-base tracking-wide uppercase mb-1">
             Empowering Rural Youth
           </p>
@@ -169,16 +169,16 @@ const LoginPage = () => {
         </div>
 
         {/* Right Side: Floating Clean White Card */}
-        <div className="w-full max-w-[360px] sm:max-w-[380px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 p-7 sm:p-8">
+        <div className="w-full max-w-[360px] sm:max-w-[380px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 p-5 sm:p-7 md:p-8 my-auto">
           {/* Circular SSISM Logo at top of Card */}
           <div className="flex justify-center mb-3">
-            <img src={logo} alt="SSISM Logo" className="h-14 w-14 object-contain" />
+            <img src={logo} alt="SSISM Logo" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
           </div>
 
-          <h2 className="text-2xl font-bold text-slate-800 text-center mb-4">Login</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 text-center mb-3 sm:mb-4">Login</h2>
 
           {/* Tab Switcher (Admin / Faculty vs Student) */}
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold">
+          <div className="flex bg-slate-100 p-1 rounded-xl mb-3 sm:mb-4 text-xs font-semibold">
             <button
               type="button"
               onClick={() => {
@@ -356,7 +356,7 @@ const LoginPage = () => {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="relative z-10 w-full px-6 py-3 text-center text-slate-500 text-xs font-medium bg-white/40 backdrop-blur-xs">
+      <footer className="relative z-10 w-full px-4 py-2 sm:py-3 text-center text-slate-500 text-[11px] sm:text-xs font-medium bg-white/40 backdrop-blur-xs">
         © {new Date().getFullYear()} Sant Singaji Educational Society. All rights reserved.
       </footer>
 

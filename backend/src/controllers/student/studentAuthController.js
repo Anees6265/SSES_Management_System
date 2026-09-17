@@ -138,8 +138,8 @@ exports.updateMyProfileImage = async (req, res) => {
   try {
     const { image } = req.body;
     if (!image) return res.status(400).json({ message: "Image is required" });
-    if (!/^data:image\/(png|jpeg|jpg|webp);base64,/.test(image))
-      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP" });
+    if (!/^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(image))
+      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP, GIF" });
 
     // Validate payload size (Max 3MB)
     const base64Data = image.split(",")[1] || "";
@@ -586,8 +586,8 @@ exports.uploadMyExtraDocument = async (req, res) => {
       return res.status(400).json({ message: "fileType must be 'image' or 'pdf'" });
 
     // Validate payload size and MIME format
-    if (fileType === "image" && !/^data:image\/(png|jpeg|jpg|webp);base64,/.test(fileData)) {
-      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP" });
+    if (fileType === "image" && !/^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(fileData)) {
+      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP, GIF" });
     }
     if (fileType === "pdf" && !/^data:application\/pdf;base64,/.test(fileData)) {
       return res.status(400).json({ message: "Invalid PDF format. File must be a valid PDF document" });

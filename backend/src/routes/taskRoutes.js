@@ -1,8 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const Task = require("../models/syllabus/Task");
-const { syncTasksToSubLevelStudents } = require("../services/taskAssignmentService");
+const StudentTask = require("../models/syllabus/StudentTask");
+const Student = require("../models/student/Student");
+const { syncTasksToSubLevelStudents, updateStudentTaskStatus } = require("../services/taskAssignmentService");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod"];
 
@@ -229,6 +232,181 @@ router.get("/level/:subLevelId", verifyToken, checkRole([...writeRoles, "placeme
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ── Student Task Endpoints ──────────────────────────────────────────────────
+// Get student task performance (Subject-wise metrics & completion rate)
+router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRoles, "placement_officer", "student"]), async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Invalid student ID" });
+    }
+
+    const tasks = await StudentTask.find({ studentId, isActive: true })
+      .populate("subLevelId", "name")
+      .sort({ assignedAt: -1, createdAt: -1 });
+
+    const grouped = {};
+    tasks.forEach(t => {
+      const subLevelName = t.subLevelId?.name || "";
+      const key = subLevelName ? `${t.subjectName || "Technical Course"} (${subLevelName})` : (t.subjectName || "Technical Course");
+      if (!grouped[key]) grouped[key] = { tasks: [] };
+      grouped[key].tasks.push(t);
+    });
+
+    const technicalSkills = [];
+    let totalAllTasks = 0;
+    let completedAllTasks = 0;
+
+    Object.keys(grouped).forEach(subjectName => {
+      if (subjectName.trim() === "" || subjectName.toLowerCase() === "other") return;
+
+      const subjectTasks = grouped[subjectName].tasks || [];
+      const totalTasks = subjectTasks.length;
+      if (totalTasks === 0) return;
+
+      totalAllTasks += totalTasks;
+      const completedTasks = subjectTasks.filter(t => t.status === "completed");
+      const completedCount = completedTasks.length;
+      completedAllTasks += completedCount;
+
+      const completedWithMarks = completedTasks.filter(t => typeof t.marks === "number");
+      const averageMarks = completedWithMarks.length > 0
+        ? Number((completedWithMarks.reduce((sum, t) => sum + t.marks, 0) / completedWithMarks.length).toFixed(2))
+        : 0;
+
+      let performanceLevel = "Needs Improvement";
+      if (averageMarks >= 4.5) performanceLevel = "Outstanding";
+      else if (averageMarks >= 4.0) performanceLevel = "Excellent";
+      else if (averageMarks >= 3.5) performanceLevel = "Very Good";
+      else if (averageMarks >= 3.0) performanceLevel = "Good";
+      else if (averageMarks >= 2.5) performanceLevel = "Average";
+      else if (completedCount > 0) performanceLevel = "Good";
+
+      const pct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+      const rating = averageMarks > 0 ? averageMarks : 4.0;
+
+      technicalSkills.push({
+        skillName: subjectName,
+        completedTasks: completedCount,
+        totalTasks: totalTasks,
+        totalPercentage: pct,
+        rating: rating,
+        remark: performanceLevel
+      });
+    });
+
+    technicalSkills.sort((a, b) => a.skillName.localeCompare(b.skillName));
+
+    const overallPct = totalAllTasks > 0 ? Math.round((completedAllTasks / totalAllTasks) * 100) : 0;
+
+    res.status(200).json({
+      success: true,
+      performance: {
+        totalTasks: totalAllTasks,
+        completedTasks: completedAllTasks,
+        completionRate: overallPct,
+        technicalSkills
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get tasks for a specific student
+router.get("/student/:studentId", verifyToken, checkRole([...writeRoles, "placement_officer", "student"]), async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { status } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Invalid student ID" });
+    }
+
+    const filter = { studentId, isActive: true };
+    if (status) filter.status = status;
+
+    const tasks = await StudentTask.find(filter)
+      .populate("subLevelId", "name")
+      .populate("levelId", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      data: tasks
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update student task status
+router.put("/student/:studentId/task/:taskId", verifyToken, checkRole([...writeRoles, "placement_officer"]), async (req, res) => {
+  try {
+    const { studentId, taskId } = req.params;
+    const { status, notes, marks } = req.body;
+
+    const result = await updateStudentTaskStatus(studentId, taskId, {
+      status,
+      notes,
+      marks: marks !== undefined ? marks : (status === "completed" ? 4 : null),
+      actor: req.user
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Student task updated successfully",
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Create individual task for a student
+router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { title, description, subjectName, topicName, maxMarks, dueDate, priority } = req.body;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const task = await StudentTask.create({
+      studentId,
+      sessionId: student.sessionId || null,
+      levelId: student.currentLevelId || null,
+      subLevelId: student.currentSubLevelId || null,
+      syllabusVersionId: student.syllabusVersionId || null,
+      title: title?.trim() || "Individual Assignment",
+      description: description || "",
+      subjectName: subjectName || "General",
+      topicName: topicName || "Assessment",
+      taskNodeType: "topic",
+      maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
+      dueDate: dueDate || null,
+      priority: priority || "medium",
+      isExtra: true,
+      assignedType: "manual",
+      assignedBy: req.user?._id || null,
+      assignedByName: req.user?.name || "Faculty",
+      assignedByRole: req.user?.role || "faculty",
+      isActive: true
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Task created for student successfully",
+      data: task
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 

@@ -42,16 +42,16 @@ const TabsCommon = ({ tabs, activeTab, onTabChange }) => {
 
       <div
         ref={scrollRef}
-        className="flex gap-6 px-6 overflow-x-auto scrollbar-none min-w-0 w-full"
+        className="flex gap-3 sm:gap-6 px-2 sm:px-6 overflow-x-auto scrollbar-none min-w-0 w-full"
       >
         {tabs.map((tab) => (
           <p
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`px-3 py-4 cursor-pointer text-md text-[var(--text-color)] whitespace-nowrap ${
+            className={`px-2.5 sm:px-3 py-3 sm:py-4 cursor-pointer text-sm sm:text-base text-[var(--text-color)] whitespace-nowrap transition-colors ${
               activeTab === tab
-                ? "border-orange-500 text-orange-600 border-b-4 font-semibold"
-                : "border-transparent"
+                ? "border-orange-500 text-orange-600 border-b-2 sm:border-b-4 font-semibold"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
             {tab}

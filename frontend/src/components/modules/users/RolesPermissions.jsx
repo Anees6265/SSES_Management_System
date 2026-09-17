@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useGetAllUsersQuery, useCreateRoleMutation, useGetAllRolesQuery, useDeleteUserMutation, useEditUserMutation } from '../../../redux/api/authApi';
 import { FaUserShield, FaUser, FaChalkboardTeacher, FaCrown, FaBriefcase, FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 import Loader from '../../shared/loader/Loader';
@@ -15,6 +15,7 @@ import GlobalPermissionMatrix from './GlobalPermissionMatrix';
 
 const RolesPermissions = () => {
     const navigate = useNavigate();
+    const createRoleFormRef = useRef();
     const { data: usersData, isLoading: usersLoading, error: usersError } = useGetAllUsersQuery();
     const { data: rolesData, isLoading: rolesLoading, error: rolesError } = useGetAllRolesQuery();
     const [createRole] = useCreateRoleMutation();
@@ -179,24 +180,25 @@ const RolesPermissions = () => {
                     {/* If a role is selected, show users table */}
                     {selectedRole ? (
                 <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-lg">
-                    <div className="flex items-center gap-4 mb-6 px-5 pt-4">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 px-3 sm:px-5 pt-3 sm:pt-4">
                         <button
                             onClick={() => setSelectedRole(null)}
-                            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors shrink-0"
+                            title="Back to roles"
                         >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={18} />
                         </button>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-800">
+                        <div className="min-w-0">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
                                 {selectedRole.roleName.charAt(0).toUpperCase() + selectedRole.roleName.slice(1)} Users
                             </h2>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs sm:text-sm text-gray-500">
                                 {users.filter(user => user.role === selectedRole.roleName).length} user{users.filter(user => user.role === selectedRole.roleName).length !== 1 ? 's' : ''} with this role
                             </p>
                         </div>
                     </div>
                     
-                    <div className="px-5 flex justify-between items-center flex-wrap gap-4 mt-4">
+                    <div className="px-3 sm:px-5 flex justify-between items-center flex-wrap gap-3 sm:gap-4 mt-2 sm:mt-4">
                         <Pagination
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
@@ -294,29 +296,29 @@ const RolesPermissions = () => {
                 </div>
             ) : (
             <div>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-semibold text-gray-800">
+                <div className="flex justify-between items-center mb-4 sm:mb-6">
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-800">
                         System Roles
                     </h2>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs sm:text-sm text-gray-500">
                         {allRoles.length} role{allRoles.length !== 1 ? 's' : ''} available
                     </p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {/* Create New Role Card */}
                     <div
                         onClick={() => setShowCreateRole(true)}
-                        className="bg-white p-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-orange-400 transition-all duration-200 cursor-pointer hover:shadow-md"
+                        className="bg-white p-5 sm:p-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-orange-400 transition-all duration-200 cursor-pointer hover:shadow-md"
                     >
                         <div className="flex flex-col items-center justify-center h-full text-center">
                             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                                 <FaPlus className="text-xl text-orange-500" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">
                                 Create New Role
                             </h3>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-xs sm:text-sm text-gray-600">
                                 Add a new role to the system
                             </p>
                         </div>
@@ -329,26 +331,28 @@ const RolesPermissions = () => {
                         return (
                             <div
                                 key={index}
-                                className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
+                                className="bg-white p-5 sm:p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between"
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    {getRoleIcon(role.roleName)}
-                                    <div className="flex-1 ml-3">
-                                        <h3 className="text-lg font-semibold text-gray-800">
-                                            {role.roleName?.toLowerCase() === 'placement_officer' ? 'Placement Officer' : role.roleName?.toLowerCase() === 'superadmin' ? 'Super Admin' : role.roleName}
-                                        </h3>
+                                <div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        {getRoleIcon(role.roleName)}
+                                        <div className="flex-1 ml-3 min-w-0">
+                                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
+                                                {role.roleName?.toLowerCase() === 'placement_officer' ? 'Placement Officer' : role.roleName?.toLowerCase() === 'superadmin' ? 'Super Admin' : role.roleName}
+                                            </h3>
+                                        </div>
+                                        <span className="text-xl sm:text-2xl font-bold text-gray-800 shrink-0">
+                                            {userCount}
+                                        </span>
                                     </div>
-                                    <span className="text-2xl font-bold text-gray-800">
-                                        {userCount}
-                                    </span>
+                                    
+                                    <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6 leading-relaxed">
+                                        {role.description}
+                                    </p>
                                 </div>
                                 
-                                <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                                    {role.description}
-                                </p>
-                                
                                 <button
-                                    className="w-full py-2 text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors"
+                                    className="w-full py-2 text-xs sm:text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors mt-auto cursor-pointer"
                                     onClick={() => handleManagePermissions(role)}
                                 >
                                     Manage Permissions
@@ -372,22 +376,24 @@ const RolesPermissions = () => {
             
             {/* Create Role Side Panel */}
             {showCreateRole && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-end z-50">
-                    <div className="bg-white h-full w-96 shadow-xl flex flex-col">
-                        <div className="flex items-center justify-between p-6 border-b">
-                            <h2 className="text-xl font-semibold text-gray-800">Create New Role</h2>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-end z-50">
+                    <div className="bg-white h-full w-full sm:w-96 max-w-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-5 border-b bg-gray-50/50">
+                            <div>
+                                <h2 className="text-base sm:text-xl font-bold text-gray-800">Create New Role</h2>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Define new role name and role permissions</p>
+                            </div>
                             <button
                                 onClick={() => setShowCreateRole(false)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                             >
                                 <X size={20} />
                             </button>
                         </div>
                         
-                        <div className="flex-1 p-6">
-                            <h3 className="text-lg font-medium text-gray-800 mb-6">Role Information</h3>
-                            
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                             <Formik
+                                innerRef={createRoleFormRef}
                                 initialValues={{
                                     roleName: '',
                                     description: ''
@@ -395,24 +401,24 @@ const RolesPermissions = () => {
                                 onSubmit={handleCreateRole}
                             >
                                 {({ values, setFieldValue }) => (
-                                    <Form className="space-y-6">
+                                    <Form className="space-y-4 sm:space-y-6">
                                         <InputField
                                             label="Role Name"
                                             name="roleName"
-                                            placeholder="Enter role name"
+                                            placeholder="Enter role name (e.g. Lab Technician)"
                                         />
                                         
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                                 Description
                                             </label>
                                             <textarea
                                                 name="description"
                                                 value={values.description}
                                                 onChange={(e) => setFieldValue('description', e.target.value)}
-                                                placeholder="Enter role description"
+                                                placeholder="Enter role responsibilities and description..."
                                                 rows={4}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+                                                className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition resize-none"
                                             />
                                         </div>
                                     </Form>
@@ -420,23 +426,19 @@ const RolesPermissions = () => {
                             </Formik>
                         </div>
                         
-                        <div className="p-6 border-t bg-white">
+                        <div className="p-4 sm:p-6 border-t bg-white">
                             <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateRole(false)}
-                                    className="flex-1 py-3 font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="flex-1 py-2.5 font-medium bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        document.querySelector('form').dispatchEvent(
-                                            new Event('submit', { cancelable: true, bubbles: true })
-                                        );
-                                    }}
-                                    className={`flex-1 py-3 font-medium ${buttonStyles.primary}`}
+                                    onClick={() => createRoleFormRef.current?.submitForm()}
+                                    className={`flex-1 py-2.5 font-medium ${buttonStyles.primary} cursor-pointer`}
                                 >
                                     Create Role
                                 </button>

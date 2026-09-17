@@ -127,7 +127,7 @@ const UsersManagement = () => {
                             <div className="border-b border-slate-100 pb-1.5 mb-3">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">General Information</span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                 <InputField label="Full Name" name="name" placeholder="Enter full name" />
                                 <InputField label="Email Address" name="email" type="email" placeholder="user@ssism.org" />
                                 <InputField label="Mobile Number" name="mobileNo" placeholder="Enter mobile number" />
@@ -140,7 +140,7 @@ const UsersManagement = () => {
                             <div className="border-b border-slate-100 pb-1.5 mb-3">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Organization & Role</span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                 <InputField 
                                     label="Role" 
                                     name="role" 
@@ -176,12 +176,12 @@ const UsersManagement = () => {
                             <div className="border-b border-slate-100 pb-1.5 mb-3">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Credentials & Access</span>
                             </div>
-                            <div className="flex items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl px-5 py-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Account Status</label>
                                     <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Activate or deactivate user platform access</p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 self-start sm:self-auto">
                                     <button
                                         type="button"
                                         onClick={() => setFieldValue('isActive', !values.isActive)}
@@ -193,8 +193,8 @@ const UsersManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 space-y-4">
-                                <div className="flex items-center justify-between">
+                            <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 sm:p-5 space-y-3 sm:space-y-4">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Account Password</label>
                                     <div className="flex items-center gap-2">
                                         <input
@@ -277,12 +277,14 @@ const UsersManagement = () => {
     return (
         <>
             <Header title="User Management">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-wrap">
                     <ExportDropdown data={exportData} sectionName="users" />
                     {hasPermission('Button_CreateUser', 'read') && (
                         <OrangeButton
                             buttonTitle="+ Create New"
                             panelTitle="Create New User"
+                            panelSubtitle="Add a new employee or staff account to the platform."
+                            maxWidth="sm:max-w-xl"
                             drawerContent={<CreateUserForm formikRef={createUserFormRef} />}
                             rightBtnText="Create User"
                             onRightClick={() => createUserFormRef.current?.submitForm()}
@@ -291,16 +293,16 @@ const UsersManagement = () => {
                 </div>
             </Header>
 
-            <div className="flex items-center border-b border-gray-200 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-2 sm:px-4">
                 <div className="flex-1 min-w-0">
                     <TabsCommon tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
-                <div className="flex-shrink-0 px-4">
+                <div className="flex-shrink-0 pl-2 sm:pl-4">
                     <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
                 </div>
             </div>
 
-            <div className="p-5">
+            <div className="p-2.5 sm:p-4 md:p-6">
                 {activeTab === 'Users' ? (
                     <CommonTable
                         columns={columns}
@@ -347,7 +349,7 @@ const UsersManagement = () => {
                                     <div className="border-b border-slate-100 pb-1.5 mb-3">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">User Information</span>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                         <InputField label="Full Name" name="name" placeholder="Enter user name" />
                                         <InputField 
                                             label="Position" 
@@ -364,7 +366,7 @@ const UsersManagement = () => {
                                     <div className="border-b border-slate-100 pb-1.5 mb-3">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Access & Department</span>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                         <InputField 
                                             label="Role" 
                                             name="role" 
@@ -388,12 +390,12 @@ const UsersManagement = () => {
                                     </div>
 
                                     {/* Account Status Switch Box */}
-                                    <div className="flex items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl px-5 py-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Account Status</label>
                                             <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Activate or deactivate user platform access</p>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 self-start sm:self-auto">
                                             <button
                                                 type="button"
                                                 onClick={() => setFieldValue('isActive', !values.isActive)}

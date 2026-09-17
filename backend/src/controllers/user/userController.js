@@ -60,7 +60,7 @@ exports.createUser = async (req, res) => {
 
     const newUserId = new mongoose.Types.ObjectId();
     let uploadedImageUrl = profileImage;
-    if (profileImage && /^data:image\/(png|jpeg|jpg|gif);base64,/.test(profileImage)) {
+    if (profileImage && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -226,7 +226,7 @@ exports.updateUserFields = async (req, res) => {
     const { name, position, role, department, isActive, profileImage } = req.body;
 
     let uploadedImageUrl = profileImage;
-    if (profileImage && /^data:image\/(png|jpeg|jpg|gif);base64,/.test(profileImage)) {
+    if (profileImage && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,

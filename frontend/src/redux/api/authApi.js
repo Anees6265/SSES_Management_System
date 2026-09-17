@@ -710,6 +710,18 @@ export const authApi = createApi({
       ],
     }),
 
+    updateStudentProfileImage: builder.mutation({
+      query: ({ id, image }) => ({
+        url: `/students/${id}/profile-image`,
+        method: "PATCH",
+        body: { image },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Student', id },
+        'Student',
+      ],
+    }),
+
     // apiSlice.js or interviewApi.js
     getLevelInterview: builder.query({
       query: (id) => ({
@@ -2146,6 +2158,7 @@ export const {
   useStudentLoginMutation,
   useGetMyStudentProfileQuery,
   useUpdateMyStudentProfileImageMutation,
+  useUpdateStudentProfileImageMutation,
   useChangeMyStudentPasswordMutation,
   useSetStudentPasswordMutation,
   useGetMyStudentTasksQuery,

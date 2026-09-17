@@ -251,7 +251,7 @@ exports.getStudentReportCard = async (req, res) => {
 
     const reportCard = await StudentReportCard.findOne({ studentRef: studentId }).populate('studentRef', 'firstName lastName prkey');
     if (!reportCard) {
-      return res.status(404).json({ success: false, message: 'Report card not found for this student' });
+      return res.status(200).json({ success: true, data: null, message: 'Report card not found for this student' });
     }
 
     // Sync live task performance

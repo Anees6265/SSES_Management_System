@@ -9,7 +9,7 @@ import {
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
-    MdPerson
+    MdPerson, MdArrowBack
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -30,6 +30,7 @@ import {
     useGetAllSubLevelsQuery,
     usePromoteNewStudentMutation,
     useUpdateStudentByIdMutation,
+    useUpdateStudentProfileImageMutation,
     useUpdatePlacementReadinessMutation,
     useMoveToReadyForPlacementMutation,
     useUploadDocumentMutation,
@@ -462,21 +463,48 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                             className="hidden"
                             onChange={(e) => {
                                 const file = e.target.files[0];
-                                if (file) {
-                                    if (!file.type.startsWith("image/")) {
-                                        toast.error("Please select a valid image file");
-                                        return;
-                                    }
-                                    if (file.size > 5 * 1024 * 1024) {
-                                        toast.error("Image size should be less than 5MB");
-                                        return;
-                                    }
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                        setForm(prev => ({ ...prev, image: reader.result }));
-                                    };
-                                    reader.readAsDataURL(file);
+                                if (!file) return;
+                                if (!file.type.startsWith("image/")) {
+                                    toast.error("Please select a valid image file");
+                                    return;
                                 }
+                                if (file.size > 10 * 1024 * 1024) {
+                                    toast.error("Image size should be less than 10MB");
+                                    return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                    const img = new Image();
+                                    img.onload = () => {
+                                        try {
+                                            const canvas = document.createElement("canvas");
+                                            let { width, height } = img;
+                                            const maxDim = 1200;
+                                            if (width > maxDim || height > maxDim) {
+                                                if (width > height) {
+                                                    height = Math.round((height * maxDim) / width);
+                                                    width = maxDim;
+                                                } else {
+                                                    width = Math.round((width * maxDim) / height);
+                                                    height = maxDim;
+                                                }
+                                            }
+                                            canvas.width = width;
+                                            canvas.height = height;
+                                            const ctx = canvas.getContext("2d");
+                                            ctx.drawImage(img, 0, 0, width, height);
+                                            const normalizedDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+                                            setForm(prev => ({ ...prev, image: normalizedDataUrl }));
+                                        } catch (e) {
+                                            setForm(prev => ({ ...prev, image: event.target.result }));
+                                        }
+                                    };
+                                    img.onerror = () => {
+                                        setForm(prev => ({ ...prev, image: event.target.result }));
+                                    };
+                                    img.src = event.target.result;
+                                };
+                                reader.readAsDataURL(file);
                             }}
                         />
 
@@ -1159,6 +1187,7 @@ const StudentProfilePage = () => {
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
     const [updateStudent] = useUpdateStudentByIdMutation();
+    const [updateStudentProfileImage] = useUpdateStudentProfileImageMutation();
     const [updatePlacementReadiness] = useUpdatePlacementReadinessMutation();
     const [moveToReadyForPlacement, { isLoading: movingToReady }] = useMoveToReadyForPlacementMutation();
     const [uploadDocument, { isLoading: uploadingDocument }] = useUploadDocumentMutation();
@@ -1171,7 +1200,7 @@ const StudentProfilePage = () => {
         { skip: !studentId }
     );
 
-    const { data: studentFull, isLoading: loadingStudentFull } = useGetNewStudentByIdQuery(
+    const { data: studentFull, isLoading: loadingStudentFull, refetch: refetchStudentFull } = useGetNewStudentByIdQuery(
         studentId,
         { skip: !studentId }
     );
@@ -1479,30 +1508,21 @@ const StudentProfilePage = () => {
     const handleEditProfile = async (form) => {
         setEditLoading(true);
         try {
+            const targetId = studentId || raw._id;
             if (form.image && form.image.startsWith("data:image/")) {
-                const baseUrl = import.meta.env.VITE_API_URL;
-                const url = `${baseUrl}/students/${raw._id}/profile-image`;
-                const r = await fetch(url, {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${getToken()}`
-                    },
-                    body: JSON.stringify({ image: form.image })
-                });
-                if (!r.ok) {
-                    const errData = await r.json();
-                    throw new Error(errData.message || "Failed to update profile photo");
-                }
+                await updateStudentProfileImage({ id: targetId, image: form.image }).unwrap();
             }
 
             const { image, ...otherFields } = form;
-            await updateStudent({ id: raw._id, data: otherFields }).unwrap();
+            await updateStudent({ id: targetId, data: otherFields }).unwrap();
             toast.success("Profile updated successfully");
             setEditModal(false);
-            navigate(0);
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            }
         } catch (err) {
-            toast.error(err?.message || err?.data?.message || "Update failed");
+            console.error("Profile update error:", err);
+            toast.error(err?.data?.message || err?.message || "Update failed");
         } finally {
             setEditLoading(false);
         }
@@ -1626,78 +1646,115 @@ const StudentProfilePage = () => {
                 {extraDocs.map(doc => <DocumentRow key={doc._id || doc.fileURL} doc={doc} />)}
             </ProfileSectionModal>
 
-            {/* TOP TITLE BAR WITH SEARCH & ID */}
-            <div className="bg-[#F8F9FA] min-h-screen px-8 py-6 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Student Record</h1>
-                        {raw.prkey && (
-                            <span className="bg-slate-200/70 text-slate-700 text-xs font-semibold px-3 py-1 rounded-md border border-slate-300/50">
-                                ID: {raw.prkey}
-                            </span>
-                        )}
+            {/* MAIN HEADER WITH SIDEBAR TOGGLE & BREADCRUMBS */}
+            <Header
+                title={`${name} — Profile`}
+                badge={raw.prkey ? `ID: ${raw.prkey}` : undefined}
+                breadcrumbs={[
+                    { label: "Academics", path: "/student-detail-table" },
+                    { label: "Student Records", path: "/student-detail-table" },
+                    { label: name || "Profile" },
+                ]}
+                showBack={true}
+                onBack={() => {
+                    if (location.state?.from) {
+                        navigate(location.state.from);
+                    } else {
+                        navigate(-1);
+                    }
+                }}
+            />
+
+            {/* TOP TITLE BAR WITH SEARCH, BACK BUTTON & ID */}
+            <div className="bg-[#F8F9FA] min-h-screen p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-12">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                        <button
+                            onClick={() => {
+                                if (location.state?.from) {
+                                    navigate(location.state.from);
+                                } else {
+                                    navigate(-1);
+                                }
+                            }}
+                            className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition flex items-center gap-1.5 text-xs font-bold shrink-0"
+                            title="Back to Student Records"
+                        >
+                            <MdArrowBack size={18} />
+                            <span className="hidden sm:inline">Back</span>
+                        </button>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Student Record</h1>
+                                {raw.prkey && (
+                                    <span className="bg-slate-100 text-slate-700 text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                        ID: {raw.prkey}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Detailed academic progress & placement portfolio</p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                         {/* Search Bar Flex Container */}
-                        <div className="flex items-center h-10 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-xl px-3.5 shadow-sm hover:border-slate-300 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all duration-200">
-                            <MdSearch className="text-slate-400 flex-shrink-0 mr-2.5" size={18} />
+                        <div className="flex items-center h-9 sm:h-10 w-full sm:w-72 bg-slate-50 border border-slate-200 rounded-xl px-3 shadow-xs focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+                            <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={16} />
                             <input
                                 type="text"
                                 placeholder="Search student records..."
-                                className="w-full !h-full bg-transparent !border-none !outline-none !ring-0 focus:!ring-0 focus:!outline-none focus:!border-none text-xs font-medium text-slate-800 placeholder-slate-400 !p-0 !shadow-none"
+                                className="w-full h-full bg-transparent border-none outline-none ring-0 text-xs font-medium text-slate-800 placeholder-slate-400 p-0"
                             />
                         </div>
 
                         {/* Notification Button */}
                         <button
                             type="button"
-                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all duration-200 relative flex-shrink-0"
+                            className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-xs transition-all relative flex-shrink-0"
                             title="Notifications"
                         >
                             <MdNotificationsNone size={18} />
-                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
                         </button>
                     </div>
                 </div>
 
                 {/* HERO CARD */}
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
                             {/* Avatar with Status Ring */}
-                            <div className="relative flex-shrink-0">
+                            <div className="relative flex-shrink-0 self-center sm:self-auto">
                                 {raw.image ? (
-                                    <img src={raw.image} alt={name} className="w-24 h-24 rounded-full object-cover border-4 border-slate-100 shadow-sm" />
+                                    <img src={raw.image} alt={name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-slate-100 shadow-sm" />
                                 ) : (
-                                    <div className="w-24 h-24 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-2xl font-bold border-4 border-slate-100 shadow-sm">
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl sm:text-2xl font-bold border-4 border-slate-100 shadow-sm">
                                         {initials}
                                     </div>
                                 )}
-                                <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                                <span className="absolute bottom-1 right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white rounded-full" />
                             </div>
 
                             {/* Info Section */}
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-3">
-                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">{name}</h2>
-                                    <MdVerified size={20} className="text-orange-500" />
+                            <div className="space-y-1 text-center sm:text-left min-w-0">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
+                                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">{name}</h2>
+                                    <MdVerified size={20} className="text-orange-500 shrink-0" />
                                     {raw.isFTP && (
-                                        <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                                        <span className="text-[10px] sm:text-[11px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">
                                             FTP
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-orange-500">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-xs font-bold text-orange-500">
                                     <span>{raw.course || "Course"} • {translateLevelName(currentLevelLabel)} • {currentLevelLabel} ({currentSubLevelName}){daysInSubLevel ? ` • ${daysInSubLevel}` : ''}</span>
-                                    <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 text-[11px] font-bold">
+                                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 text-[11px] font-bold">
                                         Technology: {trackName}
                                     </span>
-
                                 </div>
 
                                 {/* Placement Badge */}
-                                <div className="pt-1 flex items-center gap-2 flex-wrap">
+                                <div className="pt-1 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                                     {(() => {
                                         let label = readinessStatus;
                                         if (label === "Ready") label = "Ready for Placement";
@@ -1719,7 +1776,7 @@ const StudentProfilePage = () => {
                                         }
 
                                         return (
-                                            <span className={`inline-flex items-center gap-1.5 ${badgeCls} text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider`}>
+                                            <span className={`inline-flex items-center gap-1.5 ${badgeCls} text-[11px] sm:text-xs font-extrabold px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full uppercase tracking-wider`}>
                                                 {icon} PLACEMENT {label}
                                             </span>
                                         );
@@ -1729,26 +1786,26 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* Right Buttons */}
-                        <div className="flex flex-wrap items-center gap-3 self-start lg:self-center">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
                             {isLevel2ACompleted && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
                                 <button
                                     onClick={handleMoveToReadyForPlacement}
                                     disabled={movingToReady}
-                                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-sm disabled:opacity-50"
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm disabled:opacity-50"
                                 >
-                                    <MdCheckCircle size={16} /> {movingToReady ? "Moving..." : "Move to Ready for Placement"}
+                                    <MdCheckCircle size={16} /> {movingToReady ? "Moving..." : "Move to Ready"}
                                 </button>
                             )}
 
                             <button
                                 onClick={goToTaskBoard}
-                                className="flex items-center gap-2 border-2 border-orange-400 text-orange-500 hover:bg-orange-50 font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-sm"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 border-2 border-orange-400 text-orange-500 hover:bg-orange-50 font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm"
                             >
                                 <MdAssignment size={16} /> Task Board
                             </button>
                             <button
                                 onClick={() => setEditModal(true)}
-                                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-sm"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm"
                             >
                                 <MdEdit size={16} /> Edit Profile
                             </button>
@@ -1757,7 +1814,7 @@ const StudentProfilePage = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => setMoreOpen(p => !p)}
-                                    className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition flex items-center gap-1 text-xs font-bold"
+                                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition flex items-center gap-1 text-xs font-bold"
                                 >
                                     Actions <MdMoreVert size={18} />
                                 </button>
@@ -1807,45 +1864,45 @@ const StudentProfilePage = () => {
                     </div>
 
                     {/* Full Contact & Student Personal Info Row */}
-                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-6 text-xs font-semibold text-slate-700">
+                    <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap gap-2.5 sm:gap-4 lg:gap-6 text-xs font-semibold text-slate-700">
                         {raw.email && (
-                            <div className="flex items-center gap-2">
-                                <MdEmail className="text-orange-500" size={16} />
-                                <span>{raw.email}</span>
-                            </div>
+                            <a href={`mailto:${raw.email}`} className="flex items-center gap-2 hover:text-orange-600 truncate">
+                                <MdEmail className="text-orange-500 shrink-0" size={16} />
+                                <span className="truncate">{raw.email}</span>
+                            </a>
                         )}
                         {raw.studentMobile && (
-                            <div className="flex items-center gap-2">
-                                <MdPhone className="text-orange-500" size={16} />
+                            <a href={`tel:+91${raw.studentMobile}`} className="flex items-center gap-2 hover:text-orange-600">
+                                <MdPhone className="text-orange-500 shrink-0" size={16} />
                                 <span>{raw.studentMobile}</span>
-                            </div>
+                            </a>
                         )}
                         {raw.parentMobile && (
-                            <div className="flex items-center gap-2">
-                                <MdPhone className="text-emerald-500" size={16} />
+                            <a href={`tel:+91${raw.parentMobile}`} className="flex items-center gap-2 hover:text-emerald-600">
+                                <MdPhone className="text-emerald-500 shrink-0" size={16} />
                                 <span>Parent: {raw.parentMobile}</span>
-                            </div>
+                            </a>
                         )}
                         {raw.fatherName && (
                             <div className="flex items-center gap-2">
-                                <MdPerson className="text-orange-500" size={16} />
-                                <span>Father: {raw.fatherName}</span>
+                                <MdPerson className="text-orange-500 shrink-0" size={16} />
+                                <span className="truncate">Father: {raw.fatherName}</span>
                             </div>
                         )}
                         <div className="flex items-center gap-2">
-                            <MdBusiness className="text-orange-500" size={16} />
-                            <span>Dept: {raw.subDepartmentId?.departmentId?.name || "Dept"} / {subdepartment?.name || raw.subDepartmentId?.name || "Sub Dept"}</span>
+                            <MdBusiness className="text-orange-500 shrink-0" size={16} />
+                            <span className="truncate">Dept: {raw.subDepartmentId?.departmentId?.name || "Dept"} / {subdepartment?.name || raw.subDepartmentId?.name || "Sub Dept"}</span>
                         </div>
                         {raw.sessionId?.name && (
                             <div className="flex items-center gap-2">
-                                <MdCalendarToday className="text-orange-500" size={16} />
+                                <MdCalendarToday className="text-orange-500 shrink-0" size={16} />
                                 <span>Session: {raw.sessionId.name} <span className="text-emerald-600 font-bold">(Active)</span></span>
                             </div>
                         )}
                         {raw.village && (
                             <div className="flex items-center gap-2">
-                                <MdLocationOn className="text-orange-500" size={16} />
-                                <span>Village: {raw.village}</span>
+                                <MdLocationOn className="text-orange-500 shrink-0" size={16} />
+                                <span className="truncate">Village: {raw.village}</span>
                             </div>
                         )}
                     </div>
@@ -1855,10 +1912,10 @@ const StudentProfilePage = () => {
                 <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
 
                 {/* Tab Buttons */}
-                <div className="flex border-b border-slate-200 mb-6">
+                <div className="flex border-b border-slate-200 mb-4 sm:mb-6 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab("overview")}
-                        className={`pb-3 text-sm font-bold transition-all duration-200 border-b-2 mr-6 ${activeTab === "overview"
+                        className={`pb-3 text-sm font-bold transition-all duration-200 border-b-2 mr-6 shrink-0 ${activeTab === "overview"
                                 ? "border-orange-500 text-orange-500 font-black"
                                 : "border-transparent text-slate-500 hover:text-slate-700"
                             }`}
@@ -1867,7 +1924,7 @@ const StudentProfilePage = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab("thesis")}
-                        className={`pb-3 text-sm font-bold transition-all duration-200 border-b-2 ${activeTab === "thesis"
+                        className={`pb-3 text-sm font-bold transition-all duration-200 border-b-2 shrink-0 ${activeTab === "thesis"
                                 ? "border-orange-500 text-orange-500 font-black"
                                 : "border-transparent text-slate-500 hover:text-slate-700"
                             }`}
@@ -1878,16 +1935,16 @@ const StudentProfilePage = () => {
 
                 {activeTab === "overview" ? (
                     <>
-                        {/* 4 STAT CARDS ROW */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                        {/* 4 STAT CARDS ROW (2x2 on mobile) */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                             {/* Card 1: LEVEL HISTORY */}
                             <div
                                 onClick={() => setHistoryDrawerOpen(true)}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-2 cursor-pointer hover:border-orange-200 transition group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-2 cursor-pointer hover:border-orange-200 transition group"
                             >
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-orange-500 transition">LEVEL HISTORY</p>
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-black text-slate-900 group-hover:text-orange-500 transition">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                    <h3 className="text-base sm:text-xl font-black text-slate-900 group-hover:text-orange-500 transition truncate">
                                         {currentLevelLabel} {daysInSubLevel ? `(${daysInSubLevel})` : ''}
                                     </h3>
                                     <button
@@ -1895,9 +1952,9 @@ const StudentProfilePage = () => {
                                             e.stopPropagation();
                                             setPromoteModal(true);
                                         }}
-                                        className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full transition"
+                                        className="self-start sm:self-auto bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full transition"
                                     >
-                                        +1 Level Up
+                                        +1 Up
                                     </button>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-1.5 pt-1">
@@ -1908,59 +1965,59 @@ const StudentProfilePage = () => {
                             {/* Card 2: REPORT */}
                             <div
                                 onClick={() => navigate(`/student/${raw._id}/report`)}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1 cursor-pointer hover:border-orange-200 transition group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 cursor-pointer hover:border-orange-200 transition group"
                             >
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">REPORT</p>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-black text-slate-900 group-hover:text-orange-500 transition">View</h3>
-                                    <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
-                                        <MdBarChart size={18} />
+                                    <h3 className="text-base sm:text-xl font-black text-slate-900 group-hover:text-orange-500 transition">View</h3>
+                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
+                                        <MdBarChart size={16} />
                                     </div>
                                 </div>
-                                <p className="text-xs font-semibold text-slate-400">Student Report card</p>
+                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Student Report card</p>
                             </div>
 
                             {/* Card 3: ATTENDANCE RATE */}
-                            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ATTENDANCE RATE</p>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-black text-slate-900">{raw.attendanceRate ? `${raw.attendanceRate}%` : "100%"}</h3>
-                                    <span className="bg-orange-50 text-orange-600 border border-orange-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <h3 className="text-base sm:text-xl font-black text-slate-900">{raw.attendanceRate ? `${raw.attendanceRate}%` : "100%"}</h3>
+                                    <span className="bg-orange-50 text-orange-600 border border-orange-100 text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2.5 py-0.5 rounded-full flex items-center gap-0.5 sm:gap-1">
                                         <MdCheckCircle size={12} /> Active
                                     </span>
                                 </div>
-                                <p className="text-xs font-semibold text-slate-400">Monthly attendance tracker</p>
+                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Monthly attendance</p>
                             </div>
 
                             {/* Card 4: OVERALL PERFORMANCE */}
-                            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">OVERALL PERFORMANCE</p>
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">PERFORMANCE</p>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-black text-slate-900">{averageMarks ? `${averageMarks}%` : `${completionRate}%`}</h3>
-                                    <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                                        <MdTrendingUp size={12} /> Task Score
+                                    <h3 className="text-base sm:text-xl font-black text-slate-900">{averageMarks ? `${averageMarks}%` : `${completionRate}%`}</h3>
+                                    <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                        <MdTrendingUp size={12} /> Score
                                     </span>
                                 </div>
-                                <p className="text-xs font-semibold text-slate-400">Rating: {averageMarks || "N/A"}</p>
+                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Rating: {averageMarks || "N/A"}</p>
                             </div>
                         </div>
 
                         {/* MIDDLE ROW (ATTENDANCE & TASK TREND + TASK COMPLETION) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                             {/* Left Box: Attendance & Task Trend Chart (2 Cols) */}
-                            <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                                     <div>
                                         <h3 className="text-base font-black text-slate-900">Task & Attendance Trend</h3>
                                         <p className="text-xs text-slate-400 font-medium">Monthly progress across assigned subjects</p>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                                    <span className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl self-start sm:self-auto">
                                         Active Level Progress
                                     </span>
                                 </div>
 
                                 {/* Line Area Chart SVG */}
-                                <div className="relative h-56 w-full pt-4">
+                                <div className="relative h-44 sm:h-56 w-full pt-2 sm:pt-4">
                                     <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
                                         <defs>
                                             <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1980,7 +2037,7 @@ const StudentProfilePage = () => {
                                             strokeLinecap="round"
                                         />
                                     </svg>
-                                    <div className="flex justify-between text-[11px] font-bold text-slate-400 mt-2 px-2">
+                                    <div className="flex justify-between text-[10px] sm:text-[11px] font-bold text-slate-400 mt-2 px-1 sm:px-2">
                                         <span>Level Start</span>
                                         <span>Mid Progress</span>
                                         <span>Current Level</span>
@@ -1989,19 +2046,19 @@ const StudentProfilePage = () => {
                             </div>
 
                             {/* Right Box: Task Completion (1 Col) */}
-                            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
                                     <h3 className="text-base font-black text-slate-900 mb-4">Task Completion</h3>
 
                                     <div className="flex items-center gap-4 mb-6">
-                                        <div className="relative w-20 h-20 flex-shrink-0">
+                                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0">
                                             <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                                                 <circle cx="60" cy="60" r="48" fill="none" stroke="#f1f5f9" strokeWidth="14" />
                                                 <circle cx="60" cy="60" r="48" fill="none" stroke="#f97316" strokeWidth="14"
                                                     strokeDasharray={`${(completionRate / 100) * 301.6} 301.6`} strokeLinecap="round" />
                                             </svg>
                                             <div className="absolute inset-0 flex items-center justify-center">
-                                                <span className="text-sm font-black text-slate-900">{completionRate}%</span>
+                                                <span className="text-xs sm:text-sm font-black text-slate-900">{completionRate}%</span>
                                             </div>
                                         </div>
                                         <div>
@@ -2011,7 +2068,7 @@ const StudentProfilePage = () => {
                                     </div>
 
                                     {/* Progress Bars */}
-                                    <div className="space-y-3.5">
+                                    <div className="space-y-3 sm:space-y-3.5">
                                         <div>
                                             <div className="flex justify-between text-xs font-bold mb-1">
                                                 <span className="text-slate-700">Completed Tasks</span>
@@ -2047,11 +2104,11 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* BOTTOM ROW (TECHNOLOGIES + PROJECTS) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                             {/* Left Box: Technologies */}
-                            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
-                                    <div className="flex items-center justify-between mb-5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-5">
                                         <div>
                                             <h3 className="text-base font-black text-slate-900">Technologies</h3>
                                             <p className="text-xs font-semibold text-slate-400 mt-0.5">Key technical skills & domain proficiency</p>
@@ -2062,13 +2119,13 @@ const StudentProfilePage = () => {
                                     </div>
                                     {subjects.length > 0 ? (
                                         <>
-                                            <div className="space-y-4">
+                                            <div className="space-y-3.5 sm:space-y-4">
                                                 {subjects.map((sub, idx) => (
-                                                    <div key={sub.name} className="flex items-center gap-4">
-                                                        <span className="w-44 text-xs font-bold text-slate-700 truncate">{sub.name}</span>
-                                                        <div className="flex-1 bg-slate-100 rounded-full h-3">
+                                                    <div key={sub.name} className="flex items-center gap-3 sm:gap-4">
+                                                        <span className="w-32 sm:w-44 text-xs font-bold text-slate-700 truncate">{sub.name}</span>
+                                                        <div className="flex-1 bg-slate-100 rounded-full h-2.5 sm:h-3">
                                                             <div
-                                                                className={`h-3 rounded-full ${idx % 2 === 0 ? "bg-orange-500" : "bg-blue-500"}`}
+                                                                className={`h-2.5 sm:h-3 rounded-full ${idx % 2 === 0 ? "bg-orange-500" : "bg-blue-500"}`}
                                                                 style={{ width: `${sub.pct}%` }}
                                                             />
                                                         </div>
@@ -2076,13 +2133,13 @@ const StudentProfilePage = () => {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-100 text-xs font-bold text-slate-400">
+                                            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-6 pt-4 border-t border-slate-100 text-xs font-bold text-slate-400">
                                                 <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-orange-500" /> Completed Modules</span>
                                                 <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Core Tech Stack</span>
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center flex flex-col items-center justify-center min-h-[220px]">
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 sm:p-8 text-center flex flex-col items-center justify-center min-h-[180px] sm:min-h-[220px]">
                                             <MdLightbulb className="text-slate-300 mb-2" size={32} />
                                             <p className="text-xs font-bold text-slate-700">No Learning Stats</p>
                                             <p className="text-[11px] font-semibold text-slate-400 mt-1 max-w-[200px] leading-relaxed">
@@ -2094,19 +2151,19 @@ const StudentProfilePage = () => {
                             </div>
 
                             {/* Right Box: Projects */}
-                            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
-                                    <div className="flex items-center justify-between mb-5">
+                                    <div className="flex items-center justify-between mb-4 sm:mb-5">
                                         <div>
                                             <h3 className="text-base font-black text-slate-900">Projects</h3>
-                                            <p className="text-xs font-semibold text-slate-400 mt-0.5">Capstone & production application portfolio</p>
+                                            <p className="text-xs font-semibold text-slate-400 mt-0.5">Capstone & production portfolio</p>
                                         </div>
                                         <span className="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 px-3 py-1 rounded-full">
                                             0 Projects
                                         </span>
                                     </div>
 
-                                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center flex flex-col items-center justify-center min-h-[220px]">
+                                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 sm:p-8 text-center flex flex-col items-center justify-center min-h-[180px] sm:min-h-[220px]">
                                         <MdFolderSpecial className="text-slate-300 mb-2" size={32} />
                                         <p className="text-xs font-bold text-slate-700">No Projects Available</p>
                                         <p className="text-[11px] font-semibold text-slate-400 mt-1 max-w-[200px] leading-relaxed">
@@ -2118,9 +2175,9 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* PLACEMENT STAGE INFO & RESUME SECTION */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                             {/* Placement Stage Info Card */}
-                            <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div className="lg:col-span-1 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
                                     <h3 className="text-base font-black text-slate-900 flex items-center gap-2 mb-4">
                                         <MdWork className="text-orange-500" size={20} /> Placement Stage Info
@@ -2143,9 +2200,9 @@ const StudentProfilePage = () => {
                             </div>
 
                             {/* Dedicated Resume Card */}
-                            <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+                            <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
-                                    <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-3">
                                         <div>
                                             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                                                 <MdBadge className="text-blue-500" size={20} /> Resume
@@ -2161,21 +2218,21 @@ const StudentProfilePage = () => {
                                     </div>
 
                                     {resumeURL ? (
-                                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">
                                                     <MdFileDownload size={22} />
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-extrabold text-slate-800">Latest Resume</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-extrabold text-slate-800 truncate">Latest Resume</p>
                                                     <p className="text-[11px] font-medium text-slate-400">PDF / Document File</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                                 <button
                                                     type="button"
                                                     onClick={() => window.open(resumeURL, "_blank", "noopener,noreferrer")}
-                                                    className="px-3.5 py-2 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                                                 >
                                                     <MdOpenInNew size={14} /> View Resume
                                                 </button>
@@ -2184,7 +2241,7 @@ const StudentProfilePage = () => {
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     download="Student_Resume.pdf"
-                                                    className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
                                                 >
                                                     <MdFileDownload size={14} /> Download Resume
                                                 </a>
@@ -2203,10 +2260,10 @@ const StudentProfilePage = () => {
                         <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} />
 
                         {/* BOTTOM QUICK ACCESS MODULE CARDS */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 pt-2 pb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-2 pb-6">
                             <div
                                 onClick={() => setSectionModal("documents")}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center font-bold">
@@ -2222,7 +2279,7 @@ const StudentProfilePage = () => {
 
                             <div
                                 onClick={() => setSectionModal("extraDocuments")}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
@@ -2238,7 +2295,7 @@ const StudentProfilePage = () => {
 
                             <div
                                 onClick={() => setReadyModal(true)}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold">
@@ -2254,7 +2311,7 @@ const StudentProfilePage = () => {
 
                             <div
                                 onClick={() => navigate("/leave-requests")}
-                                className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold">
@@ -2270,10 +2327,10 @@ const StudentProfilePage = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-6">
+                    <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm space-y-4 sm:space-y-6">
                         <div className="flex justify-between items-center border-b pb-4 border-slate-100">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-800">Student Thesis AI Analysis</h3>
+                                <h3 className="text-lg sm:text-xl font-bold text-slate-800">Student Thesis AI Analysis</h3>
                                 <p className="text-xs text-slate-500 mt-1">Upload and generate structured academic evaluation points using Google Gemini AI</p>
                             </div>
                         </div>
@@ -2281,9 +2338,9 @@ const StudentProfilePage = () => {
                         {isThesisLoading ? (
                             <div className="py-12 flex justify-center"><Loader /></div>
                         ) : thesisData ? (
-                            <div className="space-y-6">
+                            <div className="space-y-4 sm:space-y-6">
                                 {/* Thesis file info */}
-                                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
                                     <div className="flex items-center gap-3">
                                         <span className="text-3xl">📄</span>
                                         <div>
@@ -2291,12 +2348,12 @@ const StudentProfilePage = () => {
                                             <p className="text-xs text-slate-500">Uploaded on {new Date(thesisData.createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                         <a
                                             href={thesisData.thesisUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors bg-white shadow-sm"
+                                            className="flex-1 sm:flex-none justify-center px-4 py-2 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors bg-white shadow-sm flex items-center"
                                         >
                                             View PDF
                                         </a>
@@ -2304,7 +2361,7 @@ const StudentProfilePage = () => {
                                             type="button"
                                             onClick={handleThesisDelete}
                                             disabled={isDeletingThesis}
-                                            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-colors border border-rose-100"
+                                            className="flex-1 sm:flex-none justify-center px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-colors border border-rose-100 flex items-center"
                                         >
                                             {isDeletingThesis ? "Deleting..." : "Delete & Re-upload"}
                                         </button>
@@ -2322,7 +2379,7 @@ const StudentProfilePage = () => {
                                     </div>
 
                                     {/* Strengths and Weaknesses side-by-side */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                                             <h4 className="font-bold text-emerald-800 mb-3 flex items-center gap-2 text-sm">
                                                 <span>✅</span> Strengths (Positive Aspects)
@@ -2344,7 +2401,7 @@ const StudentProfilePage = () => {
                                             <ul className="space-y-2">
                                                 {thesisData.analysis?.weaknesses?.map((weak, idx) => (
                                                     <li key={idx} className="flex gap-2 text-xs text-rose-900 leading-relaxed">
-                                                        <span className="text-rose-550 font-bold">•</span>
+                                                        <span className="text-rose-500 font-bold">•</span>
                                                         <span>{weak}</span>
                                                     </li>
                                                 ))}
@@ -2368,7 +2425,7 @@ const StudentProfilePage = () => {
                                     </div>
 
                                     {/* Effort Level */}
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                                         <div>
                                             <h4 className="font-bold text-slate-800 mb-1 flex items-center gap-2 text-sm">
                                                 <span>⚡</span> Recommended Effort Level
@@ -2401,7 +2458,7 @@ const StudentProfilePage = () => {
                                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                                     onDragLeave={() => setIsDragging(false)}
                                     onDrop={handleThesisFileDrop}
-                                    className={`border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all duration-200 ${isDragging ? "border-orange-500 bg-orange-50" : "border-slate-300 hover:border-orange-400 bg-slate-50"
+                                    className={`border-2 border-dashed rounded-2xl sm:rounded-3xl p-6 sm:p-12 text-center cursor-pointer transition-all duration-200 ${isDragging ? "border-orange-500 bg-orange-50" : "border-slate-300 hover:border-orange-400 bg-slate-50"
                                         }`}
                                 >
                                     <input
@@ -2411,43 +2468,43 @@ const StudentProfilePage = () => {
                                         accept="application/pdf"
                                         className="hidden"
                                     />
-                                    <div className="text-5xl mb-4">📁</div>
-                                    <p className="text-base font-semibold text-slate-700">
+                                    <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">📁</div>
+                                    <p className="text-sm sm:text-base font-semibold text-slate-700">
                                         {selectedFile ? `Selected: ${selectedFile.name}` : "Drag and drop student thesis PDF here, or click to browse"}
                                     </p>
                                     <p className="text-xs text-slate-500 mt-2">Only PDF files up to 10MB are supported.</p>
                                 </div>
 
-                                <div className="flex justify-between items-center bg-orange-50/50 p-4 rounded-2xl border border-orange-100/60 mt-4">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-orange-50/50 p-3.5 sm:p-4 rounded-2xl border border-orange-100/60 mt-4">
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">🎓</span>
                                         <div className="text-left">
                                             <p className="text-xs font-bold text-slate-800">Need a Sample Template?</p>
-                                            <p className="text-[11px] text-slate-500">Download the standard thesis document layout to verify formatting constraints.</p>
+                                            <p className="text-[11px] text-slate-500">Download standard thesis layout to verify formatting.</p>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleDownloadTemplate}
-                                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 flex-shrink-0"
+                                        className="w-full sm:w-auto px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 flex-shrink-0"
                                     >
                                         <span>📥</span> Download Sample PDF
                                     </button>
                                 </div>
 
                                 {selectedFile && !uploadStage && (
-                                    <div className="flex justify-end gap-3 animate-fadeIn">
+                                    <div className="flex flex-wrap justify-end gap-2 sm:gap-3 animate-fadeIn">
                                         <button
                                             type="button"
                                             onClick={() => setSelectedFile(null)}
-                                            className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-semibold"
+                                            className="flex-1 sm:flex-none px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-semibold"
                                         >
                                             Clear File
                                         </button>
                                         <button
                                             type="button"
                                             onClick={handleThesisUploadAndAnalyze}
-                                            className="px-5 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-xs font-semibold shadow-sm hover:shadow-md transition-shadow"
+                                            className="flex-1 sm:flex-none px-5 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-xs font-semibold shadow-sm hover:shadow-md transition-shadow"
                                         >
                                             Upload & Analyze Thesis
                                         </button>
@@ -2456,15 +2513,15 @@ const StudentProfilePage = () => {
 
                                 {uploadStage && (
                                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                                        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/50 text-center space-y-6 animate-scaleIn">
-                                            <div className="relative w-20 h-20 mx-auto">
+                                        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-white/50 text-center space-y-4 sm:space-y-6 animate-scaleIn">
+                                            <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto">
                                                 <div className="absolute inset-0 border-4 border-orange-100 rounded-full" />
-                                                <div className="absolute inset-0 border-4 border-t-orange-500 border-r-orange-550 rounded-full animate-spin" />
+                                                <div className="absolute inset-0 border-4 border-t-orange-500 border-r-orange-500 rounded-full animate-spin" />
                                                 <span className="absolute inset-0 flex items-center justify-center text-2xl">🤖</span>
                                             </div>
                                             <div>
-                                                <h4 className="text-lg font-bold text-slate-800">AI Thesis Evaluation in Progress</h4>
-                                                <p className="text-xs text-slate-605 mt-2 min-h-[40px] flex items-center justify-center font-semibold animate-pulse">
+                                                <h4 className="text-base sm:text-lg font-bold text-slate-800">AI Thesis Evaluation in Progress</h4>
+                                                <p className="text-xs text-slate-600 mt-2 min-h-[40px] flex items-center justify-center font-semibold animate-pulse">
                                                     {uploadStage}
                                                 </p>
                                             </div>

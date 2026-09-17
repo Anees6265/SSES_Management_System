@@ -125,20 +125,21 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
     }, {});
 
     return (
-        <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-lg p-6">
-            <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+        <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-lg p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="flex items-center gap-3 sm:gap-4">
                     <button
                         onClick={onBack}
-                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                        className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors shrink-0 cursor-pointer"
+                        title="Back to roles"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={18} />
                     </button>
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-800">
+                    <div className="min-w-0">
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
                             Global Permissions for {user.name}
                         </h2>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                             Role: <span className="font-medium capitalize">{user.role}</span>
                         </p>
                     </div>
@@ -146,20 +147,20 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                 <button
                     onClick={handleSave}
                     disabled={isUpdating}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:bg-orange-300 transition-colors"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:bg-orange-300 transition-colors shrink-0 cursor-pointer"
                 >
                     <Save size={16} />
                     {isUpdating ? 'Saving...' : 'Save Changes'}
                 </button>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+            <div className="overflow-x-auto -mx-3 sm:mx-0 border border-gray-200 rounded-lg">
+                <table className="min-w-full bg-white">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Page / Feature</th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Page / Feature</th>
                             {allAccessTypes.map(accessType => (
-                                <th key={accessType} className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider capitalize">
+                                <th key={accessType} className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider capitalize">
                                     {accessType}
                                 </th>
                             ))}
@@ -170,13 +171,13 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                             <React.Fragment key={category}>
                                 {/* Category Divider Row */}
                                 <tr className="bg-orange-50 font-semibold text-orange-800">
-                                    <td colSpan={allAccessTypes.length + 1} className="px-6 py-2.5 text-sm uppercase tracking-wider font-bold">
+                                    <td colSpan={allAccessTypes.length + 1} className="px-3 sm:px-6 py-2 text-xs sm:text-sm uppercase tracking-wider font-bold">
                                         {category}
                                     </td>
                                 </tr>
                                 {items.map(({ feature: featureName, displayName }) => (
                                     <tr key={featureName} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                                             <div className="font-semibold text-gray-800">{displayName}</div>
                                             <div className="text-xs text-gray-400 font-normal">{featureName}</div>
                                         </td>
@@ -184,7 +185,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                                             const featurePermission = permissions.find(p => p.feature === featureName);
                                             const isChecked = featurePermission ? featurePermission.access.includes(accessType) : false;
                                             return (
-                                                <td key={accessType} className="px-6 py-4 whitespace-nowrap text-center">
+                                                <td key={accessType} className="px-3 sm:px-6 py-3 whitespace-nowrap text-center">
                                                     <input
                                                         type="checkbox"
                                                         className="h-5 w-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer"

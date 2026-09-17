@@ -62,13 +62,17 @@ const ShowLevels = () => {
                     { icon: <HiOutlineUserGroup size={14} className="text-orange-400" />, label: level.subDepartmentId?.name || 'N/A' },
                     { icon: <MdOutlineMenuBook size={14} className="text-orange-400" />, label: level.subDepartmentId?.departmentId?.name || 'N/A' },
                   ]}
-                  onView={() => navigate('/subdepartment-details', {
-                    state: {
-                      departmentId: level.subDepartmentId?.departmentId?._id,
-                      subdepartment: level.subDepartmentId,
-                      departmentName: level.subDepartmentId?.departmentId?.name
-                    }
-                  })}
+                  onView={() => {
+                    const subId = level.subDepartmentId?._id;
+                    const path = subId ? `/subdepartment/${subId}/levels` : '/subdepartment-details';
+                    navigate(path, {
+                      state: {
+                        departmentId: level.subDepartmentId?.departmentId?._id,
+                        subdepartment: level.subDepartmentId,
+                        departmentName: level.subDepartmentId?.departmentId?.name
+                      }
+                    });
+                  }}
                 />
               ))
             )}

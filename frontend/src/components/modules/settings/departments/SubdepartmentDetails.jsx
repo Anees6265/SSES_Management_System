@@ -1,6 +1,13 @@
-import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useGetSubdepartmentByIdQuery, useGetLevelsBySubdepartmentQuery, useGetSubLevelsByLevelQuery, useAddLevelMutation, useUpdateLevelMutation } from "../../../../redux/api/authApi";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { 
+  useGetSubdepartmentByIdQuery, 
+  useGetLevelsBySubdepartmentQuery, 
+  useGetSubLevelsByLevelQuery, 
+  useAddLevelMutation, 
+  useUpdateLevelMutation,
+  useDeleteLevelMutation
+} from "../../../../redux/api/authApi";
 import { toast } from "react-toastify";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
@@ -8,7 +15,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
-import { MdLayers, MdSearch, MdClose } from "react-icons/md";
+import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
 
@@ -25,7 +32,7 @@ const validationSchema = Yup.object({
 });
 
 // LevelCard with responsive mobile card-rows & desktop table
-const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit }) => {
+const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDelete }) => {
   const totalStudents = subLevelsList?.reduce((acc, curr) => acc + (curr.studentCount || 0), 0) || 0;
 
   return (
@@ -46,10 +53,19 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit }) => {
             </span>
           </div>
         </div>
-        <div className="text-right flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className="px-2.5 py-1 bg-slate-50 border border-slate-200/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider rounded-full">
             Order: {level.order}
           </span>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              title="Delete Level"
+              className="w-7 h-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors flex items-center justify-center cursor-pointer"
+            >
+              <MdDelete size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -154,9 +170,23 @@ const SubdepartmentDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { id: paramSubdeptId } = useParams();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
+  const [levelToDelete, setLevelToDelete] = useState(null);
 
-  const subdepartmentId = paramSubdeptId || location.state?.subdepartment?._id;
+  const querySubdeptId = searchParams.get("id");
+  const subdepartmentId = 
+    paramSubdeptId || 
+    querySubdeptId || 
+    location.state?.subdepartment?._id || 
+    sessionStorage.getItem("lastVisitedSubdepartmentId");
+
+  useEffect(() => {
+    if (subdepartmentId) {
+      sessionStorage.setItem("lastVisitedSubdepartmentId", subdepartmentId);
+    }
+  }, [subdepartmentId]);
+
   const { data: subdepartmentData, isLoading: isSubdeptLoading } = useGetSubdepartmentByIdQuery(subdepartmentId, { skip: !subdepartmentId });
 
   const subdepartment  = subdepartmentData?.data || location.state?.subdepartment;
@@ -166,21 +196,57 @@ const SubdepartmentDetails = () => {
   const { data: levelsData, isLoading: isLevelsLoading, refetch } = useGetLevelsBySubdepartmentQuery(subdepartmentId, { skip: !subdepartmentId });
   const [addLevel] = useAddLevelMutation();
   const [updateLevel] = useUpdateLevelMutation();
+  const [deleteLevel, { isLoading: isDeletingLevel }] = useDeleteLevelMutation();
 
   const departmentName = location.state?.departmentName || departmentObj?.name || "Department";
-  const levels = [...(levelsData?.data || [])].sort((a, b) => b.isActive - a.isActive);
+  
+  // Sort levels: Active levels first, then by ascending numeric order (e.g. Level 1, Level 2)
+  const levels = [...(levelsData?.data || [])].sort((a, b) => {
+    if (b.isActive !== a.isActive) {
+      return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
+    }
+    return (Number(a.order) || 0) - (Number(b.order) || 0);
+  });
 
   const filteredLevels = levels.filter((lvl) =>
     lvl.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteLevel = async () => {
+    if (!levelToDelete) return;
+    try {
+      await deleteLevel(levelToDelete._id).unwrap();
+      toast.success("Level deleted successfully!");
+      setLevelToDelete(null);
+      refetch();
+    } catch (error) {
+      toast.error(error?.data?.message || "Failed to delete level");
+    }
+  };
+
   if (isSubdeptLoading || isLevelsLoading) return <Loader />;
-  if (!subdepartment) return <div className="p-6">No subdepartment data found</div>;
+  if (!subdepartment) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center mt-12 bg-white rounded-2xl border border-gray-150 shadow-xs">
+        <MdLayers size={48} className="mx-auto text-gray-300 mb-3" />
+        <h2 className="text-lg font-bold text-gray-800">Subdepartment Not Found</h2>
+        <p className="text-xs text-gray-500 mt-1 mb-5">Could not load subdepartment details. Please go back to departments.</p>
+        <button
+          onClick={() => navigate("/department-management")}
+          className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+        >
+          Go to Departments
+        </button>
+      </div>
+    );
+  }
 
   const breadcrumbs = hasPermission('Page_Department')
     ? [
         { label: "Departments", path: "/department-management" },
-        { label: departmentName || "Department", path: `/department-details/${departmentId}`, state: { department: subdepartment?.departmentId } },
+        ...(departmentId
+          ? [{ label: departmentName || "Department", path: `/department-details/${departmentId}`, state: { department: departmentObj } }]
+          : []),
         { label: subdepartment.name },
       ]
     : [
@@ -308,7 +374,17 @@ const SubdepartmentDetails = () => {
                     level={level}
                     subLevelCount={subLevelCount}
                     subLevelsList={subLevelsList}
-                    onView={() => navigate("/show-sublevel-tables", { state: { level, subdepartment, departmentId, departmentName } })}
+                    onView={() => {
+                      const deptId = departmentId || departmentObj?._id || "";
+                      navigate(`/show-sublevel-tables?levelId=${level._id}&subdeptId=${subdepartmentId}&deptId=${deptId}`, {
+                        state: { level, subdepartment, departmentId: deptId, departmentName }
+                      });
+                    }}
+                    onDelete={
+                      hasPermission('Page_Level', 'delete') 
+                        ? () => setLevelToDelete(level) 
+                        : null
+                    }
                     onEdit={
                       hasPermission('Page_Level', 'update') ? (
                         <Formik
@@ -356,6 +432,46 @@ const SubdepartmentDetails = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Level Confirmation Modal */}
+      {levelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-gray-100 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 border border-red-100">
+                <MdWarning size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Delete Level</h3>
+                <p className="text-xs text-gray-500">This action will deactivate the level.</p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
+              Are you sure you want to delete <strong className="text-gray-900 uppercase">"{levelToDelete.name}"</strong> (Order: {levelToDelete.order})? Students and sublevels linked to this level may be affected.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setLevelToDelete(null)}
+                disabled={isDeletingLevel}
+                className="px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteLevel}
+                disabled={isDeletingLevel}
+                className="px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-[0.98] rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeletingLevel ? "Deleting..." : "Delete Level"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

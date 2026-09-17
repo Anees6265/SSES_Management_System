@@ -201,8 +201,8 @@ const SubDepartment = () => {
                                         allowedCourses={subdept.allowedCourses || []}
                                         faculties={subdept.faculties || []}
                                         levelCounts={subdept.levelCounts || []}
-                                        onView={() => navigate('/subdepartment-details', {
-                                            state: { departmentId: subdept.departmentId?._id, subdepartment: subdept, departmentName: subdept.departmentId?.name }
+                                        onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
+                                            state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
                                         })}
                                         onEdit={
                                             hasPermission('Page_SubDepartment', 'update') ? (

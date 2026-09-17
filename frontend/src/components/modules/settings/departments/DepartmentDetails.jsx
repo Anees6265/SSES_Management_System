@@ -226,7 +226,7 @@ const DepartmentDetails = () => {
                         allowedCourses={subdept.allowedCourses || []}
                         faculties={subdept.faculties || []}
                         levelCounts={subdept.levelCounts || []}
-                        onView={() => navigate("/subdepartment-details", {
+                        onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
                           state: { departmentId: department._id, subdepartment: subdept, departmentName: department.name }
                         })}
                         onEdit={

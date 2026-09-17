@@ -1,12 +1,22 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch } from "react-icons/md";
+import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
-import { useGetSubLevelsByLevelQuery, useAddSubLevelMutation, useGetSyllabusVersionsBySubLevelQuery, useGetNewStudentsQuery, useGetSubLevelProgressQuery } from "../../../../redux/api/authApi";
+import { 
+    useGetSubLevelsByLevelQuery, 
+    useAddSubLevelMutation, 
+    useUpdateSubLevelMutation,
+    useDeleteSubLevelMutation,
+    useGetLevelByIdQuery,
+    useGetSyllabusVersionsBySubLevelQuery, 
+    useGetNewStudentsQuery, 
+    useGetSubLevelProgressQuery 
+} from "../../../../redux/api/authApi";
+import { usePermissions } from "../../../../hooks/usePermissions";
 import SearchBox from "../../../shared/search-export/SearchBox";
 import ExportDropdown from "../../../shared/search-export/ExportDropdown";
 import CommonTable from "../../../shared/table/CommonTable";
@@ -610,21 +620,72 @@ const TaskDrawerContent = ({ activeTab }) => {
 };
 
 const ShowSubLevelTablesData = () => {
+    const { hasPermission } = usePermissions();
     const location       = useLocation();
     const navigate       = useNavigate();
-    const level          = location.state?.level;
-    const subdepartment  = location.state?.subdepartment;
-    const departmentId   = location.state?.departmentId;
-    const departmentName = location.state?.departmentName;
-    const session        = location.state?.session || location.state?.sessionName;
+    const [searchParams] = useSearchParams();
+
+    const queryLevelId   = searchParams.get("levelId");
+    const querySubdeptId = searchParams.get("subdeptId");
+    const queryDeptId    = searchParams.get("deptId");
+
+    // Cache fallback
+    const cachedData = (() => {
+        try {
+            const raw = sessionStorage.getItem("currentSublevelViewData");
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    })();
+
+    const effectiveLevelId = 
+        location.state?.level?._id || 
+        queryLevelId || 
+        cachedData?.level?._id;
+
+    const { data: fetchedLevelRes, isLoading: isLevelLoading } = useGetLevelByIdQuery(effectiveLevelId, { 
+        skip: !effectiveLevelId 
+    });
+    const fetchedLevel = fetchedLevelRes?.data;
+
+    const level = location.state?.level || fetchedLevel || (cachedData?.level?._id === effectiveLevelId ? cachedData.level : null);
+
+    const rawSubdept = location.state?.subdepartment || (level?.subDepartmentId && typeof level.subDepartmentId === "object" ? level.subDepartmentId : null) || (fetchedLevel?.subDepartmentId && typeof fetchedLevel.subDepartmentId === "object" ? fetchedLevel.subDepartmentId : null) || cachedData?.subdepartment;
+    const subdepartment = rawSubdept;
+
+    const departmentId   = location.state?.departmentId || queryDeptId || subdepartment?.departmentId?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "") || cachedData?.departmentId || "";
+    const departmentName = location.state?.departmentName || subdepartment?.departmentId?.name || cachedData?.departmentName || "Department";
+    const session        = location.state?.session || location.state?.sessionName || cachedData?.session;
+
+    useEffect(() => {
+        if (level?._id) {
+            try {
+                sessionStorage.setItem("currentSublevelViewData", JSON.stringify({
+                    level,
+                    subdepartment,
+                    departmentId,
+                    departmentName,
+                    session
+                }));
+            } catch {
+                // ignore storage failures
+            }
+        }
+    }, [level, subdepartment, departmentId, departmentName, session]);
 
     const [activeTab,           setActiveTab]           = useState(null);
     const [activeSection,       setActiveSection]       = useState("Students");
     const [searchTerm,          setSearchTerm]          = useState("");
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
+    const [subLevelToDelete,    setSubLevelToDelete]    = useState(null);
 
-    const { data: subLevelsData } = useGetSubLevelsByLevelQuery(level?._id, { skip: !level?._id });
+    const { data: subLevelsData, isLoading: isSubLevelsLoading } = useGetSubLevelsByLevelQuery(level?._id, { skip: !level?._id });
     const subLevels = subLevelsData?.data || [];
+
+    const [addSubLevel] = useAddSubLevelMutation();
+    const [updateSubLevel] = useUpdateSubLevelMutation();
+    const [deleteSubLevel, { isLoading: isDeletingSubLevel }] = useDeleteSubLevelMutation();
 
     const handleTabChange = (sl) => {
         setActiveTab(sl);
@@ -647,7 +708,7 @@ const ShowSubLevelTablesData = () => {
             const foundSubLevel = subLevels.find(sl => sl._id === savedSubLevelId);
             if (foundSubLevel) {
                 setActiveTab(foundSubLevel);
-            } else if (!activeTab) {
+            } else if (!activeTab || !subLevels.some(s => s._id === activeTab?._id)) {
                 setActiveTab(subLevels[0]);
             }
 
@@ -666,12 +727,49 @@ const ShowSubLevelTablesData = () => {
         prevLen.current = subLevels.length;
     }, [subLevels.length]);
 
-    const [addSubLevel] = useAddSubLevelMutation();
+    const handleDeleteSubLevel = async () => {
+        if (!subLevelToDelete) return;
+        try {
+            await deleteSubLevel(subLevelToDelete._id).unwrap();
+            toast.success("SubLevel deleted successfully!");
+            setSubLevelToDelete(null);
+            const remaining = subLevels.filter(s => s._id !== subLevelToDelete._id);
+            setActiveTab(remaining.length > 0 ? remaining[0] : null);
+        } catch (error) {
+            toast.error(error?.data?.message || "Error deleting sublevel");
+        }
+    };
+
+    if (isLevelLoading && !level) return <Loader />;
+
+    if (!effectiveLevelId || !level) {
+        return (
+            <div className="p-8 max-w-lg mx-auto text-center mt-12 bg-white rounded-3xl border border-gray-150 shadow-xs">
+                <MdLayers size={48} className="mx-auto text-gray-300 mb-3" />
+                <h2 className="text-lg font-bold text-gray-800">No Level Selected</h2>
+                <p className="text-xs text-gray-500 mt-1 mb-5">Please choose a level from Department or Subdepartment management.</p>
+                <button
+                    onClick={() => navigate("/department-management")}
+                    className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                    Go to Departments
+                </button>
+            </div>
+        );
+    }
 
     const breadcrumbs = [
         { label: "Departments", path: "/department-management" },
-        { label: departmentName || "Department", path: departmentId ? `/department-details/${departmentId}` : "/department-management", state: { department: subdepartment?.departmentId } },
-        { label: subdepartment?.name || "Subdepartment", path: subdepartment?._id ? `/subdepartment/${subdepartment._id}/levels` : "/subdepartment-details", state: { subdepartment, departmentId, departmentName } },
+        ...(departmentId ? [{ 
+            label: departmentName || "Department", 
+            path: `/department-details/${departmentId}`, 
+            state: { department: subdepartment?.departmentId } 
+        }] : []),
+        ...(subdepartment?._id ? [{ 
+            label: subdepartment?.name || "Subdepartment", 
+            path: `/subdepartment/${subdepartment._id}/levels`, 
+            state: { subdepartment, departmentId, departmentName } 
+        }] : []),
         { label: level?.name || "Level" },
     ];
 
@@ -685,7 +783,7 @@ const ShowSubLevelTablesData = () => {
                 breadcrumbs={breadcrumbs}
                 bottomRow={
                     subLevels.length > 0 ? (
-                        <div className="flex gap-1.5 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-1.5 px-0.5">
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-1.5 px-0.5">
                             {subLevels.map((sl) => (
                                 <button
                                     key={sl._id}
@@ -729,8 +827,66 @@ const ShowSubLevelTablesData = () => {
                             )}
                         />
                     )}
-                    {subLevels.length > 0 && activeSection === "Tasks" ? null : (
-                        /* Always show Add SubLevel button */
+
+                    {/* Edit Active SubLevel (when sublevels exist) */}
+                    {subLevels.length > 0 && activeTab && hasPermission('Page_SubLevel', 'update') && (
+                        <Formik
+                            key={`edit_${activeTab._id}`}
+                            initialValues={{ name: activeTab.name, order: activeTab.order, isActive: activeTab.isActive }}
+                            validationSchema={validationSchema}
+                            onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                try {
+                                    await updateSubLevel({
+                                        subLevelId: activeTab._id,
+                                        name: values.name,
+                                        order: Number(values.order),
+                                        levelId: level?._id,
+                                        isActive: values.isActive
+                                    }).unwrap();
+                                    toast.success("SubLevel updated successfully!");
+                                    resetForm();
+                                } catch (error) {
+                                    toast.error(error?.data?.message || "Error updating sublevel");
+                                } finally {
+                                    setSubmitting(false);
+                                }
+                            }}
+                        >
+                            {({ isSubmitting, submitForm, resetForm }) => (
+                                <OrangeButton
+                                    buttonTitle="Edit Sub Level"
+                                    panelTitle="Edit Sub Level"
+                                    customButtonClass="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] rounded-xl transition cursor-pointer"
+                                    drawerContent={
+                                        <Form className="space-y-4">
+                                            <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
+                                            <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                                            <RadioGroup label="Status" name="isActive" required={false} />
+                                        </Form>
+                                    }
+                                    leftBtnText="Cancel"
+                                    rightBtnText={isSubmitting ? "Updating..." : "Update Sub Level"}
+                                    onLeftClick={resetForm}
+                                    onRightClick={submitForm}
+                                />
+                            )}
+                        </Formik>
+                    )}
+
+                    {/* Delete Active SubLevel (when sublevels exist) */}
+                    {subLevels.length > 0 && activeTab && hasPermission('Page_SubLevel', 'delete') && (
+                        <button
+                            type="button"
+                            onClick={() => setSubLevelToDelete(activeTab)}
+                            title="Delete Sub Level"
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 border border-slate-200/80 hover:border-red-200 rounded-xl transition-colors cursor-pointer"
+                        >
+                            <MdDelete size={18} />
+                        </button>
+                    )}
+
+                    {/* Add SubLevel button */}
+                    {hasPermission('Page_SubLevel', 'create') && (
                         <Formik
                             initialValues={{ name: "", order: "", isActive: true }}
                             validationSchema={validationSchema}
@@ -825,6 +981,46 @@ const ShowSubLevelTablesData = () => {
                     </div>
                 )}
             </div>
+
+            {/* Delete SubLevel Confirmation Modal */}
+            {subLevelToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-gray-100 flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 border border-red-100">
+                                <MdWarning size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900">Delete Sub-Level</h3>
+                                <p className="text-xs text-gray-500">This action will deactivate the sub-level.</p>
+                            </div>
+                        </div>
+
+                        <p className="text-xs sm:text-sm text-gray-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
+                            Are you sure you want to delete <strong className="text-gray-900 uppercase">"{subLevelToDelete.name}"</strong>? Students and tasks assigned to this sub-level may be affected.
+                        </p>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setSubLevelToDelete(null)}
+                                disabled={isDeletingSubLevel}
+                                className="px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteSubLevel}
+                                disabled={isDeletingSubLevel}
+                                className="px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-[0.98] rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                            >
+                                {isDeletingSubLevel ? "Deleting..." : "Delete Sub-Level"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

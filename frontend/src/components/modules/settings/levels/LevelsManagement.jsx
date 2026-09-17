@@ -101,16 +101,18 @@ const LevelsManagement = () => {
                       { icon: <HiOutlineUserGroup size={14} className="text-orange-400" />, label: level.subDepartmentId?.name || "N/A" },
                       { icon: <MdLayers size={14} className="text-orange-400" />, label: `${subLevelCount} SubLevels` },
                     ]}
-                    onView={() =>
-                      navigate("/show-sublevel-tables", {
+                    onView={() => {
+                      const subId = level.subDepartmentId?._id || "";
+                      const deptId = level.subDepartmentId?.departmentId?._id || "";
+                      navigate(`/show-sublevel-tables?levelId=${level._id}&subdeptId=${subId}&deptId=${deptId}`, {
                         state: {
                           level,
                           subdepartment: level.subDepartmentId,
-                          departmentId: level.subDepartmentId?.departmentId?._id,
+                          departmentId: deptId,
                           departmentName: level.subDepartmentId?.departmentId?.name,
                         },
-                      })
-                    }
+                      });
+                    }}
                   />
                 )}
               />

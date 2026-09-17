@@ -1413,6 +1413,15 @@ export const authApi = createApi({
       providesTags: ['Department'],
     }),
 
+    // Get Level by ID
+    getLevelById: builder.query({
+      query: (levelId) => ({
+        url: `/levels/${levelId}`,
+        method: "GET",
+      }),
+      providesTags: ['Department'],
+    }),
+
     // Add Level
     addLevel: builder.mutation({
       query: (data) => ({
@@ -2100,6 +2109,7 @@ export const {
   useGetAllSubdepartmentsQuery,
   useGetSubdepartmentByIdQuery,
   useGetLevelsBySubdepartmentQuery,
+  useGetLevelByIdQuery,
   useAddLevelMutation,
   useUpdateLevelMutation,
   useDeleteLevelMutation,

@@ -111,7 +111,9 @@ const Sidebar = ({ children }) => {
       return (
         path === "/department-management" ||
         path.startsWith("/department-details/") ||
-        path === "/subdepartment-details"
+        path === "/subdepartment-details" ||
+        path.startsWith("/subdepartment/") ||
+        path.startsWith("/show-sublevel-tables")
       );
     }
 

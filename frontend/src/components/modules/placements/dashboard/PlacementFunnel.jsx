@@ -76,26 +76,26 @@ const PlacementFunnel = ({ data = {}, loading }) => {
   const maxVal = Math.max(readyVal, interviewVal, selectedVal, placedVal, 1);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-all duration-300">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all duration-300">
       
       {/* Header with Title & Adjustable View Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-100">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-gray-800 text-base">Placement Funnel & Pipeline</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-gray-800 text-sm sm:text-base">Placement Funnel & Pipeline</h3>
             <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
               {conversionPct}% Placed
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">Stage-by-stage student readiness and drive progression</p>
+          <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">Stage-by-stage student readiness and drive progression</p>
         </div>
 
         {/* Adjustable View Switcher Controls */}
-        <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/60 self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-gray-100/80 p-0.5 sm:p-1 rounded-xl border border-gray-200/60 self-start sm:self-auto">
           <button
             onClick={() => setViewMode("funnel")}
             title="Funnel Layers View"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
               viewMode === "funnel"
                 ? "bg-white text-orange-600 shadow-xs border border-gray-200/80"
                 : "text-gray-500 hover:text-gray-800"
@@ -107,7 +107,7 @@ const PlacementFunnel = ({ data = {}, loading }) => {
           <button
             onClick={() => setViewMode("pipeline")}
             title="Flow Stepper View"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
               viewMode === "pipeline"
                 ? "bg-white text-orange-600 shadow-xs border border-gray-200/80"
                 : "text-gray-500 hover:text-gray-800"
@@ -119,7 +119,7 @@ const PlacementFunnel = ({ data = {}, loading }) => {
           <button
             onClick={() => setViewMode("grid")}
             title="Cards Grid View"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
               viewMode === "grid"
                 ? "bg-white text-orange-600 shadow-xs border border-gray-200/80"
                 : "text-gray-500 hover:text-gray-800"
@@ -267,7 +267,7 @@ const PlacementFunnel = ({ data = {}, loading }) => {
       )}
 
       {/* Footer Pipeline Summary Metric */}
-      <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 font-medium">
+      <div className="mt-4 sm:mt-5 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs text-gray-500 font-medium">
         <span>Ready: <strong className="text-blue-600">{readyVal}</strong></span>
         <span>Interviewing: <strong className="text-amber-600">{interviewVal}</strong></span>
         <span>Offered: <strong className="text-purple-600">{selectedVal}</strong></span>

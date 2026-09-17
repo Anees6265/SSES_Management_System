@@ -13,11 +13,11 @@ const STATUSES = [
 const StatusBreakdown = ({ data = {}, loading }) => {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
         <div className="h-5 bg-gray-100 rounded w-44 mb-4 animate-pulse" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
           {[...Array(7)].map((_, i) => (
-            <div key={i} className="h-20 bg-gray-50 rounded-xl animate-pulse" />
+            <div key={i} className="h-16 sm:h-20 bg-gray-50 rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -25,26 +25,27 @@ const StatusBreakdown = ({ data = {}, loading }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 hover:shadow-md transition">
+      <div className="flex items-center justify-between mb-3.5 sm:mb-4">
         <div>
-          <h3 className="font-bold text-gray-800 text-base">Comprehensive Student Readiness Breakdown</h3>
+          <h3 className="font-bold text-gray-800 text-sm sm:text-base">Comprehensive Student Readiness Breakdown</h3>
           <p className="text-xs text-gray-500">Live classification of students across all placement stages</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-        {STATUSES.map((s) => {
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+        {STATUSES.map((s, idx) => {
           const val = data[s.key] ?? 0;
+          const isLast = idx === STATUSES.length - 1;
           return (
             <div
               key={s.key}
-              className={`rounded-xl border p-3.5 flex flex-col justify-between text-center transition-all duration-200 hover:scale-[1.02] shadow-xs ${s.color}`}
+              className={`rounded-xl border p-2.5 sm:p-3.5 flex flex-col justify-between text-center transition-all duration-200 hover:scale-[1.02] shadow-xs ${s.color} ${isLast ? "col-span-2 sm:col-span-1 lg:col-span-1" : ""}`}
             >
-              <span className={`self-center text-xs font-extrabold px-2 py-0.5 rounded-full ${s.badge}`}>
+              <span className={`self-center text-xs sm:text-sm font-extrabold px-2.5 py-0.5 rounded-full ${s.badge}`}>
                 {val}
               </span>
-              <p className="text-xs font-bold mt-2 leading-snug">{s.label}</p>
+              <p className="text-[11px] sm:text-xs font-bold mt-1.5 sm:mt-2 leading-snug">{s.label}</p>
             </div>
           );
         })}

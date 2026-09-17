@@ -250,7 +250,7 @@ const SubDepartmentCard = ({
         <div className={`border-t ${inactive ? 'border-gray-150' : 'border-slate-100'}`} />
 
         {/* Quick Stats: Students & Courses */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${
             inactive 
               ? 'bg-slate-50 text-slate-400 border-slate-100' 

@@ -5,7 +5,11 @@ import Loader from '../../shared/loader/Loader';
 import CommonTable from '../../shared/table/CommonTable';
 import Header from '../../shared/sidebar/Header';
 import Avatar from '../../shared/Avatar';
-import { MdArrowBack, MdBusiness, MdPeople, MdEmail, MdPhone, MdLocationOn, MdAttachMoney, MdSearch } from 'react-icons/md';
+import { 
+  MdArrowBack, MdBusiness, MdPeople, MdEmail, MdPhone, 
+  MdLocationOn, MdAttachMoney, MdSearch, MdClose, 
+  MdChevronLeft, MdChevronRight, MdCalendarToday, MdArrowForward 
+} from 'react-icons/md';
 
 const PlacedStudents = () => {
   const { companyId } = useParams();
@@ -23,6 +27,8 @@ const PlacedStudents = () => {
   const totalPlaced = data?.totalPlaced || students.length;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [mobilePage, setMobilePage] = useState(1);
+  const MOBILE_PAGE_SIZE = 10;
 
   const filteredStudents = students.filter((student) => {
     const searchableValues = [
@@ -38,6 +44,12 @@ const PlacedStudents = () => {
     ].join(' ').toLowerCase();
     return searchableValues.includes(searchTerm.toLowerCase());
   });
+
+  const totalMobilePages = Math.ceil(filteredStudents.length / MOBILE_PAGE_SIZE) || 1;
+  const paginatedStudents = filteredStudents.slice(
+    (mobilePage - 1) * MOBILE_PAGE_SIZE,
+    mobilePage * MOBILE_PAGE_SIZE
+  );
 
   const columns = [
     {
@@ -130,23 +142,24 @@ const PlacedStudents = () => {
       return (
         <div className="bg-slate-50 min-h-screen pb-12">
           <Header title={`Placed Students — ${apiCompanyName}`} />
-          <div className="p-6 max-w-[1600px] mx-auto space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex items-center justify-between">
+          <div className="p-3.5 sm:p-5 lg:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate("/company-details")}
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition"
+                  className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition"
+                  title="Back to Company Details"
                 >
-                  <MdArrowBack className="text-xl" />
+                  <MdArrowBack className="text-lg sm:text-xl" />
                 </button>
                 <div>
-                  <h1 className="text-xl font-extrabold text-gray-800">{apiCompanyName}</h1>
+                  <h1 className="text-lg sm:text-xl font-extrabold text-gray-800">{apiCompanyName}</h1>
                   <p className="text-xs text-gray-500">Recruiting Partner Placements</p>
                 </div>
               </div>
             </div>
 
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="text-center py-12 sm:py-16 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <MdPeople className="text-5xl text-gray-300 mx-auto mb-3" />
               <h3 className="text-base font-bold text-gray-800">No Students Placed Yet</h3>
               <p className="text-xs text-gray-400 mt-1">No confirmed offers recorded for {apiCompanyName}</p>
@@ -157,9 +170,9 @@ const PlacedStudents = () => {
     }
 
     return (
-      <div className="bg-slate-50 min-h-screen p-6">
+      <div className="bg-slate-50 min-h-screen p-3.5 sm:p-6">
         <Header title="Placed Students Error" />
-        <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-12">
+        <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-8 sm:mt-12">
           <h3 className="text-base font-bold text-gray-800">Error Loading Students</h3>
           <p className="text-xs text-red-500 mt-1">{error?.data?.message || 'Something went wrong'}</p>
           <button
@@ -184,48 +197,61 @@ const PlacedStudents = () => {
         ]}
       />
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Company Header Banner Card ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               onClick={() => navigate("/company-details")}
-              className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0"
+              className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0"
               title="Back to Company Details"
             >
-              <MdArrowBack className="text-xl" />
+              <MdArrowBack className="text-lg sm:text-xl" />
             </button>
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 text-white font-extrabold rounded-2xl flex items-center justify-center text-xl shadow-xs shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-amber-500 text-white font-extrabold rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-xs shrink-0">
               {apiCompanyName.charAt(0)}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold text-gray-800 tracking-tight">{apiCompanyName}</h1>
-                <span className="bg-emerald-100 text-emerald-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold text-gray-800 tracking-tight truncate">{apiCompanyName}</h1>
+                <span className="bg-emerald-100 text-emerald-700 text-[11px] sm:text-xs font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
                   {totalPlaced} Placed
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">List of all students hired by {apiCompanyName}</p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">List of all students hired by {apiCompanyName}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-              <input
-                type="text"
-                placeholder="Search placed student name, role, or stream..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full sm:w-64 transition"
-              />
-            </div>
+          <div className="relative w-full md:w-64">
+            <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+            <input
+              type="text"
+              placeholder="Search name, role, stream..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setMobilePage(1);
+              }}
+              className="pl-10 pr-9 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full transition"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setMobilePage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                title="Clear Search"
+              >
+                <MdClose size={14} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* ── Main Common Table ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* ── Desktop View: Common Table ── */}
+        <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <CommonTable
             columns={columns}
             data={filteredStudents}
@@ -235,6 +261,123 @@ const PlacedStudents = () => {
             pagination
             rowsPerPage={10}
           />
+        </div>
+
+        {/* ── Mobile View: Cards List ── */}
+        <div className="md:hidden space-y-3">
+          {filteredStudents.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
+              <MdPeople className="text-4xl text-gray-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-gray-700">No matching students found</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Try searching with a different term</p>
+            </div>
+          ) : (
+            paginatedStudents.map((row) => (
+              <div
+                key={row._id}
+                onClick={() => navigate(`/student-profile/${row._id}`)}
+                className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm space-y-3 active:scale-[0.99] transition-transform cursor-pointer"
+              >
+                {/* Student Avatar + Name + Link */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.profileImage} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-gray-800 text-sm truncate">
+                        {row.firstName} {row.lastName}
+                      </p>
+                      <p className="text-[11px] text-gray-400 font-medium truncate">
+                        {row.course || 'Course'} {row.stream ? `• ${row.stream}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-gray-300 hover:text-orange-500 text-sm shrink-0">
+                    <MdArrowForward size={16} />
+                  </span>
+                </div>
+
+                {/* Badges / Highlights */}
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-50 text-xs">
+                  {row.placedInfo?.salary && (
+                    <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-[11px] border border-emerald-100">
+                      ₹{(row.placedInfo.salary / 100000).toFixed(1)} LPA
+                    </span>
+                  )}
+                  {row.placedInfo?.jobProfile && (
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[11px] font-bold border border-blue-100">
+                      {row.placedInfo.jobProfile}
+                    </span>
+                  )}
+                  {row.placedInfo?.jobType && (
+                    <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[11px] font-bold border border-purple-100">
+                      {row.placedInfo.jobType}
+                    </span>
+                  )}
+                </div>
+
+                {/* Contact info & Placed Date */}
+                <div className="space-y-1 pt-2 border-t border-gray-50 text-xs text-gray-600">
+                  {row.email && (
+                    <a
+                      href={`mailto:${row.email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 text-[11px] text-gray-600 hover:text-orange-600 truncate"
+                    >
+                      <MdEmail className="text-gray-400 shrink-0 text-xs" />
+                      <span className="truncate">{row.email}</span>
+                    </a>
+                  )}
+                  {row.studentMobile && (
+                    <a
+                      href={`tel:+91${row.studentMobile}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 text-[11px] text-gray-600 hover:text-orange-600"
+                    >
+                      <MdPhone className="text-gray-400 shrink-0 text-xs" />
+                      <span>+91 {row.studentMobile}</span>
+                    </a>
+                  )}
+                  {row.placedInfo?.placedDate && (
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400 pt-0.5">
+                      <MdCalendarToday className="shrink-0 text-xs" />
+                      <span>
+                        Placed: {new Date(row.placedInfo.placedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Mobile Pagination */}
+          {filteredStudents.length > MOBILE_PAGE_SIZE && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex items-center justify-between text-xs">
+              <span className="text-gray-500 text-[11px] font-medium">
+                Showing {(mobilePage - 1) * MOBILE_PAGE_SIZE + 1}–
+                {Math.min(mobilePage * MOBILE_PAGE_SIZE, filteredStudents.length)} of {filteredStudents.length}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
+                  disabled={mobilePage === 1}
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 disabled:pointer-events-none hover:bg-gray-50"
+                >
+                  <MdChevronLeft size={16} />
+                </button>
+                <span className="font-bold text-gray-700 px-1">
+                  {mobilePage} / {totalMobilePages}
+                </span>
+                <button
+                  onClick={() => setMobilePage((p) => Math.min(totalMobilePages, p + 1))}
+                  disabled={mobilePage === totalMobilePages}
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 disabled:pointer-events-none hover:bg-gray-50"
+                >
+                  <MdChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

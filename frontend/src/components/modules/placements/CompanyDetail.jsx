@@ -14,7 +14,7 @@ import AddCompanyModal from './AddCompanyModal';
 import CompanyProfileModal from './CompanyProfileModal';
 import {
   MdBusiness, MdPeople, MdLocationOn, MdEmail, MdPhone,
-  MdSearch, MdAdd, MdEdit, MdVisibility, MdToggleOn, MdToggleOff, MdFilterList
+  MdSearch, MdAdd, MdEdit, MdVisibility, MdToggleOn, MdToggleOff, MdFilterList, MdClose
 } from 'react-icons/md';
 
 const CompanyDetail = () => {
@@ -34,6 +34,7 @@ const CompanyDetail = () => {
   const [industryFilter, setIndustryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [mobilePage, setMobilePage] = useState(1);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -43,6 +44,11 @@ const CompanyDetail = () => {
   // Dynamic filter dropdown options
   const industryOptions = ['All', ...new Set(companies.map(c => c.industry).filter(Boolean))];
   const locationOptions = ['All', ...new Set(companies.map(c => c.location || c.city).filter(Boolean))];
+
+  // Reset mobile page on filter change
+  React.useEffect(() => {
+    setMobilePage(1);
+  }, [searchTerm, industryFilter, locationFilter, statusFilter]);
 
   const handleOpenAddModal = () => {
     setCompanyToEdit(null);
@@ -247,6 +253,9 @@ const CompanyDetail = () => {
     );
   }
 
+  const totalMobilePages = Math.ceil(filteredCompanies.length / 10) || 1;
+  const paginatedMobileCompanies = filteredCompanies.slice((mobilePage - 1) * 10, mobilePage * 10);
+
   return (
     <div className="bg-slate-50 min-h-screen pb-12">
       <Header 
@@ -254,33 +263,33 @@ const CompanyDetail = () => {
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Companies" }]}
       />
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
-        {/* ── Top Summary Stats Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── Top Summary Stats Cards (2x2 on mobile) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatsCard
-            title="Total Recruiting Companies"
+            title="Total Companies"
             value={companies.length}
             icon={<MdBusiness />}
             color="orange"
             trend="Recruiter Network"
-            sub="registered campus partners"
+            sub="registered partners"
           />
           <StatsCard
-            title="Active Hiring Partners"
+            title="Active Partners"
             value={companies.filter(c => (c.status || 'Active') === 'Active').length}
             icon={<MdPeople />}
             color="green"
             trend="Active Status"
-            sub="eligible for new drives"
+            sub="eligible for drives"
           />
           <StatsCard
-            title="Active Drive Locations"
+            title="Drive Locations"
             value={new Set(companies.map(c => c.location || c.city).filter(Boolean)).size || 1}
             icon={<MdLocationOn />}
             color="blue"
             trend="Pan-India Drives"
-            sub="hiring hub locations"
+            sub="hiring hubs"
           />
           <StatsCard
             title="Corporate Contacts"
@@ -293,17 +302,17 @@ const CompanyDetail = () => {
         </div>
 
         {/* ── Toolbar: Action Button + Search & Filters ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h3 className="font-bold text-gray-800 text-base">Corporate Recruiting Master Database</h3>
+              <h3 className="font-bold text-gray-800 text-sm sm:text-base">Corporate Recruiting Master Database</h3>
               <p className="text-xs text-gray-500">Centralized database of placement partner companies and recruiters</p>
             </div>
 
             {isAuthorizedToManage && (
               <button
                 onClick={handleOpenAddModal}
-                className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-2 shrink-0 self-start sm:self-auto"
+                className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:from-orange-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto cursor-pointer"
               >
                 <MdAdd size={18} /> + Add Company
               </button>
@@ -311,7 +320,7 @@ const CompanyDetail = () => {
           </div>
 
           {/* Search Bar & Filter Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-2 border-t border-slate-100">
             {/* Search Input */}
             <div className="relative">
               <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
@@ -320,8 +329,17 @@ const CompanyDetail = () => {
                 placeholder="Search company, HR, or city..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full transition"
+                className="pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full transition"
               />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm("")} 
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <MdClose size={16} />
+                </button>
+              )}
             </div>
 
             {/* Industry Filter */}
@@ -331,7 +349,7 @@ const CompanyDetail = () => {
               <select
                 value={industryFilter}
                 onChange={(e) => setIndustryFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer"
+                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer truncate"
               >
                 {industryOptions.map((ind) => (
                   <option key={ind} value={ind}>{ind}</option>
@@ -346,7 +364,7 @@ const CompanyDetail = () => {
               <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer"
+                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer truncate"
               >
                 {locationOptions.map((loc) => (
                   <option key={loc} value={loc}>{loc}</option>
@@ -370,17 +388,163 @@ const CompanyDetail = () => {
           </div>
         </div>
 
-        {/* ── Data Table View ── */}
+        {/* ── Main Content View (Mobile Cards + Desktop Table) ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <CommonTable
-            columns={columns}
-            data={filteredCompanies}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            onRowClick={handleViewProfile}
-            pagination
-            rowsPerPage={10}
-          />
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {paginatedMobileCompanies.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-xs font-medium">
+                No companies found matching filters.
+              </div>
+            ) : (
+              paginatedMobileCompanies.map((row) => {
+                const isActive = (row.status || 'Active') === 'Active';
+
+                return (
+                  <div
+                    key={row._id}
+                    className="p-3.5 space-y-2.5 active:bg-orange-50/20 transition"
+                  >
+                    {/* Header: Logo + Name + Status */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {row.companyLogo ? (
+                          <img
+                            src={row.companyLogo}
+                            alt={row.companyName}
+                            className="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-2xs shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-2xs shrink-0">
+                            {row.companyName?.charAt(0)?.toUpperCase() || 'C'}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p
+                            onClick={() => handleViewProfile(row)}
+                            className="font-bold text-xs text-gray-900 hover:text-orange-600 transition cursor-pointer truncate"
+                          >
+                            {row.companyName}
+                          </p>
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {row.industry || 'IT Services'} • {row.companyType || 'Partner'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                            isActive
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-red-50 text-red-600 border-red-200"
+                          }`}
+                        >
+                          {row.status || 'Active'}
+                        </span>
+                        {isAuthorizedToManage && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleStatus(row);
+                            }}
+                            className={`text-lg cursor-pointer ${isActive ? "text-emerald-500" : "text-gray-400"}`}
+                          >
+                            {isActive ? <MdToggleOn size={22} /> : <MdToggleOff size={22} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Contact & Location Info */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-50 text-[11px]">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-800 text-[11px] truncate">
+                          {row.contactPersonName || row.hrEmail?.split('@')[0] || "HR Liaison"}
+                        </p>
+                        {(row.contactPersonEmail || row.companyEmail || row.hrEmail) && (
+                          <p className="text-[10px] text-gray-500 flex items-center gap-1 truncate">
+                            <MdEmail className="text-gray-400 shrink-0" /> {row.contactPersonEmail || row.companyEmail || row.hrEmail}
+                          </p>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-1 shrink-0">
+                        <MdLocationOn size={12} /> {row.location || row.city || "N/A"}
+                      </span>
+                    </div>
+
+                    {/* Contact Phone & Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-50">
+                      {row.contactPersonPhone || row.companyContact || row.hrContact ? (
+                        <a
+                          href={`tel:${row.contactPersonPhone || row.companyContact || row.hrContact}`}
+                          className="text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition"
+                        >
+                          <MdPhone size={12} className="text-gray-400" /> {row.contactPersonPhone || row.companyContact || row.hrContact}
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">No phone recorded</span>
+                      )}
+
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button
+                          onClick={() => handleViewProfile(row)}
+                          className="bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <MdVisibility size={13} /> View
+                        </button>
+                        {isAuthorizedToManage && (
+                          <button
+                            onClick={() => handleOpenEditModal(row)}
+                            className="bg-orange-50 hover:bg-orange-100 active:bg-orange-200 text-orange-600 border border-orange-200 text-xs font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <MdEdit size={13} /> Edit
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            {/* Mobile Pagination */}
+            {filteredCompanies.length > 10 && (
+              <div className="flex items-center justify-between p-3 border-t border-gray-100 bg-gray-50/60 text-xs">
+                <button
+                  onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                  disabled={mobilePage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-bold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                >
+                  Previous
+                </button>
+                <span className="text-gray-500 font-medium text-[11px]">
+                  Page <strong className="text-gray-800">{mobilePage}</strong> of {totalMobilePages}
+                </span>
+                <button
+                  onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
+                  disabled={mobilePage >= totalMobilePages}
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-bold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <CommonTable
+              columns={columns}
+              data={filteredCompanies}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              onRowClick={handleViewProfile}
+              pagination
+              rowsPerPage={10}
+            />
+          </div>
         </div>
 
       </div>

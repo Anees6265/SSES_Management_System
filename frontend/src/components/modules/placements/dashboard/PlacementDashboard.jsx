@@ -155,87 +155,91 @@ const PlacementDashboard = () => {
       />
 
       {/* Main Container */}
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
         
         {/* Top Control & Filter Bar */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+        <div className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
               <MdFilterList className="text-base text-orange-500" /> Filters:
             </span>
 
             {/* Active Chip */}
-            <span className="border border-orange-200 bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+            <span className="border border-orange-200 bg-orange-50 text-orange-700 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold flex items-center gap-1 shadow-xs">
               Academic Year: {academicYear}
             </span>
 
             {selectedDeptFilter !== "All" && (
-              <span className="border border-blue-200 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+              <span className="border border-blue-200 bg-blue-50 text-blue-700 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold flex items-center gap-1 shadow-xs">
                 Dept: {selectedDeptFilter}
                 <MdClose className="cursor-pointer text-sm hover:text-blue-900" onClick={() => setSelectedDeptFilter("All")} />
               </span>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Academic Year Select */}
-            <select
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
-            >
-              {sessionsList.length === 0 ? (
-                <option value="">No Sessions Found</option>
-              ) : (
-                sessionsList.map((s) => {
-                  const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
-                  const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
-                  return (
-                    <option key={s._id} value={label}>
-                      {label} ({statusText})
-                    </option>
-                  );
-                })
-              )}
-            </select>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+              {/* Academic Year Select */}
+              <select
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
+              >
+                {sessionsList.length === 0 ? (
+                  <option value="">No Sessions Found</option>
+                ) : (
+                  sessionsList.map((s) => {
+                    const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
+                    const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
+                    return (
+                      <option key={s._id} value={label}>
+                        {label} ({statusText})
+                      </option>
+                    );
+                  })
+                )}
+              </select>
 
-            {/* Department Select */}
-            <select
-              value={selectedDeptFilter}
-              onChange={(e) => setSelectedDeptFilter(e.target.value)}
-              className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-            >
-              <option value="All">All Departments</option>
-              <option value="ITEG">ITEG</option>
-              <option value="UIUX">UIUX</option>
-              <option value="ITEG - Software Engineering">ITEG - Software Engineering</option>
-              <option value="AI & Data Science">AI & Data Science</option>
-              <option value="MEG">MEG</option>
-              <option value="FTP">FTP</option>
-            </select>
+              {/* Department Select */}
+              <select
+                value={selectedDeptFilter}
+                onChange={(e) => setSelectedDeptFilter(e.target.value)}
+                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
+              >
+                <option value="All">All Departments</option>
+                <option value="ITEG">ITEG</option>
+                <option value="UIUX">UIUX</option>
+                <option value="ITEG - Software Engineering">ITEG - SE</option>
+                <option value="AI & Data Science">AI & DS</option>
+                <option value="MEG">MEG</option>
+                <option value="FTP">FTP</option>
+              </select>
+            </div>
 
-            {/* Refresh */}
-            <button
-              onClick={handleRefresh}
-              title="Refresh Data"
-              className="p-2 border border-gray-200 rounded-xl text-gray-600 hover:text-orange-600 hover:border-orange-200 bg-white transition shadow-xs"
-            >
-              <MdRefresh className={`text-lg ${loading ? "animate-spin text-orange-500" : ""}`} />
-            </button>
+            <div className="flex items-center gap-2 justify-end">
+              {/* Refresh */}
+              <button
+                onClick={handleRefresh}
+                title="Refresh Data"
+                className="p-2 border border-gray-200 rounded-xl text-gray-600 hover:text-orange-600 hover:border-orange-200 bg-white transition shadow-xs cursor-pointer"
+              >
+                <MdRefresh className={`text-lg ${loading ? "animate-spin text-orange-500" : ""}`} />
+              </button>
 
-            {/* Export Report */}
-            <button
-              onClick={handleDownloadReport}
-              className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:shadow-md hover:from-orange-600 hover:to-amber-600 transition flex items-center gap-1.5 shadow-sm"
-            >
-              <MdFileDownload className="text-base" /> Export Report
-            </button>
+              {/* Export Report */}
+              <button
+                onClick={handleDownloadReport}
+                className="flex-1 sm:flex-initial justify-center bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold hover:shadow-md hover:from-orange-600 hover:to-amber-600 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <MdFileDownload className="text-base" /> Export Report
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Top Row: 5 Stat Cards ─────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {STATS.map((s) => (
+        {/* ── Top Row: 5 Stat Cards (2x2 Grid on mobile with 5th card full-width) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-4">
+          {STATS.map((s, idx) => (
             <StatsCard 
               key={s.title} 
               title={s.title} 
@@ -245,32 +249,33 @@ const PlacementDashboard = () => {
               trend={s.trend}
               trendColor={s.trendColor}
               sub={s.sub}
+              className={idx === STATS.length - 1 ? "col-span-2 sm:col-span-2 lg:col-span-1" : ""}
             />
           ))}
         </div>
 
         {/* ── Middle Row: Recharts Placement Trend + Funnel Pipeline ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
           {/* Recharts Area Chart (7 cols) */}
-          <div className="xl:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+          <div className="xl:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
               <div>
-                <h3 className="font-bold text-gray-800 text-base">Monthly Placement Growth & Drives</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Cumulative placed students vs placement drives conducted</p>
+                <h3 className="font-bold text-gray-800 text-sm sm:text-base">Monthly Placement Growth & Drives</h3>
+                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">Cumulative placed students vs placement drives conducted</p>
               </div>
-              <div className="flex items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs font-semibold">
                 <span className="flex items-center gap-1.5 text-orange-600">
-                  <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> Total Placed
+                  <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-orange-500 inline-block" /> Total Placed
                 </span>
                 <span className="flex items-center gap-1.5 text-blue-600">
-                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Active Drives
+                  <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-blue-500 inline-block" /> Active Drives
                 </span>
               </div>
             </div>
 
-            <div className="w-full h-72">
+            <div className="w-full h-60 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={PLACEMENT_TREND_DATA} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <AreaChart data={PLACEMENT_TREND_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="placedGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
@@ -282,8 +287,8 @@ const PlacementDashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', borderColor: '#e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                   />
@@ -301,7 +306,7 @@ const PlacementDashboard = () => {
         </div>
 
         {/* ── Third Row: Department Table + Alerts ────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
           <div className="xl:col-span-8">
             <DepartmentTable data={departments} loading={loading} />
           </div>
@@ -311,47 +316,47 @@ const PlacementDashboard = () => {
         </div>
 
         {/* ── Fourth Row: Top Hiring Companies + Package Analytics ─ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           {/* Top Companies (8 cols) */}
           <div className="lg:col-span-8">
             <TopCompanies data={companies} loading={loading} />
           </div>
 
           {/* CTC Package Highlights (4 cols) */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-lg">
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-lg shrink-0">
                 <MdAttachMoney />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-base">Package & CTC Highlights</h3>
-                <p className="text-xs text-gray-500">Highest & average salary statistics</p>
+                <h3 className="font-bold text-gray-800 text-sm sm:text-base">Package & CTC Highlights</h3>
+                <p className="text-[11px] sm:text-xs text-gray-500">Highest & average salary statistics</p>
               </div>
             </div>
 
-            <div className="space-y-4 my-2">
-              <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl text-white shadow-md">
-                <p className="text-xs uppercase tracking-wider font-bold opacity-80">Highest Package Offered</p>
-                <p className="text-3xl font-extrabold mt-1">₹18.0 LPA</p>
-                <p className="text-xs mt-1 font-medium opacity-90">Offered by TCS Digital & Microsoft</p>
+            <div className="space-y-3 sm:space-y-4 my-2">
+              <div className="p-3.5 sm:p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl text-white shadow-md">
+                <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold opacity-80">Highest Package Offered</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-0.5 sm:mt-1">₹18.0 LPA</p>
+                <p className="text-[11px] sm:text-xs mt-1 font-medium opacity-90">Offered by TCS Digital & Microsoft</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 bg-blue-50/80 border border-blue-100 rounded-xl">
-                  <p className="text-[11px] font-bold text-blue-600 uppercase">Average CTC</p>
-                  <p className="text-xl font-extrabold text-gray-800 mt-0.5">₹4.2 LPA</p>
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="p-3 sm:p-3.5 bg-blue-50/80 border border-blue-100 rounded-xl">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-blue-600 uppercase">Average CTC</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">₹4.2 LPA</p>
                   <p className="text-[10px] text-gray-400">across all drives</p>
                 </div>
-                <div className="p-3.5 bg-purple-50/80 border border-purple-100 rounded-xl">
-                  <p className="text-[11px] font-bold text-purple-600 uppercase">Drives Conducted</p>
-                  <p className="text-xl font-extrabold text-gray-800 mt-0.5">28 Companies</p>
+                <div className="p-3 sm:p-3.5 bg-purple-50/80 border border-purple-100 rounded-xl">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-purple-600 uppercase">Drives Conducted</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">28 Companies</p>
                   <p className="text-[10px] text-gray-400">this academic year</p>
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Updated live from placement records</span>
+            <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] sm:text-xs text-gray-500">
+              <span>Live records</span>
               <span className="font-bold text-emerald-600">88% Acceptance Rate</span>
             </div>
           </div>

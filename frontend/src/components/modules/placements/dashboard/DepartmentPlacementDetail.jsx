@@ -165,33 +165,33 @@ const DepartmentPlacementDetail = () => {
         ]}
       />
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* Header Title Banner & Filter Bar */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm space-y-3.5 sm:space-y-4">
           {/* Top Banner Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3.5 sm:pb-4">
+            <div className="flex items-start sm:items-center gap-3">
               <button
                 onClick={() => navigate("/placements/dashboard")}
-                className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0"
+                className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0 mt-0.5 sm:mt-0"
                 title="Back to Overall Placement Dashboard"
               >
-                <MdArrowBack className="text-xl" />
+                <MdArrowBack className="text-lg sm:text-xl" />
               </button>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-extrabold text-gray-800 tracking-tight">{deptMeta.name}</h1>
-                  <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-orange-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl font-extrabold text-gray-800 tracking-tight">{deptMeta.name}</h1>
+                  <span className="bg-orange-100 text-orange-700 text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border border-orange-200">
                     {deptMeta.code}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Department placement metrics, readiness tracking, and company hires</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">Department placement metrics, readiness tracking, and company hires</p>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
               <button
                 onClick={handleRefresh}
                 className="p-2 border border-gray-200 rounded-xl text-gray-600 hover:text-orange-600 hover:border-orange-200 bg-white transition shadow-xs"
@@ -201,7 +201,7 @@ const DepartmentPlacementDetail = () => {
               </button>
               <button
                 onClick={handleDownloadReport}
-                className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:shadow-md hover:from-orange-600 hover:to-amber-600 transition flex items-center gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-none justify-center bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3.5 sm:px-4 py-2 sm:py-1.5 rounded-xl text-xs font-bold hover:shadow-md hover:from-orange-600 hover:to-amber-600 transition flex items-center gap-1.5 shadow-sm"
               >
                 <MdFileDownload className="text-base" /> Export Dept Report
               </button>
@@ -211,25 +211,25 @@ const DepartmentPlacementDetail = () => {
           {/* Controls & Filter Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
                 <MdFilterList className="text-base text-orange-500" /> Filters:
               </span>
-              <span className="border border-orange-200 bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold">
+              <span className="border border-orange-200 bg-orange-50 text-orange-700 px-2.5 py-0.5 rounded-full text-xs font-semibold">
                 AY: {academicYear}
               </span>
               {selectedLevel !== "All" && (
-                <span className="border border-blue-200 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                <span className="border border-blue-200 bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1">
                   Level: {selectedLevel}
                   <MdClose className="cursor-pointer text-sm" onClick={() => setSelectedLevel("All")} />
                 </span>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
               <select
                 value={academicYear}
                 onChange={(e) => setAcademicYear(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
+                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
               >
                 {sessionsList.length === 0 ? (
                   <option value="">No Sessions Found</option>
@@ -249,7 +249,7 @@ const DepartmentPlacementDetail = () => {
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
+                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
               >
                 <option value="All">All Levels</option>
                 <option value="Level 1">Level 1</option>
@@ -262,8 +262,8 @@ const DepartmentPlacementDetail = () => {
         </div>
 
         {/* ── Top Row: 5 Department Stat Cards ───────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {STATS.map((s) => (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+          {STATS.map((s, idx) => (
             <StatsCard 
               key={s.title} 
               title={s.title} 
@@ -274,25 +274,26 @@ const DepartmentPlacementDetail = () => {
               trendColor={s.trendColor}
               sub={s.sub}
               onClick={s.onClick}
+              className={idx === 4 ? "col-span-2 sm:col-span-2 lg:col-span-1 xl:col-span-1" : ""}
             />
           ))}
         </div>
 
         {/* ── Middle Row: Department Growth Chart + Funnel ───────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
           {/* Department Placement Trend Recharts (7 cols) */}
-          <div className="xl:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+          <div className="xl:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
               <div>
-                <h3 className="font-bold text-gray-800 text-base">{deptMeta.name} — Placement Growth</h3>
+                <h3 className="font-bold text-gray-800 text-sm sm:text-base">{deptMeta.name} — Placement Growth</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Monthly cumulative hires in {deptMeta.code}</p>
               </div>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 self-start sm:self-auto">
                 Target: 85% Placed
               </span>
             </div>
 
-            <div className="w-full h-72">
+            <div className="w-full h-60 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
@@ -302,8 +303,8 @@ const DepartmentPlacementDetail = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', borderColor: '#e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                   />
@@ -323,40 +324,40 @@ const DepartmentPlacementDetail = () => {
         <StatusBreakdown data={breakdown} loading={loading} />
 
         {/* ── Department Alerts & Top Hiring Companies ─────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Department Alert Cards */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-            <h3 className="font-bold text-gray-800 text-base mb-4">Department Insights & Drive Alerts</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 hover:shadow-md transition">
+            <h3 className="font-bold text-gray-800 text-sm sm:text-base mb-3.5 sm:mb-4">Department Insights & Drive Alerts</h3>
             <div className="space-y-3">
-              <div className="flex items-start gap-3.5 p-4 bg-amber-50/80 border border-amber-200/70 rounded-xl">
-                <MdWarningAmber className="text-amber-500 text-2xl mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 bg-amber-50/80 border border-amber-200/70 rounded-xl">
+                <MdWarningAmber className="text-amber-500 text-xl sm:text-2xl mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Ready but No Drive Scheduled</p>
-                  <p className="text-2xl font-extrabold text-amber-600 mt-1">
-                    {alerts.readyButNoInterview} <span className="text-xs font-semibold text-gray-500">students</span>
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 uppercase tracking-wider">Ready but No Drive Scheduled</p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-amber-600 mt-0.5 sm:mt-1">
+                    {alerts.readyButNoInterview || 0} <span className="text-xs font-semibold text-gray-500">students</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">Students fully prepped for placement but not mapped to upcoming interview rounds.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-4 bg-rose-50/80 border border-rose-200/70 rounded-xl">
-                <MdBlock className="text-rose-500 text-2xl mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 bg-rose-50/80 border border-rose-200/70 rounded-xl">
+                <MdBlock className="text-rose-500 text-xl sm:text-2xl mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Multiple Rejections</p>
-                  <p className="text-2xl font-extrabold text-rose-600 mt-1">
-                    {alerts.multipleRejections} <span className="text-xs font-semibold text-gray-500">students</span>
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 uppercase tracking-wider">Multiple Rejections</p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-rose-600 mt-0.5 sm:mt-1">
+                    {alerts.multipleRejections || 0} <span className="text-xs font-semibold text-gray-500">students</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">Students who rejected 2 or more drive offers; require counselling.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-4 bg-teal-50/80 border border-teal-200/70 rounded-xl">
-                <MdTrendingUp className="text-teal-600 text-2xl mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 bg-teal-50/80 border border-teal-200/70 rounded-xl">
+                <MdTrendingUp className="text-teal-600 text-xl sm:text-2xl mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Department Placement Rate</p>
-                  <p className="text-2xl font-extrabold text-teal-600 mt-1">
-                    {alerts.placementPercentage}% <span className="text-xs font-semibold text-gray-500">placed</span>
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-800 uppercase tracking-wider">Department Placement Rate</p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-teal-600 mt-0.5 sm:mt-1">
+                    {alerts.placementPercentage || overview.placementPercentage || 0}% <span className="text-xs font-semibold text-gray-500">placed</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">Current conversion rate for {deptMeta.name}.</p>
                 </div>
@@ -370,10 +371,10 @@ const DepartmentPlacementDetail = () => {
 
         {/* ── Table 1: Ready Students — Needs Attention ─────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
-          <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-800 text-base">Ready Students — Needs Attention</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-gray-800 text-sm sm:text-base">Ready Students — Needs Attention</h3>
                 <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-200">
                   {readyStudents.length} Students
                 </span>
@@ -382,7 +383,7 @@ const DepartmentPlacementDetail = () => {
             </div>
 
             {/* Quick Search inside Table */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
               <input
                 type="text"
@@ -394,7 +395,74 @@ const DepartmentPlacementDetail = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {filteredReadyStudents.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs font-medium">
+                No ready students match search
+              </div>
+            ) : (
+              filteredReadyStudents.map((s) => (
+                <div
+                  key={s.studentId}
+                  onClick={() => navigate(`/student-profile/${s.studentId}`)}
+                  className="p-3.5 space-y-2.5 active:bg-orange-50/40 cursor-pointer transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-gray-800 truncate">{s.name}</p>
+                        <p className="text-[10px] text-gray-400">{s.prkey} • {s.levelName || "Ready"}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/student-profile/${s.studentId}`);
+                      }}
+                      className="text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-lg shrink-0 transition"
+                    >
+                      Profile →
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      s.readinessStatus === "Ready for Interview"
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                    }`}>
+                      {s.readinessStatus || "Ready for Placement"}
+                    </span>
+
+                    {s.hasInterview ? (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        s.interviewStatus === "Ongoing"   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : s.interviewStatus === "Selected" ? "bg-purple-50 text-purple-700 border border-purple-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        <MdCheckCircleOutline className="text-xs" /> {s.interviewStatus}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                        ❗ No Interview Scheduled
+                      </span>
+                    )}
+
+                    <span className="text-[10px] text-gray-400 ml-auto font-medium">
+                      {formatDate(s.lastActivity)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wider">
@@ -437,7 +505,7 @@ const DepartmentPlacementDetail = () => {
                             ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                             : "bg-blue-50 text-blue-700 border border-blue-200"
                         }`}>
-                          {s.readinessStatus}
+                          {s.readinessStatus || "Ready for Placement"}
                         </span>
                       </td>
 
@@ -476,17 +544,55 @@ const DepartmentPlacementDetail = () => {
 
         {/* ── Table 2: Recent Department Placements ─────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="font-bold text-gray-800 text-base">Recent Department Placements</h3>
+              <h3 className="font-bold text-gray-800 text-sm sm:text-base">Recent Department Placements</h3>
               <p className="text-xs text-gray-500">Live feed of students who secured job offers in {deptMeta.name}</p>
             </div>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 self-start sm:self-auto">
               {recentPlacements.length} Confirmed Placements
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {recentPlacements.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs font-medium">
+                No recent placements recorded yet
+              </div>
+            ) : (
+              recentPlacements.map((p) => (
+                <div
+                  key={p.studentId}
+                  onClick={() => navigate(`/student-profile/${p.studentId}`)}
+                  className="p-3.5 space-y-2 active:bg-emerald-50/40 cursor-pointer transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                        {p.studentName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-gray-800 truncate">{p.studentName}</p>
+                        <p className="text-[10px] text-gray-400">{p.prkey}</p>
+                      </div>
+                    </div>
+                    <span className="font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md text-[11px] shrink-0 border border-emerald-100">
+                      {formatSalary(p.salary)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="font-bold text-gray-700 truncate">{p.companyName}</span>
+                    <span className="text-[10px] text-gray-400 shrink-0 font-medium">{formatDate(p.placedDate)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wider">

@@ -18,28 +18,28 @@ const TopCompanies = ({ data = [], loading }) => {
   const maxHires = data.length > 0 ? Math.max(...data.map(c => c.totalHires || c.hires || 1)) : 1;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-      <div className="flex items-center justify-between mb-5">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 hover:shadow-md transition">
+      <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg text-lg">
+          <div className="p-2 bg-purple-50 text-purple-600 rounded-lg text-lg shrink-0">
             <MdBusiness />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800 text-base">Top Recruiting Companies</h3>
-            <p className="text-xs text-gray-500">Major corporate partners hiring from our campus drives</p>
+            <h3 className="font-bold text-gray-800 text-sm sm:text-base">Top Recruiting Companies</h3>
+            <p className="text-[11px] sm:text-xs text-gray-500">Major corporate partners hiring from our campus drives</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+        <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100 shrink-0">
           {data.length} Companies
         </span>
       </div>
 
       {data.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 text-sm font-medium">
+        <div className="text-center py-8 text-gray-400 text-xs sm:text-sm font-medium">
           No placement records available yet
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {data.map((company, i) => {
             const hires = company.totalHires || company.hires || 0;
             const salary = company.avgSalary || company.salary;
@@ -47,23 +47,23 @@ const TopCompanies = ({ data = [], loading }) => {
 
             return (
               <div key={i} className="group p-3 rounded-xl border border-gray-50 bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <div className="flex items-center gap-2.5 truncate max-w-[65%]">
-                    <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-600 font-extrabold text-xs flex items-center justify-center shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-lg bg-orange-100 text-orange-600 font-extrabold text-xs flex items-center justify-center shrink-0">
                       #{i + 1}
                     </span>
-                    <span className="font-bold text-gray-800 truncate group-hover:text-orange-600 transition">
+                    <span className="font-bold text-gray-800 text-xs sm:text-sm truncate group-hover:text-orange-600 transition">
                       {company.companyName}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                     {salary && (
-                      <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-0.5">
+                      <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-0.5">
                         <MdAttachMoney className="text-xs" /> {formatSalary(salary)}
                       </span>
                     )}
-                    <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">
+                    <span className="text-[11px] sm:text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">
                       {hires} hires
                     </span>
                   </div>

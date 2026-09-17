@@ -13,7 +13,7 @@ import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import {
   MdShare, MdFileDownload, MdOpenInNew, MdSearch,
-  MdCheckCircle, MdBusiness, MdWork, MdBadge, MdFilterList
+  MdCheckCircle, MdBusiness, MdWork, MdBadge, MdFilterList, MdClose
 } from "react-icons/md";
 
 const ResumeSharingScreen = () => {
@@ -151,19 +151,19 @@ const ResumeSharingScreen = () => {
         ]}
       />
 
-      <div className="px-6 pb-10 space-y-6">
+      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-16 flex flex-col items-center justify-center gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 sm:p-16 flex flex-col items-center justify-center gap-3">
             <Loader inline={true} />
             <p className="text-slate-400 text-xs font-semibold">Loading placement drive details...</p>
           </div>
         ) : drives.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center shadow-sm max-w-xl mx-auto my-8">
-            <div className="w-16 h-16 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 mx-auto mb-4">
-              <MdBusiness size={32} />
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-6 sm:p-12 text-center shadow-sm max-w-xl mx-auto my-6 sm:my-8">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 mx-auto mb-4">
+              <MdBusiness size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">No Placement Drives Found</h3>
-            <p className="text-slate-500 text-xs mb-6 leading-relaxed">
+            <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-1">No Placement Drives Found</h3>
+            <p className="text-slate-500 text-xs mb-5 sm:mb-6 leading-relaxed">
               Resume sharing placement drives ke according hoti hai. Candidates ke resumes share karne ke liye pehle Placement Drive create karein aur candidates shortlist karein.
             </p>
             <button
@@ -176,7 +176,7 @@ const ResumeSharingScreen = () => {
         ) : (
           <>
             {/* Drive Selector Bar */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 font-bold shrink-0">
                   <MdBusiness size={20} />
@@ -197,11 +197,11 @@ const ResumeSharingScreen = () => {
               </div>
 
               {activeDrive && (
-                <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 flex-wrap">
-                  <span className="bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2 sm:gap-3 text-xs font-semibold text-slate-600 flex-wrap pt-1 sm:pt-0">
+                  <span className="bg-slate-100 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 text-[11px] sm:text-xs">
                     Shortlisted: <strong>{shortlistedCandidates.length}</strong>
                   </span>
-                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs">
                     Resumes Shared: <strong>{resumeSharedRecords.length}</strong>
                   </span>
                 </div>
@@ -209,8 +209,8 @@ const ResumeSharingScreen = () => {
             </div>
 
             {/* Action Header */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center h-10 w-full sm:w-80 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 shadow-sm hover:border-slate-300 focus-within:border-orange-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+            <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center h-10 w-full sm:w-80 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 shadow-xs hover:border-slate-300 focus-within:border-orange-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
                 <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={18} />
                 <input
                   type="text"
@@ -219,12 +219,21 @@ const ResumeSharingScreen = () => {
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"
                 />
+                {search && (
+                  <button 
+                    onClick={() => setSearch("")} 
+                    className="text-slate-400 hover:text-slate-600 ml-1 p-0.5 cursor-pointer"
+                    title="Clear Search"
+                  >
+                    <MdClose size={16} />
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={toggleSelectAll}
-                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer text-center"
                 >
                   {selectedStudentIds.length === filteredCandidates.length && filteredCandidates.length > 0 ? "Deselect All" : "Select All"}
                 </button>
@@ -232,22 +241,127 @@ const ResumeSharingScreen = () => {
                 <button
                   onClick={handleBulkShare}
                   disabled={sharing || selectedStudentIds.length === 0}
-                  className="h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-5 rounded-xl transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-5 rounded-xl transition shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   <MdShare size={16} /> {sharing ? "Sharing..." : `Share Selected (${selectedStudentIds.length})`}
                 </button>
               </div>
             </div>
 
-            {/* Candidate Resume Sharing Table */}
+            {/* Candidate Resume Sharing Table / Mobile Cards */}
             {filteredCandidates.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center">
                 <p className="text-slate-500 font-semibold text-sm">No shortlisted candidates for this drive yet.</p>
                 <p className="text-slate-400 text-xs mt-1">Shortlist candidates from the Placement Drives page first.</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile Card View */}
+                <div className="block md:hidden divide-y divide-slate-100">
+                  {filteredCandidates.map((candidate) => {
+                    const isChecked = selectedStudentIds.includes(candidate._id);
+                    const shareRecord = getShareRecord(candidate._id);
+                    const resumeURL = shareRecord?.resumeURL || candidate.resumeURL || "";
+                    const status = shareRecord?.status || "Not Shared";
+                    const sharedDate = shareRecord?.sharedAt ? new Date(shareRecord.sharedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+                    return (
+                      <div
+                        key={candidate._id}
+                        className={`p-3.5 space-y-3 transition ${isChecked ? "bg-orange-50/40" : "bg-white"}`}
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelectStudent(candidate._id)}
+                              className="w-4 h-4 text-orange-500 rounded focus:ring-orange-400 mt-0.5 cursor-pointer shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p
+                                onClick={() => navigate(`/student-profile/${candidate._id || candidate.studentId}`)}
+                                className="font-bold text-xs text-slate-900 hover:text-orange-600 transition cursor-pointer truncate"
+                              >
+                                {candidate.firstName} {candidate.lastName}
+                              </p>
+                              <p className="text-[10px] text-slate-400">PRKey: {candidate.prkey || "—"}</p>
+                            </div>
+                          </div>
+
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 truncate max-w-[130px]">
+                            {candidate.technology || candidate.techno || candidate.track || "General"}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-50 text-[11px]">
+                          <div>
+                            {resumeURL ? (
+                              <a
+                                href={resumeURL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition border border-orange-100"
+                              >
+                                <MdOpenInNew size={12} /> View Resume
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-400">
+                                No Resume
+                              </span>
+                            )}
+                          </div>
+
+                          <select
+                            value={status}
+                            onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border outline-none cursor-pointer ${
+                              status === "Shortlisted for Interview" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                              status === "Company Reviewed" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                              status === "Shared" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              "bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
+                          >
+                            <option value="Not Shared">Not Shared</option>
+                            <option value="Shared">Shared</option>
+                            <option value="Company Reviewed">Company Reviewed</option>
+                            <option value="Shortlisted for Interview">Shortlisted for Interview</option>
+                          </select>
+                        </div>
+
+                        {sharedDate !== "—" && (
+                          <div className="text-[10px] text-slate-400">
+                            Last Shared: <span className="font-semibold text-slate-600">{sharedDate}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              setSelectedStudentIds([candidate._id]);
+                              handleBulkShare();
+                            }}
+                            className="flex-1 py-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <MdShare size={12} /> Share
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedStudentForInterview(candidate);
+                              setIsInterviewModalOpen(true);
+                            }}
+                            className="flex-1 py-1.5 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            Schedule Interview
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                       <tr>
@@ -347,7 +461,7 @@ const ResumeSharingScreen = () => {
                                   setSelectedStudentIds([candidate._id]);
                                   handleBulkShare();
                                 }}
-                                className="px-2.5 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <MdShare size={12} /> Share
                               </button>
@@ -356,7 +470,7 @@ const ResumeSharingScreen = () => {
                                   setSelectedStudentForInterview(candidate);
                                   setIsInterviewModalOpen(true);
                                 }}
-                                className="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-slate-900 text-white hover:bg-slate-800 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1 cursor-pointer"
                               >
                                 Schedule Interview
                               </button>

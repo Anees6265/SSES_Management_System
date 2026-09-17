@@ -18,34 +18,34 @@ const AlertBox = ({ data = {}, loading }) => {
   const { studentsReadyButNoInterview, lowestPerformingDepartment } = data;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition">
-      <div className="flex items-center gap-2 mb-5">
-        <div className="p-2 bg-amber-50 text-amber-600 rounded-lg text-lg">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 hover:shadow-md transition">
+      <div className="flex items-center gap-2 mb-4 sm:mb-5">
+        <div className="p-2 bg-amber-50 text-amber-600 rounded-lg text-lg shrink-0">
           <MdNotificationsActive />
         </div>
         <div>
-          <h3 className="font-bold text-gray-800 text-base">Alerts & Key Insights</h3>
-          <p className="text-xs text-gray-500">Critical attention items requiring TPO & HOD action</p>
+          <h3 className="font-bold text-gray-800 text-sm sm:text-base">Alerts & Key Insights</h3>
+          <p className="text-[11px] sm:text-xs text-gray-500">Critical attention items requiring TPO & HOD action</p>
         </div>
       </div>
 
-      <div className="space-y-3.5">
+      <div className="space-y-3 sm:space-y-3.5">
         {/* Alert 1 */}
-        <div className="flex items-start gap-3.5 p-4 bg-amber-50/80 border border-amber-200/70 rounded-xl transition hover:bg-amber-50">
+        <div className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 bg-amber-50/80 border border-amber-200/70 rounded-xl transition hover:bg-amber-50">
           <div className="p-2 bg-amber-500 text-white rounded-lg shrink-0 mt-0.5 shadow-sm">
-            <MdWarningAmber className="text-lg" />
+            <MdWarningAmber className="text-base sm:text-lg" />
           </div>
-          <div className="flex-1">
-            <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Ready but No Interview</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-amber-600">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-800 uppercase tracking-wider">Ready but No Interview</p>
+            <div className="flex items-baseline gap-2 mt-0.5 sm:mt-1 flex-wrap">
+              <span className="text-xl sm:text-2xl font-extrabold text-amber-600">
                 {studentsReadyButNoInterview ?? "0"}
               </span>
-              <span className="text-xs font-semibold text-gray-500">eligible students awaiting drive schedule</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-gray-500">eligible students awaiting drive schedule</span>
             </div>
             <button 
               onClick={() => navigate("/readiness-status")}
-              className="mt-2 text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 group"
+              className="mt-2 text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 group cursor-pointer"
             >
               View Ready Students <MdArrowForward className="group-hover:translate-x-1 transition" />
             </button>
@@ -54,24 +54,24 @@ const AlertBox = ({ data = {}, loading }) => {
 
         {/* Alert 2 */}
         {lowestPerformingDepartment && (
-          <div className="flex items-start gap-3.5 p-4 bg-rose-50/80 border border-rose-200/70 rounded-xl transition hover:bg-rose-50">
+          <div className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 bg-rose-50/80 border border-rose-200/70 rounded-xl transition hover:bg-rose-50">
             <div className="p-2 bg-rose-500 text-white rounded-lg shrink-0 mt-0.5 shadow-sm">
-              <MdTrendingDown className="text-lg" />
+              <MdTrendingDown className="text-base sm:text-lg" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-bold text-gray-800 uppercase tracking-wider">Lowest Placement Rate Dept</p>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-lg font-bold text-rose-600">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold text-gray-800 uppercase tracking-wider">Lowest Placement Rate Dept</p>
+              <div className="flex items-baseline gap-2 mt-0.5 sm:mt-1 flex-wrap">
+                <span className="text-base sm:text-lg font-bold text-rose-600 truncate">
                   {lowestPerformingDepartment?.name || "—"}
                 </span>
-                <span className="text-xs font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-extrabold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">
                   {lowestPerformingDepartment?.placementPercentage ?? 0}% Placed
                 </span>
               </div>
               {lowestPerformingDepartment?.subDepartmentId && (
                 <button 
                   onClick={() => navigate(`/placements/department/${lowestPerformingDepartment.subDepartmentId}`)}
-                  className="mt-2 text-xs font-bold text-rose-700 hover:text-rose-900 flex items-center gap-1 group"
+                  className="mt-2 text-xs font-bold text-rose-700 hover:text-rose-900 flex items-center gap-1 group cursor-pointer"
                 >
                   View Department Detail <MdArrowForward className="group-hover:translate-x-1 transition" />
                 </button>

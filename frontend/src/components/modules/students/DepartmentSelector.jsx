@@ -19,15 +19,15 @@ const DepartmentSelector = () => {
         breadcrumbs={[{ label: "Academics" }, { label: "Student Progress" }]}
       />
 
-      <div className="p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+      <div className="p-3.5 sm:p-5 lg:p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 sm:mb-4">
           Select Department
         </p>
 
         {subDepts.length === 0 ? (
           <div className="text-center py-16 text-gray-400">No departments found</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {subDepts.map((dept) => (
               <SubDepartmentCard
                 key={dept._id}

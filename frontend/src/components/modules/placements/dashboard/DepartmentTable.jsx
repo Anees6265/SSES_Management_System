@@ -48,8 +48,82 @@ const DepartmentTable = ({ data = [], loading }) => {
         </div>
       </div>
 
-      {/* Table Content */}
-      <div className="overflow-x-auto">
+      {/* Mobile Cards View (< 768px) */}
+      <div className="md:hidden p-3.5 space-y-3">
+        {filteredData.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-xs font-medium">
+            No department placement data found
+          </div>
+        ) : (
+          filteredData.map((dept) => {
+            const pct = dept.placementPercentage ?? 0;
+            const isHigh = pct >= 75;
+            const isMid  = pct >= 50 && pct < 75;
+
+            return (
+              <div
+                key={dept.subDepartmentId}
+                onClick={() => navigate(`/placements/department/${dept.subDepartmentId}`)}
+                className="bg-white border border-gray-100 rounded-xl p-3.5 space-y-3 shadow-2xs hover:border-orange-200 transition cursor-pointer active:scale-[0.99]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100/70 text-orange-600 font-bold flex items-center justify-center text-xs border border-orange-200 shrink-0">
+                      {(dept.subDepartmentName || "D").charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-800 text-xs truncate">
+                        {dept.subDepartmentName || "—"}
+                      </p>
+                      {dept.subDepartmentCode && (
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                          {dept.subDepartmentCode}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px] shrink-0 border border-emerald-100">
+                    <MdTrendingUp /> {dept.placedStudents ?? 0} placed
+                  </span>
+                </div>
+
+                {/* Progress Bar & Stats */}
+                <div className="space-y-1.5 bg-gray-50/70 p-2.5 rounded-lg border border-gray-100/80">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-gray-500 text-[11px]">Placement Rate:</span>
+                    <span className={isHigh ? "text-emerald-600" : isMid ? "text-amber-600" : "text-rose-500"}>
+                      {pct}% ({dept.placedStudents ?? 0}/{dept.totalStudents ?? 0} students)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200/80 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isHigh
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                          : isMid
+                          ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                          : "bg-gradient-to-r from-rose-400 to-red-500"
+                      }`}
+                      style={{ width: `${Math.min(100, pct)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-0.5 text-xs">
+                  <span className="text-[11px] text-gray-400">Total: <strong className="text-gray-700">{dept.totalStudents ?? 0}</strong></span>
+                  <span className="text-orange-600 font-bold flex items-center gap-0.5 text-[11px]">
+                    View Department <MdArrowForward size={14} />
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table Content (>= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wider">

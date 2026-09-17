@@ -27,28 +27,28 @@ const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
   const studentPlacements = data?.data?.studentPlacements || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-slate-50 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {company.companyLogo ? (
               <img
                 src={company.companyLogo}
                 alt={company.companyName}
-                className="w-12 h-12 rounded-2xl object-cover border border-white/20 shadow-xs"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover border border-white/20 shadow-xs shrink-0"
               />
             ) : (
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-extrabold text-xl flex items-center justify-center shadow-xs">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-extrabold text-lg sm:text-xl flex items-center justify-center shadow-xs shrink-0">
                 {company.companyName?.charAt(0)?.toUpperCase() || "C"}
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-extrabold text-white">{company.companyName}</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-extrabold text-white truncate">{company.companyName}</h2>
                 <span
-                  className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
                     company.status === "Inactive"
                       ? "bg-red-500/20 text-red-300 border-red-400/30"
                       : "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
@@ -57,27 +57,27 @@ const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
                   {company.status || "Active"}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
-                <MdCategory className="text-orange-400" /> {company.industry || "IT Services"} • {company.companyType || "Company"}
+              <p className="text-[11px] sm:text-xs text-slate-300 flex items-center gap-1 mt-0.5 truncate">
+                <MdCategory className="text-orange-400 shrink-0" /> {company.industry || "IT Services"} • {company.companyType || "Company"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {onEdit && (
               <button
                 onClick={() => {
                   onClose();
                   onEdit(company);
                 }}
-                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition flex items-center gap-1 border border-white/20"
+                className="px-2.5 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition flex items-center gap-1 border border-white/20 cursor-pointer"
               >
-                <MdEdit size={14} /> Edit Company
+                <MdEdit size={14} /> <span className="hidden sm:inline">Edit Company</span>
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
             >
               <MdClose size={18} />
             </button>
@@ -94,7 +94,7 @@ const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
             Failed to load company details: {error?.data?.message || 'Server error'}
           </div>
         ) : (
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 text-xs">
             
             {/* Quick Stat Highlights */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

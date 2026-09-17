@@ -431,7 +431,7 @@ const CurriculumManagement = () => {
             title="Curriculum Management"
             subtitle="Manage syllabus and task lists across departments, sessions, and levels"
             badge={`${curriculumRows.length} curricula`}
-            breadcrumbs={[{ label: "Settings" }, { label: "Curriculum", path: "/curriculum-management" }]}
+            breadcrumbs={[{ label: "Academics" }, { label: "Curriculum Management" }]}
           />
 
           <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6">
@@ -656,9 +656,9 @@ const CurriculumManagement = () => {
               ) : (
                 <>
                   {/* Mobile Cards Layout (block md:hidden) */}
-                  <div className="block md:hidden divide-y divide-slate-100">
+                  <div className="block md:hidden p-3 space-y-3">
                     {paginatedData.map((row) => (
-                      <div key={row.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition">
+                      <div key={row.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-3 hover:border-orange-200 transition">
                         {/* Top Row: Year/Session Chip + Status + Action Menu */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 flex-wrap">

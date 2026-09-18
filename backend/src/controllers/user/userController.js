@@ -9,6 +9,8 @@ const { getPermissionsForRole, allPermissions } = require("../../config/permissi
 const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
 
+const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "");
+
 // Builds the JWT payload — single source of truth used by login, refresh, and Google auth
 const buildTokenPayload = (user) => ({
   id: user._id,
@@ -30,11 +32,19 @@ exports.createUser = async (req, res) => {
   try {
     let { profileImage, name, email, mobileNo, password, adharCard, department, position, role, isActive } = req.body;
 
+    name = typeof name === "string" ? name.trim() : name;
+    email = typeof email === "string" ? email.trim().toLowerCase() : email;
+    mobileNo = mobileNo !== undefined && mobileNo !== null ? String(mobileNo).trim() : "";
+    adharCard = adharCard !== undefined && adharCard !== null ? String(adharCard).trim() : "";
+    position = typeof position === "string" ? position.trim() : position;
+    role = typeof role === "string" ? role.trim().toLowerCase() : role;
+    department = typeof department === "string" ? department.trim() : department;
+
     if (!name || !email || !mobileNo || !password || !adharCard || !position || !role) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    if (["faculty", "hod"].includes(role) && !department) {
+    if (["faculty", "hod"].includes(role) && (!department || department.toLowerCase() === "general")) {
       return res.status(400).json({ message: "Department is required for faculty/HOD" });
     }
 
@@ -42,8 +52,6 @@ exports.createUser = async (req, res) => {
     if (!collegeEmailRegex.test(email)) {
       return res.status(400).json({ message: "Only institutional emails (@ssism.org) are allowed." });
     }
-
-    email = email.toLowerCase();
 
     const allowedRoles = ["admin", "superadmin", "faculty", "hod", "placement_officer"];
     if (!allowedRoles.includes(role)) {
@@ -76,33 +84,74 @@ exports.createUser = async (req, res) => {
 
     // Resolve departmentId from department name for department-scoped roles
     let departmentId = null;
-    if (["faculty", "hod", "placement_officer"].includes(role) && department) {
-      const deptDoc = await Department.findOne({ name: department, isActive: true }).select("_id");
-      if (!deptDoc) return res.status(400).json({ message: "Selected department does not exist" });
-      departmentId = deptDoc._id;
+    let resolvedDepartment = department || "General";
+
+    if (department && department.toLowerCase() !== "general") {
+      const isObjId = mongoose.Types.ObjectId.isValid(department) && /^[0-9a-fA-F]{24}$/.test(department);
+      const queryOr = isObjId
+        ? [{ _id: department }, { name: new RegExp(`^${escapeRegex(department)}$`, "i") }]
+        : [{ name: new RegExp(`^${escapeRegex(department)}$`, "i") }];
+
+      if (/^b\.?tech$/i.test(department)) {
+        queryOr.push({ name: new RegExp("^B\\.?Tech$", "i") });
+      }
+
+      const deptDoc = await Department.findOne({
+        isActive: true,
+        $or: queryOr,
+      }).select("_id name");
+
+      if (deptDoc) {
+        departmentId = deptDoc._id;
+        resolvedDepartment = deptDoc.name;
+      } else if (["faculty", "hod", "placement_officer"].includes(role)) {
+        return res.status(400).json({ message: `Selected department "${department}" does not exist or is inactive.` });
+      }
+    }
+
+    // Check for duplicate user across all unique fields (email, mobileNo, adharCard)
+    const existing = await User.findOne({
+      $or: [{ email }, { mobileNo }, { adharCard }],
+    });
+
+    if (existing) {
+      if (existing.email && existing.email.toLowerCase() === email) {
+        return res.status(400).json({ message: "A user with this email address already exists." });
+      }
+      if (existing.mobileNo && existing.mobileNo === mobileNo) {
+        return res.status(400).json({ message: "A user with this mobile number already exists." });
+      }
+      if (existing.adharCard && existing.adharCard === adharCard) {
+        return res.status(400).json({ message: "A user with this Aadhar number already exists." });
+      }
+      return res.status(400).json({ message: "User with this email, mobile number, or Aadhar already exists." });
     }
 
     const newUserId = new mongoose.Types.ObjectId();
     let uploadedImageUrl = profileImage;
-    if (profileImage && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-      });
+    if (profileImage && typeof profileImage === "string" && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
+      try {
+        if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+          cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
+          });
 
-      const uploadResponse = await cloudinary.uploader.upload(profileImage, {
-        folder: "user_profiles",
-        public_id: `user_${newUserId}`,
-        overwrite: true,
-      });
-      uploadedImageUrl = uploadResponse.secure_url;
+          const uploadResponse = await cloudinary.uploader.upload(profileImage, {
+            folder: "user_profiles",
+            public_id: `user_${newUserId}`,
+            overwrite: true,
+          });
+          uploadedImageUrl = uploadResponse.secure_url;
+        }
+      } catch (cloudErr) {
+        console.warn("Cloudinary upload failed in createUser (proceeding without image):", cloudErr.message);
+        uploadedImageUrl = null;
+      }
     }
 
-    const existing = await User.findOne({ $or: [{ email }, { adharCard }] });
-    if (existing) return res.status(400).json({ message: "User with this email or Aadhar already exists." });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(String(password), 10);
     const permissions = getPermissionsForRole(role);
 
     const newUser = new User({
@@ -113,7 +162,7 @@ exports.createUser = async (req, res) => {
       mobileNo,
       password: hashedPassword,
       adharCard,
-      department: department || "General",
+      department: resolvedDepartment,
       departmentId,
       position,
       role,
@@ -128,6 +177,23 @@ exports.createUser = async (req, res) => {
       user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role, isActive: newUser.isActive },
     });
   } catch (error) {
+    console.error("Error in createUser:", error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || "";
+      const fieldMap = {
+        email: "Email address",
+        mobileNo: "Mobile number",
+        adharCard: "Aadhar card number",
+      };
+      const label = fieldMap[field] || "A user with these details";
+      return res.status(400).json({
+        message: `${label} already exists in the system.`,
+      });
+    }
+    if (error.name === "ValidationError") {
+      const firstErr = Object.values(error.errors || {})[0];
+      return res.status(400).json({ message: firstErr?.message || error.message });
+    }
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
@@ -273,27 +339,33 @@ exports.updateUserFields = async (req, res) => {
     }
 
     let uploadedImageUrl = profileImage;
-    if (profileImage && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-      });
+    if (profileImage && typeof profileImage === "string" && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
+      try {
+        if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+          cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET,
+          });
 
-      const uploadResponse = await cloudinary.uploader.upload(profileImage, {
-        folder: "user_profiles",
-        public_id: `user_${id}`,
-        overwrite: true,
-      });
-      uploadedImageUrl = uploadResponse.secure_url;
+          const uploadResponse = await cloudinary.uploader.upload(profileImage, {
+            folder: "user_profiles",
+            public_id: `user_${id}`,
+            overwrite: true,
+          });
+          uploadedImageUrl = uploadResponse.secure_url;
+        }
+      } catch (cloudErr) {
+        console.warn("Cloudinary upload failed in updateUserFields:", cloudErr.message);
+      }
     }
 
     const updateData = {
-      ...(name && { name }),
-      ...(mobileNo && { mobileNo }),
-      ...(position && { position }),
-      ...(role && { role }),
-      ...(department !== undefined && { department }),
+      ...(name && { name: typeof name === "string" ? name.trim() : name }),
+      ...(mobileNo && { mobileNo: String(mobileNo).trim() }),
+      ...(position && { position: typeof position === "string" ? position.trim() : position }),
+      ...(role && { role: typeof role === "string" ? role.trim().toLowerCase() : role }),
+      ...(department !== undefined && { department: typeof department === "string" ? department.trim() : department }),
       ...(typeof isActive === "boolean" && { isActive }),
       ...(profileImage && { profileImage: uploadedImageUrl }),
     };
@@ -317,7 +389,10 @@ exports.updateUserFields = async (req, res) => {
 
     if (["faculty", "hod", "placement_officer"].includes(targetRole)) {
       if (targetDept) {
-        const deptDoc = await Department.findOne({ name: targetDept, isActive: true }).select("_id");
+        const deptDoc = await Department.findOne({
+          isActive: true,
+          name: new RegExp(`^${escapeRegex(targetDept)}$`, "i")
+        }).select("_id");
         if (deptDoc) {
           updateData.departmentId = deptDoc._id;
         } else {
@@ -335,6 +410,24 @@ exports.updateUserFields = async (req, res) => {
 
     res.status(200).json({ success: true, message: "User updated successfully", user: updatedUser });
   } catch (error) {
+    console.error("Error in updateUserFields:", error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || "";
+      const fieldMap = {
+        email: "Email address",
+        mobileNo: "Mobile number",
+        adharCard: "Aadhar card number",
+      };
+      const label = fieldMap[field] || "A user with these details";
+      return res.status(400).json({
+        success: false,
+        message: `${label} already exists in the system.`,
+      });
+    }
+    if (error.name === "ValidationError") {
+      const firstErr = Object.values(error.errors || {})[0];
+      return res.status(400).json({ success: false, message: firstErr?.message || error.message });
+    }
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };

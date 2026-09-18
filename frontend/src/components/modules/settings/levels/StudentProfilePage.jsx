@@ -1657,10 +1657,12 @@ const StudentProfilePage = () => {
                 ]}
                 showBack={true}
                 onBack={() => {
-                    if (location.state?.from) {
+                    if (location.state?.from && !location.state.from.includes('/report')) {
                         navigate(location.state.from);
-                    } else {
+                    } else if (window.history.state && window.history.state.idx > 0) {
                         navigate(-1);
+                    } else {
+                        navigate("/student-detail-table");
                     }
                 }}
             />
@@ -1671,10 +1673,12 @@ const StudentProfilePage = () => {
                     <div className="flex items-center gap-2.5 sm:gap-3">
                         <button
                             onClick={() => {
-                                if (location.state?.from) {
+                                if (location.state?.from && !location.state.from.includes('/report')) {
                                     navigate(location.state.from);
-                                } else {
+                                } else if (window.history.state && window.history.state.idx > 0) {
                                     navigate(-1);
+                                } else {
+                                    navigate("/student-detail-table");
                                 }
                             }}
                             className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition flex items-center gap-1.5 text-xs font-bold shrink-0"

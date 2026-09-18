@@ -28,7 +28,7 @@ beforeEach(async () => {
   user = await User.create({
     name: 'Test User',
     email: `testuser${Date.now()}@example.com`,
-    mobileNo: '9876543210', 
+    mobileNo: '9876543200', 
     password: 'hashedpassword',
     adharCard: `${Math.floor(Math.random() * 1000000000000)}`,
     department: 'IT',
@@ -116,6 +116,24 @@ beforeAll(async () => {
   
       expect(res.statusCode).toBe(400);
       expect(res.body.message).toMatch(/already exists/i);
+    });
+
+    it('should reject duplicate mobile number with 400 instead of 500', async () => {
+      await request(app).post('/api/user/signup').send(validPayload);
+
+      const duplicateMobilePayload = {
+        ...validPayload,
+        email: "different.email@ssism.org",
+        adharCard: "998877665544",
+        mobileNo: validPayload.mobileNo, // duplicate mobile
+      };
+
+      const res = await request(app)
+        .post('/api/user/signup')
+        .send(duplicateMobilePayload);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toMatch(/mobile number already exists/i);
     });
   
     it('should reject invalid roles', async () => {

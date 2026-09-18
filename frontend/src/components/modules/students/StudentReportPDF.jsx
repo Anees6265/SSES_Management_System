@@ -14,6 +14,7 @@ import {
 
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
+import megLogo from "../../../assets/images/meg-logo.png";
 import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
 import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
 import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
@@ -437,11 +438,17 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
       .length,
   }));
 
+  const deptCode = (studentData?.subDepartmentId?.departmentId?.code || "").toUpperCase();
+  const deptName = (studentData?.subDepartmentId?.departmentId?.name || studentData?.subDepartmentId?.name || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (studentData?.course && ["BBA", "BCOM"].some(c => studentData.course.toUpperCase().includes(c)));
+
+  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const rawLogo = studentData?.subDepartmentId?.departmentId?.logo;
+  const isSwanLogo = typeof rawLogo === "string" && rawLogo.includes("mvmrynblzpwafc6zking");
   const deptLogo =
-    (typeof studentData?.subDepartmentId?.departmentId?.logo === "string" &&
-      studentData.subDepartmentId.departmentId.logo.trim())
-      ? studentData.subDepartmentId.departmentId.logo
-      : itegLogo;
+    (typeof rawLogo === "string" && rawLogo.trim() && !isSwanLogo)
+      ? rawLogo
+      : defaultDeptLogo;
 
   return (
     <Document>
@@ -462,7 +469,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 STUDENT PERFORMANCE REPORT CARD
               </Text>
               <Text style={{ fontSize: 7.5, color: "#4B5563", marginTop: 1, textAlign: "center" }}>
-                Department of {studentData?.subDepartmentId?.departmentId?.name || "Information Technology & Emerging Growth (ITEG)"}
+                Department of {studentData?.subDepartmentId?.departmentId?.name || (isMeg ? "Management Excellence Group (MEG)" : "Information Technology & Emerging Growth (ITEG)")}
               </Text>
             </View>
 
@@ -475,7 +482,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#4B5563" }}>
             <Text>Academic Session: {reportCardData?.batchYear || "2025–26"}</Text>
             <Text>Batch Year: {reportCardData?.batchYear || "2025–26"}</Text>
-            <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || "ITEG"}</Text>
+            <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || (isMeg ? "MEG" : "ITEG")}</Text>
             <Text>Course / Level: {studentData?.course || "N/A"} ({studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"})</Text>
           </View>
         </View>
@@ -608,7 +615,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 {/* 4. Subject-wise Performance */}
                 {subjectPerformance && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>4. Subject-wise Performance</Text>
+                    <Text style={styles.sectionTitle}>{isMeg ? "4. Subject-wise Performance & Academic Modules" : "4. Subject-wise Performance & Technical Modules"}</Text>
                     <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
                       <Text style={{ width: "30%" }}>Subject</Text>
                       <Text style={{ width: "15%", textAlign: "center" }}>Total Tasks</Text>
@@ -637,12 +644,18 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                         <Text style={{ width: "70%" }}>Academic Year</Text>
                         <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
                       </View>
-                      {reportCardData.academicPerformance?.yearWiseSGPA?.map((y, idx) => (
-                        <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>{y.year === "FY" ? "First Year" : y.year === "SY" ? "Second Year" : y.year === "TY" ? "Third Year" : y.year}</Text>
-                          <Text style={{ width: "30%", textAlign: "center", fontWeight: "bold" }}>{y.sgpa || "N/A"}</Text>
-                        </View>
-                      ))}
+                      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
+                        <Text style={{ width: "70%" }}>First Year (FY)</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.firstYearSgpa || "N/A"}</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
+                        <Text style={{ width: "70%" }}>Second Year (SY)</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.secondYearSgpa || "N/A"}</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", padding: 4, fontSize: 8 }}>
+                        <Text style={{ width: "70%" }}>Third Year (TY)</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.thirdYearSgpa || "N/A"}</Text>
+                      </View>
                     </View>
                     <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
@@ -676,7 +689,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                       {interview.items.map((item, idx) => (
                         <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
-                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{item.itemName}</Text>
+                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{(isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName}</Text>
                           <Text style={{ fontSize: 9, fontWeight: "bold", color: "#EA580C", marginTop: 2 }}>{item.value} / 5</Text>
                         </View>
                       ))}

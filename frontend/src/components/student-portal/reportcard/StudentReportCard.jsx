@@ -32,6 +32,7 @@ import { RiDoubleQuotesL } from "react-icons/ri";
 import { useGetMyReportCardQuery, useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
+import megLogo from "../../../assets/images/meg-logo.png";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import StudentReportPDF from "../../modules/students/StudentReportPDF";
 
@@ -237,8 +238,14 @@ export default function StudentReportCard() {
   const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST";
   const currentSubLevel = raw.currentSubLevelId?.name || raw.currentLevel || "1A";
   const currentYear = translateLevelName(raw.currentLevelId?.name || raw.currentLevel);
-  const departmentName = raw.subDepartmentId?.name || "ITEG";
-  const departmentLogo = (typeof raw.subDepartmentId?.departmentId?.logo === 'string' && raw.subDepartmentId.departmentId.logo.trim()) ? raw.subDepartmentId.departmentId.logo : itegLogo;
+  const deptCode = (raw.subDepartmentId?.departmentId?.code || "").toUpperCase();
+  const deptName = (raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (raw.course && ["BBA", "BCOM"].some(c => raw.course.toUpperCase().includes(c)));
+  const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || (isMeg ? "MEG" : "ITEG");
+  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const rawLogo = raw.subDepartmentId?.departmentId?.logo;
+  const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
+  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo) ? rawLogo : defaultDeptLogo;
   const batchYear = rc?.batchYear || raw.sessionId?.name || "2025–26";
   const overallGrade = rc?.overallGrade || "A";
 
@@ -667,18 +674,28 @@ export default function StudentReportCard() {
               <div className="space-y-2.5">
                 {(interviewSection?.items?.length > 0
                   ? interviewSection.items
-                  : [
-                    { itemName: "Technical Knowledge", value: 4.0 },
-                    { itemName: "Communication", value: 4.0 },
-                    { itemName: "Confidence", value: 3.8 },
-                    { itemName: "Problem Solving", value: 4.1 }
-                  ]
+                  : (isMeg
+                    ? [
+                      { itemName: "Business & Domain Knowledge", value: 4.0 },
+                      { itemName: "Business Communication & Articulation", value: 4.0 },
+                      { itemName: "Confidence & Executive Presence", value: 3.8 },
+                      { itemName: "Case Analysis & Problem Solving", value: 4.1 },
+                      { itemName: "Overall Managerial Recommendation", value: 4.0 }
+                    ]
+                    : [
+                      { itemName: "Technical Knowledge", value: 4.0 },
+                      { itemName: "Communication", value: 4.0 },
+                      { itemName: "Confidence", value: 3.8 },
+                      { itemName: "Problem Solving", value: 4.1 }
+                    ]
+                  )
                 ).map((item, idx) => {
                   const score = parseFloat(item.value) || 0;
+                  const displayName = (isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName;
                   return (
                     <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs">
-                      <span className="font-semibold text-slate-700">{item.itemName}</span>
-                      <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700 truncate pr-2">{displayName}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <StarRating rating={score} size="text-[10px]" />
                         <span className="font-bold text-slate-800">{score.toFixed(1)}</span>
                       </div>
@@ -714,14 +731,27 @@ export default function StudentReportCard() {
                 <span>💪</span> Demonstrated Strengths
               </h4>
               <ul className="space-y-1.5 text-xs text-emerald-900 font-medium">
-                <li className="flex items-start gap-1.5">
-                  <FaCheck className="text-emerald-500 text-[10px] mt-0.5 shrink-0" />
-                  <span>Consistent task completion & laboratory participation</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <FaCheck className="text-emerald-500 text-[10px] mt-0.5 shrink-0" />
-                  <span>Sound programming fundamentals and problem solving</span>
-                </li>
+                {(() => {
+                  const rawStrengths = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("strength"))?.value;
+                  const points = rawStrengths
+                    ? rawStrengths.split(/[.,]\s+/).filter(Boolean)
+                    : (isMeg
+                      ? [
+                        "Demonstrated business acumen, case analysis & presentation excellence",
+                        "Consistent assignment completion & active seminar participation"
+                      ]
+                      : [
+                        "Consistent task completion & laboratory participation",
+                        "Sound programming fundamentals and problem solving"
+                      ]
+                    );
+                  return points.map((p, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <FaCheck className="text-emerald-500 text-[10px] mt-0.5 shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ));
+                })()}
               </ul>
             </div>
 
@@ -730,14 +760,27 @@ export default function StudentReportCard() {
                 <span>🎯</span> Growth Focus Areas
               </h4>
               <ul className="space-y-1.5 text-xs text-amber-900 font-medium">
-                <li className="flex items-start gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 shrink-0" />
-                  <span>Advanced competitive coding and timed test practice</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 shrink-0" />
-                  <span>Mock interview composure and technical answering</span>
-                </li>
+                {(() => {
+                  const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve") || i.itemName.toLowerCase().includes("growth"))?.value;
+                  const points = rawAreas
+                    ? rawAreas.split(/[.,]\s+/).filter(Boolean)
+                    : (isMeg
+                      ? [
+                        "Financial modeling, data analytics & spreadsheet simulation practice",
+                        "Executive mock interview composure and structured case answering"
+                      ]
+                      : [
+                        "Advanced competitive coding and timed test practice",
+                        "Mock interview composure and technical answering"
+                      ]
+                    );
+                  return points.map((p, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ));
+                })()}
               </ul>
             </div>
 
@@ -848,11 +891,15 @@ export default function StudentReportCard() {
                 <div className="p-5 sm:p-7 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-sm">
-                      <FaLaptopCode size={18} />
+                      {isMeg ? <FaGraduationCap size={18} /> : <FaLaptopCode size={18} />}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-800">Subject-Wise Performance & Technical Mastery</h3>
-                      <p className="text-xs text-slate-400">Task completion, practical evaluations & subject ratings</p>
+                      <h3 className="text-base font-bold text-slate-800">
+                        {isMeg ? "Subject-Wise Performance & Academic Excellence" : "Subject-Wise Performance & Technical Mastery"}
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        {isMeg ? "Curriculum task completion, case studies & domain evaluations" : "Task completion, practical evaluations & subject ratings"}
+                      </p>
                     </div>
                   </div>
                   <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 self-start sm:self-auto">
@@ -1017,7 +1064,11 @@ export default function StudentReportCard() {
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
-                      <p className="text-xs text-slate-400">Recruitment drive preparedness ratings</p>
+                      <p className="text-xs text-slate-400">
+                        {isMeg
+                          ? "Business acumen, domain depth, articulate communication & executive composure"
+                          : "Recruitment drive preparedness ratings"}
+                      </p>
                     </div>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
@@ -1028,22 +1079,32 @@ export default function StudentReportCard() {
                 <div className="space-y-4">
                   {(interviewSection?.items?.length > 0
                     ? interviewSection.items
-                    : [
-                      { itemName: "Technical Knowledge", value: 4.0 },
-                      { itemName: "Articulation & Communication", value: 4.0 },
-                      { itemName: "Confidence & Composure", value: 3.8 },
-                      { itemName: "Problem Solving Approach", value: 4.1 },
-                      { itemName: "Overall Interview Recommendation", value: 4.0 }
-                    ]
+                    : (isMeg
+                      ? [
+                        { itemName: "Business & Domain Knowledge", value: 4.0 },
+                        { itemName: "Business Communication & Articulation", value: 4.0 },
+                        { itemName: "Confidence & Executive Presence", value: 3.8 },
+                        { itemName: "Case Analysis & Problem Solving", value: 4.1 },
+                        { itemName: "Overall Managerial Recommendation", value: 4.0 }
+                      ]
+                      : [
+                        { itemName: "Technical Knowledge", value: 4.0 },
+                        { itemName: "Articulation & Communication", value: 4.0 },
+                        { itemName: "Confidence & Composure", value: 3.8 },
+                        { itemName: "Problem Solving Approach", value: 4.1 },
+                        { itemName: "Overall Interview Recommendation", value: 4.0 }
+                      ]
+                    )
                   ).map((item, idx) => {
                     const score = parseFloat(item.value) || 0;
                     const max = item.maxMarks || 5;
                     const pct = Math.min(Math.round((score / max) * 100), 100);
+                    const displayName = (isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName;
 
                     return (
                       <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-bold text-slate-700">{item.itemName}</span>
+                          <span className="text-xs font-bold text-slate-700">{displayName}</span>
                           <div className="flex items-center gap-2">
                             <StarRating rating={score} size="text-[11px]" />
                             <span className="text-xs font-black text-slate-800">
@@ -1121,18 +1182,29 @@ export default function StudentReportCard() {
                 <p className="text-xs text-emerald-700/80">Key positive student traits observed by faculties</p>
 
                 <ul className="space-y-2 pt-2">
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
-                    <FaCheck className="text-emerald-500 text-xs mt-0.5 shrink-0" />
-                    <span>Consistent task completion and active laboratory participation</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
-                    <FaCheck className="text-emerald-500 text-xs mt-0.5 shrink-0" />
-                    <span>Sound programming fundamentals and algorithmic problem solving</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
-                    <FaCheck className="text-emerald-500 text-xs mt-0.5 shrink-0" />
-                    <span>Constructive team peer coordination and leadership</span>
-                  </li>
+                  {(() => {
+                    const rawStrengths = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("strength"))?.value;
+                    const points = rawStrengths
+                      ? rawStrengths.split(/[.,]\s+/).filter(Boolean)
+                      : (isMeg
+                        ? [
+                          "Demonstrated business acumen, case analysis & presentation excellence",
+                          "Consistent assignment completion & active seminar participation",
+                          "Constructive team peer coordination and managerial leadership"
+                        ]
+                        : [
+                          "Consistent task completion and active laboratory participation",
+                          "Sound programming fundamentals and algorithmic problem solving",
+                          "Constructive team peer coordination and leadership"
+                        ]
+                      );
+                    return points.map((pt, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-emerald-900">
+                        <FaCheck className="text-emerald-500 text-xs mt-0.5 shrink-0" />
+                        <span>{pt}</span>
+                      </li>
+                    ));
+                  })()}
                 </ul>
               </div>
 
@@ -1146,18 +1218,29 @@ export default function StudentReportCard() {
                 <p className="text-xs text-amber-700/80">Target developmental areas prior to final drives</p>
 
                 <ul className="space-y-2 pt-2">
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <span>Advanced competitive programming and timed coding test practice</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <span>Mock interview composure and structured technical answering</span>
-                  </li>
-                  <li className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                    <span>End-to-end fullstack project deployment and system architecture</span>
-                  </li>
+                  {(() => {
+                    const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve") || i.itemName.toLowerCase().includes("growth"))?.value;
+                    const points = rawAreas
+                      ? rawAreas.split(/[.,]\s+/).filter(Boolean)
+                      : (isMeg
+                        ? [
+                          "Financial modeling, data analytics & spreadsheet simulation practice",
+                          "Executive mock interview composure and structured case answering",
+                          "Strategic marketing & corporate case competition readiness"
+                        ]
+                        : [
+                          "Advanced competitive programming and timed coding test practice",
+                          "Mock interview composure and structured technical answering",
+                          "End-to-end fullstack project deployment and system architecture"
+                        ]
+                      );
+                    return points.map((pt, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-amber-900">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                        <span>{pt}</span>
+                      </li>
+                    ));
+                  })()}
                 </ul>
               </div>
             </div>

@@ -11,7 +11,8 @@ import {
 import Header from '../../shared/sidebar/Header';
 import Loader from "../../shared/loader/Loader";
 import { toast } from "react-toastify";
-import { FaLock, FaCheckCircle, FaStar, FaSyncAlt } from "react-icons/fa";
+import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus } from "react-icons/fa";
+import { MdDelete } from "react-icons/md";
 import { taskAPI } from "../../../services/taskService";
 
 const deepClone = (obj) => {
@@ -304,7 +305,12 @@ export default function StudentReportForm() {
       })
     };
 
-    // 2. Subject-wise Performance Table (Automatic / Read-Only)
+    // 2. Subject-wise Performance Table (Automatic / Read-Only from live tasks)
+    const deptCode = (student?.subDepartmentId?.departmentId?.code || "").toUpperCase();
+    const deptName = (student?.subDepartmentId?.departmentId?.name || student?.subDepartmentId?.name || "").toUpperCase();
+    const courseName = (student?.course || "").toUpperCase();
+    const isMeg = templateType === "MEG_WEIGHTED" || deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseName.includes(c));
+
     const subjectItems = [];
 
     // Prioritize taskPerf from /tasks/student/:id/performance if available
@@ -354,10 +360,17 @@ export default function StudentReportForm() {
     }
 
     if (subjectItems.length === 0) {
-      subjectItems.push({ itemName: "Python", value: "Excellent", score: 92, maxMarks: 100, remark: "4.12" });
-      subjectItems.push({ itemName: "DSA", value: "Very Good", score: 45, maxMarks: 50, remark: "3.90" });
-      subjectItems.push({ itemName: "HTML", value: "Excellent", score: 28, maxMarks: 30, remark: "4.40" });
-      subjectItems.push({ itemName: "MySQL", value: "Very Good", score: 22, maxMarks: 25, remark: "3.70" });
+      if (isMeg) {
+        subjectItems.push({ itemName: "Principles & Practice of Management", value: "Outstanding", score: 48, maxMarks: 50, remark: "4.80" });
+        subjectItems.push({ itemName: "Financial Accounting & Reporting", value: "Excellent", score: 44, maxMarks: 50, remark: "4.40" });
+        subjectItems.push({ itemName: "Business Communication & Soft Skills", value: "Excellent", score: 27, maxMarks: 30, remark: "4.50" });
+        subjectItems.push({ itemName: "Business Economics", value: "Very Good", score: 23, maxMarks: 25, remark: "4.60" });
+      } else {
+        subjectItems.push({ itemName: "Python", value: "Excellent", score: 92, maxMarks: 100, remark: "4.12" });
+        subjectItems.push({ itemName: "DSA", value: "Very Good", score: 45, maxMarks: 50, remark: "3.90" });
+        subjectItems.push({ itemName: "HTML", value: "Excellent", score: 28, maxMarks: 30, remark: "4.40" });
+        subjectItems.push({ itemName: "MySQL", value: "Very Good", score: 22, maxMarks: 25, remark: "3.70" });
+      }
     }
 
     const subjectPerformanceSection = {
@@ -366,7 +379,7 @@ export default function StudentReportForm() {
       items: subjectItems
     };
 
-    // 3. Soft Skills & Behavioural Evaluation
+    // 3. Soft Skills & Behavioural Evaluation (Fully Customizable)
     const softSkillsSection = {
       sectionName: "Soft Skills & Behavioural Evaluation",
       sectionType: "SoftSkillsRating",
@@ -380,18 +393,29 @@ export default function StudentReportForm() {
       ]
     };
 
-    // 4. Interview Evaluation
+    // 4. Interview Evaluation (Department-specific defaults, fully editable)
+    const interviewItems = isMeg
+      ? [
+          { itemName: "Business & Domain Knowledge", value: 4.0, maxMarks: 5 },
+          { itemName: "Business Communication & Articulation", value: 4.0, maxMarks: 5 },
+          { itemName: "Confidence & Executive Presence", value: 3.8, maxMarks: 5 },
+          { itemName: "Case Analysis & Problem Solving", value: 4.1, maxMarks: 5 },
+          { itemName: "Business Acumen & Practical Logic", value: 4.0, maxMarks: 5 },
+          { itemName: "Overall Managerial Recommendation", value: 4.0, maxMarks: 5 }
+        ]
+      : [
+          { itemName: "Technical Knowledge", value: 4.0, maxMarks: 5 },
+          { itemName: "Communication", value: 4.0, maxMarks: 5 },
+          { itemName: "Confidence", value: 3.0, maxMarks: 5 },
+          { itemName: "Problem Solving", value: 4.0, maxMarks: 5 },
+          { itemName: "Answer Quality", value: 4.0, maxMarks: 5 },
+          { itemName: "Overall Interview Rating", value: 3.8, maxMarks: 5 }
+        ];
+
     const interviewSection = {
       sectionName: "Interview Evaluation",
       sectionType: "InterviewRating",
-      items: [
-        { itemName: "Technical Knowledge", value: 4.0, maxMarks: 5 },
-        { itemName: "Communication", value: 4.0, maxMarks: 5 },
-        { itemName: "Confidence", value: 3.0, maxMarks: 5 },
-        { itemName: "Problem Solving", value: 4.0, maxMarks: 5 },
-        { itemName: "Answer Quality", value: 4.0, maxMarks: 5 },
-        { itemName: "Overall Interview Rating", value: 3.8, maxMarks: 5 }
-      ]
+      items: interviewItems
     };
 
     // 5. Career Readiness
@@ -418,14 +442,21 @@ export default function StudentReportForm() {
       ]
     };
 
-    // 7. Strengths & Areas for Improvement
+    // 7. Strengths & Areas for Improvement (Department-tailored)
+    const strengthsItems = isMeg
+      ? [
+          { itemName: "Strengths", value: "Strong business & domain concepts, Structured case analysis, Effective corporate communication & presentation, Active leadership" },
+          { itemName: "Areas for Improvement", value: "Advanced financial modeling, Executive interview composure, Strategic negotiation skills" }
+        ]
+      : [
+          { itemName: "Strengths", value: "Good programming fundamentals, Consistent task completion, Good communication, Active participation" },
+          { itemName: "Areas for Improvement", value: "Advanced problem solving, Interview confidence, Time management" }
+        ];
+
     const strengthsSection = {
       sectionName: "Strengths & Areas for Improvement",
       sectionType: "StrengthsImprovement",
-      items: [
-        { itemName: "Strengths", value: "Good programming fundamentals, Consistent task completion, Good communication, Active participation" },
-        { itemName: "Areas for Improvement", value: "Advanced problem solving, Interview confidence, Time management" }
-      ]
+      items: strengthsItems
     };
 
     // 8. Overall Performance
@@ -587,6 +618,30 @@ export default function StudentReportForm() {
       ...populated
     }));
     toast.success("Auto-filled from student profile & task record!");
+  };
+
+  const addDynamicItem = (sectionIndex, defaultItem = { itemName: "New Parameter", value: 4.0, maxMarks: 5 }) => {
+    setFormData(prev => {
+      const next = deepClone(prev);
+      const section = next.dynamicSections[sectionIndex];
+      if (!section || section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") {
+        return prev;
+      }
+      section.items.push(defaultItem);
+      return next;
+    });
+  };
+
+  const removeDynamicItem = (sectionIndex, itemIndex) => {
+    setFormData(prev => {
+      const next = deepClone(prev);
+      const section = next.dynamicSections[sectionIndex];
+      if (!section || section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") {
+        return prev;
+      }
+      section.items.splice(itemIndex, 1);
+      return next;
+    });
   };
 
   const setDynamicItemField = (sectionIndex, itemIndex, field, val) => {
@@ -1237,46 +1292,104 @@ export default function StudentReportForm() {
                   )}
 
                   {section.sectionType === "SoftSkillsRating" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-                      {section.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                        <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                          Customize, rename or add behavioural & soft skill metrics:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addDynamicItem(sIdx, { itemName: "New Soft Skill", value: 4.0, maxMarks: 5 })}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
+                        >
+                          <FaPlus size={10} /> Add Skill Metric
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                        {section.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 sm:p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80 hover:border-slate-300 transition gap-2">
                             <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="5"
-                              value={item.value || 0}
-                              onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                              className="w-16 sm:w-20 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                              type="text"
+                              value={item.itemName || ""}
+                              onChange={(e) => setDynamicItemField(sIdx, idx, "itemName", e.target.value)}
+                              placeholder="Parameter Name"
+                              className="font-semibold text-slate-800 text-xs sm:text-sm bg-white border border-slate-200 focus:border-orange-400 rounded-lg px-2.5 py-1 outline-none transition flex-1 min-w-0"
+                              title="Click to rename this metric"
                             />
-                            <span className="text-slate-400 text-xs">/ 5</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="5"
+                                value={item.value ?? 0}
+                                onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                                className="w-14 sm:w-16 px-1.5 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white text-slate-800"
+                              />
+                              <span className="text-slate-400 text-xs font-medium">/ 5</span>
+                              <button
+                                type="button"
+                                onClick={() => removeDynamicItem(sIdx, idx)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition cursor-pointer ml-1"
+                                title="Delete metric"
+                              >
+                                <MdDelete size={16} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {section.sectionType === "InterviewRating" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-                      {section.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
-                          <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                        <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                          Customize interview parameters according to department (e.g. Domain Knowledge, Problem Solving):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addDynamicItem(sIdx, { itemName: "New Evaluation Parameter", value: 4.0, maxMarks: 5 })}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
+                        >
+                          <FaPlus size={10} /> Add Interview Metric
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                        {section.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 sm:p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80 hover:border-slate-300 transition gap-2">
                             <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="5"
-                              value={item.value || 0}
-                              onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                              className="w-16 sm:w-20 px-2 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white"
+                              type="text"
+                              value={item.itemName || ""}
+                              onChange={(e) => setDynamicItemField(sIdx, idx, "itemName", e.target.value)}
+                              placeholder="Parameter Name"
+                              className="font-semibold text-slate-800 text-xs sm:text-sm bg-white border border-slate-200 focus:border-orange-400 rounded-lg px-2.5 py-1 outline-none transition flex-1 min-w-0"
+                              title="Click to rename this interview parameter"
                             />
-                            <span className="text-slate-400 text-xs">/ 5</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="5"
+                                value={item.value ?? 0}
+                                onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                                className="w-14 sm:w-16 px-1.5 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white text-slate-800"
+                              />
+                              <span className="text-slate-400 text-xs font-medium">/ 5</span>
+                              <button
+                                type="button"
+                                onClick={() => removeDynamicItem(sIdx, idx)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition cursor-pointer ml-1"
+                                title="Delete metric"
+                              >
+                                <MdDelete size={16} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 

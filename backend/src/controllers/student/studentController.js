@@ -147,7 +147,7 @@ exports.getStudentById = async (req, res) => {
         select: "name departmentId",
         populate: {
           path: "departmentId",
-          select: "name code reportConfig"
+          select: "name code reportConfig logo"
         }
       })
       .populate("sessionId", "name")

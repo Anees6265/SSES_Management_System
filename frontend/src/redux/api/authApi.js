@@ -293,6 +293,7 @@ export const authApi = createApi({
         method: "POST",
         body: userData,
       }),
+      invalidatesTags: ['User'],
     }),
     // ---- Create User API ----
     updateUser: builder.mutation({

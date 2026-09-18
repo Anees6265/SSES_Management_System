@@ -33,6 +33,7 @@ import { RiEdit2Fill, RiDoubleQuotesL } from "react-icons/ri";
 import Loader from "../../shared/loader/Loader";
 import collegeLogo from '../../../assets/images/logo-ssism.png';
 import itegLogo from '../../../assets/images/iteg-logo.png';
+import megLogo from '../../../assets/images/meg-logo.png';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
 
@@ -249,8 +250,14 @@ export default function StudentReport() {
   const prkey = studentData.admissionNo || studentData.enrollmentNo || studentData.prkey || "N/A";
   const currentSubLevel = studentData.currentSubLevelId?.name || studentData.currentLevel || "1A";
   const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
-  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || "ITEG";
-  const departmentLogo = (typeof studentData.subDepartmentId?.departmentId?.logo === 'string' && studentData.subDepartmentId.departmentId.logo.trim()) ? studentData.subDepartmentId.departmentId.logo : itegLogo;
+  const deptCode = (studentData.subDepartmentId?.departmentId?.code || "").toUpperCase();
+  const deptName = (studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.name || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (studentData.course && ["BBA", "BCOM"].some(c => studentData.course.toUpperCase().includes(c)));
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || (isMeg ? "MEG" : "ITEG");
+  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const rawLogo = studentData.subDepartmentId?.departmentId?.logo;
+  const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
+  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo) ? rawLogo : defaultDeptLogo;
   const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
   const overallGrade = reportCardData?.overallGrade || "A";
   const gradeStyle = getGradeBadgeStyle(overallGrade);
@@ -311,6 +318,13 @@ export default function StudentReport() {
         <Header
           title="Student Performance Report"
           showBack={true}
+          onBack={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1);
+            } else {
+              navigate(`/student-profile/${id}`, { replace: true });
+            }
+          }}
           breadcrumbs={[
             { label: 'Academics', path: '/student-detail-table' },
             { label: 'Student Progress', path: '/student-detail-table' },
@@ -567,11 +581,17 @@ export default function StudentReport() {
             <div className="p-4 sm:p-6 lg:p-7 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-xs shrink-0">
-                  <FaLaptopCode size={17} />
+                  {isMeg ? <FaGraduationCap size={17} /> : <FaLaptopCode size={17} />}
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Subject-Wise Performance & Technical Mastery</h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400">Continuous task evaluations, lab assessments and practical ratings</p>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800">
+                    {isMeg ? "Subject-Wise Performance & Academic Excellence" : "Subject-Wise Performance & Technical Mastery"}
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400">
+                    {isMeg
+                      ? "Continuous task evaluations, case studies and practical ratings"
+                      : "Continuous task evaluations, lab assessments and practical ratings"}
+                  </p>
                 </div>
               </div>
               <span className="text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 self-start sm:self-auto shrink-0">
@@ -873,7 +893,11 @@ export default function StudentReport() {
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400">Technical depth, articulate communication & answer composure</p>
+                  <p className="text-[11px] sm:text-xs text-slate-400">
+                    {isMeg
+                      ? "Business acumen, domain depth, articulate communication & executive composure"
+                      : "Technical depth, articulate communication & answer composure"}
+                  </p>
                 </div>
               </div>
               <span className="text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 shrink-0">
@@ -884,22 +908,32 @@ export default function StudentReport() {
             <div className="space-y-2.5 sm:space-y-3.5">
               {(interviewSection?.items?.length > 0
                 ? interviewSection.items
-                : [
-                  { itemName: "Technical Knowledge", value: 4.0 },
-                  { itemName: "Articulation & Communication", value: 4.0 },
-                  { itemName: "Confidence & Composure", value: 3.8 },
-                  { itemName: "Problem Solving Approach", value: 4.1 },
-                  { itemName: "Overall Interview Recommendation", value: 4.0 }
-                ]
+                : (isMeg
+                  ? [
+                    { itemName: "Business & Domain Knowledge", value: 4.0 },
+                    { itemName: "Business Communication & Articulation", value: 4.0 },
+                    { itemName: "Confidence & Executive Presence", value: 3.8 },
+                    { itemName: "Case Analysis & Problem Solving", value: 4.1 },
+                    { itemName: "Overall Managerial Recommendation", value: 4.0 }
+                  ]
+                  : [
+                    { itemName: "Technical Knowledge", value: 4.0 },
+                    { itemName: "Articulation & Communication", value: 4.0 },
+                    { itemName: "Confidence & Composure", value: 3.8 },
+                    { itemName: "Problem Solving Approach", value: 4.1 },
+                    { itemName: "Overall Interview Recommendation", value: 4.0 }
+                  ]
+                )
               ).map((item, idx) => {
                 const score = parseFloat(item.value) || 0;
                 const max = item.maxMarks || 5;
                 const pct = Math.min(Math.round((score / max) * 100), 100);
+                const displayName = (isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName;
 
                 return (
                   <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-slate-100">
                     <div className="flex items-center justify-between mb-1.5 gap-2">
-                      <span className="text-xs font-bold text-slate-700 truncate">{item.itemName}</span>
+                      <span className="text-xs font-bold text-slate-700 truncate">{displayName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <StarRating rating={score} size="text-[10px] sm:text-[11px]" />
                         <span className="text-xs font-black text-slate-800">
@@ -1083,14 +1117,21 @@ export default function StudentReport() {
 
             <ul className="space-y-2 pt-1 sm:pt-2">
               {(() => {
-                const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve"))?.value;
+                const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve") || i.itemName.toLowerCase().includes("growth"))?.value;
                 const points = rawAreas
-                  ? rawAreas.split(",").map(p => p.trim()).filter(Boolean)
-                  : [
-                    "Advanced system design and complex algorithmic interview practice",
-                    "Mock interview confidence and structured answering under time limits",
-                    "Deep-dive portfolio projects demonstrating end-to-end architectures"
-                  ];
+                  ? rawAreas.split(/[.,]\s+/).filter(Boolean)
+                  : (isMeg
+                    ? [
+                      "Financial modeling, data analytics & spreadsheet simulation practice",
+                      "Executive mock interview composure and structured case answering",
+                      "Strategic marketing & corporate case competition readiness"
+                    ]
+                    : [
+                      "Advanced system design and complex algorithmic interview practice",
+                      "Mock interview confidence and structured answering under time limits",
+                      "Deep-dive portfolio projects demonstrating end-to-end architectures"
+                    ]
+                  );
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs font-semibold text-amber-900">

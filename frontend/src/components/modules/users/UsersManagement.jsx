@@ -4,7 +4,7 @@ import { useState, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { Trash2, Edit, X, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation } from '../../../redux/api/authApi';
+import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
 import TabsCommon from '../../shared/table/TabsCommon';
 import Loader from '../../shared/loader/Loader';
@@ -29,11 +29,29 @@ const UsersManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
+    const [createModalOpen, setCreateModalOpen] = useState(false);
 
     const { data: usersData, isLoading: loading, error } = useGetAllUsersQuery();
+    const { data: deptData } = useGetAllDepartmentsQuery();
     const [deleteUser] = useDeleteUserMutation();
     const [editUser] = useEditUserMutation();
     const [createUser] = useSignupMutation();
+
+    const departmentOptions = useMemo(() => {
+        if (deptData?.departments && Array.isArray(deptData.departments)) {
+            const list = deptData.departments
+                .filter(d => d.isActive !== false)
+                .map(d => ({ value: d.name, label: d.name }));
+            if (list.length > 0) return list;
+        }
+        return [
+            { value: 'ITEG', label: 'ITEG' },
+            { value: 'Management', label: 'Management' },
+            { value: 'MEG', label: 'MEG' },
+            { value: 'B.Tech', label: 'B.Tech' },
+            { value: 'BEG', label: 'BEG' },
+        ];
+    }, [deptData]);
 
     const tabs = ['Users', 'Roles & Permissions'];
     const users = usersData?.users || [];
@@ -77,9 +95,54 @@ const UsersManagement = () => {
 
     const handleCreateUser = async (values, { resetForm }) => {
         try {
-            await createUser(values).unwrap();
+            const trimmedName = values.name?.trim();
+            const trimmedEmail = values.email?.trim().toLowerCase();
+            const trimmedMobile = values.mobileNo ? String(values.mobileNo).trim() : '';
+            const trimmedAdhar = values.adharCard ? String(values.adharCard).trim() : '';
+            const trimmedDept = values.department?.trim();
+            const trimmedPos = values.position?.trim();
+            const trimmedPass = values.password?.trim();
+
+            if (!trimmedName || !trimmedEmail || !trimmedMobile || !trimmedPass || !trimmedAdhar || !values.role || !trimmedPos) {
+                toast.error('Please fill in all required fields');
+                return;
+            }
+
+            if (['faculty', 'hod'].includes(values.role) && !trimmedDept) {
+                toast.error('Department is required for Faculty / HOD');
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9._%+-]+@ssism\.org$/.test(trimmedEmail)) {
+                toast.error('Only institutional emails (@ssism.org) are allowed');
+                return;
+            }
+
+            if (!/^\d{10}$/.test(trimmedMobile)) {
+                toast.error('Mobile number must be a valid 10-digit number');
+                return;
+            }
+
+            if (!/^\d{12}$/.test(trimmedAdhar)) {
+                toast.error('Aadhar card must be a valid 12-digit number');
+                return;
+            }
+
+            const payload = {
+                ...values,
+                name: trimmedName,
+                email: trimmedEmail,
+                mobileNo: trimmedMobile,
+                adharCard: trimmedAdhar,
+                department: trimmedDept || 'General',
+                position: trimmedPos,
+                password: trimmedPass,
+            };
+
+            await createUser(payload).unwrap();
             toast.success('User created successfully');
             resetForm();
+            setCreateModalOpen(false);
         } catch (error) {
             toast.error(error?.data?.message || 'Failed to create user');
         }
@@ -159,7 +222,7 @@ const UsersManagement = () => {
                                     name="department" 
                                     type="select" 
                                     placeholder="Select department"
-                                    options={[{ value: 'SSISM', label: 'SSISM' }, { value: 'ITEG', label: 'ITEG' }, { value: 'MEG', label: 'MEG' }, { value: 'BEG', label: 'BEG' }, { value: 'BTECH', label: 'BTECH' }]} 
+                                    options={departmentOptions} 
                                 />
                             </div>
                             <InputField 
@@ -280,15 +343,26 @@ const UsersManagement = () => {
                 <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-wrap">
                     <ExportDropdown data={exportData} sectionName="users" />
                     {hasPermission('Button_CreateUser', 'read') && (
-                        <OrangeButton
-                            buttonTitle="+ Create New"
-                            panelTitle="Create New User"
-                            panelSubtitle="Add a new employee or staff account to the platform."
-                            maxWidth="sm:max-w-xl"
-                            drawerContent={<CreateUserForm formikRef={createUserFormRef} />}
-                            rightBtnText="Create User"
-                            onRightClick={() => createUserFormRef.current?.submitForm()}
-                        />
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setCreateModalOpen(true)}
+                                className="rounded-md bg-orange-500 px-3.5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                            >
+                                + Create New
+                            </button>
+                            <OrangeButton
+                                isOpen={createModalOpen}
+                                onClose={() => setCreateModalOpen(false)}
+                                panelTitle="Create New User"
+                                panelSubtitle="Add a new employee or staff account to the platform."
+                                maxWidth="sm:max-w-xl"
+                                leftBtnText="Cancel"
+                                rightBtnText="Create User"
+                                onRightClick={() => createUserFormRef.current?.submitForm()}
+                                drawerContent={<CreateUserForm formikRef={createUserFormRef} />}
+                            />
+                        </>
                     )}
                 </div>
             </Header>
@@ -385,7 +459,7 @@ const UsersManagement = () => {
                                             name="department" 
                                             type="select" 
                                             placeholder="Select department"
-                                            options={[{ value: 'SSISM', label: 'SSISM' }, { value: 'ITEG', label: 'ITEG' }, { value: 'MEG', label: 'MEG' }, { value: 'BEG', label: 'BEG' }, { value: 'BTECH', label: 'BTECH' }]} 
+                                            options={departmentOptions} 
                                         />
                                     </div>
 

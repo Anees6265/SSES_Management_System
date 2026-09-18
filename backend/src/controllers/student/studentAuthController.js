@@ -108,7 +108,14 @@ exports.setStudentPassword = async (req, res) => {
 exports.getMyProfile = async (req, res) => {
   try {
     const student = await Student.findById(req.user.id)
-      .populate("subDepartmentId", "name")
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: {
+          path: "departmentId",
+          select: "name code reportConfig logo"
+        }
+      })
       .populate("sessionId", "name")
       .populate("syllabusVersionId", "version title")
       .populate("currentLevelId", "name order")

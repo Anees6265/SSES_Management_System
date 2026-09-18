@@ -50,6 +50,30 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid role. Only admin, superadmin, faculty, HOD, and Placement Officer are allowed." });
     }
 
+    // Privilege Protection: Only superadmin can create superadmin or admin accounts.
+    // Allow initial bootstrap if no users exist in the database yet.
+    if (role === "superadmin" || role === "admin") {
+      const existingUserCount = await User.countDocuments();
+      if (existingUserCount > 0) {
+        const authHeader = req.header("Authorization");
+        let isSuperAdmin = false;
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+          const token = authHeader.split(" ")[1];
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (decoded.role === "superadmin") {
+              isSuperAdmin = true;
+            }
+          } catch {
+            isSuperAdmin = false;
+          }
+        }
+        if (!isSuperAdmin) {
+          return res.status(403).json({ message: "Only Superadmin can create admin or superadmin accounts." });
+        }
+      }
+    }
+
     // Resolve departmentId from department name for department-scoped roles
     let departmentId = null;
     if (["faculty", "hod", "placement_officer"].includes(role) && department) {
@@ -223,7 +247,30 @@ exports.updateUserFields = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const { name, position, role, department, isActive, profileImage } = req.body;
+    const requesterRole = req.user ? req.user.role : null;
+    const requesterId = req.user ? (req.user.id || req.user._id) : null;
+    const isSuperAdmin = requesterRole === "superadmin";
+    const isAdmin = requesterRole === "admin";
+    const isSelf = requesterId && requesterId.toString() === id.toString();
+
+    // If caller is neither an administrator nor the account owner, forbid
+    if (!isSuperAdmin && !isAdmin && !isSelf) {
+      return res.status(403).json({ success: false, message: "Forbidden: You are not authorized to update another user's profile." });
+    }
+
+    const { name, position, role, department, isActive, profileImage, mobileNo } = req.body;
+
+    // Privilege Escalation Protection:
+    // Only superadmin or admin can change roles or status
+    if (role !== undefined || isActive !== undefined) {
+      if (!isSuperAdmin && !isAdmin) {
+        return res.status(403).json({ success: false, message: "Forbidden: Only administrators can change role or account status." });
+      }
+      // Non-superadmins cannot grant or escalate to superadmin role
+      if (role === "superadmin" && !isSuperAdmin) {
+        return res.status(403).json({ success: false, message: "Forbidden: Only Superadmin can grant superadmin role." });
+      }
+    }
 
     let uploadedImageUrl = profileImage;
     if (profileImage && /^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(profileImage)) {
@@ -243,6 +290,7 @@ exports.updateUserFields = async (req, res) => {
 
     const updateData = {
       ...(name && { name }),
+      ...(mobileNo && { mobileNo }),
       ...(position && { position }),
       ...(role && { role }),
       ...(department !== undefined && { department }),
@@ -299,9 +347,22 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const deleted = await User.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ success: false, message: "User not found" });
+    const requesterId = req.user ? (req.user.id || req.user._id) : null;
+    if (requesterId && requesterId.toString() === id.toString()) {
+      return res.status(400).json({ success: false, message: "You cannot delete your own account." });
+    }
 
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ success: false, message: "User not found" });
+
+    if (targetUser.role === "superadmin") {
+      const superAdminCount = await User.countDocuments({ role: "superadmin" });
+      if (superAdminCount <= 1) {
+        return res.status(400).json({ success: false, message: "Cannot delete the only Superadmin in the system." });
+      }
+    }
+
+    await User.findByIdAndDelete(id);
     res.status(200).json({ success: true, message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error", error: error.message });
@@ -352,7 +413,8 @@ exports.resetPassword = async (req, res) => {
     await user.save();
 
     res.status(200).json({ message: "Password successfully reset" });
-  } catch {
+  } catch (error) {
+    console.error("Reset Password Error:", error);
     return res.status(400).json({ message: "Invalid or expired token" });
   }
 };
@@ -370,20 +432,22 @@ exports.googleAuthCallback = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      const permissions = getPermissionsForRole("superadmin");
+      const permissions = getPermissionsForRole("faculty");
       user = await User.create({
         googleId: sub,
         email,
         name,
-        role: "superadmin",
+        role: "faculty",
         permissions,
-        position: "admin",
-        department: "IT",
+        position: "Faculty",
+        department: "General",
         mobileNo: "0000000000",
         adharCard: `GOOGLE_${sub}`,
         password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10),
         profileImage: _json.picture || "",
       });
+    } else if (!user.googleId) {
+      user.googleId = sub;
     }
 
     const token = generateAccessToken(user);
@@ -391,9 +455,10 @@ exports.googleAuthCallback = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    const redirectUrl = `${process.env.GOOGLE_REDIRECT_URI}?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(user.name)}&role=${user.role}&email=${user.email}&positionRole=${user.position || "admin"}&profileImage=${encodeURIComponent(user.profileImage || "")}`;
+    const redirectUrl = `${process.env.GOOGLE_REDIRECT_URI}?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(user.name)}&role=${user.role}&email=${user.email}&positionRole=${user.position || "Faculty"}&profileImage=${encodeURIComponent(user.profileImage || "")}`;
     return res.redirect(redirectUrl);
-  } catch {
+  } catch (error) {
+    console.error("Google Auth Callback Error:", error);
     return res.redirect(`${process.env.GOOGLE_REDIRECT_URI}?error=server_error&message=Login failed`);
   }
 };

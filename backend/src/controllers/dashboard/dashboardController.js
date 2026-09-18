@@ -119,12 +119,51 @@ exports.getDashboardOverview = async (req, res) => {
     levelAgg.forEach(la => { if (la._id) levelAggMap[la._id.toString()] = la.count; });
 
     const allLevels = await Level.find().select("name order").sort({ order: 1 }).lean();
+
+    const canonicalizeLevelName = (name) => {
+      if (!name) return "Other";
+      const cleaned = name.trim().toLowerCase();
+      if (cleaned.includes("level 1") || cleaned.includes("1a") || cleaned.includes("1b") || cleaned.includes("1c") || cleaned.includes("foundation")) return "Level 1";
+      if (cleaned.includes("level 2") || cleaned.includes("2a") || cleaned.includes("2b") || cleaned.includes("2c") || cleaned.includes("intermediate")) return "Level 2";
+      if (cleaned.includes("level 3") || cleaned.includes("3a") || cleaned.includes("3b") || cleaned.includes("3c")) return "Level 3";
+      if (cleaned.includes("level 4") || cleaned.includes("4a") || cleaned.includes("4b") || cleaned.includes("4c")) return "Level 4";
+      const numMatch = name.match(/\d+/);
+      if (numMatch) return `Level ${numMatch[0]}`;
+      return name.trim();
+    };
+
     let levelDistribution = [];
     if (allLevels.length > 0) {
-      levelDistribution = allLevels.map(l => ({
-        name: l.name,
-        students: levelAggMap[l._id.toString()] || 0
+      // Group by canonical name
+      const grouped = {
+        "Level 1": 0,
+        "Level 2": 0,
+        "Level 3": 0,
+        "Level 4": 0
+      };
+      const extraLevels = {};
+
+      allLevels.forEach(l => {
+        const cName = canonicalizeLevelName(l.name);
+        const count = levelAggMap[l._id.toString()] || 0;
+        if (grouped[cName] !== undefined) {
+          grouped[cName] += count;
+        } else {
+          extraLevels[cName] = (extraLevels[cName] || 0) + count;
+        }
+      });
+
+      levelDistribution = Object.keys(grouped).map(k => ({
+        name: k,
+        students: grouped[k]
       }));
+
+      // Add any extra custom non-zero levels
+      Object.keys(extraLevels).forEach(k => {
+        if (extraLevels[k] > 0) {
+          levelDistribution.push({ name: k, students: extraLevels[k] });
+        }
+      });
     } else {
       levelDistribution = [
         { name: 'Level 1', students: Math.round(total * 0.35) },

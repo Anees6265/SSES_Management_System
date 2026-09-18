@@ -10,6 +10,7 @@ import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
+    useUpdateTaskMasterMutation,
 } from "../../../../redux/api/authApi";
 
 const getOptionValues = (items, key) => (
@@ -23,7 +24,7 @@ const PRIORITY_STYLES = {
     low: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
-const ActionMenu = ({ task, onDelete, onViewDetails }) => {
+const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -55,14 +56,18 @@ const ActionMenu = ({ task, onDelete, onViewDetails }) => {
                                 View Details
                             </button>
                         )}
-                        <button
-                            type="button"
-                            onClick={() => setOpen(false)}
-                            className="w-full px-4 py-2 text-left transition text-slate-300 cursor-not-allowed"
-                            disabled
-                        >
-                            Edit Task
-                        </button>
+                        {onEdit && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setOpen(false);
+                                    onEdit(task);
+                                }}
+                                className="w-full px-4 py-2 text-left transition text-slate-700 hover:bg-slate-50 font-bold cursor-pointer"
+                            >
+                                Edit Task
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => {
@@ -80,7 +85,130 @@ const ActionMenu = ({ task, onDelete, onViewDetails }) => {
     );
 };
 
-const TaskDetailModal = ({ task, onClose, onDelete }) => {
+const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
+    if (!task) return null;
+    const [title, setTitle] = useState(task.taskTitle || "");
+    const [description, setDescription] = useState(task.description || "");
+    const [priority, setPriority] = useState(task.priority || "medium");
+    const [status, setStatus] = useState(task.status || "active");
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) {
+            toast.error("Task title is required");
+            return;
+        }
+        onSave({
+            taskId: task.id || task._id,
+            taskTitle: title.trim(),
+            description: description.trim(),
+            priority,
+            status,
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3.5 sm:p-4 animate-in fade-in duration-150">
+            <div className="fixed inset-0" onClick={onClose} />
+            <div className="relative bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] z-10">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
+                    <div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900">Edit Task</h3>
+                        <p className="text-xs text-slate-500">Update task title, description, priority, and status</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                        <MdClose size={18} />
+                    </button>
+                </div>
+
+                {/* Form Body */}
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Task Title <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                            placeholder="Enter task title"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Description
+                        </label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows={3}
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition resize-none"
+                            placeholder="Enter task description"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Priority
+                            </label>
+                            <select
+                                value={priority}
+                                onChange={(e) => setPriority(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+                            >
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Status
+                            </label>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="px-5 py-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            {isSaving ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
     if (!task) return null;
 
     const formattedDate = task.createdAt
@@ -191,13 +319,27 @@ const TaskDetailModal = ({ task, onClose, onDelete }) => {
                     >
                         Delete Task
                     </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-2xs transition cursor-pointer"
-                    >
-                        Close
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {onEdit && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onClose();
+                                    onEdit(task);
+                                }}
+                                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
+                            >
+                                Edit Task
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-2xs transition cursor-pointer"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -232,9 +374,11 @@ const TaskManagement = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [viewMode, setViewMode] = useState("table");
     const [selectedTask, setSelectedTask] = useState(null);
+    const [editingTask, setEditingTask] = useState(null);
 
     const { data: tasksResponse, isLoading, isError, refetch } = useGetAllTasksQuery({ status: "all" });
     const [deleteTask, { isLoading: deleting }] = useDeleteTaskMutation();
+    const [updateTask, { isLoading: isUpdatingTask }] = useUpdateTaskMasterMutation();
 
     const taskRows = useMemo(() => {
         const tasks = tasksResponse?.data || [];
@@ -327,6 +471,20 @@ const TaskManagement = () => {
             refetch();
         } catch (error) {
             toast.error(error?.data?.message || "Failed to delete task");
+        }
+    };
+
+    const handleUpdateTask = async (updatedData) => {
+        try {
+            await updateTask(updatedData).unwrap();
+            toast.success("Task updated successfully");
+            setEditingTask(null);
+            if (selectedTask && (selectedTask.id === updatedData.taskId || selectedTask._id === updatedData.taskId)) {
+                setSelectedTask((prev) => ({ ...prev, ...updatedData }));
+            }
+            refetch();
+        } catch (error) {
+            toast.error(error?.data?.message || "Failed to update task");
         }
     };
 
@@ -695,7 +853,7 @@ const TaskManagement = () => {
                                                                 {r.status}
                                                             </span>
                                                         </div>
-                                                        <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} />
+                                                        <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
                                                     </div>
 
                                                     {/* Task Title & Subject */}
@@ -814,7 +972,7 @@ const TaskManagement = () => {
 
                                                             {/* Sticky Right Column: Action */}
                                                             <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 py-2.5 sm:py-3.5 px-3 border-l border-slate-200/80 shadow-[-3px_0_6px_-3px_rgba(0,0,0,0.08)] text-right min-w-[56px] sm:min-w-[64px] transition-colors">
-                                                                <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} />
+                                                                <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -920,6 +1078,17 @@ const TaskManagement = () => {
                     task={selectedTask}
                     onClose={() => setSelectedTask(null)}
                     onDelete={handleDelete}
+                    onEdit={setEditingTask}
+                />
+            )}
+
+            {/* Edit Task Modal */}
+            {editingTask && (
+                <EditTaskModal
+                    task={editingTask}
+                    onClose={() => setEditingTask(null)}
+                    onSave={handleUpdateTask}
+                    isSaving={isUpdatingTask}
                 />
             )}
         </>

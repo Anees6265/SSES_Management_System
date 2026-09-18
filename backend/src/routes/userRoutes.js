@@ -2,11 +2,15 @@ const express = require("express");
 const usercontroller = require("../controllers/user/userController");
 const passport = require("passport");
 const { googleAuthCallback } = require('../controllers/user/userController');
-const { verifyToken } = require("../middlewares/authMiddleware");
+const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
-// POST /api/users/create
+const superAdminOnly = [verifyToken, checkRole(["superadmin"])];
+const adminRoles = ["superadmin", "admin"];
+const adminOnly = [verifyToken, checkRole(adminRoles)];
+
+// POST /api/users/signup - Handled with permission checks in usercontroller.createUser
 router.post("/signup", usercontroller.createUser);
 router.post("/login", usercontroller.login);
 router.post("/logout", usercontroller.logout);
@@ -51,14 +55,14 @@ router.get(
 );
 
 router.get("/me", verifyToken, usercontroller.getCurrentUser);
-router.get("/all", verifyToken, usercontroller.getAllUsers);
-router.delete("/delete/:id", verifyToken, usercontroller.deleteUser);
+router.get("/all", ...adminOnly, usercontroller.getAllUsers);
+router.delete("/delete/:id", ...superAdminOnly, usercontroller.deleteUser);
 
-// Permissions Management
-router.get("/permissions/all", verifyToken, usercontroller.getAllPossiblePermissions);
-router.get("/permissions/:id", verifyToken, usercontroller.getUserPermissions);
-router.put("/permissions/:id", verifyToken, usercontroller.updateUserPermissions);
-
+// Permissions Management - SuperAdmin Only
+router.get("/permissions/all", ...superAdminOnly, usercontroller.getAllPossiblePermissions);
+router.get("/permissions/:id", ...superAdminOnly, usercontroller.getUserPermissions);
+router.put("/permissions/:id", ...superAdminOnly, usercontroller.updateUserPermissions);
 
 module.exports = router;
+
 

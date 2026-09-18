@@ -28,6 +28,9 @@ router.get("/leave-requests", ...auth, studentController.getLeaveRequests);
 // Dummy Students
 router.get("/dummy/list", ...auth, studentController.getDummyStudents);
 
+// SubLevel progress
+router.get("/sublevel/:subLevelId/progress", ...auth, studentController.getSubLevelStudentsProgress);
+
 // Placement: Ready / Selected / Placed lists
 router.get("/Ready_Students", ...auth, placementController.getReadyStudents);
 router.get("/selected_students", ...auth, placementController.getSelectedStudents);
@@ -97,7 +100,7 @@ router.delete("/:id/documents/:docId", ...auth, studentController.deleteDocument
 // Extra Documents
 router.post("/:id/extra-documents", ...auth, studentController.uploadExtraDocument);
 router.get("/:id/extra-documents", ...auth, studentController.getExtraDocuments);
-router.delete("/:id/documents/:docId", ...auth, studentController.deleteDocument);
+router.delete("/:id/extra-documents/:docId", ...auth, studentController.deleteDocument);
 
 // Permission (history-based flow)
 router.post("/:id/permissions", ...auth, studentController.applyPermission);
@@ -128,8 +131,5 @@ router.get("/:id/extra-tasks", ...auth, studentController.getExtraTasks);
 router.get("/:id/task-history", ...auth, studentController.getStudentTaskHistory);
 router.get("/:id/progress-snapshots", ...auth, studentController.getStudentProgressSnapshots);
 router.get("/:id/activity", ...auth, studentController.getStudentActivity);
-
-// SubLevel progress
-router.get("/sublevel/:subLevelId/progress", ...auth, studentController.getSubLevelStudentsProgress);
 
 module.exports = router;

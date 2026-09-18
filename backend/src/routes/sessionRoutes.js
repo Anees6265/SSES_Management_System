@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const sessionController = require("../controllers/department/sessionController");
 
-const adminRoles = ["superadmin", "admin", "hod", "faculty"];
+const adminRoles = ["superadmin", "admin"];
 const auth = [verifyToken, checkRole(adminRoles)];
 
 // GET /api/sessions — all sessions (active + inactive for admin view)

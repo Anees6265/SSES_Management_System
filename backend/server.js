@@ -57,16 +57,6 @@ app.use((err, req, res, next) => {
 
 // MongoDB Connection
 module.exports = app;
-// Update Google users role function
-const updateGoogleUsersRole = async () => {
-  try {
-    const User = require("./src/models/user/user");
-    await User.updateMany(
-      { googleId: { $exists: true } },
-      { $set: { role: "superadmin" } }
-    );
-  } catch (_) {}
-};
 
 // Start Server only if this is the main module (not when testing)
 if (require.main === module) {
@@ -85,7 +75,6 @@ if (require.main === module) {
       try {
         await mongoose.connection.collection("syllabusversions").dropIndex("sessionId_1_levelId_1_subLevelId_1_version_1");
       } catch (_) {}
-      await updateGoogleUsersRole();
     })
     .catch((err) => {
       console.error("MongoDB Connection Error:", err);

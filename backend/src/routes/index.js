@@ -20,9 +20,15 @@ const companyRoutes = require('./companyRoutes');
 const taskRoutes = require('./taskRoutes');
 const studentAuthRoutes = require('./studentAuthRoutes');
 const studentThesisRoutes = require('./studentThesisRoutes');
+const smartSyllabusRoutes = require('./smartSyllabusRoutes');
+const departmentRoutes = require('./departmentRoutes');
+const subDepartmentRoutes = require('./subDepartmentRoutes');
+const levelRoutes = require('./levelRoutes');
+const subLevelRoutes = require('./subLevelRoutes');
 
 // Mount routes
 router.use('/user', userRoutes);
+router.use('/users', userRoutes);
 router.use('/user/otp', otpRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/students', studentRoutes);
@@ -41,5 +47,10 @@ router.use('/companies', companyRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/student-auth', studentAuthRoutes);
 router.use('/thesis', studentThesisRoutes);
+router.use('/departments', departmentRoutes);
+router.use('/subdepartments', subDepartmentRoutes);
+router.use('/levels', levelRoutes);
+router.use('/sublevels', subLevelRoutes);
+router.use('/', smartSyllabusRoutes);
 
 module.exports = router;

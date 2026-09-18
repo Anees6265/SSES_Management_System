@@ -104,9 +104,9 @@ async function sendResetLinkEmail(email, token) {
     const baseUrl = getClientBaseUrl();
     const resetLink = `${baseUrl}${token}`;
     
-    console.log('🔗 Reset link generated:', resetLink);
-    console.log('🌍 Environment:', process.env.NODE_ENV);
-    console.log('🎯 Base URL used:', baseUrl);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('🔗 Password reset email prepared for:', email);
+    }
 
     const mailOptions = {
         from: `"ITEG Management System" <${process.env.EMAIL_USER}>`,

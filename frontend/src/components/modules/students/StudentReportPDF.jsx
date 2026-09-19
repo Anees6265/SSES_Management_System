@@ -23,6 +23,7 @@ import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
 import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
 import contactIcon from "../../../assets/icons/StuReport_Phone.png";
 import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
+import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName } from "./reportCardDepartmentConfig";
 
 const translateLevelName = (name) => {
   if (!name) return "";
@@ -440,12 +441,11 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
       .length,
   }));
 
-  const deptCode = (studentData?.subDepartmentId?.departmentId?.code || "").toUpperCase();
-  const deptName = (studentData?.subDepartmentId?.departmentId?.name || studentData?.subDepartmentId?.name || "").toUpperCase();
-  const courseUpper = (studentData?.course || "").toUpperCase();
-  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseUpper.includes(c));
-  const isBeg = deptCode.includes("BEG") || deptName.includes("BEG") || ["BIO", "MICRO"].some(c => courseUpper.includes(c));
-  const isBTech = deptCode.includes("CSE") || deptName.includes("B.TECH") || deptName.includes("ENGINEERING") || courseUpper.includes("B.TECH") || courseUpper.includes("BTECH");
+  const deptType = detectDepartment(studentData, reportCardData);
+  const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
+  const isMeg = deptType === "MEG";
+  const isBeg = deptType === "BEG";
+  const isBTech = deptType === "BTECH";
 
   const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
   const rawLogo = studentData?.subDepartmentId?.departmentId?.logo;
@@ -689,14 +689,14 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 7. Interview Evaluation */}
-                {interview && (
+                {/* 7. Interview Evaluation / Readiness */}
+                {(interview || deptConfig.interviewItems) && (
                   <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>7. Interview Evaluation</Text>
+                    <Text style={styles.sectionTitle}>{deptConfig.interviewSectionTitle || "7. Interview Readiness & Mock Assessment"}</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                      {interview.items.map((item, idx) => (
+                      {(interview?.items?.length > 0 ? interview.items : deptConfig.interviewItems).map((item, idx) => (
                         <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
-                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{(isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName}</Text>
+                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{mapInterviewItemName(item.itemName, deptType)}</Text>
                           <Text style={{ fontSize: 9, fontWeight: "bold", color: "#EA580C", marginTop: 2 }}>{item.value} / 5</Text>
                         </View>
                       ))}
@@ -756,14 +756,27 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 </View>
 
                 {/* 11. Strengths & Areas for Improvement */}
-                {strengthsImprovement && (
+                {(strengthsImprovement || deptConfig.mockGrowthAreas) && (
                   <View style={{ flexDirection: "row", gap: 8 }} wrap={false}>
-                    {strengthsImprovement.items.map((item, idx) => (
-                      <View key={idx} style={{ flex: 1, backgroundColor: idx === 0 ? "#ECFDF5" : "#FEF2F2", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: idx === 0 ? "#A7F3D0" : "#FCA5A5" }}>
-                        <Text style={{ fontSize: 9, fontWeight: "bold", color: idx === 0 ? "#065F46" : "#991B1B", marginBottom: 3 }}>{item.itemName}</Text>
-                        <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{item.value}</Text>
-                      </View>
-                    ))}
+                    {strengthsImprovement?.items?.length > 0 ? (
+                      strengthsImprovement.items.map((item, idx) => (
+                        <View key={idx} style={{ flex: 1, backgroundColor: idx === 0 ? "#ECFDF5" : "#FEF2F2", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: idx === 0 ? "#A7F3D0" : "#FCA5A5" }}>
+                          <Text style={{ fontSize: 9, fontWeight: "bold", color: idx === 0 ? "#065F46" : "#991B1B", marginBottom: 3 }}>{item.itemName}</Text>
+                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{item.value}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <>
+                        <View style={{ flex: 1, backgroundColor: "#ECFDF5", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: "#A7F3D0" }}>
+                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#065F46", marginBottom: 3 }}>Strengths</Text>
+                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{deptConfig.strengths}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: "#FEF2F2", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: "#FCA5A5" }}>
+                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#991B1B", marginBottom: 3 }}>Areas for Improvement</Text>
+                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{deptConfig.mockGrowthAreas.join(", ")}</Text>
+                        </View>
+                      </>
+                    )}
                   </View>
                 )}
 

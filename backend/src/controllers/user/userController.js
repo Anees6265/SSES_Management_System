@@ -48,6 +48,16 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "Department is required for faculty/HOD" });
     }
 
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(mobileNo)) {
+      return res.status(400).json({ message: "Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9." });
+    }
+
+    const aadharRegex = /^\d{12}$/;
+    if (!aadharRegex.test(adharCard)) {
+      return res.status(400).json({ message: "Aadhar card number must be exactly 12 digits." });
+    }
+
     const collegeEmailRegex = /^[a-zA-Z0-9._%+-]+@ssism\.org$/;
     if (!collegeEmailRegex.test(email)) {
       return res.status(400).json({ message: "Only institutional emails (@ssism.org) are allowed." });
@@ -324,7 +334,29 @@ exports.updateUserFields = async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: You are not authorized to update another user's profile." });
     }
 
-    const { name, position, role, department, isActive, profileImage, mobileNo } = req.body;
+    const { name, position, role, department, isActive, profileImage, mobileNo, adharCard } = req.body;
+
+    if (mobileNo !== undefined && mobileNo !== null && String(mobileNo).trim() !== "") {
+      const cleanMobile = String(mobileNo).trim();
+      if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+        return res.status(400).json({ success: false, message: "Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9." });
+      }
+      const existingMobile = await User.findOne({ mobileNo: cleanMobile, _id: { $ne: id } });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "A user with this mobile number already exists." });
+      }
+    }
+
+    if (adharCard !== undefined && adharCard !== null && String(adharCard).trim() !== "") {
+      const cleanAdhar = String(adharCard).trim();
+      if (!/^\d{12}$/.test(cleanAdhar)) {
+        return res.status(400).json({ success: false, message: "Aadhar card number must be exactly 12 digits." });
+      }
+      const existingAdhar = await User.findOne({ adharCard: cleanAdhar, _id: { $ne: id } });
+      if (existingAdhar) {
+        return res.status(400).json({ success: false, message: "A user with this Aadhar number already exists." });
+      }
+    }
 
     // Privilege Escalation Protection:
     // Only superadmin or admin can change roles or status
@@ -362,7 +394,8 @@ exports.updateUserFields = async (req, res) => {
 
     const updateData = {
       ...(name && { name: typeof name === "string" ? name.trim() : name }),
-      ...(mobileNo && { mobileNo: String(mobileNo).trim() }),
+      ...(mobileNo !== undefined && mobileNo !== null && { mobileNo: String(mobileNo).trim() }),
+      ...(adharCard !== undefined && adharCard !== null && { adharCard: String(adharCard).trim() }),
       ...(position && { position: typeof position === "string" ? position.trim() : position }),
       ...(role && { role: typeof role === "string" ? role.trim().toLowerCase() : role }),
       ...(department !== undefined && { department: typeof department === "string" ? department.trim() : department }),

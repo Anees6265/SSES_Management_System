@@ -1,129 +1,143 @@
 const allPermissions = {
     // Super Admin has all permissions and serves as the master list
     superadmin: [
-        // User Management Feature
-        { feature: 'Page_UserManagement', description: 'Access to the User Management page', access: ['read'] },
-        { feature: 'Tab_Users', description: 'Access to the Users tab', access: ['read'] },
-        { feature: 'Tab_RolesAndPermissions', description: 'Access to the Roles & Permissions tab', access: ['read'] },
-        { feature: 'Button_CreateUser', description: 'Visibility of the Create New User button', access: ['read'] },
-        { feature: 'Action_CreateUser', description: 'Ability to submit the new user form', access: ['execute'] },
-        { feature: 'Action_EditUser', description: 'Ability to edit a user', access: ['read', 'update'] },
-        { feature: 'Action_DeleteUser', description: 'Ability to delete a user', access: ['execute'] },
+        // 1. Dashboard & Attendance
+        { feature: 'Page_Dashboard', name: 'Dashboard (Overview & Analytics)', category: '1. Dashboard & Attendance', description: 'Access to the main analytics dashboard and summary metrics', access: ['read'] },
+        { feature: 'Page_AttendanceDetails', name: 'Attendance Details', category: '1. Dashboard & Attendance', description: 'Access to view student & faculty attendance details', access: ['read'] },
 
-        // Role & Permission Management
-        { feature: 'Page_RoleManagement', description: 'Access to view role cards', access: ['read'] },
-        { feature: 'Button_CreateRole', description: 'Visibility of the Create New Role card', access: ['read'] },
-        { feature: 'Action_CreateRole', description: 'Ability to submit the new role form', access: ['execute'] },
-        { feature: 'Button_ManagePermissions', description: 'Access to the user list for a role', access: ['read'] },
-        { feature: 'Page_GlobalPermissionMatrix', description: 'Access to the permission matrix for a user', access: ['read', 'update'] },
+        // 2. Departments & Academics
+        { feature: 'Page_Department', name: 'Department Management', category: '2. Departments & Academics', description: 'Manage departments, courses, and department configurations', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_SubDepartment', name: 'Subdepartments & Branches', category: '2. Departments & Academics', description: 'Manage sub-departments and specialized academic streams', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_Level', name: 'Academic Levels', category: '2. Departments & Academics', description: 'Manage academic training levels (Level 1, Level 2, etc.)', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_SubLevel', name: 'Academic Sub-Levels & Criteria', category: '2. Departments & Academics', description: 'Manage academic sub-levels (1A, 1B, etc.) and sublevel criteria', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_CurriculumManagement', name: 'Curriculum & Syllabus Management', category: '2. Departments & Academics', description: 'Manage department curriculum and syllabus versions', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_TaskManagement', name: 'Task Management', category: '2. Departments & Academics', description: 'Create, assign, edit, and evaluate academic tasks', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_StudentTaskBoard', name: 'Student Task Board', category: '2. Departments & Academics', description: 'Interactive board for tracking student task progression', access: ['create', 'read', 'update', 'delete'] },
 
-        // Syllabus Feature
-        { feature: 'Page_Syllabus', description: 'Access to the Syllabus page', access: ['create', 'read', 'update', 'delete'] },
+        // 3. Students & Progress
+        { feature: 'Page_AdmittedStudents', name: 'Student Progress (Admitted Students)', category: '3. Students & Progress', description: 'Access to enrolled students directory and progress table', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_StudentProfile', name: 'Student Profile View', category: '3. Students & Progress', description: 'View complete student profile, personal, and fee details', access: ['read', 'update'] },
+        { feature: 'Page_StudentEdit', name: 'Student Profile Edit', category: '3. Students & Progress', description: 'Modify student registration, demographics, and contact info', access: ['read', 'update'] },
+        { feature: 'Page_StudentReport', name: 'Student Report Card (Preview & PDF)', category: '3. Students & Progress', description: 'Preview and download official printable student report cards', access: ['read'] },
+        { feature: 'Page_StudentReportEdit', name: 'Student Report Card Marks Edit', category: '3. Students & Progress', description: 'Enter test marks, levels, and faculty remarks on report cards', access: ['read', 'update'] },
+        { feature: 'Page_LeaveRequests', name: 'Leave Requests & Approvals', category: '3. Students & Progress', description: 'Review and approve/reject student leave applications', access: ['read', 'update'] },
+        { feature: 'Page_DummyStudents', name: 'Dummy Students & Portal Permissions', category: '3. Students & Progress', description: 'Manage dummy students and student portal login access', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_StudentLevelInterviewHistory', name: 'Student Level Interview History', category: '3. Students & Progress', description: 'Review student evaluation and promotion interview history', access: ['read', 'update'] },
 
-        // Level Management
-        { feature: 'Page_Level', description: 'Access to the Level management page', access: ['create', 'read', 'update', 'delete'] },
+        // 4. Placements & Career
+        { feature: 'Page_PlacementDashboard', name: 'Placement Analytics Dashboard', category: '4. Placements & Career', description: 'Access to placement analytics and statistics dashboard', access: ['read'] },
+        { feature: 'Page_Placement', name: 'Placement Candidates & Readiness', category: '4. Placements & Career', description: 'Track placement candidates readiness and mock interviews', access: ['read', 'update'] },
+        { feature: 'Page_PlacementDrives', name: 'Placement Drives & Schedules', category: '4. Placements & Career', description: 'Schedule and manage campus placement drives', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_ResumeSharing', name: 'Resume Sharing & Candidate Profiles', category: '4. Placements & Career', description: 'Access resume sharing portal for recruiters', access: ['read', 'execute'] },
+        { feature: 'Page_CompanyDetails', name: 'Company Details & Recruiters', category: '4. Placements & Career', description: 'Manage recruiting company profiles and contacts', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_PlacedStudents', name: 'Placed Students Wall & Posters', category: '4. Placements & Career', description: 'Create and publish placed students success posters', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_PlacementRecords', name: 'Placement Interview Records', category: '4. Placements & Career', description: 'View company interview records and selection history', access: ['read'] },
 
-        // Sub-Level Management
-        { feature: 'Page_SubLevel', description: 'Access to the Sub-Level management page', access: ['create', 'read', 'update', 'delete'] },
+        // 5. User Management & Security
+        { feature: 'Page_UserManagement', name: 'User Management Portal', category: '5. User Management & Security', description: 'Access to user and staff management portal', access: ['read'] },
+        { feature: 'Tab_Users', name: 'Users Directory Tab', category: '5. User Management & Security', description: 'View users and staff directory tab', access: ['read'] },
+        { feature: 'Tab_RolesAndPermissions', name: 'Roles & Permissions Tab', category: '5. User Management & Security', description: 'View roles and permission configurations tab', access: ['read'] },
+        { feature: 'Button_CreateUser', name: 'Create User Action', category: '5. User Management & Security', description: 'Ability to open form and register new employee accounts', access: ['read', 'execute'] },
+        { feature: 'Action_EditUser', name: 'Edit User Action', category: '5. User Management & Security', description: 'Permission to edit user profile and account status', access: ['update'] },
+        { feature: 'Action_DeleteUser', name: 'Delete User Action', category: '5. User Management & Security', description: 'Permission to permanently remove user accounts', access: ['execute'] },
+        { feature: 'Button_ManagePermissions', name: 'Manage User Permissions Action', category: '5. User Management & Security', description: 'Permission to customize permissions for individual users', access: ['read', 'update'] },
 
-        // Admission
-        { feature: 'Page_Admission', description: 'Access to the Admission section', access: ['read'] },
-
-        // Admitted Students
-        { feature: 'Page_AdmittedStudents', description: 'Access to the Admitted Students section', access: ['read'] },
-
-        // Placement
-        { feature: 'Page_Placement', description: 'Access to the Placement section', access: ['read'] },
-
-        // Department Management
-        { feature: 'Page_Department', description: 'Access to the Department management page', access: ['read', 'create', 'update', 'delete'] },
-
-        // Sub-Department Management
-        { feature: 'Page_SubDepartment', description: 'Access to the Sub-Department management page', access: ['read', 'create', 'update', 'delete'] },
-
-        // Dashboard
-        { feature: 'Page_Dashboard', description: 'Access to the main dashboard', access: ['read'] },
-        { feature: 'Page_AttendanceDetails', description: 'Access to attendance details', access: ['read'] },
-
-        // Admitted Students Extras
-        { feature: 'Page_LevelWiseManagement', description: 'Access to level-wise management', access: ['read'] },
-        { feature: 'Page_DummyStudents', description: 'Access to dummy students section', access: ['read'] },
-        { feature: 'Page_LeaveRequests', description: 'Access to student leave requests', access: ['read', 'update'] },
-        { feature: 'Page_TaskManagement', description: 'Access to the Task Management page', access: ['read', 'create', 'update', 'delete'] },
-        { feature: 'Page_CurriculumManagement', description: 'Access to the Curriculum Management page', access: ['read', 'create', 'update', 'delete'] },
-
-        // Placements Extras
-        { feature: 'Page_CompanyDetails', description: 'Access to company details', access: ['read'] },
-        { feature: 'Page_PlacedStudents', description: 'Access to placed students list', access: ['read'] },
-
-        // Settings
-        { feature: 'Page_Settings', description: 'Access to the main Settings menu', access: ['read'] },
-        { feature: 'Page_SessionManagement', description: 'Access to the Session Management page', access: ['read', 'update'] },
-        { feature: 'Page_Support', description: 'Access to the Support page', access: ['read'] }
+        // 6. System Administration
+        { feature: 'Page_Settings', name: 'System Settings & Branding', category: '6. System Administration', description: 'Access to system settings and college profile configuration', access: ['read', 'update'] },
+        { feature: 'Page_SessionManagement', name: 'Academic Session Management', category: '6. System Administration', description: 'Manage academic session years and periods', access: ['create', 'read', 'update', 'delete'] },
+        { feature: 'Page_Support', name: 'Support & Help Desk', category: '6. System Administration', description: 'Access to support tickets and help desk', access: ['read'] }
     ],
 
-    // Admin has a subset of permissions
+    // Admin has a comprehensive administrative subset
     admin: [
-        // Dashboard Access
-        { feature: 'Page_Dashboard', description: 'Access to the main dashboard', access: ['read'] },
+        { feature: 'Page_Dashboard', description: 'Access to main dashboard', access: ['read'] },
         { feature: 'Page_AttendanceDetails', description: 'Access to attendance details', access: ['read'] },
-
-        // Admission Process
-        { feature: 'Page_Admission', description: 'Access to the Admission section', access: ['read'] },
-
-        // Student Management
-        { feature: 'Page_AdmittedStudents', description: 'Access to the Admitted Students section', access: ['read'] },
-        { feature: 'Page_LevelWiseManagement', description: 'Access to level-wise management', access: ['read'] },
-        { feature: 'Page_LeaveRequests', description: 'Access to student leave requests', access: ['read', 'update'] },
-        { feature: 'Page_TaskManagement', description: 'Access to the Task Management page', access: ['read', 'update'] },
-        { feature: 'Page_CurriculumManagement', description: 'Access to the Curriculum Management page', access: ['read', 'update'] },
-
-        // Placement
-        { feature: 'Page_Placement', description: 'Access to the Placement section', access: ['read'] },
-        { feature: 'Page_CompanyDetails', description: 'Access to company details', access: ['read'] },
-        { feature: 'Page_PlacedStudents', description: 'Access to placed students list', access: ['read'] },
-
-        // Academic Management
-        { feature: 'Page_Syllabus', description: 'Access to the Syllabus page', access: ['read', 'update'] },
-        { feature: 'Page_Level', description: 'Access to the Level management page', access: ['read'] },
-        { feature: 'Page_SubLevel', description: 'Access to the Sub-Level management page', access: ['read'] },
-        { feature: 'Page_SessionManagement', description: 'Access to the Session Management page', access: ['read', 'update'] },
-        { feature: 'Page_Support', description: 'Access to the Support page', access: ['read'] }
+        { feature: 'Page_Department', description: 'Department management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_SubDepartment', description: 'Sub-department management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_Level', description: 'Level management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_SubLevel', description: 'Sub-level management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_CurriculumManagement', description: 'Curriculum management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_TaskManagement', description: 'Task management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentTaskBoard', description: 'Student task board', access: ['read', 'update'] },
+        { feature: 'Page_AdmittedStudents', description: 'Student progress list', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentProfile', description: 'Student profile view', access: ['read', 'update'] },
+        { feature: 'Page_StudentEdit', description: 'Edit student details', access: ['read', 'update'] },
+        { feature: 'Page_StudentReport', description: 'Student report card preview', access: ['read'] },
+        { feature: 'Page_StudentReportEdit', description: 'Student report card marks edit', access: ['read', 'update'] },
+        { feature: 'Page_LeaveRequests', description: 'Student leave requests', access: ['read', 'update'] },
+        { feature: 'Page_DummyStudents', description: 'Dummy students access', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentLevelInterviewHistory', description: 'Level interview history', access: ['read', 'update'] },
+        { feature: 'Page_PlacementDashboard', description: 'Placement dashboard', access: ['read'] },
+        { feature: 'Page_Placement', description: 'Placement readiness status', access: ['read', 'update'] },
+        { feature: 'Page_PlacementDrives', description: 'Placement drives', access: ['read', 'create', 'update'] },
+        { feature: 'Page_ResumeSharing', description: 'Resume sharing', access: ['read', 'execute'] },
+        { feature: 'Page_CompanyDetails', description: 'Company details', access: ['read', 'create', 'update'] },
+        { feature: 'Page_PlacedStudents', description: 'Placed students wall', access: ['read', 'create', 'update'] },
+        { feature: 'Page_PlacementRecords', description: 'Placement interview records', access: ['read'] },
+        { feature: 'Page_UserManagement', description: 'User management', access: ['read'] },
+        { feature: 'Tab_Users', description: 'Users tab', access: ['read'] },
+        { feature: 'Button_CreateUser', description: 'Create user button', access: ['read', 'execute'] },
+        { feature: 'Action_EditUser', description: 'Edit user details', access: ['update'] },
+        { feature: 'Page_Settings', description: 'System settings', access: ['read', 'update'] },
+        { feature: 'Page_SessionManagement', description: 'Session management', access: ['read', 'update'] },
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
     ],
 
-    // Faculty has limited permissions
+    // Faculty has student and academic management permissions
     faculty: [
-        // Dashboard Access
-        { feature: 'Page_Dashboard', description: 'Access to the main dashboard', access: ['read'] },
+        { feature: 'Page_Dashboard', description: 'Access to main dashboard', access: ['read'] },
         { feature: 'Page_AttendanceDetails', description: 'Access to attendance details', access: ['read'] },
-
-        // Student Management (Read Only)
-        { feature: 'Page_AdmittedStudents', description: 'Access to the Admitted Students section', access: ['read'] },
-        { feature: 'Page_LeaveRequests', description: 'Access to student leave requests', access: ['read', 'update'] },
-        { feature: 'Page_TaskManagement', description: 'Access to the Task Management page', access: ['read'] },
-        { feature: 'Page_CurriculumManagement', description: 'Access to the Curriculum Management page', access: ['read'] },
-
-        // Academic Content
-        { feature: 'Page_Syllabus', description: 'Access to the Syllabus page', access: ['read'] },
-        { feature: 'Page_Support', description: 'Access to the Support page', access: ['read'] }
+        { feature: 'Page_AdmittedStudents', description: 'Student progress list', access: ['read'] },
+        { feature: 'Page_StudentProfile', description: 'Student profile view', access: ['read'] },
+        { feature: 'Page_StudentReport', description: 'Student report card preview', access: ['read'] },
+        { feature: 'Page_StudentReportEdit', description: 'Student report card marks edit', access: ['read', 'update'] },
+        { feature: 'Page_StudentTaskBoard', description: 'Student task board tracking', access: ['read', 'update'] },
+        { feature: 'Page_TaskManagement', description: 'Task evaluation', access: ['read'] },
+        { feature: 'Page_CurriculumManagement', description: 'Curriculum viewing', access: ['read'] },
+        { feature: 'Page_LeaveRequests', description: 'Student leave requests', access: ['read', 'update'] },
+        { feature: 'Page_StudentLevelInterviewHistory', description: 'Level interview history', access: ['read'] },
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
     ],
 
+    // HOD has full department oversight
     hod: [
-        { feature: 'Page_Dashboard', description: 'Access to the main dashboard', access: ['read'] },
+        { feature: 'Page_Dashboard', description: 'Access to main dashboard', access: ['read'] },
         { feature: 'Page_AttendanceDetails', description: 'Access to attendance details', access: ['read'] },
-        { feature: 'Page_AdmittedStudents', description: 'Access to the Admitted Students section', access: ['read'] },
-        { feature: 'Page_LeaveRequests', description: 'Access to student leave requests', access: ['read', 'update'] },
-        { feature: 'Page_TaskManagement', description: 'Access to the Task Management page', access: ['read', 'update'] },
-        { feature: 'Page_CurriculumManagement', description: 'Access to the Curriculum Management page', access: ['read', 'update'] },
-        { feature: 'Page_Syllabus', description: 'Access to the Syllabus page', access: ['read'] },
-        { feature: 'Page_Placement', description: 'Access to the Placement section', access: ['read'] },
-        { feature: 'Page_CompanyDetails', description: 'Access to company details', access: ['read'] },
-        { feature: 'Page_PlacedStudents', description: 'Access to placed students list', access: ['read'] },
-        { feature: 'Page_SubDepartment', description: 'Access to the Sub-Department management page', access: ['read'] },
-        { feature: 'Page_Level', description: 'Access to the Level management page', access: ['read'] },
-        { feature: 'Page_SubLevel', description: 'Access to the Sub-Level management page', access: ['read'] },
-        { feature: 'Page_SessionManagement', description: 'Access to the Session Management page', access: ['read', 'update'] },
-        { feature: 'Page_Support', description: 'Access to the Support page', access: ['read'] },
+        { feature: 'Page_Department', description: 'Department view', access: ['read'] },
+        { feature: 'Page_SubDepartment', description: 'Sub-department management', access: ['read', 'update'] },
+        { feature: 'Page_Level', description: 'Level management', access: ['read', 'update'] },
+        { feature: 'Page_SubLevel', description: 'Sub-level management', access: ['read', 'update'] },
+        { feature: 'Page_CurriculumManagement', description: 'Curriculum management', access: ['read', 'update'] },
+        { feature: 'Page_TaskManagement', description: 'Task management', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentTaskBoard', description: 'Student task board', access: ['read', 'update'] },
+        { feature: 'Page_AdmittedStudents', description: 'Student progress list', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentProfile', description: 'Student profile view', access: ['read', 'update'] },
+        { feature: 'Page_StudentEdit', description: 'Edit student details', access: ['read', 'update'] },
+        { feature: 'Page_StudentReport', description: 'Student report card preview', access: ['read'] },
+        { feature: 'Page_StudentReportEdit', description: 'Student report card marks edit', access: ['read', 'update'] },
+        { feature: 'Page_LeaveRequests', description: 'Student leave requests', access: ['read', 'update'] },
+        { feature: 'Page_StudentLevelInterviewHistory', description: 'Level interview history', access: ['read', 'update'] },
+        { feature: 'Page_PlacementDashboard', description: 'Placement dashboard', access: ['read'] },
+        { feature: 'Page_Placement', description: 'Placement readiness status', access: ['read', 'update'] },
+        { feature: 'Page_CompanyDetails', description: 'Company details', access: ['read'] },
+        { feature: 'Page_PlacedStudents', description: 'Placed students wall', access: ['read'] },
+        { feature: 'Page_SessionManagement', description: 'Session management', access: ['read', 'update'] },
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
+    ],
+
+    // Placement Officer has placement and recruiter access
+    placement_officer: [
+        { feature: 'Page_Dashboard', description: 'Access to main dashboard', access: ['read'] },
+        { feature: 'Page_PlacementDashboard', description: 'Placement dashboard analytics', access: ['read'] },
+        { feature: 'Page_Placement', description: 'Placement candidates readiness', access: ['read', 'update'] },
+        { feature: 'Page_PlacementDrives', description: 'Placement drives management', access: ['read', 'create', 'update', 'delete'] },
+        { feature: 'Page_ResumeSharing', description: 'Resume sharing portal', access: ['read', 'execute'] },
+        { feature: 'Page_CompanyDetails', description: 'Visiting company profiles', access: ['read', 'create', 'update', 'delete'] },
+        { feature: 'Page_PlacedStudents', description: 'Placed students wall and posters', access: ['read', 'create', 'update', 'delete'] },
+        { feature: 'Page_PlacementRecords', description: 'Company interview records', access: ['read'] },
+        { feature: 'Page_AdmittedStudents', description: 'View student progress', access: ['read'] },
+        { feature: 'Page_StudentProfile', description: 'View student profiles', access: ['read'] },
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
     ]
 };
 

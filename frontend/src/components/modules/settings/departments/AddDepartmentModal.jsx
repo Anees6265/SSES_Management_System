@@ -9,6 +9,17 @@ import { useAddDepartmentMutation, useUpdateDepartmentMutation } from "../../../
 
 const PRIMARY_COLOR = "#FDA92D";
 
+const UNIVERSITY_OPTIONS = [
+  {
+    value: "Samrat Vikramaditya Vishwavidyalaya, Ujjain",
+    label: "Samrat Vikramaditya Vishwavidyalaya, Ujjain",
+  },
+  {
+    value: "Rajiv Gandhi Proudyogiki Vishwavidyalaya (RGPV), Bhopal",
+    label: "Rajiv Gandhi Proudyogiki Vishwavidyalaya (RGPV), Bhopal",
+  },
+];
+
 const AddDepartmentModal = ({ isOpen, onClose, onSuccess, editData }) => {
   const [addDepartment] = useAddDepartmentMutation();
   const [updateDepartment] = useUpdateDepartmentMutation();
@@ -107,7 +118,9 @@ const AddDepartmentModal = ({ isOpen, onClose, onSuccess, editData }) => {
               <InputField 
                 label="University Name" 
                 name="universityName" 
-                placeholder="Enter university name"
+                type="select"
+                placeholder="Select university"
+                options={UNIVERSITY_OPTIONS}
               />
 
               <InputField 

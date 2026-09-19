@@ -272,6 +272,16 @@ const RolesPermissions = () => {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        handleUserRowClick(user);
+                                    }}
+                                    className="p-2 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                                    title="Manage Permissions"
+                                >
+                                    <FaUserShield size={14} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         handleViewUser(user._id || user.id);
                                     }}
                                     className="p-2 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"

@@ -12,6 +12,9 @@ const InputField = ({
   className = "",
   value,                // for controlled inputs outside Formik
   onChange,             // for controlled inputs outside Formik
+  maxLength,
+  onInput,
+  ...rest
 }) => {
   // Only use Formik's useField if we're inside a Formik context
   const isFormikControlled = !value && !onChange;
@@ -45,6 +48,9 @@ const InputField = ({
       {type === "textarea" && (
         <textarea
           {...field}
+          {...rest}
+          maxLength={maxLength}
+          onInput={onInput}
           disabled={disabled}
           placeholder={placeholder}
           className={`${baseInputStyle} h-24 resize-none`}
@@ -73,6 +79,9 @@ const InputField = ({
         isFormikControlled ? (
           <Field
             {...field}
+            {...rest}
+            maxLength={maxLength}
+            onInput={onInput}
             type={type}
             disabled={disabled}
             placeholder={placeholder}
@@ -81,6 +90,9 @@ const InputField = ({
         ) : (
           <input
             {...field}
+            {...rest}
+            maxLength={maxLength}
+            onInput={onInput}
             type={type}
             disabled={disabled}
             placeholder={placeholder}

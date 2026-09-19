@@ -1,8 +1,8 @@
 
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { Trash2, Edit, X, Eye, EyeOff } from 'lucide-react';
+import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
@@ -11,6 +11,7 @@ import Loader from '../../shared/loader/Loader';
 import InputField from '../../shared/form-fields/InputField';
 import CustomDropdown from '../../shared/form-fields/CustomDropdown';
 import { Formik, Form } from 'formik';
+import * as Yup from 'yup';
 import { buttonStyles } from '../../../styles/buttonStyles';
 import profile from '../../../assets/images/profile-img.png';
 import RolesPermissions from './RolesPermissions';
@@ -30,6 +31,8 @@ const UsersManagement = () => {
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [mobilePage, setMobilePage] = useState(1);
+    const mobilePageSize = 10;
 
     const { data: usersData, isLoading: loading, error } = useGetAllUsersQuery();
     const { data: deptData } = useGetAllDepartmentsQuery();
@@ -38,8 +41,9 @@ const UsersManagement = () => {
     const [createUser] = useSignupMutation();
 
     const departmentOptions = useMemo(() => {
-        if (deptData?.departments && Array.isArray(deptData.departments)) {
-            const list = deptData.departments
+        const rawList = deptData?.data || deptData?.departments || (Array.isArray(deptData) ? deptData : []);
+        if (Array.isArray(rawList) && rawList.length > 0) {
+            const list = rawList
                 .filter(d => d.isActive !== false)
                 .map(d => ({ value: d.name, label: d.name }));
             if (list.length > 0) return list;
@@ -50,6 +54,55 @@ const UsersManagement = () => {
             { value: 'BEG', label: 'BEG' },
         ];
     }, [deptData]);
+
+    const createUserValidationSchema = Yup.object().shape({
+        name: Yup.string()
+            .trim()
+            .min(2, 'Name must be at least 2 characters')
+            .required('Full name is required'),
+        email: Yup.string()
+            .trim()
+            .email('Invalid email address')
+            .matches(/^[a-zA-Z0-9._%+-]+@ssism\.org$/, 'Only institutional emails (@ssism.org) are allowed')
+            .required('Email address is required'),
+        mobileNo: Yup.string()
+            .trim()
+            .required('Mobile number is required')
+            .matches(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)'),
+        adharCard: Yup.string()
+            .trim()
+            .required('Aadhar card number is required')
+            .matches(/^\d{12}$/, 'Aadhar card number must be exactly 12 digits'),
+        role: Yup.string()
+            .required('Role is required'),
+        department: Yup.string().when('role', {
+            is: (val) => ['faculty', 'hod'].includes(val),
+            then: (schema) => schema.required('Department is required for Faculty / HOD'),
+            otherwise: (schema) => schema.notRequired(),
+        }),
+        position: Yup.string()
+            .required('Position is required'),
+        password: Yup.string()
+            .min(6, 'Password must be at least 6 characters')
+            .required('Password is required'),
+        isActive: Yup.boolean(),
+    });
+
+    const editUserValidationSchema = Yup.object().shape({
+        name: Yup.string().trim().required('Name is required'),
+        position: Yup.string().required('Position is required'),
+        role: Yup.string().required('Role is required'),
+        department: Yup.string().when('role', {
+            is: (val) => ['faculty', 'hod'].includes(val),
+            then: (schema) => schema.required('Department is required for Faculty / HOD'),
+            otherwise: (schema) => schema.notRequired(),
+        }),
+        mobileNo: Yup.string()
+            .trim()
+            .matches(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)')
+            .nullable(),
+        isActive: Yup.boolean(),
+    });
 
     const tabs = ['Users', 'Roles & Permissions'];
     const users = usersData?.users || [];
@@ -69,6 +122,16 @@ const UsersManagement = () => {
             )
         );
     }, [filteredUsers, users, searchTerm]);
+
+    useEffect(() => {
+        setMobilePage(1);
+    }, [searchTerm]);
+
+    const totalMobilePages = Math.ceil(displayData.length / mobilePageSize) || 1;
+    const paginatedMobileUsers = useMemo(() => {
+        const start = (mobilePage - 1) * mobilePageSize;
+        return displayData.slice(start, start + mobilePageSize);
+    }, [displayData, mobilePage, mobilePageSize]);
 
     const exportData = useMemo(() => users.map(u => ({
         Name: u.name || '',
@@ -116,8 +179,8 @@ const UsersManagement = () => {
                 return;
             }
 
-            if (!/^\d{10}$/.test(trimmedMobile)) {
-                toast.error('Mobile number must be a valid 10-digit number');
+            if (!/^[6-9]\d{9}$/.test(trimmedMobile)) {
+                toast.error('Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9');
                 return;
             }
 
@@ -179,6 +242,7 @@ const UsersManagement = () => {
             <Formik
                 innerRef={formikRef}
                 initialValues={{ name: '', email: '', mobileNo: '', adharCard: '', role: '', department: '', position: '', isActive: true, password: '' }}
+                validationSchema={createUserValidationSchema}
                 onSubmit={handleCreateUser}
             >
                 {({ setFieldValue, values }) => (
@@ -191,8 +255,24 @@ const UsersManagement = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                 <InputField label="Full Name" name="name" placeholder="Enter full name" />
                                 <InputField label="Email Address" name="email" type="email" placeholder="user@ssism.org" />
-                                <InputField label="Mobile Number" name="mobileNo" placeholder="Enter mobile number" />
-                                <InputField label="Aadhar Number" name="adharCard" placeholder="Enter Aadhar number" />
+                                <InputField 
+                                    label="Mobile Number" 
+                                    name="mobileNo" 
+                                    placeholder="Enter 10-digit mobile number" 
+                                    maxLength={10}
+                                    onInput={(e) => {
+                                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    }}
+                                />
+                                <InputField 
+                                    label="Aadhar Number" 
+                                    name="adharCard" 
+                                    placeholder="Enter 12-digit Aadhar number" 
+                                    maxLength={12}
+                                    onInput={(e) => {
+                                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                    }}
+                                />
                             </div>
                         </div>
 
@@ -295,26 +375,57 @@ const UsersManagement = () => {
         {
             key: 'name', label: 'Name',
             render: (user) => (
-                <div className="flex items-center">
-                    <img className="h-8 w-8 rounded-full object-cover mr-3" src={user.profileImage || profile} alt={user.name} />
-                    <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.position}</div>
+                <div className="flex items-center min-w-0 max-w-xs">
+                    <img className="h-9 w-9 rounded-full object-cover mr-3 shrink-0 border border-slate-200" src={user.profileImage || profile} alt={user.name} />
+                    <div className="min-w-0 flex-1">
+                        <div className="font-bold text-gray-900 truncate">{user.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{user.position || 'Employee'}</div>
                     </div>
                 </div>
             )
         },
-        { key: 'email', label: 'Email' },
-        { key: 'mobileNo', label: 'Contact No.' },
+        { 
+            key: 'email', 
+            label: 'Email',
+            render: (user) => (
+                <span className="text-xs sm:text-sm text-gray-600 block truncate max-w-[200px]" title={user.email}>
+                    {user.email}
+                </span>
+            )
+        },
+        { 
+            key: 'mobileNo', 
+            label: 'Contact No.',
+            render: (user) => (
+                <span className="text-xs sm:text-sm text-gray-600">
+                    {user.mobileNo || '—'}
+                </span>
+            )
+        },
         {
             key: 'role', label: 'Role',
-            render: (user) => <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>{formatRoleName(user.role)}</span>
+            render: (user) => (
+                <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold rounded-full border ${getRoleBadgeColor(user.role)}`}>
+                    {formatRoleName(user.role)}
+                </span>
+            )
         },
-        { key: 'department', label: 'Department' },
+        { 
+            key: 'department', 
+            label: 'Department',
+            render: (user) => (
+                <span className="text-xs sm:text-sm font-medium text-gray-700">
+                    {user.department || '—'}
+                </span>
+            )
+        },
         {
             key: 'isActive', label: 'Status',
             render: (user) => (
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-full border ${
+                    user.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                     {user.isActive ? 'Active' : 'Inactive'}
                 </span>
             )
@@ -365,27 +476,186 @@ const UsersManagement = () => {
                 </div>
             </Header>
 
-            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-2 sm:px-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-4 py-1 sm:py-0 gap-2">
                 <div className="flex-1 min-w-0">
                     <TabsCommon tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
-                <div className="flex-shrink-0 pl-2 sm:pl-4">
+                <div className="flex-shrink-0 self-end sm:self-auto">
                     <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
                 </div>
             </div>
 
             <div className="p-2.5 sm:p-4 md:p-6">
                 {activeTab === 'Users' ? (
-                    <CommonTable
-                        columns={columns}
-                        data={displayData}
-                        searchTerm={searchTerm}
-                        pagination={true}
-                        editable={true}
-                        actionButton={actionButton}
-                        onRowClick={(user) => navigate(`/user-profile/${user._id || user.id}`)}
-                        rowsPerPage={10}
-                    />
+                    <>
+                        {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
+                        <div className="hidden md:block">
+                            <CommonTable
+                                columns={columns}
+                                data={displayData}
+                                searchTerm={searchTerm}
+                                pagination={true}
+                                editable={true}
+                                actionButton={actionButton}
+                                onRowClick={(user) => navigate(`/user-profile/${user._id || user.id}`)}
+                                rowsPerPage={10}
+                            />
+                        </div>
+
+                        {/* ── MOBILE VIEW: MODERN RESPONSIVE USER CARDS (< 768px) ── */}
+                        <div className="md:hidden space-y-3">
+                            {displayData.length === 0 ? (
+                                <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-2xs space-y-2">
+                                    <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto text-xl">
+                                        <UserIcon size={22} />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-800">No users found</p>
+                                    <p className="text-xs text-gray-400">Try adjusting your search criteria</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {paginatedMobileUsers.map((user) => (
+                                        <div
+                                            key={user._id || user.id}
+                                            onClick={() => navigate(`/user-profile/${user._id || user.id}`)}
+                                            className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs hover:border-orange-200 transition-all duration-150 active:scale-[0.99] cursor-pointer space-y-3"
+                                        >
+                                            {/* Top Row: Avatar, Name, Position, Status Badge */}
+                                            <div className="flex items-start justify-between gap-2.5">
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <img
+                                                        src={user.profileImage || profile}
+                                                        alt={user.name}
+                                                        className="w-11 h-11 rounded-full object-cover border border-slate-200 shrink-0"
+                                                    />
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
+                                                            {user.name}
+                                                        </h4>
+                                                        <p className="text-xs text-gray-500 truncate mt-0.5">
+                                                            {user.position || "Employee"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Status Pill */}
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border shrink-0 ${
+                                                    user.isActive 
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                                                }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                                    {user.isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+
+                                            {/* Middle Details Grid */}
+                                            <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 text-xs space-y-2">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-slate-400 font-medium">Role:</span>
+                                                    <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                                                        {formatRoleName(user.role)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-slate-400 font-medium">Department:</span>
+                                                    <span className="font-bold text-slate-700 truncate">
+                                                        {user.department || "—"}
+                                                    </span>
+                                                </div>
+
+                                                {user.email && (
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-slate-400 font-medium">Email:</span>
+                                                        <a
+                                                            href={`mailto:${user.email}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="font-semibold text-orange-600 hover:underline truncate max-w-[200px]"
+                                                        >
+                                                            {user.email}
+                                                        </a>
+                                                    </div>
+                                                )}
+
+                                                {user.mobileNo && (
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-slate-400 font-medium">Contact:</span>
+                                                        <a
+                                                            href={`tel:${user.mobileNo}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="font-bold text-slate-800 hover:text-orange-600 flex items-center gap-1"
+                                                        >
+                                                            <Phone size={12} className="text-orange-500" />
+                                                            <span>{user.mobileNo}</span>
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Bottom Actions Row */}
+                                            <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/user-profile/${user._id || user.id}`);
+                                                    }}
+                                                    className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 p-1"
+                                                >
+                                                    <span>View Profile</span>
+                                                </button>
+
+                                                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditModal({ show: true, user })}
+                                                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                                                        title="Edit User"
+                                                    >
+                                                        <Edit size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteUser(user._id || user.id, user.name)}
+                                                        className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition"
+                                                        title="Delete User"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Mobile Pagination */}
+                                    {totalMobilePages > 1 && (
+                                        <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-gray-200 shadow-2xs">
+                                            <button
+                                                type="button"
+                                                disabled={mobilePage === 1}
+                                                onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                                                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 disabled:opacity-40"
+                                            >
+                                                Previous
+                                            </button>
+                                            <span className="text-xs font-semibold text-gray-600">
+                                                Page {mobilePage} of {totalMobilePages}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                disabled={mobilePage === totalMobilePages}
+                                                onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
+                                                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 disabled:opacity-40"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </>
                 ) : (
                     <RolesPermissions />
                 )}
@@ -403,14 +673,22 @@ const UsersManagement = () => {
                 drawerContent={
                     <Formik
                         innerRef={editUserFormRef}
-                        initialValues={{ name: editModal.user?.name || '', position: editModal.user?.position || '', role: editModal.user?.role || '', department: editModal.user?.department || '', isActive: editModal.user?.isActive ?? true }}
+                        initialValues={{ 
+                            name: editModal.user?.name || '', 
+                            position: editModal.user?.position || '', 
+                            role: editModal.user?.role || '', 
+                            department: editModal.user?.department || '', 
+                            mobileNo: editModal.user?.mobileNo || '',
+                            isActive: editModal.user?.isActive ?? true 
+                        }}
+                        validationSchema={editUserValidationSchema}
                         onSubmit={async (values) => {
                             try {
                                 await editUser({ id: editModal.user._id || editModal.user.id, ...values }).unwrap();
                                 toast.success('User updated successfully');
                                 setEditModal({ show: false, user: null });
-                            } catch {
-                                toast.error('Failed to update user');
+                            } catch (err) {
+                                toast.error(err?.data?.message || 'Failed to update user');
                             }
                         }}
                     >
@@ -429,6 +707,17 @@ const UsersManagement = () => {
                                             type="select" 
                                             placeholder="Select designated position"
                                             options={[{ value: 'Assistant Professor', label: 'Assistant Professor' }, { value: 'Associate Professor', label: 'Associate Professor' }, { value: 'Professor', label: 'Professor' }, { value: 'Lecturer', label: 'Lecturer' }, { value: 'Chairman', label: 'Chairman' }, { value: 'CEO', label: 'CEO' }]} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputField 
+                                            label="Mobile Number" 
+                                            name="mobileNo" 
+                                            placeholder="Enter 10-digit mobile number" 
+                                            maxLength={10}
+                                            onInput={(e) => {
+                                                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                            }}
                                         />
                                     </div>
                                 </div>

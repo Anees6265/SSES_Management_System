@@ -38,6 +38,7 @@ import begLogo from '../../../assets/images/beg-logo.png';
 import ssecLogo from '../../../assets/images/ssec-logo.png';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
+import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName } from './reportCardDepartmentConfig';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -252,13 +253,12 @@ export default function StudentReport() {
   const prkey = studentData.admissionNo || studentData.enrollmentNo || studentData.prkey || "N/A";
   const currentSubLevel = studentData.currentSubLevelId?.name || studentData.currentLevel || "1A";
   const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
-  const deptCode = (studentData.subDepartmentId?.departmentId?.code || "").toUpperCase();
-  const deptName = (studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.name || "").toUpperCase();
-  const courseUpper = (studentData.course || "").toUpperCase();
-  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseUpper.includes(c));
-  const isBeg = deptCode.includes("BEG") || deptName.includes("BEG") || ["BIO", "MICRO"].some(c => courseUpper.includes(c));
-  const isBTech = deptCode.includes("CSE") || deptName.includes("B.TECH") || deptName.includes("ENGINEERING") || courseUpper.includes("B.TECH") || courseUpper.includes("BTECH");
-  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG");
+  const deptType = detectDepartment(studentData, reportCardData);
+  const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
+  const isMeg = deptType === "MEG";
+  const isBeg = deptType === "BEG";
+  const isBTech = deptType === "BTECH";
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || deptConfig.shortName;
   const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
   const rawLogo = studentData.subDepartmentId?.departmentId?.logo;
   const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
@@ -901,9 +901,7 @@ export default function StudentReport() {
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
                   <p className="text-[11px] sm:text-xs text-slate-400">
-                    {isMeg
-                      ? "Business acumen, domain depth, articulate communication & executive composure"
-                      : "Technical depth, articulate communication & answer composure"}
+                    {deptConfig.interviewSubtitle}
                   </p>
                 </div>
               </div>
@@ -915,27 +913,12 @@ export default function StudentReport() {
             <div className="space-y-2.5 sm:space-y-3.5">
               {(interviewSection?.items?.length > 0
                 ? interviewSection.items
-                : (isMeg
-                  ? [
-                    { itemName: "Business & Domain Knowledge", value: 4.0 },
-                    { itemName: "Business Communication & Articulation", value: 4.0 },
-                    { itemName: "Confidence & Executive Presence", value: 3.8 },
-                    { itemName: "Case Analysis & Problem Solving", value: 4.1 },
-                    { itemName: "Overall Managerial Recommendation", value: 4.0 }
-                  ]
-                  : [
-                    { itemName: "Technical Knowledge", value: 4.0 },
-                    { itemName: "Articulation & Communication", value: 4.0 },
-                    { itemName: "Confidence & Composure", value: 3.8 },
-                    { itemName: "Problem Solving Approach", value: 4.1 },
-                    { itemName: "Overall Interview Recommendation", value: 4.0 }
-                  ]
-                )
+                : deptConfig.interviewItems
               ).map((item, idx) => {
                 const score = parseFloat(item.value) || 0;
                 const max = item.maxMarks || 5;
                 const pct = Math.min(Math.round((score / max) * 100), 100);
-                const displayName = (isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName;
+                const displayName = mapInterviewItemName(item.itemName, deptType);
 
                 return (
                   <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-slate-100">
@@ -1127,18 +1110,7 @@ export default function StudentReport() {
                 const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve") || i.itemName.toLowerCase().includes("growth"))?.value;
                 const points = rawAreas
                   ? rawAreas.split(/[.,]\s+/).filter(Boolean)
-                  : (isMeg
-                    ? [
-                      "Financial modeling, data analytics & spreadsheet simulation practice",
-                      "Executive mock interview composure and structured case answering",
-                      "Strategic marketing & corporate case competition readiness"
-                    ]
-                    : [
-                      "Advanced system design and complex algorithmic interview practice",
-                      "Mock interview confidence and structured answering under time limits",
-                      "Deep-dive portfolio projects demonstrating end-to-end architectures"
-                    ]
-                  );
+                  : deptConfig.mockGrowthAreas;
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs font-semibold text-amber-900">

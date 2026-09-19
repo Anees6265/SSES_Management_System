@@ -15,6 +15,17 @@ import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import Header from "../../../shared/sidebar/Header";
 import CommonCard from "../CommonCard";
 
+const UNIVERSITY_OPTIONS = [
+  {
+    value: "Samrat Vikramaditya Vishwavidyalaya, Ujjain",
+    label: "Samrat Vikramaditya Vishwavidyalaya, Ujjain",
+  },
+  {
+    value: "Rajiv Gandhi Proudyogiki Vishwavidyalaya (RGPV), Bhopal",
+    label: "Rajiv Gandhi Proudyogiki Vishwavidyalaya (RGPV), Bhopal",
+  },
+];
+
 const DepartmentManagement = () => {
   const navigate = useNavigate();
   const { data: departmentsData, isLoading, refetch } = useGetAllDepartmentsQuery();
@@ -192,7 +203,13 @@ const DepartmentManagement = () => {
 
                     <InputField label="Department Name" name="name" placeholder="Enter department name" />
                     <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                    <InputField label="University Name" name="universityName" placeholder="Enter university name" />
+                    <InputField
+                      label="University Name"
+                      name="universityName"
+                      type="select"
+                      placeholder="Select university"
+                      options={UNIVERSITY_OPTIONS}
+                    />
                     <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
 
                     <div>
@@ -365,7 +382,13 @@ const DepartmentManagement = () => {
                               <InputField label="Department Name" name="name" placeholder="Enter department name" />
                               <InputField label="Department Code" name="code" placeholder="Enter department code" disabled={true} />
                               <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                              <InputField label="University Name" name="universityName" placeholder="Enter university name" />
+                              <InputField
+                                label="University Name"
+                                name="universityName"
+                                type="select"
+                                placeholder="Select university"
+                                options={UNIVERSITY_OPTIONS}
+                              />
                               <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
                               <div>
                                 <label className="block text-sm font-medium mb-2">Allowed Courses</label>

@@ -179,12 +179,12 @@ const Sidebar = ({ children }) => {
       subMenu: [
         ...(role === "superadmin" || role === "admin" || role === "hod" || role === "faculty" || role === "placement_officer"
           ? [
-              { name: "Dashboard", path: "/placements/dashboard", permission: "Page_Placement" },
-              { name: "Placement Drives", path: "/placements/drives", permission: "Page_Placement" },
-              { name: "Resume Sharing", path: "/placements/resume-sharing", permission: "Page_Placement" }
+              { name: "Dashboard", path: "/placements/dashboard", permission: "Page_PlacementDashboard" },
+              { name: "Placement Drives", path: "/placements/drives", permission: "Page_PlacementDrives" },
+              { name: "Resume Sharing", path: "/placements/resume-sharing", permission: "Page_ResumeSharing" }
             ]
           : []),
-        { name: "Placement Candidates", path: "/readiness-status", permission: "Page_Placement" },
+        { name: "Placement Candidates", path: "/readiness-status", permission: "Page_PlacementCandidates" },
         { name: "Company Details", path: "/company-details", permission: "Page_CompanyDetails" },
         { name: "Placed Students", path: "/placement-post", permission: "Page_PlacedStudents" },
       ],

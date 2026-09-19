@@ -14,6 +14,7 @@ import { toast } from "react-toastify";
 import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { taskAPI } from "../../../services/taskService";
+import { detectDepartment, DEPARTMENT_CONFIGS } from "./reportCardDepartmentConfig";
 
 const deepClone = (obj) => {
   // Use structuredClone when available (preserves types), fallback to JSON
@@ -306,10 +307,9 @@ export default function StudentReportForm() {
     };
 
     // 2. Subject-wise Performance Table (Automatic / Read-Only from live tasks)
-    const deptCode = (student?.subDepartmentId?.departmentId?.code || "").toUpperCase();
-    const deptName = (student?.subDepartmentId?.departmentId?.name || student?.subDepartmentId?.name || "").toUpperCase();
-    const courseName = (student?.course || "").toUpperCase();
-    const isMeg = templateType === "MEG_WEIGHTED" || deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseName.includes(c));
+    const deptType = detectDepartment(student, { templateType });
+    const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
+    const isMeg = deptType === "MEG";
 
     const subjectItems = [];
 
@@ -360,17 +360,7 @@ export default function StudentReportForm() {
     }
 
     if (subjectItems.length === 0) {
-      if (isMeg) {
-        subjectItems.push({ itemName: "Principles & Practice of Management", value: "Outstanding", score: 48, maxMarks: 50, remark: "4.80" });
-        subjectItems.push({ itemName: "Financial Accounting & Reporting", value: "Excellent", score: 44, maxMarks: 50, remark: "4.40" });
-        subjectItems.push({ itemName: "Business Communication & Soft Skills", value: "Excellent", score: 27, maxMarks: 30, remark: "4.50" });
-        subjectItems.push({ itemName: "Business Economics", value: "Very Good", score: 23, maxMarks: 25, remark: "4.60" });
-      } else {
-        subjectItems.push({ itemName: "Python", value: "Excellent", score: 92, maxMarks: 100, remark: "4.12" });
-        subjectItems.push({ itemName: "DSA", value: "Very Good", score: 45, maxMarks: 50, remark: "3.90" });
-        subjectItems.push({ itemName: "HTML", value: "Excellent", score: 28, maxMarks: 30, remark: "4.40" });
-        subjectItems.push({ itemName: "MySQL", value: "Very Good", score: 22, maxMarks: 25, remark: "3.70" });
-      }
+      deptConfig.defaultSubjects.forEach(s => subjectItems.push({ ...s }));
     }
 
     const subjectPerformanceSection = {
@@ -394,26 +384,10 @@ export default function StudentReportForm() {
     };
 
     // 4. Interview Evaluation (Department-specific defaults, fully editable)
-    const interviewItems = isMeg
-      ? [
-          { itemName: "Business & Domain Knowledge", value: 4.0, maxMarks: 5 },
-          { itemName: "Business Communication & Articulation", value: 4.0, maxMarks: 5 },
-          { itemName: "Confidence & Executive Presence", value: 3.8, maxMarks: 5 },
-          { itemName: "Case Analysis & Problem Solving", value: 4.1, maxMarks: 5 },
-          { itemName: "Business Acumen & Practical Logic", value: 4.0, maxMarks: 5 },
-          { itemName: "Overall Managerial Recommendation", value: 4.0, maxMarks: 5 }
-        ]
-      : [
-          { itemName: "Technical Knowledge", value: 4.0, maxMarks: 5 },
-          { itemName: "Communication", value: 4.0, maxMarks: 5 },
-          { itemName: "Confidence", value: 3.0, maxMarks: 5 },
-          { itemName: "Problem Solving", value: 4.0, maxMarks: 5 },
-          { itemName: "Answer Quality", value: 4.0, maxMarks: 5 },
-          { itemName: "Overall Interview Rating", value: 3.8, maxMarks: 5 }
-        ];
+    const interviewItems = deptConfig.interviewItems.map(item => ({ ...item }));
 
     const interviewSection = {
-      sectionName: "Interview Evaluation",
+      sectionName: deptConfig.interviewSectionTitle || "Interview Evaluation",
       sectionType: "InterviewRating",
       items: interviewItems
     };
@@ -443,15 +417,10 @@ export default function StudentReportForm() {
     };
 
     // 7. Strengths & Areas for Improvement (Department-tailored)
-    const strengthsItems = isMeg
-      ? [
-          { itemName: "Strengths", value: "Strong business & domain concepts, Structured case analysis, Effective corporate communication & presentation, Active leadership" },
-          { itemName: "Areas for Improvement", value: "Advanced financial modeling, Executive interview composure, Strategic negotiation skills" }
-        ]
-      : [
-          { itemName: "Strengths", value: "Good programming fundamentals, Consistent task completion, Good communication, Active participation" },
-          { itemName: "Areas for Improvement", value: "Advanced problem solving, Interview confidence, Time management" }
-        ];
+    const strengthsItems = [
+      { itemName: "Strengths", value: deptConfig.strengths },
+      { itemName: "Areas for Improvement", value: deptConfig.mockGrowthAreas.join(", ") }
+    ];
 
     const strengthsSection = {
       sectionName: "Strengths & Areas for Improvement",

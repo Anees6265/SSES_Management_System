@@ -30,6 +30,7 @@ import {
 } from "react-icons/fa";
 import { RiDoubleQuotesL } from "react-icons/ri";
 import { useGetMyReportCardQuery, useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
+import { useGetStudentThesisQuery } from "../../../redux/api/authApi";
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
 import megLogo from "../../../assets/images/meg-logo.png";
@@ -265,6 +266,16 @@ export default function StudentReportCard() {
   const interviewSection = getSection("InterviewRating");
   const careerReadinessSection = getSection("CareerStatus");
   const strengthsImprovementSection = getSection("StrengthsImprovement");
+
+  const interviewItemsList = useMemo(() => {
+    return (interviewSection?.items?.length > 0 ? interviewSection.items : deptConfig.interviewItems) || [];
+  }, [interviewSection, deptConfig]);
+
+  const avgInterviewScore = useMemo(() => {
+    if (!interviewItemsList.length) return null;
+    const total = interviewItemsList.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
+    return (total / interviewItemsList.length).toFixed(1);
+  }, [interviewItemsList]);
 
   // Academic SGPA & CGPA
   const cgpaValue = rc?.academicPerformance?.cgpa || 7.5;
@@ -675,33 +686,26 @@ export default function StudentReportCard() {
 
             {/* Interview Mock Assessment */}
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100">
-                Interview Mock Ratings
-              </h3>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FaUserTie className="text-orange-500 shrink-0" size={13} />
+                  <h3 className="text-xs font-bold text-slate-800 truncate">
+                    Interview Mock Ratings
+                  </h3>
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 shrink-0 whitespace-nowrap">
+                  <FaStar className="text-amber-500 text-[9px]" />
+                  Panel Rating
+                  {avgInterviewScore && <span className="font-extrabold text-orange-900">({avgInterviewScore})</span>}
+                </span>
+              </div>
               <div className="space-y-2.5">
-                {(interviewSection?.items?.length > 0
-                  ? interviewSection.items
-                  : (isMeg
-                    ? [
-                      { itemName: "Business & Domain Knowledge", value: 4.0 },
-                      { itemName: "Business Communication & Articulation", value: 4.0 },
-                      { itemName: "Confidence & Executive Presence", value: 3.8 },
-                      { itemName: "Case Analysis & Problem Solving", value: 4.1 },
-                      { itemName: "Overall Managerial Recommendation", value: 4.0 }
-                    ]
-                    : [
-                      { itemName: "Technical Knowledge", value: 4.0 },
-                      { itemName: "Communication", value: 4.0 },
-                      { itemName: "Confidence", value: 3.8 },
-                      { itemName: "Problem Solving", value: 4.1 }
-                    ]
-                  )
-                ).map((item, idx) => {
+                {interviewItemsList.map((item, idx) => {
                   const score = parseFloat(item.value) || 0;
-                  const displayName = (isMeg && item.itemName === "Technical Knowledge") ? "Business & Domain Knowledge" : item.itemName;
+                  const displayName = mapInterviewItemName(item.itemName, deptType);
                   return (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs">
-                      <span className="font-semibold text-slate-700 truncate pr-2">{displayName}</span>
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 text-xs gap-2">
+                      <span className="font-semibold text-slate-700 truncate min-w-0 flex-1">{displayName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <StarRating rating={score} size="text-[10px]" />
                         <span className="font-bold text-slate-800">{score.toFixed(1)}</span>
@@ -1063,39 +1067,49 @@ export default function StudentReportCard() {
               </div>
 
               {/* Interview Assessment */}
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-sm">
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-7 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-xs shrink-0">
                       <FaUserTie size={17} />
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
-                      <p className="text-xs text-slate-400">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-slate-800 truncate">
+                        Interview Readiness & Mock Assessment
+                      </h3>
+                      <p className="text-xs text-slate-400 line-clamp-1">
                         {deptConfig.interviewSubtitle}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
-                    Panel Rating
-                  </span>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 shadow-2xs whitespace-nowrap">
+                      <FaStar className="text-amber-500 text-[10px]" />
+                      Panel Rating
+                      {avgInterviewScore && (
+                        <span className="bg-orange-200/70 text-orange-900 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ml-0.5">
+                          {avgInterviewScore} / 5
+                        </span>
+                      )}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  {(interviewSection?.items?.length > 0
-                    ? interviewSection.items
-                    : deptConfig.interviewItems
-                  ).map((item, idx) => {
+                <div className="space-y-3.5">
+                  {interviewItemsList.map((item, idx) => {
                     const score = parseFloat(item.value) || 0;
                     const max = item.maxMarks || 5;
                     const pct = Math.min(Math.round((score / max) * 100), 100);
                     const displayName = mapInterviewItemName(item.itemName, deptType);
 
                     return (
-                      <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-bold text-slate-700">{displayName}</span>
-                          <div className="flex items-center gap-2">
+                      <div key={idx} className="bg-slate-50/70 hover:bg-slate-50 rounded-2xl p-3.5 border border-slate-100 transition">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-xs font-bold text-slate-700 truncate min-w-0 flex-1" title={displayName}>
+                            {displayName}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <StarRating rating={score} size="text-[11px]" />
                             <span className="text-xs font-black text-slate-800">
                               {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>

@@ -282,6 +282,16 @@ export default function StudentReport() {
   const strengthsImprovementSection = getSection("StrengthsImprovement");
   const overallPerformanceSection = getSection("OverallPerformanceSummary");
 
+  const interviewItemsList = useMemo(() => {
+    return (interviewSection?.items?.length > 0 ? interviewSection.items : deptConfig.interviewItems) || [];
+  }, [interviewSection, deptConfig]);
+
+  const avgInterviewScore = useMemo(() => {
+    if (!interviewItemsList.length) return null;
+    const total = interviewItemsList.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
+    return (total / interviewItemsList.length).toFixed(1);
+  }, [interviewItemsList]);
+
   // CGPA calculation
   const cgpaValue = reportCardData?.academicPerformance?.cgpa || "8.50";
   const sgpaList = reportCardData?.academicPerformance?.yearWiseSGPA || [
@@ -893,37 +903,42 @@ export default function StudentReport() {
 
           {/* Section 2: Interview Evaluation */}
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-              <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center shadow-xs shrink-0">
                   <FaUserTie size={16} />
                 </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Interview Readiness & Mock Assessment</h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400">
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800 truncate">Interview Readiness & Mock Assessment</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400 line-clamp-1">
                     {deptConfig.interviewSubtitle}
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100 shrink-0">
-                Panel Rating
-              </span>
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200/80 shadow-2xs whitespace-nowrap">
+                  <FaStar className="text-amber-500 text-[10px]" />
+                  Panel Rating
+                  {avgInterviewScore && (
+                    <span className="bg-orange-200/70 text-orange-900 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ml-0.5">
+                      {avgInterviewScore} / 5
+                    </span>
+                  )}
+                </span>
+              </div>
             </div>
 
             <div className="space-y-2.5 sm:space-y-3.5">
-              {(interviewSection?.items?.length > 0
-                ? interviewSection.items
-                : deptConfig.interviewItems
-              ).map((item, idx) => {
+              {interviewItemsList.map((item, idx) => {
                 const score = parseFloat(item.value) || 0;
                 const max = item.maxMarks || 5;
                 const pct = Math.min(Math.round((score / max) * 100), 100);
                 const displayName = mapInterviewItemName(item.itemName, deptType);
 
                 return (
-                  <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-slate-100">
+                  <div key={idx} className="bg-slate-50/70 hover:bg-slate-50 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 border border-slate-100 transition">
                     <div className="flex items-center justify-between mb-1.5 gap-2">
-                      <span className="text-xs font-bold text-slate-700 truncate">{displayName}</span>
+                      <span className="text-xs font-bold text-slate-700 truncate min-w-0 flex-1" title={displayName}>{displayName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <StarRating rating={score} size="text-[10px] sm:text-[11px]" />
                         <span className="text-xs font-black text-slate-800">

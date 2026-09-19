@@ -15,6 +15,8 @@ import {
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
 import megLogo from "../../../assets/images/meg-logo.png";
+import begLogo from "../../../assets/images/beg-logo.png";
+import ssecLogo from "../../../assets/images/ssec-logo.png";
 import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
 import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
 import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
@@ -440,15 +442,20 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
   const deptCode = (studentData?.subDepartmentId?.departmentId?.code || "").toUpperCase();
   const deptName = (studentData?.subDepartmentId?.departmentId?.name || studentData?.subDepartmentId?.name || "").toUpperCase();
-  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (studentData?.course && ["BBA", "BCOM"].some(c => studentData.course.toUpperCase().includes(c)));
+  const courseUpper = (studentData?.course || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseUpper.includes(c));
+  const isBeg = deptCode.includes("BEG") || deptName.includes("BEG") || ["BIO", "MICRO"].some(c => courseUpper.includes(c));
+  const isBTech = deptCode.includes("CSE") || deptName.includes("B.TECH") || deptName.includes("ENGINEERING") || courseUpper.includes("B.TECH") || courseUpper.includes("BTECH");
 
-  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
   const rawLogo = studentData?.subDepartmentId?.departmentId?.logo;
   const isSwanLogo = typeof rawLogo === "string" && rawLogo.includes("mvmrynblzpwafc6zking");
+  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === "string" && rawLogo.includes("oyekfcv22l5gz7d2yicz");
   const deptLogo =
-    (typeof rawLogo === "string" && rawLogo.trim() && !isSwanLogo)
+    (typeof rawLogo === "string" && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech)
       ? rawLogo
       : defaultDeptLogo;
+  const collegeName = isBTech ? "SANT SINGAJI ENGINEERING COLLEGE" : "SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT";
 
   return (
     <Document>
@@ -463,13 +470,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             {/* Institution Title & Details (Center) */}
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
               <Text style={{ fontSize: 12, fontWeight: "bold", color: "#111827", textTransform: "uppercase", textAlign: "center" }}>
-                SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT
+                {collegeName}
               </Text>
               <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B", marginTop: 2, textAlign: "center", textTransform: "uppercase" }}>
                 STUDENT PERFORMANCE REPORT CARD
               </Text>
               <Text style={{ fontSize: 7.5, color: "#4B5563", marginTop: 1, textAlign: "center" }}>
-                Department of {studentData?.subDepartmentId?.departmentId?.name || (isMeg ? "Management Excellence Group (MEG)" : "Information Technology & Emerging Growth (ITEG)")}
+                Department of {studentData?.subDepartmentId?.departmentId?.name || (isBTech ? "Computer Science & Engineering" : isBeg ? "Bio Excellence Group (BEG)" : isMeg ? "Management Excellence Group (MEG)" : "Information Technology & Emerging Growth (ITEG)")}
               </Text>
             </View>
 
@@ -482,7 +489,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#4B5563" }}>
             <Text>Academic Session: {reportCardData?.batchYear || "2025–26"}</Text>
             <Text>Batch Year: {reportCardData?.batchYear || "2025–26"}</Text>
-            <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || (isMeg ? "MEG" : "ITEG")}</Text>
+            <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG")}</Text>
             <Text>Course / Level: {studentData?.course || "N/A"} ({studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"})</Text>
           </View>
         </View>

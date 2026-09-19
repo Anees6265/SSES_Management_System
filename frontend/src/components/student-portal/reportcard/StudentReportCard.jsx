@@ -33,6 +33,8 @@ import { useGetMyReportCardQuery, useGetMyStudentProfileQuery } from "../../../r
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
 import megLogo from "../../../assets/images/meg-logo.png";
+import begLogo from "../../../assets/images/beg-logo.png";
+import ssecLogo from "../../../assets/images/ssec-logo.png";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import StudentReportPDF from "../../modules/students/StudentReportPDF";
 
@@ -240,12 +242,17 @@ export default function StudentReportCard() {
   const currentYear = translateLevelName(raw.currentLevelId?.name || raw.currentLevel);
   const deptCode = (raw.subDepartmentId?.departmentId?.code || "").toUpperCase();
   const deptName = (raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || "").toUpperCase();
-  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (raw.course && ["BBA", "BCOM"].some(c => raw.course.toUpperCase().includes(c)));
-  const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || (isMeg ? "MEG" : "ITEG");
-  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const courseUpper = (raw.course || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseUpper.includes(c));
+  const isBeg = deptCode.includes("BEG") || deptName.includes("BEG") || ["BIO", "MICRO"].some(c => courseUpper.includes(c));
+  const isBTech = deptCode.includes("CSE") || deptName.includes("B.TECH") || deptName.includes("ENGINEERING") || courseUpper.includes("B.TECH") || courseUpper.includes("BTECH");
+  const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG");
+  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
   const rawLogo = raw.subDepartmentId?.departmentId?.logo;
   const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
-  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo) ? rawLogo : defaultDeptLogo;
+  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === 'string' && rawLogo.includes('oyekfcv22l5gz7d2yicz');
+  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech) ? rawLogo : defaultDeptLogo;
+  const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science and Management";
   const batchYear = rc?.batchYear || raw.sessionId?.name || "2025–26";
   const overallGrade = rc?.overallGrade || "A";
 
@@ -289,7 +296,7 @@ export default function StudentReportCard() {
 
               <div className="min-w-0">
                 <h1 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight truncate">
-                  Sant Singaji Institute of Science and Management
+                  {collegeName}
                 </h1>
                 <p className="text-[10px] sm:text-xs font-semibold text-orange-500 uppercase tracking-wider truncate">
                   {departmentName} · Performance Report Card · Session {batchYear}
@@ -1278,7 +1285,7 @@ export default function StudentReportCard() {
                     <span className="text-slate-800 font-bold">{rc.generatedByName || "Prof. Himanshu Vishwakarma"}</span>
                     <span className="text-slate-400">· Senior Faculty Mentor</span>
                   </div>
-                  <span className="text-slate-400">Official SSISM Evaluation</span>
+                  <span className="text-slate-400">Official {isBTech ? "SSEC" : "SSISM"} Evaluation</span>
                 </div>
               </div>
             </div>

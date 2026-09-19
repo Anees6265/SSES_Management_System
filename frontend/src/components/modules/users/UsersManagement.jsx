@@ -46,9 +46,7 @@ const UsersManagement = () => {
         }
         return [
             { value: 'ITEG', label: 'ITEG' },
-            { value: 'Management', label: 'Management' },
             { value: 'MEG', label: 'MEG' },
-            { value: 'B.Tech', label: 'B.Tech' },
             { value: 'BEG', label: 'BEG' },
         ];
     }, [deptData]);

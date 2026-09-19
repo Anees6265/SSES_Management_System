@@ -4,7 +4,9 @@ class GeminiService {
   async analyzeThesis(pdfBuffer) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not defined in environment variables");
+      throw new Error(
+        "GEMINI_API_KEY is not defined in environment variables. Please add GEMINI_API_KEY to backend/.env"
+      );
     }
 
     const base64Data = pdfBuffer.toString("base64");
@@ -31,7 +33,8 @@ You must return a structured JSON response matching the following JSON Schema:
 Provide clear, encouraging, and highly specific points in English. Do not include markdown blocks like \`\`\`json. Return raw JSON only.
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+    const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const payload = {
       contents: [

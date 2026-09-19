@@ -34,6 +34,8 @@ import Loader from "../../shared/loader/Loader";
 import collegeLogo from '../../../assets/images/logo-ssism.png';
 import itegLogo from '../../../assets/images/iteg-logo.png';
 import megLogo from '../../../assets/images/meg-logo.png';
+import begLogo from '../../../assets/images/beg-logo.png';
+import ssecLogo from '../../../assets/images/ssec-logo.png';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
 
@@ -252,12 +254,17 @@ export default function StudentReport() {
   const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
   const deptCode = (studentData.subDepartmentId?.departmentId?.code || "").toUpperCase();
   const deptName = (studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.name || "").toUpperCase();
-  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || (studentData.course && ["BBA", "BCOM"].some(c => studentData.course.toUpperCase().includes(c)));
-  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || (isMeg ? "MEG" : "ITEG");
-  const defaultDeptLogo = isMeg ? megLogo : itegLogo;
+  const courseUpper = (studentData.course || "").toUpperCase();
+  const isMeg = deptCode.includes("MEG") || deptName.includes("MEG") || ["BBA", "BCOM"].some(c => courseUpper.includes(c));
+  const isBeg = deptCode.includes("BEG") || deptName.includes("BEG") || ["BIO", "MICRO"].some(c => courseUpper.includes(c));
+  const isBTech = deptCode.includes("CSE") || deptName.includes("B.TECH") || deptName.includes("ENGINEERING") || courseUpper.includes("B.TECH") || courseUpper.includes("BTECH");
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG");
+  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
   const rawLogo = studentData.subDepartmentId?.departmentId?.logo;
   const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
-  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo) ? rawLogo : defaultDeptLogo;
+  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === 'string' && rawLogo.includes('oyekfcv22l5gz7d2yicz');
+  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech) ? rawLogo : defaultDeptLogo;
+  const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
   const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
   const overallGrade = reportCardData?.overallGrade || "A";
   const gradeStyle = getGradeBadgeStyle(overallGrade);
@@ -399,7 +406,7 @@ export default function StudentReport() {
 
                 <div className="min-w-0">
                   <h1 className="text-xs sm:text-base lg:text-lg font-black tracking-tight text-slate-900 uppercase truncate sm:whitespace-normal">
-                    Sant Singaji Institute of Science & Management
+                    {collegeName}
                   </h1>
                   <p className="text-[10px] sm:text-xs font-semibold text-orange-500 tracking-wider uppercase mt-0.5 truncate sm:whitespace-normal">
                     {departmentName} · Comprehensive Student Performance Dossier
@@ -1177,14 +1184,14 @@ export default function StudentReport() {
                 <span className="text-slate-800 font-bold">{reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}</span>
                 <span className="text-slate-400">· Senior Faculty Mentor</span>
               </div>
-              <span className="text-slate-400 text-[11px] sm:text-xs">Official SSISM Evaluation</span>
+              <span className="text-slate-400 text-[11px] sm:text-xs">Official {isBTech ? "SSEC" : "SSISM"} Evaluation</span>
             </div>
           </div>
         </div>
 
         {/* ── Footer Branding & Verification Stamp ── */}
         <div className="pt-4 sm:pt-6 pb-4 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 text-[11px] sm:text-xs text-slate-400 text-center sm:text-left">
-          <p>© {new Date().getFullYear()} Sant Singaji Institute of Science and Management. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {collegeName}. All rights reserved.</p>
           <div className="flex items-center gap-3">
             <span>Official Academic Document</span>
             <span>·</span>

@@ -1,4 +1,66 @@
+import { useState, useRef, useEffect } from 'react';
 import { MdBusiness } from 'react-icons/md';
+
+const CardLogo = ({ logo, title, icon: Icon, inactive }) => {
+  const [aspect, setAspect] = useState(null); // 'circle' | 'wide' | null
+  const [hasError, setHasError] = useState(false);
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    setHasError(false);
+    if (imgRef.current && imgRef.current.complete) {
+      const { naturalWidth, naturalHeight } = imgRef.current;
+      if (naturalWidth && naturalHeight) {
+        setAspect(naturalWidth / naturalHeight > 1.25 ? 'wide' : 'circle');
+      }
+    }
+  }, [logo]);
+
+  if (!logo || hasError) {
+    return (
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs border ${
+        inactive 
+          ? 'bg-gray-100 border-gray-250' 
+          : 'bg-gradient-to-tr from-orange-50 to-amber-50/50 border-orange-100'
+      }`}>
+        <Icon size={22} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
+      </div>
+    );
+  }
+
+  const isWide = aspect === 'wide';
+  const isCircle = aspect === 'circle';
+
+  return (
+    <div
+      className={`h-12 sm:h-14 flex items-center justify-center flex-shrink-0 transition-all duration-200 border shadow-2xs ${
+        inactive 
+          ? 'bg-gray-50/90 border-gray-200 opacity-60' 
+          : 'bg-white border-slate-200/80 hover:border-orange-200'
+      } ${
+        isCircle
+          ? 'w-12 h-12 sm:w-14 sm:h-14 rounded-full p-1.5'
+          : isWide
+          ? 'w-auto min-w-[3.5rem] sm:min-w-[4.25rem] max-w-[140px] sm:max-w-[170px] px-2.5 py-1 rounded-xl sm:rounded-2xl'
+          : 'w-auto min-w-[3rem] sm:min-w-[3.5rem] max-w-[140px] sm:max-w-[170px] px-2 py-1 rounded-2xl'
+      }`}
+    >
+      <img
+        ref={imgRef}
+        src={logo}
+        alt={title}
+        className={`h-full w-auto max-w-full object-contain ${isCircle ? 'rounded-full' : ''}`}
+        onError={() => setHasError(true)}
+        onLoad={(e) => {
+          const { naturalWidth, naturalHeight } = e.target;
+          if (naturalWidth && naturalHeight) {
+            setAspect(naturalWidth / naturalHeight > 1.25 ? 'wide' : 'circle');
+          }
+        }}
+      />
+    </div>
+  );
+};
 
 const ActionButtons = ({ onView, onEdit, inactive }) => (
   <div className="flex gap-2.5 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5 mt-auto">
@@ -38,7 +100,7 @@ const CommonCard = ({
 }) => {
   const inactive = status === false;
 
-  // card1 — icon + title side by side, status badge below title, single-row info, VIEW + EDIT buttons
+  // card1 — icon/logo + title side by side, status badge below title, single-row info, VIEW + EDIT buttons
   if (variant === 'card1') {
     return (
       <div className={`bg-gradient-to-b from-white to-slate-50/20 border rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col ${
@@ -47,13 +109,9 @@ const CommonCard = ({
         {!inactive && <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 to-amber-500 flex-shrink-0" />}
         <div className="p-5 flex-1">
 
-          {/* Icon + Title + Status */}
+          {/* Icon/Logo + Title + Status */}
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs border ${
-              inactive ? 'bg-gray-100 border-gray-200' : 'bg-gradient-to-tr from-orange-50 to-amber-50/50 border-orange-100'
-            }`}>
-              <Icon size={24} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
-            </div>
+            <CardLogo logo={logo} title={title} icon={Icon} inactive={inactive} />
             <div className="min-w-0 flex-1">
               <h3 className={`text-sm font-extrabold tracking-tight leading-tight truncate ${inactive ? 'text-gray-455' : 'text-gray-900'}`}>
                 {title}
@@ -119,19 +177,10 @@ const CommonCard = ({
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
 
         {/* Top row: icon/logo + status badge */}
-        <div className="flex items-start justify-between mb-3.5 sm:mb-4">
-          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-xs border ${
-            inactive 
-              ? 'bg-gray-100 border-gray-250' 
-              : 'bg-gradient-to-tr from-orange-50 to-amber-50/50 border-orange-100'
-          }`}>
-            {logo
-              ? <img src={logo} alt={title} className="w-full h-full object-cover" />
-              : <Icon size={22} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
-            }
-          </div>
+        <div className="flex items-center justify-between gap-3 mb-3.5 sm:mb-4">
+          <CardLogo logo={logo} title={title} icon={Icon} inactive={inactive} />
           {status !== undefined && (
-            <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+            <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border flex-shrink-0 ${
               inactive 
                 ? 'bg-slate-50 text-slate-400 border-slate-200' 
                 : 'bg-emerald-50 text-emerald-700 border-emerald-100'

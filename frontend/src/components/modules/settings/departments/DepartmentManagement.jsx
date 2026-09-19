@@ -161,11 +161,13 @@ const DepartmentManagement = () => {
                     <div>
                       <label className="block text-sm font-medium mb-2">Department Logo</label>
                       <div
-                        className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
+                        className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
                         onClick={() => document.getElementById('add-logo-input').click()}
                       >
                         {values.logoPreview ? (
-                          <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
+                          <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
+                            <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
+                          </div>
                         ) : (
                           <>
                             <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
@@ -331,19 +333,21 @@ const DepartmentManagement = () => {
                               {/* Logo Upload */}
                               <div>
                                 <label className="block text-sm font-medium mb-2">Department Logo</label>
-                                <div
-                                  className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition"
-                                  onClick={() => document.getElementById(`edit-logo-${dept._id}`).click()}
-                                >
-                                  {values.logoPreview ? (
-                                    <img src={values.logoPreview} alt="logo preview" className="h-20 w-20 object-contain rounded-lg" />
-                                  ) : (
-                                    <>
-                                      <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
-                                      <span className="text-xs text-gray-400">Click to upload logo</span>
-                                    </>
-                                  )}
-                                </div>
+                                  <div
+                                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
+                                    onClick={() => document.getElementById(`edit-logo-${dept._id}`).click()}
+                                  >
+                                    {values.logoPreview ? (
+                                      <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
+                                        <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
+                                        <span className="text-xs text-gray-400">Click to upload logo</span>
+                                      </>
+                                    )}
+                                  </div>
                                 <input
                                   id={`edit-logo-${dept._id}`}
                                   type="file"

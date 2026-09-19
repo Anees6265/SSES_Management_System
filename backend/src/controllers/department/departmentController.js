@@ -134,7 +134,7 @@ exports.getAllDepartments = async (req, res) => {
     const SubDepartment = require("../../models/department/SubDepartment");
     const Student = require("../../models/student/Student");
 
-    const filter = {};
+    const filter = { isActive: { $ne: false } };
     if (!["superadmin", "admin"].includes(req.user?.role)) {
       let departmentId = req.user?.departmentId || null;
 

@@ -694,9 +694,17 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                         key={task._id}
                         className="border border-slate-200/80 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all bg-white flex flex-col sm:flex-row items-start justify-between gap-4"
                       >
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-extrabold text-sm text-slate-800 leading-snug">{task.title}</h4>
+                        <div className="flex-1 min-w-0 space-y-2 w-full">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4
+                              className="font-extrabold text-sm text-slate-800 leading-snug line-clamp-2 break-words min-w-0 flex-1"
+                              title={task.title}
+                            >
+                              {task.title}
+                            </h4>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${pColors[pKey] || pColors.medium}`}>
                               {pKey}
                             </span>

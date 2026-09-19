@@ -103,12 +103,15 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
             </div>
 
             {/* Title */}
-            <div>
-                <h4 className={`text-xs font-extrabold text-slate-800 leading-snug tracking-tight ${isCompleted ? "line-through text-slate-400" : ""}`}>
+            <div className="min-w-0">
+                <h4
+                    className={`text-xs font-extrabold text-slate-800 leading-snug tracking-tight break-words ${isCompleted ? "line-through text-slate-400" : ""}`}
+                    style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                >
                     {task.title}
                 </h4>
                 {(task.subjectName || task.description) && (
-                    <p className="text-[10.5px] text-slate-400 mt-1.5 line-clamp-2 font-medium leading-relaxed">
+                    <p className="text-[10.5px] text-slate-400 mt-1.5 line-clamp-2 font-medium leading-relaxed break-words">
                         {task.description || (task.subjectName ? `${task.subjectName}${task.topicName ? ` › ${task.topicName}` : ""}` : "")}
                     </p>
                 )}

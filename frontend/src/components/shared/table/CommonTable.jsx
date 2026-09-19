@@ -146,7 +146,10 @@ const CommonTable = ({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 whitespace-nowrap ${
+                        className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 align-top ${
+                          cell.column.columnDef.cellClassName ||
+                          (cell.column.columnDef.wrap ? "whitespace-normal break-words" : "whitespace-nowrap")
+                        } ${
                           cell.column.columnDef.align === "center"
                             ? "text-center"
                             : cell.column.columnDef.align === "right"

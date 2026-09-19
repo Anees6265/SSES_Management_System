@@ -210,20 +210,24 @@ const SubjectAccordion = ({ item, index }) => {
                     const stName = typeof st === "object" ? st.name : st;
                     const hasTask = typeof st === "object" && st.taskTitle;
                     return (
-                      <div key={`${stName}-${i}`} className="py-0.5">
-                        <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 text-xs text-gray-600 flex-wrap">
+                      <div key={`${stName}-${i}`} className="py-1">
+                        <div className="flex items-start sm:items-center gap-1.5 sm:gap-2 text-xs text-gray-700 min-w-0">
                           <MdSubject size={13} className="text-gray-400 shrink-0 mt-0.5 sm:mt-0" />
-                          <span className="break-words">{stName}</span>
-                          {hasTask && (
-                            <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">
-                              <MdAssignment size={11} />{st.taskTitle}
-                            </span>
-                          )}
+                          <span className="break-words font-medium">{stName}</span>
                         </div>
                         {hasTask && (
-                          <div className="ml-3 sm:ml-5 mt-0.5 flex gap-1.5 sm:gap-2 flex-wrap">
-                            {st.timeDays && <span className="text-[11px] sm:text-xs text-gray-400">⏱ {st.timeDays} days</span>}
-                            {st.measurablePoints && <span className="text-[11px] sm:text-xs text-gray-400 italic">📋 {st.measurablePoints}</span>}
+                          <div className="ml-5 mt-1 flex flex-col gap-1 min-w-0 max-w-full">
+                            <span
+                              className="inline-flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-lg font-medium line-clamp-2 w-fit max-w-full break-words"
+                              title={st.taskTitle}
+                            >
+                              <MdAssignment size={12} className="text-blue-500 shrink-0" />
+                              <span className="line-clamp-2 break-words">{st.taskTitle}</span>
+                            </span>
+                            <div className="flex gap-2 flex-wrap text-[11px] text-gray-400">
+                              {st.timeDays && <span>⏱ {st.timeDays} days</span>}
+                              {st.measurablePoints && <span className="italic line-clamp-1">📋 {st.measurablePoints}</span>}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1335,19 +1339,22 @@ const TaskDetailModal = ({ task, onClose }) => {
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-gray-100 bg-gray-50/50">
-          <div>
+        <div className="flex items-start justify-between p-5 border-b border-gray-100 bg-gray-50/50 gap-3">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-full">
               Task Details
             </span>
-            <h3 className="text-base font-black text-slate-850 mt-1.5 leading-snug">
+            <h3
+              className="text-base font-black text-slate-850 mt-1.5 leading-snug break-words"
+              style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+            >
               {task.title}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
           >
             <MdClose size={20} />
           </button>
@@ -1398,9 +1405,9 @@ const TaskDetailModal = ({ task, onClose }) => {
               <div className="bg-orange-50/30 border border-orange-100/60 rounded-xl p-4">
                 <ul className="space-y-2">
                   {measurePoints.map((pt, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed font-medium">
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed font-medium break-words">
                       <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
-                      <span>{pt}</span>
+                      <span style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{pt}</span>
                     </li>
                   ))}
                 </ul>
@@ -1418,11 +1425,11 @@ const TaskDetailModal = ({ task, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 text-xs font-bold bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-all cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
           >
             Close
           </button>
@@ -1432,6 +1439,7 @@ const TaskDetailModal = ({ task, onClose }) => {
   );
 };
 
+/* ─── Tasks Table for a Syllabus Version ────────────────────────── */
 export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId, activeSubjectName }) => {
   const { data, isLoading } = useGetTasksBySyllabusVersionQuery(versionId, { skip: !versionId });
   const allTasks = data?.tasks || data?.data || [];
@@ -1470,51 +1478,54 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
     },
     {
       key: "title",
-      label: "TASK TITLE",
+      label: "TASK & CURRICULUM",
+      wrap: true,
+      cellClassName: "whitespace-normal min-w-[280px] max-w-lg",
       render: (row) => (
-        <div className="flex flex-col gap-1 py-1 max-w-sm">
+        <div className="flex flex-col gap-1.5 py-0.5 min-w-0 max-w-full">
+          {/* Main Title (line-clamp-2, bold, hover effect) */}
           <span
             onClick={() => setSelectedTask(row)}
-            className="font-bold text-sm text-slate-800 hover:text-orange-600 transition-colors cursor-pointer leading-snug"
+            className="font-bold text-sm text-slate-800 hover:text-orange-600 transition-colors cursor-pointer leading-snug line-clamp-2 break-words"
+            style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+            title={row.title}
           >
             {row.title}
           </span>
-          <div className="flex items-center gap-2 flex-wrap text-[10px] text-gray-400">
-            {row.dueDate && (
-              <span className="inline-flex items-center gap-1 font-semibold text-gray-500 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-full">
-                <MdCalendarToday size={10} className="text-gray-400" />
-                Due: {new Date(row.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+
+          {/* Subtitle: Subject Tag + Topic & SubTopic Breadcrumb */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-500">
+            {row.subjectName && (
+              <span className="inline-flex items-center font-bold text-[10px] text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                {row.subjectName}
               </span>
             )}
-            {row.createdAt && (
-              <span>{formatTimeAgo(row.createdAt)}</span>
+            {row.topicName && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-700 font-semibold shrink-0">
+                <MdTopic size={13} className="text-orange-500 shrink-0" />
+                <span className="truncate max-w-[150px]" title={row.topicName}>{row.topicName}</span>
+              </span>
+            )}
+            {row.subTopicName && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-normal shrink-0">
+                <span className="text-slate-300">›</span>
+                <span className="truncate max-w-[130px]" title={row.subTopicName}>{row.subTopicName}</span>
+              </span>
             )}
           </div>
-        </div>
-      ),
-    },
-    {
-      key: "subjectName",
-      label: "SUBJECT",
-      render: (row) => (
-        <span className="inline-block text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200/60 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          {row.subjectName || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "topicName",
-      label: "TOPIC / SUBTOPIC",
-      render: (row) => (
-        <div className="flex flex-col gap-0.5 text-xs py-1">
-          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-            <MdTopic size={14} className="text-orange-500 flex-shrink-0" />
-            <span>{row.topicName || "—"}</span>
-          </div>
-          {row.subTopicName && (
-            <div className="flex items-center gap-1 text-slate-500 pl-4 text-[11px]">
-              <MdSubject size={12} className="text-slate-400 flex-shrink-0" />
-              <span>{row.subTopicName}</span>
+
+          {/* Due date & Created date */}
+          {(row.dueDate || row.createdAt) && (
+            <div className="flex items-center gap-2 flex-wrap text-[10px] text-gray-400">
+              {row.dueDate && (
+                <span className="inline-flex items-center gap-1 font-semibold text-gray-500 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-full shrink-0">
+                  <MdCalendarToday size={10} className="text-gray-400" />
+                  Due: {new Date(row.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              )}
+              {row.createdAt && (
+                <span className="shrink-0">{formatTimeAgo(row.createdAt)}</span>
+              )}
             </div>
           )}
         </div>
@@ -1571,11 +1582,13 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
     {
       key: "measurablePoints",
       label: "MEASURABLE POINTS",
+      wrap: true,
+      cellClassName: "whitespace-normal min-w-[180px] max-w-xs",
       render: (row) => {
         const points = splitNumberedPoints(row.measurablePoints);
         if (!points.length || !points[0]) return <span className="text-xs text-slate-300">—</span>;
         return (
-          <div className="max-w-xs space-y-1 py-1">
+          <div className="max-w-xs space-y-1 py-1 whitespace-normal break-words">
             {points.slice(0, 2).map((pt, i) => (
               <div key={i} className="flex items-start gap-1.5 text-xs text-slate-600 leading-snug">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
@@ -1667,11 +1680,16 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
               className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-2.5"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                     {t.sno}
                   </span>
-                  <h4 className="font-bold text-sm text-slate-900 leading-snug truncate">{t.title}</h4>
+                  <h4
+                    className="font-bold text-sm text-slate-900 leading-snug line-clamp-2 break-words min-w-0 flex-1"
+                    title={t.title}
+                  >
+                    {t.title}
+                  </h4>
                 </div>
                 <button
                   type="button"

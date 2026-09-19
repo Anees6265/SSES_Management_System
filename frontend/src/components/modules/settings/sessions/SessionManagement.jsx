@@ -160,6 +160,7 @@ const SessionManagement = () => {
   const [updateSessionStatus] = useUpdateSessionStatusMutation();
 
   const getComputedStatus = (session) => {
+    if (session.isActive || session.status === "active") return "active";
     if (session.status) return session.status;
     const now = new Date();
     const start = new Date(session.startDate);
@@ -253,14 +254,33 @@ const SessionManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this session?")) return;
+  const handleDelete = async (session) => {
+    const id = session?._id || session;
+    const sessionName = session?.name || "this session";
+    if (!window.confirm(`Delete session "${sessionName}"?`)) return;
     try {
       await deleteSession(id).unwrap();
-      toast.success("Session deleted!");
+      toast.success("Session deleted successfully!");
       refetch();
     } catch (err) {
-      toast.error(err?.data?.message || "Delete failed");
+      if (err?.data?.hasStudents) {
+        const confirmForce = window.confirm(
+          `Session "${sessionName}" has ${err.data.studentCount} enrolled student(s).\n\n` +
+          `Deleting it will reassign these students to the active session.\n\n` +
+          `Do you want to proceed with deleting this session?`
+        );
+        if (confirmForce) {
+          try {
+            await deleteSession({ id, force: true }).unwrap();
+            toast.success("Session deleted and students reassigned successfully!");
+            refetch();
+          } catch (forceErr) {
+            toast.error(forceErr?.data?.message || "Failed to delete session");
+          }
+        }
+      } else {
+        toast.error(err?.data?.message || "Delete failed");
+      }
     }
   };
 
@@ -507,7 +527,7 @@ const SessionManagement = () => {
                         <MdEdit size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(session._id)}
+                        onClick={() => handleDelete(session)}
                         className="p-2 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 border border-slate-200 sm:border-transparent hover:border-red-100 transition flex items-center justify-center cursor-pointer shadow-2xs sm:shadow-none"
                         title="Delete Session"
                         aria-label="Delete Session"

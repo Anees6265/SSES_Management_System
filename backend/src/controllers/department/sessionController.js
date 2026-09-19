@@ -108,10 +108,7 @@ exports.getSessionById = async (req, res) => {
       });
     }
 
-    const session = await Session.findOne({ 
-      _id: req.params.id, 
-      isActive: true 
-    });
+    const session = await Session.findById(req.params.id);
     
     if (!session) {
       return res.status(404).json({
@@ -143,16 +140,16 @@ exports.updateSession = async (req, res) => {
       });
     }
 
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found"
+      });
+    }
+
     // Validate dates if being updated
     if (req.body.startDate || req.body.endDate) {
-      const session = await Session.findById(req.params.id);
-      if (!session) {
-        return res.status(404).json({
-          success: false,
-          message: "Session not found"
-        });
-      }
-      
       const startDate = req.body.startDate ? new Date(req.body.startDate) : session.startDate;
       const endDate = req.body.endDate ? new Date(req.body.endDate) : session.endDate;
       
@@ -164,23 +161,16 @@ exports.updateSession = async (req, res) => {
       }
     }
 
-    const session = await Session.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
+    const updatedSession = await Session.findByIdAndUpdate(
+      req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
     
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found"
-      });
-    }
-    
     res.status(200).json({
       success: true,
       message: "Session updated successfully",
-      data: session
+      data: updatedSession
     });
   } catch (error) {
     // Handle duplicate key error
@@ -198,33 +188,83 @@ exports.updateSession = async (req, res) => {
   }
 };
 
-// Delete Session (soft delete)
+// Delete Session
 exports.deleteSession = async (req, res) => {
   try {
+    const { id } = req.params;
+    const { force } = req.query;
+
     // Validate ObjectId format
-    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({
         success: false,
         message: "Invalid session ID format"
       });
     }
 
-    const session = await Session.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      { isActive: false },
-      { new: true }
-    );
-    
+    const session = await Session.findById(id);
     if (!session) {
       return res.status(404).json({
         success: false,
         message: "Session not found"
       });
     }
-    
-    res.status(200).json({
+
+    // Check for enrolled students
+    const Student = require("../../models/student/Student");
+    const studentCount = await Student.countDocuments({ sessionId: id });
+
+    if (studentCount > 0 && force !== 'true') {
+      return res.status(400).json({
+        success: false,
+        hasStudents: true,
+        studentCount,
+        message: `Cannot delete session '${session.name}' because ${studentCount} student(s) are currently enrolled in it. Please reassign the students or archive the session.`
+      });
+    }
+
+    // If force delete with students, reassign students to another session
+    if (studentCount > 0 && force === 'true') {
+      const fallbackSession = await Session.findOne({ _id: { $ne: id }, isActive: true }) ||
+                              await Session.findOne({ _id: { $ne: id } }).sort({ startDate: -1 });
+      
+      if (!fallbackSession) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot delete this session because there is no other session to reassign enrolled students to."
+        });
+      }
+
+      await Student.updateMany(
+        { sessionId: id },
+        { $set: { sessionId: fallbackSession._id } }
+      );
+    }
+
+    // If the session being deleted was active, activate another session if available
+    if (session.isActive) {
+      const nextActiveSession = await Session.findOne({ _id: { $ne: id } }).sort({ startDate: -1 });
+      if (nextActiveSession) {
+        nextActiveSession.isActive = true;
+        if (nextActiveSession.status === 'upcoming') {
+          nextActiveSession.status = 'active';
+        }
+        await nextActiveSession.save();
+      }
+    }
+
+    // Clean up SessionSyllabusMap if exists
+    try {
+      const SessionSyllabusMap = require("../../models/SessionSyllabusMap");
+      await SessionSyllabusMap.deleteMany({ sessionId: id });
+    } catch (_) {}
+
+    // Delete the session permanently
+    await Session.findByIdAndDelete(id);
+
+    return res.status(200).json({
       success: true,
-      message: "Session deleted successfully"
+      message: `Session '${session.name}' deleted successfully.`
     });
   } catch (error) {
     res.status(500).json({
@@ -237,10 +277,17 @@ exports.deleteSession = async (req, res) => {
 // Get Active Session
 exports.getActiveSession = async (req, res) => {
   try {
-    const activeSession = await Session.findOne({ 
-      isActive: true,
-      status: { $in: ['active', 'upcoming'] }
-    }).sort({ createdAt: -1 });
+    let activeSession = await Session.findOne({ isActive: true });
+    
+    // Fallback if no session has isActive: true
+    if (!activeSession) {
+      activeSession = await Session.findOne({ status: 'active' });
+    }
+    
+    // Further fallback to newest session
+    if (!activeSession) {
+      activeSession = await Session.findOne({}).sort({ startDate: -1 });
+    }
     
     if (!activeSession) {
       return res.status(404).json({
@@ -273,18 +320,44 @@ exports.updateSessionStatus = async (req, res) => {
       });
     }
 
-    const session = await Session.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    
+    const session = await Session.findById(req.params.id);
     if (!session) {
       return res.status(404).json({
         success: false,
         message: "Session not found"
       });
     }
+
+    const now = new Date();
+
+    if (status === 'active') {
+      // Deactivate all other sessions and reset any other that had status 'active'
+      const otherSessions = await Session.find({ _id: { $ne: req.params.id } });
+      for (const other of otherSessions) {
+        let changed = false;
+        if (other.isActive) {
+          other.isActive = false;
+          changed = true;
+        }
+        if (other.status === 'active') {
+          other.status = now > new Date(other.endDate) ? 'completed' : 'upcoming';
+          changed = true;
+        }
+        if (changed) {
+          await other.save();
+        }
+      }
+
+      session.isActive = true;
+      session.status = 'active';
+    } else {
+      session.status = status;
+      if (status === 'archived' || status === 'completed') {
+        session.isActive = false;
+      }
+    }
+
+    await session.save();
     
     res.status(200).json({
       success: true,

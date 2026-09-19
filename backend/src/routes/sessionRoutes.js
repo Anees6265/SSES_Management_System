@@ -28,8 +28,27 @@ router.patch("/:id/activate", ...auth, async (req, res) => {
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
 
-    await Session.updateMany({ _id: { $ne: req.params.id } }, { $set: { isActive: false } });
+    const now = new Date();
+
+    // Deactivate all other sessions and adjust any that had status 'active'
+    const otherSessions = await Session.find({ _id: { $ne: req.params.id } });
+    for (const other of otherSessions) {
+      let changed = false;
+      if (other.isActive) {
+        other.isActive = false;
+        changed = true;
+      }
+      if (other.status === 'active') {
+        other.status = now > new Date(other.endDate) ? 'completed' : 'upcoming';
+        changed = true;
+      }
+      if (changed) {
+        await other.save();
+      }
+    }
+
     session.isActive = true;
+    session.status = 'active';
     await session.save();
 
     res.status(200).json({ success: true, message: "Session activated successfully", data: session });
@@ -42,12 +61,16 @@ router.patch("/:id/activate", ...auth, async (req, res) => {
 router.patch("/:id/deactivate", ...auth, async (req, res) => {
   try {
     const Session = require("../models/Session");
-    const session = await Session.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
+    const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
+
+    session.isActive = false;
+    if (session.status === 'active') {
+      const now = new Date();
+      session.status = now > new Date(session.endDate) ? 'completed' : 'archived';
+    }
+    await session.save();
+
     res.status(200).json({ success: true, message: "Session deactivated successfully", data: session });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

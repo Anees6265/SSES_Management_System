@@ -1600,7 +1600,11 @@ export const authApi = createApi({
     }),
 
     deleteSession: builder.mutation({
-      query: (id) => ({ url: `/sessions/${id}`, method: 'DELETE' }),
+      query: (arg) => {
+        const id = typeof arg === 'object' && arg !== null ? arg.id : arg;
+        const force = typeof arg === 'object' && arg !== null && arg.force ? '?force=true' : '';
+        return { url: `/sessions/${id}${force}`, method: 'DELETE' };
+      },
       invalidatesTags: ['Session'],
     }),
 

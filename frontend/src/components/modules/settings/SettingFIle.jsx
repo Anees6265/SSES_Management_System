@@ -270,18 +270,37 @@ const SettingFIle = () => {
         }
     };
 
-    const handleDeleteSession = async (id) => {
+    const handleDeleteSession = async (sess) => {
         if (!canManageGlobal) {
             toast.warning("Only Superadmin can delete sessions.");
             return;
         }
-        if (!window.confirm("Delete this session?")) return;
+        const id = sess?._id || sess;
+        const name = sess?.name || "this session";
+        if (!window.confirm(`Delete session "${name}"?`)) return;
         try {
             await deleteSession(id).unwrap();
             toast.success("Session deleted successfully!");
             refetchSessions();
         } catch (err) {
-            toast.error(err?.data?.message || "Delete failed");
+            if (err?.data?.hasStudents) {
+                const confirmForce = window.confirm(
+                    `Session "${name}" has ${err.data.studentCount} enrolled student(s).\n\n` +
+                    `Deleting it will reassign these students to the active session.\n\n` +
+                    `Do you want to proceed with deleting this session?`
+                );
+                if (confirmForce) {
+                    try {
+                        await deleteSession({ id, force: true }).unwrap();
+                        toast.success("Session deleted and students reassigned successfully!");
+                        refetchSessions();
+                    } catch (forceErr) {
+                        toast.error(forceErr?.data?.message || "Delete failed");
+                    }
+                }
+            } else {
+                toast.error(err?.data?.message || "Delete failed");
+            }
         }
     };
 
@@ -400,7 +419,7 @@ const SettingFIle = () => {
                                 <p className="text-xs font-semibold text-slate-400">No sessions found in system.</p>
                             ) : (
                                 sessions.map((sess) => {
-                                    const statusStr = (sess.status || (sess.isActive ? 'active' : 'inactive')).toLowerCase();
+                                    const statusStr = (sess.isActive || sess.status === 'active') ? 'active' : (sess.status || 'upcoming').toLowerCase();
                                     let statusBadgeCls = "bg-slate-100 text-slate-700 border-slate-200";
                                     if (statusStr === 'active') {
                                         statusBadgeCls = "bg-emerald-50 text-emerald-600 border-emerald-200";
@@ -461,7 +480,7 @@ const SettingFIle = () => {
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleDeleteSession(sess._id)}
+                                                            onClick={() => handleDeleteSession(sess)}
                                                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                                                             title="Delete Session"
                                                         >

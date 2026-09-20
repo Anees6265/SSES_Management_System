@@ -16,6 +16,8 @@ import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import Header from "../../../shared/sidebar/Header";
 import CommonCard from "../CommonCard";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import AddStudentModal from "../../students/AddStudentModal";
+import { UserPlus } from "lucide-react";
 
 const UNIVERSITY_OPTIONS = [
   {
@@ -35,6 +37,7 @@ const DepartmentManagement = () => {
   const [addDepartment] = useAddDepartmentMutation();
   const [updateDepartment] = useUpdateDepartmentMutation();
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   const { user, role: authRole } = useSelector((state) => state.auth || {});
   const role = (
@@ -164,6 +167,16 @@ const DepartmentManagement = () => {
             <Header
               title="Department Management"
               breadcrumbs={[{ label: "Departments" }]}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => setIsAddStudentModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+                >
+                  <UserPlus size={16} />
+                  <span>Add Student</span>
+                </button>
+              }
             >
               <OrangeButton
                 buttonTitle="Add Department"
@@ -246,6 +259,16 @@ const DepartmentManagement = () => {
         <Header
           title="Department Management"
           breadcrumbs={[{ label: "Departments" }]}
+          actions={
+            <button
+              type="button"
+              onClick={() => setIsAddStudentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+            >
+              <UserPlus size={16} />
+              <span>Add Student</span>
+            </button>
+          }
         />
       )}
 
@@ -418,6 +441,12 @@ const DepartmentManagement = () => {
           </div>
         )}
       </div>
+
+      <AddStudentModal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => setIsAddStudentModalOpen(false)}
+        onStudentAdded={() => refetch()}
+      />
     </>
   );
 };

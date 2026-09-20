@@ -111,7 +111,10 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
 
     const subDepartmentsWithCounts = await Promise.all(
       subDepartments.map(async (subDepartment) => {
-        const totalStudents = await Student.countDocuments({ subDepartmentId: subDepartment._id });
+        const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+        const totalStudents = await Student.countDocuments(
+          isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+        );
         
         // Fetch levels for this sub-department
         const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
@@ -207,7 +210,10 @@ exports.getAllSubDepartments = async (req, res) => {
     const subDepartments = await SubDepartment.find(filter).populate('departmentId');
     const subDepartmentsWithCounts = await Promise.all(
       subDepartments.map(async (subDepartment) => {
-        const totalStudents = await Student.countDocuments({ subDepartmentId: subDepartment._id });
+        const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+        const totalStudents = await Student.countDocuments(
+          isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+        );
 
         // Fetch levels for this sub-department
         const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
@@ -313,7 +319,10 @@ exports.getSubDepartmentById = async (req, res) => {
       }
     }
     
-    const totalStudents = await Student.countDocuments({ subDepartmentId: subDepartment._id });
+    const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+    const totalStudents = await Student.countDocuments(
+      isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+    );
 
     // Fetch levels for this sub-department
     const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });

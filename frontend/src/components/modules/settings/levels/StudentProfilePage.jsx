@@ -388,6 +388,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
         course: raw.course || "",
         gender: raw.gender || "",
         image: raw.image || "",
+        withITEG: Boolean(raw.withITEG),
     });
     const ic = "w-full !h-10 !border !border-gray-200 !rounded-xl !px-3 !py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
     const lc = "block text-xs font-semibold text-gray-600 mb-1";
@@ -531,6 +532,25 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                                 <option value="Female">Female</option>
                                 <option value="Other">Other</option>
                             </select>
+                        </div>
+                        <div className="flex flex-col justify-end">
+                            <label className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-50 cursor-pointer transition-colors shadow-sm">
+                                <div className="pr-2">
+                                    <span className="block text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                        With ITEG Program
+                                        <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white rounded">ITEG</span>
+                                    </span>
+                                    <span className="block text-[10px] text-indigo-700 leading-tight mt-0.5 font-medium">
+                                        Show in ITEG Dept as {form.course ? `${form.course} + ITEG` : "Course + ITEG"}
+                                    </span>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(form.withITEG)}
+                                    onChange={(e) => setForm(p => ({ ...p, withITEG: e.target.checked }))}
+                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
+                                />
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -1071,6 +1091,7 @@ const StudentProfilePage = () => {
     const [activityModal, setActivityModal] = useState(false);
     const [sectionModal, setSectionModal] = useState(null);
     const [ftpLoading, setFtpLoading] = useState(false);
+    const [itegLoading, setItegLoading] = useState(false);
     const [readyLoading, setReadyLoading] = useState(false);
     const [editLoading, setEditLoading] = useState(false);
     const [dropLoading, setDropLoading] = useState(false);
@@ -1384,6 +1405,25 @@ const StudentProfilePage = () => {
         }
     };
 
+    const handleItegToggle = async () => {
+        setItegLoading(true);
+        try {
+            const nextStatus = !raw.withITEG;
+            await updateStudent({ id: raw._id, data: { withITEG: nextStatus } }).unwrap();
+            toast.success(nextStatus ? "Enrolled with ITEG Program successfully" : "Removed from ITEG Program");
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            } else {
+                navigate(0);
+            }
+        } catch (err) {
+            toast.error(err?.data?.message || "ITEG status update failed");
+        } finally {
+            setItegLoading(false);
+            setMoreOpen(false);
+        }
+    };
+
     const handleReadiness = async (status) => {
         setReadyLoading(true);
         try {
@@ -1641,9 +1681,24 @@ const StudentProfilePage = () => {
                                             FTP
                                         </span>
                                     )}
+                                    {raw.withITEG && (
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 border border-indigo-200 shadow-sm shrink-0">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                                            + ITEG Program
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-xs font-bold text-orange-500">
-                                    <span>{raw.course || "Course"} • {translateLevelName(currentLevelLabel)} • {currentLevelLabel} ({currentSubLevelName}){daysInSubLevel ? ` • ${daysInSubLevel}` : ''}</span>
+                                    <span>
+                                        {raw.withITEG && !raw.course?.toUpperCase().includes("ITEG") ? (
+                                            <span className="inline-flex items-center gap-1 font-black text-indigo-600 mr-1">
+                                                {raw.course} <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider">+ ITEG</span>
+                                            </span>
+                                        ) : (
+                                            raw.course || "Course"
+                                        )}
+                                        {" "}• {translateLevelName(currentLevelLabel)} • {currentLevelLabel} ({currentSubLevelName}){daysInSubLevel ? ` • ${daysInSubLevel}` : ''}
+                                    </span>
                                     <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 text-[11px] font-bold">
                                         Technology: {trackName}
                                     </span>
@@ -1728,6 +1783,13 @@ const StudentProfilePage = () => {
                                             </button>
                                             <button onClick={handleFtpToggle} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-orange-600 flex items-center gap-2">
                                                 <MdArrowUpward size={14} /> {raw.isFTP ? "Remove FTP" : "Shift to FTP"}
+                                            </button>
+                                            <button 
+                                                onClick={handleItegToggle} 
+                                                disabled={itegLoading}
+                                                className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-600 flex items-center gap-2 font-medium"
+                                            >
+                                                <MdSchool size={14} /> {raw.withITEG ? "Remove ITEG Program" : "Enroll with ITEG Program"}
                                             </button>
                                             {isEligibleForPlacement && (
                                                 <button onClick={() => { setMoreOpen(false); setReadyModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">

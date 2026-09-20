@@ -16,12 +16,16 @@ import { MdOutlineMenuBook } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import AddStudentModal from "../../students/AddStudentModal";
+import { UserPlus } from "lucide-react";
 
 const DepartmentDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: departmentIdParam } = useParams();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [selectedSubDeptId, setSelectedSubDeptId] = useState(null);
 
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -130,6 +134,19 @@ const DepartmentDetails = () => {
                 { label: "Departments", path: "/department-management" },
                 { label: department.name }
               ]}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubDeptId(null);
+                    setIsAddStudentModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+                >
+                  <UserPlus size={16} />
+                  <span>Add Student</span>
+                </button>
+              }
             >
               <OrangeButton
                 buttonTitle="+ Create Sub-Department"
@@ -182,6 +199,19 @@ const DepartmentDetails = () => {
             { label: "Departments", path: "/department-management" },
             { label: department.name }
           ]}
+          actions={
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedSubDeptId(null);
+                setIsAddStudentModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+            >
+              <UserPlus size={16} />
+              <span>Add Student</span>
+            </button>
+          }
         />
       )}
 
@@ -260,6 +290,7 @@ const DepartmentDetails = () => {
                         onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
                           state: { departmentId: department._id, subdepartment: subdept, departmentName: department.name }
                         })}
+
                         onEdit={
                           canManage ? (
                             <Formik
@@ -401,6 +432,16 @@ const DepartmentDetails = () => {
             </div>
           )}
         </div>
+
+      <AddStudentModal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => {
+          setIsAddStudentModalOpen(false);
+          setSelectedSubDeptId(null);
+        }}
+        defaultSubDepartmentId={selectedSubDeptId}
+        onStudentAdded={() => refetch()}
+      />
     </>
   );
 };

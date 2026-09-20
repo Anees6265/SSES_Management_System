@@ -8,10 +8,13 @@ const Level = require("../../models/department/Level");
 const SubLevel = require("../../models/department/SubLevel");
 const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
-const { assignTasksToStudent } = require("../../services/taskAssignmentService");
+const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName } = require("../../utils/sessionHelper");
 const { calculateBatchYear } = require("../../utils/batchHelper");
+const ExcelJS = require("exceljs");
+const XLSX = require("xlsx");
+const bcrypt = require("bcrypt");
 const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
 
@@ -21,21 +24,17 @@ exports.createStudent = async (req, res) => {
   try {
     const { subDepartmentId, session, year, academicYear, sessionId: inputSessionId } = req.body;
 
-    // Duplicate check
-    const existing = await Student.findOne({ prkey: req.body.prkey });
-    if (existing) return res.status(409).json({ message: "Student with this prkey already exists" });
-
     // Validate subDepartment
-    const subDept = await SubDepartment.findById(subDepartmentId);
+    const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
     if (!subDept) return res.status(404).json({ message: "SubDepartment not found" });
 
     // 1️⃣ First Level (lowest order) under this subDepartment
     const firstLevel = await Level.findOne({ subDepartmentId, isActive: true }).sort({ order: 1 });
-    if (!firstLevel) return res.status(404).json({ message: "No active level found for this subDepartment" });
+    if (!firstLevel) return res.status(400).json({ message: "No active level found for this subDepartment. Please configure levels first." });
 
     // 2️⃣ First SubLevel (lowest order) under that Level
     const firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, isActive: true }).sort({ order: 1 });
-    if (!firstSubLevel) return res.status(404).json({ message: "No active sub-level found for this level" });
+    if (!firstSubLevel) return res.status(400).json({ message: "No active sub-level found for this level. Please configure sub-levels first." });
 
     // 3️⃣ Determine Session (Find or auto-create from session/year string, or fallback to latest active session)
     let targetSessionId = null;
@@ -46,7 +45,7 @@ exports.createStudent = async (req, res) => {
 
     if (!targetSessionId) {
       const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
-      if (!latestSession) return res.status(404).json({ message: "No active session found" });
+      if (!latestSession) return res.status(400).json({ message: "No active session found" });
       targetSessionId = latestSession._id;
     }
 
@@ -70,36 +69,68 @@ exports.createStudent = async (req, res) => {
       }).sort({ createdAt: -1 });
     }
 
-    if (!latestSyllabus) return res.status(404).json({ message: "No active syllabus version found for this session/level/sublevel" });
+    // Determine course default if not provided
+    const allowedCourses = (subDept.allowedCourses || []).length > 0
+      ? subDept.allowedCourses
+      : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
+    const resolvedCourse = req.body.course || allowedCourses[0] || "General";
+
+    // Auto-generate PR Key if not provided
+    let prkey = req.body.prkey ? String(req.body.prkey).trim() : "";
+    if (!prkey) {
+      const cleanCourse = (resolvedCourse || "STU").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      const sessionYear = targetSession?.name || new Date().getFullYear().toString();
+      prkey = `${cleanCourse}${sessionYear}${Date.now().toString().slice(-4)}`;
+    }
+
+    // Duplicate check
+    const existing = await Student.findOne({ prkey });
+    if (existing) return res.status(409).json({ message: `Student with PR Key / Roll Number '${prkey}' already exists` });
+
+    // Hash password (use provided or default ssism@123)
+    const rawPassword = req.body.password ? String(req.body.password).trim() : "ssism@123";
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     // Calculate student batch year based on session and department/course duration
     let batchYear = req.body.batchYear;
     if (!batchYear) {
-      batchYear = await calculateBatchYear({
-        sessionId: targetSessionId,
-        session: targetSession,
-        subDepartmentId,
-        course: req.body.course
-      });
+      try {
+        batchYear = await calculateBatchYear({
+          sessionId: targetSessionId,
+          session: targetSession,
+          subDepartmentId,
+          course: resolvedCourse
+        });
+      } catch (e) {
+        batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
+      }
     }
 
     const student = new Student({
       ...req.body,
+      prkey,
+      password: hashedPassword,
+      course: resolvedCourse,
+      parentMobile: req.body.parentMobile || req.body.studentMobile,
+      address: req.body.address || req.body.village || "Local",
+      village: req.body.village || req.body.address || "Local",
       batchYear,
       sessionId: targetSessionId,
       currentLevelId: firstLevel._id,
       currentSubLevelId: firstSubLevel._id,
-      syllabusVersionId: latestSyllabus._id
+      syllabusVersionId: latestSyllabus ? latestSyllabus._id : null
     });
 
     await student.save();
 
-    // 5️⃣ Auto-assign tasks of this syllabus version to the student
+    // 5️⃣ Auto-assign tasks of this syllabus version to the student (if syllabus exists)
     let taskAssignmentResult = null;
-    try {
-      taskAssignmentResult = await assignTasksToStudent(student._id, latestSyllabus._id);
-    } catch (taskErr) {
-      // Task assignment failure should not block student creation
+    if (latestSyllabus) {
+      try {
+        taskAssignmentResult = await assignTasksToStudent(student._id, latestSyllabus._id);
+      } catch (taskErr) {
+        console.error("Task assignment warning on student create:", taskErr.message);
+      }
     }
 
     return res.status(201).json({
@@ -109,7 +140,7 @@ exports.createStudent = async (req, res) => {
         sessionName: targetSession ? targetSession.name : "N/A",
         levelName: firstLevel.name,
         subLevelName: firstSubLevel.name,
-        syllabusVersion: latestSyllabus.version,
+        syllabusVersion: latestSyllabus ? latestSyllabus.version : "None",
         tasksAssigned: taskAssignmentResult ? taskAssignmentResult.totalTasks : 0
       }
     });
@@ -119,23 +150,521 @@ exports.createStudent = async (req, res) => {
 };
 
 
+// ✅ Import Students via Excel (.xlsx/.xls/.csv) or JSON array
+exports.importStudentsExcel = async (req, res) => {
+  try {
+    const { subDepartmentId, sessionId: inputSessionId } = req.body;
+
+    if (!subDepartmentId) {
+      return res.status(400).json({ success: false, message: "subDepartmentId is required" });
+    }
+
+    // Check faculty access if applicable
+    if (req.allowedSubDeptIds && !req.allowedSubDeptIds.some(id => id.toString() === subDepartmentId.toString())) {
+      return res.status(403).json({ success: false, message: "Access denied for this sub-department" });
+    }
+
+    const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
+    if (!subDept) return res.status(404).json({ success: false, message: "SubDepartment not found" });
+
+    // 1️⃣ First active Level under this subDepartment
+    const firstLevel = await Level.findOne({ subDepartmentId, isActive: true }).sort({ order: 1 });
+    if (!firstLevel) {
+      return res.status(400).json({
+        success: false,
+        message: `No active Level found for ${subDept.name}. Please configure levels in Department Hierarchy first.`
+      });
+    }
+
+    // 2️⃣ First active SubLevel under that Level
+    const firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, isActive: true }).sort({ order: 1 });
+    if (!firstSubLevel) {
+      return res.status(400).json({
+        success: false,
+        message: `No active SubLevel found for level ${firstLevel.name}. Please configure sub-levels first.`
+      });
+    }
+
+    // 3️⃣ Target Session
+    let targetSessionId = null;
+    if (inputSessionId) {
+      targetSessionId = await findOrCreateSessionByName(inputSessionId);
+    }
+    if (!targetSessionId) {
+      const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
+      if (!latestSession) {
+        return res.status(400).json({ success: false, message: "No active academic session found in the system" });
+      }
+      targetSessionId = latestSession._id;
+    }
+    const targetSession = await Session.findById(targetSessionId);
+
+    // 4️⃣ Latest active SyllabusVersion (optional)
+    let latestSyllabus = await SyllabusVersion.findOne({
+      sessionId: targetSessionId,
+      levelId: firstLevel._id,
+      subLevelId: firstSubLevel._id,
+      status: "active",
+      isActive: true
+    }).sort({ createdAt: -1 });
+
+    if (!latestSyllabus) {
+      latestSyllabus = await SyllabusVersion.findOne({
+        levelId: firstLevel._id,
+        subLevelId: firstSubLevel._id,
+        status: "active",
+        isActive: true
+      }).sort({ createdAt: -1 });
+    }
+
+    // 5️⃣ Extract Raw Rows from req.file (Excel buffer) or req.body.students
+    let rawRows = [];
+    if (req.file && req.file.buffer) {
+      // Primary Method: SheetJS (XLSX) supports .xlsx, .xls, .csv, and avoids "not a zip file" crashes
+      try {
+        const wb = XLSX.read(req.file.buffer, { type: "buffer", cellDates: true });
+        const sheetName = wb.SheetNames[0];
+        if (sheetName) {
+          const ws = wb.Sheets[sheetName];
+          const sheetJson = XLSX.utils.sheet_to_json(ws, { defval: "", raw: false });
+          rawRows = sheetJson.map((r, i) => ({ ...r, _excelRow: i + 2 }));
+        }
+      } catch (xlsxErr) {
+        console.warn("SheetJS parse failed, falling back to ExcelJS:", xlsxErr.message);
+        try {
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(req.file.buffer);
+          const worksheet = workbook.worksheets[0];
+          if (worksheet) {
+            const headers = [];
+            worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+              headers[colNumber] = String(cell.value || "").trim();
+            });
+            worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+              if (rowNumber === 1) return;
+              const rowData = {};
+              row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const headerName = headers[colNumber];
+                if (headerName) {
+                  let val = cell.value;
+                  if (val && typeof val === "object") {
+                    if (val.result !== undefined) val = val.result;
+                    else if (val.text !== undefined) val = val.text;
+                  }
+                  rowData[headerName] = val !== undefined && val !== null ? String(val).trim() : "";
+                }
+              });
+              if (Object.values(rowData).some(v => v !== "")) {
+                rawRows.push({ ...rowData, _excelRow: rowNumber });
+              }
+            });
+          }
+        } catch (exceljsErr) {
+          console.error("ExcelJS fallback also failed:", exceljsErr.message);
+        }
+      }
+    }
+
+    // Secondary Method: If file parsing was empty or failed, use pre-parsed students array if provided
+    if (rawRows.length === 0) {
+      if (Array.isArray(req.body.students)) {
+        rawRows = req.body.students.map((r, i) => ({ ...r, _excelRow: i + 2 }));
+      } else if (typeof req.body.students === "string") {
+        try {
+          const parsed = JSON.parse(req.body.students);
+          if (Array.isArray(parsed)) rawRows = parsed.map((r, i) => ({ ...r, _excelRow: i + 2 }));
+        } catch (e) {
+          // ignore JSON parse error
+        }
+      }
+    }
+
+    if (rawRows.length === 0) {
+      return res.status(400).json({ success: false, message: "No student records could be read from the uploaded file or data" });
+    }
+
+    if (rawRows.length === 0) {
+      return res.status(400).json({ success: false, message: "No student records found in the uploaded file" });
+    }
+
+    // Helper: Normalize header keys
+    const normalizeKey = (k) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // Allowed courses for this subdepartment
+    const allowedCourses = (subDept.allowedCourses || []).length > 0
+      ? subDept.allowedCourses
+      : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
+    const defaultCourse = allowedCourses[0] || "General";
+
+    // Pre-fetch all existing PR keys in MongoDB
+    const existingStudents = await Student.find({}, "prkey").lean();
+    const existingPrkeySet = new Set(existingStudents.map(s => String(s.prkey).trim().toLowerCase()));
+
+    const seenInFilePrkeys = new Set();
+    const validStudentsToInsert = [];
+    const skippedDetails = [];
+    const errorDetails = [];
+
+    for (const raw of rawRows) {
+      const rowNumber = raw._excelRow || "N/A";
+      const normalizedRow = {};
+
+      for (const [key, val] of Object.entries(raw)) {
+        if (key.startsWith("_")) continue;
+        const nk = normalizeKey(key);
+        if (["prkey", "rollno", "enrollmentno", "prn", "studentid", "admissionno", "scholarno"].includes(nk)) normalizedRow.prkey = val;
+        else if (["password", "pass", "pwd"].includes(nk)) normalizedRow.password = val;
+        else if (["firstname", "first", "fname"].includes(nk)) normalizedRow.firstName = val;
+        else if (["lastname", "last", "lname", "surname"].includes(nk)) normalizedRow.lastName = val;
+        else if (["fullname", "name", "studentname"].includes(nk)) normalizedRow.fullName = val;
+        else if (["fathername", "father", "guardianname"].includes(nk)) normalizedRow.fatherName = val;
+        else if (["studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone"].includes(nk)) normalizedRow.studentMobile = val;
+        else if (["parentmobile", "fatherphone", "fathermobile", "parentphone", "guardianmobile"].includes(nk)) normalizedRow.parentMobile = val;
+        else if (["course", "degree", "branch", "stream"].includes(nk)) normalizedRow.course = val;
+        else if (["gender", "sex"].includes(nk)) normalizedRow.gender = val;
+        else if (["email", "emailid"].includes(nk)) normalizedRow.email = val;
+        else if (["address", "residentialaddress"].includes(nk)) normalizedRow.address = val;
+        else if (["village", "city", "town"].includes(nk)) normalizedRow.village = val;
+        else if (["aadhar", "aadharcard", "aadharno"].includes(nk)) normalizedRow.aadharCard = val;
+        else if (["category", "caste"].includes(nk)) normalizedRow.category = val;
+        else if (["track", "techno", "technology"].includes(nk)) normalizedRow.technology = val;
+        else if (["percent12", "12thpercent", "12percentage", "12thpercentage"].includes(nk)) normalizedRow.percent12 = val;
+        else if (["percent10", "10thpercent", "10percentage", "10thpercentage"].includes(nk)) normalizedRow.percent10 = val;
+        else if (["year12", "12thyear", "12passoutyear"].includes(nk)) normalizedRow.year12 = val;
+        else if (["withiteg", "iteg", "with_iteg", "isiteg", "withitegyesno"].includes(nk) || nk.includes("iteg")) {
+          const v = String(val || "").toLowerCase().trim();
+          normalizedRow.withITEG = ["yes", "y", "true", "1", "iteg", "with iteg"].includes(v);
+        }
+      }
+
+      // If full name provided without first/last split
+      if (!normalizedRow.firstName && normalizedRow.fullName) {
+        const parts = String(normalizedRow.fullName).trim().split(/\s+/);
+        normalizedRow.firstName = parts[0] || "";
+        normalizedRow.lastName = parts.slice(1).join(" ") || parts[0];
+      }
+
+      let prkey = String(normalizedRow.prkey || "").trim();
+      const firstName = String(normalizedRow.firstName || "").trim();
+      const lastName = String(normalizedRow.lastName || "").trim() || firstName;
+      const fatherName = String(normalizedRow.fatherName || "").trim();
+      const studentMobile = String(normalizedRow.studentMobile || "").trim();
+      const course = String(normalizedRow.course || "").trim() || defaultCourse;
+
+      // Auto-generate PR Key if not provided in Excel row
+      if (!prkey) {
+        const cleanCourse = (course || "STU").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+        const sessionYear = targetSession?.name || new Date().getFullYear().toString();
+        prkey = `${cleanCourse}${sessionYear}${String(1001 + validStudentsToInsert.length).padStart(4, "0")}`;
+      }
+
+      // Validation
+      const missingFields = [];
+      if (!firstName) missingFields.push("First Name");
+      if (!fatherName) missingFields.push("Father Name");
+      if (!studentMobile) missingFields.push("Student Mobile");
+
+      if (missingFields.length > 0) {
+        errorDetails.push({
+          row: rowNumber,
+          prkey: prkey || "N/A",
+          name: `${firstName} ${lastName}`.trim() || "N/A",
+          reason: `Missing mandatory field(s): ${missingFields.join(", ")}`
+        });
+        continue;
+      }
+
+      const lowerPrkey = prkey.toLowerCase();
+
+      // Check duplicates in file
+      if (seenInFilePrkeys.has(lowerPrkey)) {
+        skippedDetails.push({
+          row: rowNumber,
+          prkey,
+          name: `${firstName} ${lastName}`,
+          reason: "Duplicate PR Key / Roll Number inside uploaded Excel sheet"
+        });
+        continue;
+      }
+      seenInFilePrkeys.add(lowerPrkey);
+
+      // Check duplicates in database
+      if (existingPrkeySet.has(lowerPrkey)) {
+        skippedDetails.push({
+          row: rowNumber,
+          prkey,
+          name: `${firstName} ${lastName}`,
+          reason: "Student with this PR Key / Roll Number already exists in database"
+        });
+        continue;
+      }
+
+      // Hash password (custom provided or default ssism@123)
+      const rawPassword = String(normalizedRow.password || "").trim() || "ssism@123";
+      const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+      // Compute batch year
+      let batchYear = null;
+      try {
+        batchYear = await calculateBatchYear({
+          sessionId: targetSessionId,
+          session: targetSession,
+          subDepartmentId,
+          course
+        });
+      } catch (e) {
+        batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
+      }
+
+      const newStudentDoc = {
+        prkey,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        fatherName,
+        studentMobile,
+        parentMobile: normalizedRow.parentMobile || studentMobile,
+        email: normalizedRow.email || "",
+        gender: normalizedRow.gender || "Other",
+        address: normalizedRow.address || normalizedRow.village || "Local",
+        village: normalizedRow.village || normalizedRow.address || "Local",
+        course,
+        track: normalizedRow.technology || "",
+        technology: normalizedRow.technology || "",
+        aadharCard: normalizedRow.aadharCard || "",
+        category: normalizedRow.category || "",
+        percent12: normalizedRow.percent12 || "",
+        percent10: normalizedRow.percent10 || "",
+        year12: normalizedRow.year12 || "",
+        subDepartmentId,
+        sessionId: targetSessionId,
+        batchYear,
+        currentLevelId: firstLevel._id,
+        currentSubLevelId: firstSubLevel._id,
+        syllabusVersionId: latestSyllabus ? latestSyllabus._id : null,
+        withITEG: Boolean(normalizedRow.withITEG),
+        status: "Active"
+      };
+
+      validStudentsToInsert.push(newStudentDoc);
+    }
+
+    let insertedStudents = [];
+    if (validStudentsToInsert.length > 0) {
+      insertedStudents = await Student.insertMany(validStudentsToInsert, { ordered: false });
+
+      // Auto-assign tasks if syllabus exists
+      if (latestSyllabus) {
+        try {
+          const studentIds = insertedStudents.map(s => s._id);
+          await assignTasksToMultipleStudents(studentIds, latestSyllabus._id);
+        } catch (taskErr) {
+          console.error("Bulk task assignment warning:", taskErr.message);
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Processed ${rawRows.length} records: ${insertedStudents.length} imported, ${skippedDetails.length} skipped, ${errorDetails.length} errors`,
+      summary: {
+        total: rawRows.length,
+        imported: insertedStudents.length,
+        skipped: skippedDetails.length,
+        errors: errorDetails.length
+      },
+      skippedDetails,
+      errorDetails,
+      meta: {
+        sessionName: targetSession?.name || "N/A",
+        subDepartmentName: subDept.name,
+        levelName: firstLevel.name,
+        subLevelName: firstSubLevel.name,
+        syllabusVersion: latestSyllabus ? latestSyllabus.version : "None"
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in importStudentsExcel:", error);
+    return res.status(500).json({ success: false, message: "Server error during Excel import", error: error.message });
+  }
+};
+
+
+// ✅ Download Sample Excel Template for Students
+exports.downloadSampleExcel = async (req, res) => {
+  try {
+    const { subDepartmentId } = req.query;
+    let allowedCourses = ["BCA", "B.Tech", "MCA", "BBA", "B.Sc"];
+    let subDeptName = "Department";
+
+    if (subDepartmentId) {
+      const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
+      if (subDept) {
+        subDeptName = subDept.name;
+        if ((subDept.allowedCourses || []).length > 0) {
+          allowedCourses = subDept.allowedCourses;
+        } else if (subDept.departmentId?.allowedCourses?.length > 0) {
+          allowedCourses = subDept.departmentId.allowedCourses.map(c => c.courseName).filter(Boolean);
+        }
+      }
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "SSES Student Management";
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet("Students");
+    sheet.columns = [
+      { header: "PR Key / Roll No / Enrollment No", key: "prkey", width: 22 },
+      { header: "Password (Default: ssism@123)", key: "password", width: 22 },
+      { header: "First Name*", key: "firstName", width: 16 },
+      { header: "Last Name*", key: "lastName", width: 16 },
+      { header: "Father Name*", key: "fatherName", width: 22 },
+      { header: "Student Mobile*", key: "studentMobile", width: 18 },
+      { header: "Parent Mobile", key: "parentMobile", width: 18 },
+      { header: "Course*", key: "course", width: 16 },
+      { header: "With ITEG? (Yes/No)", key: "withITEG", width: 18 },
+      { header: "Gender", key: "gender", width: 12 },
+      { header: "Email", key: "email", width: 24 },
+      { header: "Address", key: "address", width: 26 },
+      { header: "Village/City", key: "village", width: 16 },
+      { header: "Aadhar Card", key: "aadharCard", width: 18 },
+      { header: "Category", key: "category", width: 12 },
+      { header: "Technology", key: "technology", width: 16 },
+      { header: "12th Percentage", key: "percent12", width: 16 },
+      { header: "10th Percentage", key: "percent10", width: 16 },
+    ];
+
+    // Style Header Row
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF97316" } // Orange-500
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 28;
+
+    // Add 2 Sample Rows
+    const sampleCourse1 = allowedCourses[0] || "BCA";
+    const sampleCourse2 = allowedCourses[1] || allowedCourses[0] || "B.Tech";
+
+    sheet.addRow({
+      prkey: "0827CS241001",
+      password: "Student@123",
+      firstName: "Rahul",
+      lastName: "Sharma",
+      fatherName: "Suresh Sharma",
+      studentMobile: "9876543210",
+      parentMobile: "9876543211",
+      course: sampleCourse1,
+      withITEG: "No",
+      gender: "Male",
+      email: "rahul.sharma@example.com",
+      address: "123 Vijay Nagar",
+      village: "Indore",
+      aadharCard: "123456789012",
+      category: "GEN",
+      technology: "MERN Stack",
+      percent12: "82.5%",
+      percent10: "88.0%"
+    });
+
+    sheet.addRow({
+      prkey: "0827CS241002",
+      password: "",
+      firstName: "Priya",
+      lastName: "Patel",
+      fatherName: "Ramesh Patel",
+      studentMobile: "9123456780",
+      parentMobile: "9123456781",
+      course: sampleCourse2,
+      withITEG: "Yes",
+      gender: "Female",
+      email: "priya.patel@example.com",
+      address: "45 Navlakha",
+      village: "Indore",
+      aadharCard: "987654321098",
+      category: "OBC",
+      technology: "Python",
+      percent12: "85.0%",
+      percent10: "90.2%"
+    });
+
+    // Instructions Sheet
+    const guideSheet = workbook.addWorksheet("Guidelines");
+    guideSheet.columns = [
+      { header: "Field", key: "field", width: 26 },
+      { header: "Required?", key: "required", width: 14 },
+      { header: "Description & Allowed Values", key: "desc", width: 60 }
+    ];
+
+    const guideHeader = guideSheet.getRow(1);
+    guideHeader.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    guideHeader.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF374151" } // Dark Slate
+    };
+    guideHeader.height = 26;
+
+    guideSheet.addRow({ field: "PR Key / Roll No / Enrollment No", required: "OPTIONAL", desc: "Unique student identifier. Can be College Roll No or Enrollment No. If left empty, system auto-generates." });
+    guideSheet.addRow({ field: "Password", required: "OPTIONAL", desc: "Portal login password. If left blank, defaults to 'ssism@123'." });
+    guideSheet.addRow({ field: "First Name*", required: "YES", desc: "Student's given name." });
+    guideSheet.addRow({ field: "Last Name*", required: "YES", desc: "Student's surname (or leave as first name)." });
+    guideSheet.addRow({ field: "Father Name*", required: "YES", desc: "Father's or guardian's name." });
+    guideSheet.addRow({ field: "Student Mobile*", required: "YES", desc: "10-digit mobile number of student." });
+    guideSheet.addRow({ field: "Parent Mobile", required: "NO", desc: "Parent mobile number. Defaults to student mobile if left empty." });
+    guideSheet.addRow({ field: "Course*", required: "YES", desc: `Allowed courses for this department (${subDeptName}): ${allowedCourses.join(", ")}` });
+    guideSheet.addRow({ field: "With ITEG? (Yes/No)", required: "NO", desc: "Set 'Yes' if a student from BBA, B.Com, B.Sc etc is also enrolled in ITEG training (they will show up in ITEG department as Course + ITEG)." });
+    guideSheet.addRow({ field: "Gender", required: "NO", desc: "Male, Female, or Other." });
+    guideSheet.addRow({ field: "Address", required: "NO", desc: "Residential address." });
+    guideSheet.addRow({ field: "Village/City", required: "NO", desc: "Village or city name." });
+    guideSheet.addRow({ field: "Aadhar Card", required: "NO", desc: "12-digit Aadhar number." });
+    guideSheet.addRow({ field: "Category", required: "NO", desc: "GEN, OBC, SC, ST, etc." });
+    guideSheet.addRow({ field: "Technology", required: "NO", desc: "e.g. Python, MERN Stack, Java, UI/UX." });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="students_import_template_${subDeptName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Error generating sample Excel:", error);
+    return res.status(500).json({ success: false, message: "Error generating sample template", error: error.message });
+  }
+};
+
+
 // ✅ Get All Students (with department-based access control)
 exports.getAllStudents = async (req, res) => {
   try {
-    const { sessionId, currentLevelId, currentSubLevelId, status } = req.query;
+    const { sessionId, currentLevelId, currentSubLevelId, status, subDepartmentId } = req.query;
 
-    // req.subDeptFilter is set by departmentFilter middleware
-    // null = no restriction (admin/superadmin), object = restricted to allowed subDepts
-    const filter = req.subDeptFilter ? { ...req.subDeptFilter } : {};
+    let subDeptFilter = req.subDeptFilter ? { ...req.subDeptFilter } : null;
 
-    if (sessionId) filter.sessionId = sessionId;
-    if (currentLevelId) filter.currentLevelId = currentLevelId;
-    if (currentSubLevelId) filter.currentSubLevelId = currentSubLevelId;
-    if (status) {
-      filter.status = status;
-    } else {
-      filter.status = { $nin: ["Dummy", "Dropped"] };
+    if (!subDeptFilter && subDepartmentId) {
+      const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId").lean();
+      const isIteg = String(subDept?.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDept?.name || "").toUpperCase().includes("ITEG");
+      subDeptFilter = isIteg
+        ? { $or: [{ subDepartmentId }, { withITEG: true }] }
+        : { subDepartmentId };
     }
+
+    const andConditions = [];
+    if (subDeptFilter) andConditions.push(subDeptFilter);
+    if (sessionId) andConditions.push({ sessionId });
+    if (currentLevelId) andConditions.push({ currentLevelId });
+    if (currentSubLevelId) andConditions.push({ currentSubLevelId });
+    if (status) {
+      andConditions.push({ status });
+    } else {
+      andConditions.push({ status: { $nin: ["Dummy", "Dropped"] } });
+    }
+
+    const filter = andConditions.length > 0 ? { $and: andConditions } : {};
 
     const students = await Student.find(filter)
       .populate({
@@ -277,7 +806,7 @@ exports.updateStudent = async (req, res) => {
       "firstName", "lastName", "fatherName", "email", "studentMobile",
       "parentMobile", "gender", "dob", "aadharCard", "address", "track",
       "village", "stream", "course", "category", "subject12", "year12",
-      "percent12", "percent10", "status", "isFTP", "batchYear"
+      "percent12", "percent10", "status", "isFTP", "batchYear", "withITEG"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });

@@ -8,6 +8,23 @@ const placementController = require("../controllers/placement/placementControlle
 const attendanceController = require("../controllers/student/attendanceController");
 const upload = require("../config/multerConfig");
 
+const multer = require("multer");
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = file.originalname.split(".").pop().toLowerCase();
+    if (["xlsx", "xls", "csv"].includes(ext) ||
+        file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        file.mimetype === "application/vnd.ms-excel" ||
+        file.mimetype === "text/csv") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only Excel (.xlsx, .xls) or CSV files are allowed!"), false);
+    }
+  }
+});
+
 const allowedRoles = ["superadmin", "faculty", "admin", "hod", "placement_officer"];
 const { studentAccessFilter } = require("../middlewares/studentAccessFilter");
 const auth = [verifyToken, checkRole(allowedRoles), departmentFilter, studentAccessFilter];
@@ -17,6 +34,13 @@ const auth = [verifyToken, checkRole(allowedRoles), departmentFilter, studentAcc
 // =============================================================
 
 router.post("/", ...auth, studentController.createStudent);
+router.post("/import-excel", ...auth, (req, res, next) => {
+  excelUpload.single("file")(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message });
+    next();
+  });
+}, studentController.importStudentsExcel);
+router.get("/sample-excel", ...auth, studentController.downloadSampleExcel);
 router.get("/", ...auth, studentController.getAllStudents);
 router.get("/getall", ...auth, studentController.getAllStudents);
 router.get("/stats", ...auth, studentController.getStudentStats);

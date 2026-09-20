@@ -37,6 +37,26 @@ const invalidateDeptCache = (departmentId) => {
  * Sets req.subDeptFilter = { subDepartmentId: { $in: [...] } } OR null
  * Sets req.allowedSubDeptIds = ObjectId[] OR null
  */
+const isItegSubDepartment = async (subDeptId) => {
+  if (!subDeptId) return false;
+  try {
+    const sd = await SubDepartment.findById(subDeptId).populate("departmentId").lean();
+    return String(sd?.departmentId?.name || "").toUpperCase().includes("ITEG") || String(sd?.name || "").toUpperCase().includes("ITEG");
+  } catch (e) {
+    return false;
+  }
+};
+
+const isItegDepartment = async (deptId) => {
+  if (!deptId) return false;
+  try {
+    const d = await Department.findById(deptId).lean();
+    return String(d?.name || "").toUpperCase().includes("ITEG");
+  } catch (e) {
+    return false;
+  }
+};
+
 const departmentFilter = async (req, res, next) => {
   try {
     const { role, department, departmentId: jwtDeptId } = req.user;
@@ -47,12 +67,20 @@ const departmentFilter = async (req, res, next) => {
 
       if (subDepartmentId) {
         req.allowedSubDeptIds = [subDepartmentId];
-        req.subDeptFilter = { subDepartmentId };
+        const isIteg = await isItegSubDepartment(subDepartmentId);
+        req.subDeptFilter = isIteg 
+          ? { $or: [{ subDepartmentId }, { withITEG: true }] }
+          : { subDepartmentId };
       } else if (departmentId) {
         const subDepts = await SubDepartment.find({ departmentId, isActive: true }).select("_id");
         const ids = subDepts.map((s) => s._id);
         req.allowedSubDeptIds = ids;
-        req.subDeptFilter = ids.length ? { subDepartmentId: { $in: ids } } : null;
+        const isIteg = await isItegDepartment(departmentId);
+        if (isIteg) {
+          req.subDeptFilter = ids.length ? { $or: [{ subDepartmentId: { $in: ids } }, { withITEG: true }] } : { withITEG: true };
+        } else {
+          req.subDeptFilter = ids.length ? { subDepartmentId: { $in: ids } } : null;
+        }
       } else {
         req.allowedSubDeptIds = null;
         req.subDeptFilter = null;
@@ -62,19 +90,19 @@ const departmentFilter = async (req, res, next) => {
     }
 
     // Faculty / Other roles
-    // Prefer departmentId ObjectId from JWT (Phase 2.2 migration)
-    // Fall back to department name lookup for users created before the migration
     let resolvedDeptId = jwtDeptId || null;
+    let resolvedDeptName = department || "";
 
     if (!resolvedDeptId) {
       if (!department) {
         return res.status(403).json({ message: "Department not assigned to your account." });
       }
-      const dept = await Department.findOne({ name: department, isActive: true }).select("_id");
+      const dept = await Department.findOne({ name: department, isActive: true }).select("_id name");
       if (!dept) {
         return res.status(403).json({ message: `Department '${department}' not found or inactive.` });
       }
       resolvedDeptId = dept._id.toString();
+      resolvedDeptName = dept.name;
     }
 
     // Check cache first
@@ -92,15 +120,21 @@ const departmentFilter = async (req, res, next) => {
 
     req.allowedSubDeptIds = ids;
 
+    const isIteg = String(resolvedDeptName || "").toUpperCase().includes("ITEG") || await isItegDepartment(resolvedDeptId);
+
     if (req.query.subDepartmentId) {
       const requestedSubDeptId = req.query.subDepartmentId.toString();
       const isAllowed = ids.some((id) => id.toString() === requestedSubDeptId);
       if (!isAllowed) {
         return res.status(403).json({ message: "Access denied for this sub-department." });
       }
-      req.subDeptFilter = { subDepartmentId: req.query.subDepartmentId };
+      req.subDeptFilter = isIteg
+        ? { $or: [{ subDepartmentId: req.query.subDepartmentId }, { withITEG: true }] }
+        : { subDepartmentId: req.query.subDepartmentId };
     } else {
-      req.subDeptFilter = { subDepartmentId: { $in: ids } };
+      req.subDeptFilter = isIteg
+        ? (ids.length ? { $or: [{ subDepartmentId: { $in: ids } }, { withITEG: true }] } : { withITEG: true })
+        : { subDepartmentId: { $in: ids } };
     }
 
     next();

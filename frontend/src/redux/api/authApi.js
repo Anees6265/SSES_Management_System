@@ -366,6 +366,24 @@ export const authApi = createApi({
     }),
 
     // --- New Student APIs (/api/students) ---
+    createNewStudent: builder.mutation({
+      query: (body) => ({
+        url: '/students',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Student'],
+    }),
+
+    importStudentsExcel: builder.mutation({
+      query: (data) => ({
+        url: '/students/import-excel',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Student'],
+    }),
+
     getNewStudents: builder.query({
       query: (params = '') => ({ url: `/students${params ? `?${params}` : ''}`, method: 'GET' }),
       providesTags: ['Student'],
@@ -2180,4 +2198,6 @@ export const {
   useGetMyExtraDocumentsQuery,
   useGetMyStudentPlacementQuery,
   useGetMyStudentReportCardQuery,
+  useCreateNewStudentMutation,
+  useImportStudentsExcelMutation,
 } = authApi;

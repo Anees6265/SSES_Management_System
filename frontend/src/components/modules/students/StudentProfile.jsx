@@ -456,7 +456,19 @@ export default function StudentProfile() {
                     {studentData.firstName} {studentData.lastName}
                   </h2>
                   <div className="text-gray-300 mb-3 sm:mb-4 text-xs sm:text-sm flex items-center gap-2 flex-wrap">
-                    <span>Course: <strong className="text-white font-semibold">{studentData.course || "N/A"}</strong></span>
+                    <span>
+                      Course:{" "}
+                      <strong className="text-white font-semibold">
+                        {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG")
+                          ? `${studentData.course} + ITEG`
+                          : studentData.course || "N/A"}
+                      </strong>
+                      {studentData.withITEG && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded bg-indigo-500/30 border border-indigo-400/50 text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                          ITEG Program
+                        </span>
+                      )}
+                    </span>
                     <span>•</span>
                     <span>Session: <strong className="text-white font-semibold">{studentData.sessionId?.name || "N/A"}</strong></span>
                     {studentData.batchYear && (
@@ -1212,7 +1224,19 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
               </h3>
               <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
                 <div><span className="font-medium text-gray-600">Student ID:</span> <br/><span className="font-semibold">{studentData._id?.slice(-8) || 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">Course:</span> <br/><span className="font-semibold">{studentData.course || 'N/A'}</span></div>
+                <div>
+                  <span className="font-medium text-gray-600">Course:</span> <br/>
+                  <span className="font-semibold inline-flex items-center gap-1.5 flex-wrap">
+                    {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG")
+                      ? `${studentData.course} + ITEG`
+                      : studentData.course || 'N/A'}
+                    {studentData.withITEG && (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+                        ITEG
+                      </span>
+                    )}
+                  </span>
+                </div>
                 <div><span className="font-medium text-gray-600">Session / Batch:</span> <br/><span className="font-semibold">{studentData.sessionId?.name || 'N/A'}{studentData.batchYear ? ` (${studentData.batchYear})` : ''}</span></div>
                 <div><span className="font-medium text-gray-600">Current Semester:</span> <br/><span className="font-semibold">{currentSemester}</span></div>
                 <div><span className="font-medium text-gray-600">Email:</span> <br/><span className="font-semibold">{studentData.email}</span></div>

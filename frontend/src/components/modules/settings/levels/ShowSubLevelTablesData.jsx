@@ -26,7 +26,6 @@ import SyllabusTab, { TasksTab, ManualTaskForm, TaskUploadDrawer, SyllabusUpload
 import Loader from "../../../shared/loader/Loader";
 import Avatar from "../../../shared/Avatar";
 import EmptyState from "../../../shared/empty-state/EmptyState";
-
 import SessionSelector from "../../../shared/SessionSelector";
 
 const validationSchema = Yup.object({
@@ -51,8 +50,16 @@ const STUDENT_COLUMNS = [
         )
     },
     { label: "Father Name", key: "fatherName" },
-    { label: "Mobile No.",  key: "mobile" },
-    { label: "Course",      key: "course", render: (row) => <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">{row.course}</span> },
+    { label: "Course",      key: "course", render: (row) => (
+        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+            {row.course}
+            {row.raw?.withITEG && !row.course?.toUpperCase().includes("ITEG") && (
+                <span className="bg-orange-500 text-white text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-full">
+                    + ITEG
+                </span>
+            )}
+        </span>
+    ) },
     { label: "Session",     key: "session", render: (row) => <span className="bg-orange-50 text-orange-600 text-xs font-semibold px-2.5 py-1 rounded-full">{row.raw.sessionId?.name || "N/A"}</span> },
     { label: "Status",      key: "status", render: (row) => (
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
@@ -64,12 +71,12 @@ const STUDENT_COLUMNS = [
     )},
 ];
 
-const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBoard }) => {
+const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onRowClick, onTaskBoard }) => {
     const [selectedSessionId, setSelectedSessionId] = useState("");
     const params = subLevel?._id 
         ? `currentSubLevelId=${subLevel._id}${selectedSessionId ? `&sessionId=${selectedSessionId}` : ''}`
         : "";
-    const { data, isLoading } = useGetNewStudentsQuery(params, { skip: !subLevel?._id });
+    const { data, isLoading, refetch } = useGetNewStudentsQuery(params, { skip: !subLevel?._id });
 
     const rawStudents = data?.data || [];
     const filteredStudents = selectedSessionId
@@ -206,7 +213,14 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
                                 <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
                                     <div>
                                         <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Course</span>
-                                        <span className="font-semibold text-blue-700 mt-0.5 inline-block">{st.course || "N/A"}</span>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            <span className="font-semibold text-blue-700 inline-block">{st.course || "N/A"}</span>
+                                            {st.raw?.withITEG && !st.course?.toUpperCase().includes("ITEG") && (
+                                                <span className="bg-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">
+                                                    + ITEG
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Session</span>
@@ -959,6 +973,7 @@ const ShowSubLevelTablesData = () => {
                         {activeSection === "Students" && (
                             <StudentsTab
                                 subLevel={activeTab}
+                                subdepartmentId={subdepartment?._id || querySubdeptId || level?.subDepartmentId?._id || level?.subDepartmentId}
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: row.raw, level, subdepartment } })}

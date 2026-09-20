@@ -94,7 +94,7 @@ const studentSchema = new mongoose.Schema({
   syllabusVersionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SyllabusVersion",
-    required: true
+    default: null
   },
 
   // 📍 Current Position
@@ -119,6 +119,7 @@ const studentSchema = new mongoose.Schema({
     default: "Active"
   },
   isFTP: { type: Boolean, default: false },
+  withITEG: { type: Boolean, default: false },
 
   // 🔒 Promotion Lock (prevents race condition on concurrent task updates)
   promotionPending: { type: Boolean, default: false },
@@ -151,5 +152,6 @@ studentSchema.index({ batchYear: 1 });
 studentSchema.index({ currentSubLevelId: 1, syllabusVersionId: 1 });
 studentSchema.index({ status: 1 });
 studentSchema.index({ "permissionDetails.status": 1 });
+studentSchema.index({ withITEG: 1 });
 
 module.exports = mongoose.model("Student", studentSchema);

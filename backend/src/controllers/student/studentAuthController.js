@@ -13,10 +13,12 @@ exports.studentLogin = async (req, res) => {
     if (!prkey || !password)
       return res.status(400).json({ message: "prkey and password are required" });
 
+    const trimmedInput = prkey.trim();
     const student = await Student.findOne({
       $or: [
-        { prkey: prkey.trim() },
-        { email: prkey.trim() }
+        { prkey: trimmedInput },
+        { email: trimmedInput },
+        { studentMobile: trimmedInput }
       ]
     })
       .populate("subDepartmentId", "name")

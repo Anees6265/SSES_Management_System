@@ -4,7 +4,8 @@ import {
   useGetNewStudentsQuery,
   useGetAllSessionsQuery,
   useGetAllLevelsQuery,
-  useGetAllSubLevelsQuery
+  useGetAllSubLevelsQuery,
+  useGetAllSubdepartmentsQuery
 } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
@@ -31,7 +32,6 @@ const StudentDetailTable = () => {
   const navigate = useNavigate();
   const { subDepartmentId } = useParams(); // present for admin, absent for faculty
 
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -39,6 +39,8 @@ const StudentDetailTable = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Build query string — if subDepartmentId present, filter by it
   const queryStr = subDepartmentId ? `subDepartmentId=${subDepartmentId}` : "";
@@ -46,6 +48,9 @@ const StudentDetailTable = () => {
   const { data: res = {}, isLoading } = useGetNewStudentsQuery(queryStr, {
     refetchOnMountOrArgChange: true,
   });
+
+  const { data: subDeptsRes = {} } = useGetAllSubdepartmentsQuery();
+  const subDepts = subDeptsRes.data || [];
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessions = sessionsData?.data || [];
@@ -157,7 +162,19 @@ const StudentDetailTable = () => {
     {
       key: "course",
       label: "Course",
-      render: (row) => (row.course || "").toUpperCase(),
+      render: (row) => {
+        const courseUpper = (row.course || "").toUpperCase();
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-gray-800">{courseUpper || "N/A"}</span>
+            {row.withITEG && !courseUpper.includes("ITEG") && (
+              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
+                + ITEG
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "level",
@@ -195,7 +212,8 @@ const StudentDetailTable = () => {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader /></div>;
 
-  const deptName = students[0]?.subDepartmentId?.name;
+  const currentSubDept = subDepts.find(sd => sd._id === subDepartmentId);
+  const deptName = currentSubDept?.name || students[0]?.subDepartmentId?.name;
 
   return (
     <>
@@ -487,9 +505,16 @@ const StudentDetailTable = () => {
 
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-gray-400 font-medium">Course:</span>
-                      <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 text-[10.5px] uppercase truncate">
-                        {row.course || "N/A"}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 text-[10.5px] uppercase truncate">
+                          {row.course || "N/A"}
+                        </span>
+                        {row.withITEG && !row.course?.toUpperCase().includes("ITEG") && (
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200">
+                            + ITEG
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {row.fatherName && (

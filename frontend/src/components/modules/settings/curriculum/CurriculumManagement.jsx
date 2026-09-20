@@ -21,6 +21,7 @@ import {
 import { HiOutlineBookOpen } from "react-icons/hi";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 import InputField from "../../../shared/form-fields/InputField";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CustomDropdown from "../../../shared/form-fields/CustomDropdown";
@@ -640,19 +641,17 @@ const CurriculumManagement = () => {
                   </button>
                 </div>
               ) : paginatedData.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 px-4 space-y-2">
-                  <HiOutlineBookOpen size={32} className="mx-auto text-slate-300" />
-                  <p className="text-xs font-bold text-slate-700">No curriculum records matching selected filters</p>
-                  <p className="text-[11px] text-slate-400 max-w-sm mx-auto">Try clearing your search query or reset filter selections to see more records.</p>
-                  {hasActiveFilters && (
-                    <button
-                      type="button"
-                      onClick={resetFilters}
-                      className="mt-2 text-xs font-bold text-orange-500 hover:text-orange-600 cursor-pointer"
-                    >
-                      Clear All Filters
-                    </button>
-                  )}
+                <div className="p-4 sm:p-6">
+                  <EmptyState
+                    title="No Curriculum Records Found"
+                    subtitle={
+                      searchTerm
+                        ? `No curriculum files matched "${searchTerm}". Try a different keyword or reset filters.`
+                        : "No curriculum or syllabus records match the selected session and department filters."
+                    }
+                    actionText={hasActiveFilters ? "Clear All Filters" : undefined}
+                    onAction={hasActiveFilters ? resetFilters : undefined}
+                  />
                 </div>
               ) : (
                 <>

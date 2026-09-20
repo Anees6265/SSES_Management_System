@@ -14,6 +14,7 @@ import {
     useGetMyStudentSnapshotsQuery,
     useGetMyStudentEventLogQuery,
 } from "../../../redux/api/studentApi";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const formatDateTime = (d) => d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -373,12 +374,12 @@ export default function StudentDashboard() {
                     </div>
 
                     {levelHistory.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-2">
-                                <MdTrendingUp size={20} className="text-gray-300" />
-                            </div>
-                            <p className="text-xs text-gray-400">No level history yet</p>
-                        </div>
+                        <EmptyState
+                            icon={MdTrendingUp}
+                            title="No level history yet"
+                            subtitle="Completed and ongoing level records will be logged here."
+                            compact
+                        />
                     ) : (
                         <div className="relative">
                             <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-100" />
@@ -437,12 +438,12 @@ export default function StudentDashboard() {
                     </div>
 
                     {activityItems.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-2">
-                                <MdAccessTime size={20} className="text-gray-300" />
-                            </div>
-                            <p className="text-xs text-gray-400">No activity yet</p>
-                        </div>
+                        <EmptyState
+                            icon={MdAccessTime}
+                            title="No activity yet"
+                            subtitle="Task submissions, level updates, and permissions will show up here."
+                            compact
+                        />
                     ) : (
                         <div className="space-y-3">
                             {activityItems.slice(0, 6).map((item, i) => (

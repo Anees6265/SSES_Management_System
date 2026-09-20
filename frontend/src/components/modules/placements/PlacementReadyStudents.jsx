@@ -12,6 +12,7 @@ import Header from "../../shared/sidebar/Header";
 import TabsCommon from "../../shared/table/TabsCommon";
 import Avatar from "../../shared/Avatar";
 import StatsCard from "./dashboard/StatsCard";
+import EmptyState from "../../shared/empty-state/EmptyState";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
@@ -537,8 +538,17 @@ const PlacementReadyStudents = () => {
           {/* Mobile Card List View */}
           <div className="block md:hidden divide-y divide-slate-100">
             {paginatedMobileData.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-xs font-medium">
-                No candidates found matching filters.
+              <div className="p-4">
+                <EmptyState
+                  title="No Candidates Found"
+                  subtitle={
+                    searchTerm
+                      ? `No candidates match "${searchTerm}". Try adjusting your search query.`
+                      : "No candidate records match your current filter selections."
+                  }
+                  actionText={searchTerm || selectedTech !== "All" ? "Clear Filters" : undefined}
+                  onAction={searchTerm || selectedTech !== "All" ? () => { setSearchTerm(""); setSelectedTech("All"); } : undefined}
+                />
               </div>
             ) : (
               paginatedMobileData.map((row) => {

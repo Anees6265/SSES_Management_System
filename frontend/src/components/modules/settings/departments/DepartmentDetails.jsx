@@ -15,6 +15,7 @@ import { HiOutlineUserGroup } from "react-icons/hi";
 import { MdOutlineMenuBook } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 
 const DepartmentDetails = () => {
   const navigate = useNavigate();
@@ -185,11 +186,13 @@ const DepartmentDetails = () => {
         {/* Sliding Carousel of Sub-Departments */}
         <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
           {subdepartments.length === 0 ? (
-            <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl p-6">
-              <MdAccountTree size={44} className="mx-auto text-gray-300 mb-2.5" />
-              <p className="text-sm font-bold text-gray-700">No subdepartments found</p>
-              <p className="text-xs text-gray-400 mt-1">Add subdepartments to organize levels and courses</p>
-            </div>
+            <EmptyState
+              icon={MdAccountTree}
+              title="No Sub-Departments Found"
+              subtitle="Add sub-departments to organize academic levels and curriculum."
+              actionText="+ Add Sub-Department"
+              onAction={() => setIsModalOpen(true)}
+            />
           ) : (
             <div className="relative w-full max-w-none mx-auto px-0 md:px-14 flex flex-col items-center">
               {/* Mobile Subdepartment Counter & Swipe Hint */}

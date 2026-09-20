@@ -38,6 +38,7 @@ import ssecLogo from "../../../assets/images/ssec-logo.png";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import StudentReportPDF from "../../modules/students/StudentReportPDF";
 import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName, getDepartmentLogo } from "../../modules/students/reportCardDepartmentConfig";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -198,19 +199,6 @@ function LevelJourneyStepper({ levels = ['1A', '1B', '1C', '2A', '2B', '2C'], cu
   );
 }
 
-// ── Empty State Component ─────────────────────────────────────────────────────
-
-const EmptyState = ({ icon, message }) => (
-  <div className="flex flex-col items-center justify-center py-16 text-center">
-    <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
-      {icon}
-    </div>
-    <p className="text-sm font-bold text-slate-700">{message}</p>
-    <p className="text-xs text-slate-400 mt-1 max-w-sm">
-      Your official evaluation report card will appear here once finalized by your department faculties.
-    </p>
-  </div>
-);
 
 // ── Main StudentReportCard Component ──────────────────────────────────────────
 
@@ -404,8 +392,9 @@ export default function StudentReportCard() {
       {!rc ? (
         <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl shadow-xs">
           <EmptyState
-            icon={<MdSchool size={28} className="text-slate-300" />}
-            message="Report Card Not Available Yet"
+            icon={MdSchool}
+            title="Report Card Not Available Yet"
+            subtitle="Your official evaluation report card will appear here once finalized by your department faculties."
           />
         </div>
       ) : (

@@ -12,6 +12,7 @@ import CommonTable from "../../shared/table/CommonTable";
 import Header from "../../shared/sidebar/Header";
 import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
+import EmptyState from "../../shared/empty-state/EmptyState";
 import { MdTableChart } from "react-icons/md";
 import { Search, X, ChevronRight, Phone, RotateCcw, Filter } from "lucide-react";
 
@@ -418,27 +419,16 @@ const StudentDetailTable = () => {
         {/* ── MOBILE VIEW: MODERN STUDENT CARDS (< 768px) ── */}
         <div className="md:hidden space-y-3">
           {filteredData.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto">
-                <Search size={22} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">
-                  {activeTab === "All" ? "No students found" : `No students in sub-level ${activeTab}`}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">Try adjusting your search terms or filters</p>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 px-3.5 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer"
-                >
-                  <RotateCcw size={13} />
-                  <span>Reset All Filters</span>
-                </button>
-              )}
-            </div>
+            <EmptyState
+              title={activeTab === "All" ? "No Students Found" : `No Students in Sub-Level ${activeTab}`}
+              subtitle={
+                searchTerm
+                  ? `No students matched "${searchTerm}". Try checking your spelling or reset filters.`
+                  : "Try adjusting your search terms, session, or status filters to view records."
+              }
+              actionText={hasActiveFilters ? "Reset All Filters" : undefined}
+              onAction={hasActiveFilters ? handleResetFilters : undefined}
+            />
           ) : (
             <>
               {paginatedMobileData.map((row) => (

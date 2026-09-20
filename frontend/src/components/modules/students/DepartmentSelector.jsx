@@ -3,6 +3,7 @@ import { useGetAllSubdepartmentsQuery } from "../../../redux/api/authApi";
 import Header from "../../shared/sidebar/Header";
 import Loader from "../../shared/loader/Loader";
 import SubDepartmentCard from "../settings/departments/SubDepartmentCard";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const DepartmentSelector = () => {
   const navigate = useNavigate();
@@ -25,7 +26,12 @@ const DepartmentSelector = () => {
         </p>
 
         {subDepts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">No departments found</div>
+          <EmptyState
+            title="No Departments Found"
+            subtitle="No academic departments or sub-departments are configured yet in the system."
+            actionText="Go to Department Settings"
+            onAction={() => navigate("/department-management")}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {subDepts.map((dept) => (

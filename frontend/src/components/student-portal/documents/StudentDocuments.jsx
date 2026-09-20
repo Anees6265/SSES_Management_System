@@ -10,6 +10,7 @@ import {
     useGetMyExtraDocumentsQuery,
     useUploadMyExtraDocumentMutation,
 } from "../../../redux/api/studentApi";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -682,11 +683,12 @@ export default function StudentDocuments() {
                 ) : mobileTab === "core" ? (
                     <div className="space-y-2">
                         {filteredCore.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70 text-center p-4">
-                                <FileText size={28} className="text-gray-300" />
-                                <p className="text-xs text-gray-500 font-bold mt-2">No core documents found</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">Contact college administration for admission documents</p>
-                            </div>
+                            <EmptyState
+                                icon={FileText}
+                                title="No core documents found"
+                                subtitle="Contact college administration for admission documents."
+                                compact
+                            />
                         ) : (
                             filteredCore.map((doc, i) => (
                                 <DocCard
@@ -700,17 +702,14 @@ export default function StudentDocuments() {
                 ) : (
                     <div className="space-y-2">
                         {filteredExtra.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70 text-center p-4">
-                                <Folder size={28} className="text-gray-300" />
-                                <p className="text-xs text-gray-500 font-bold mt-2">No extra documents yet</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">Upload your resume, course certificates or awards</p>
-                                <button
-                                    onClick={() => setUploadOpen(true)}
-                                    className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-xs"
-                                >
-                                    + Upload Now
-                                </button>
-                            </div>
+                            <EmptyState
+                                icon={Folder}
+                                title="No extra documents yet"
+                                subtitle="Upload your resume, course certificates or awards."
+                                actionText="+ Upload Now"
+                                onAction={() => setUploadOpen(true)}
+                                compact
+                            />
                         ) : (
                             filteredExtra.map((doc, i) => (
                                 <DocCard
@@ -725,23 +724,13 @@ export default function StudentDocuments() {
 
                 {/* Overall Empty State on Mobile */}
                 {totalFiltered === 0 && (
-                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70 text-center p-4">
-                        <FileText size={32} className="text-gray-300" />
-                        <p className="text-xs text-gray-500 font-bold mt-2">
-                            {search ? "No matching documents found" : "No documents available"}
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                            {search ? "Try adjusting your search query" : "Upload your certificates or resume"}
-                        </p>
-                        {!search && (
-                            <button
-                                onClick={() => setUploadOpen(true)}
-                                className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-xs"
-                            >
-                                Upload Document
-                            </button>
-                        )}
-                    </div>
+                    <EmptyState
+                        icon={FileText}
+                        title={search ? "No matching documents found" : "No documents available"}
+                        subtitle={search ? "Try adjusting your search query or reset filter." : "Upload your certificates or resume to get started."}
+                        actionText={!search ? "Upload Document" : undefined}
+                        onAction={!search ? () => setUploadOpen(true) : undefined}
+                    />
                 )}
             </div>
 
@@ -765,13 +754,12 @@ export default function StudentDocuments() {
 
                     <div className="p-4">
                         {filteredCore.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-2">
-                                    <FileText size={20} className="text-blue-300" />
-                                </div>
-                                <p className="text-xs font-bold text-gray-600">No core documents found</p>
-                                <p className="text-[11px] text-gray-400 mt-0.5">Contact college admin for verified records</p>
-                            </div>
+                            <EmptyState
+                                icon={FileText}
+                                title="No core documents found"
+                                subtitle="Contact college admin for verified records."
+                                compact
+                            />
                         ) : (
                             <div className="space-y-3">
                                 {filteredCore.map((doc, i) => (
@@ -811,18 +799,14 @@ export default function StudentDocuments() {
 
                     <div className="p-4">
                         {filteredExtra.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-2">
-                                    <Folder size={20} className="text-orange-300" />
-                                </div>
-                                <p className="text-xs font-bold text-gray-600">No extra documents uploaded</p>
-                                <button
-                                    onClick={() => setUploadOpen(true)}
-                                    className="mt-2 text-xs font-bold text-orange-500 hover:text-orange-600 underline"
-                                >
-                                    Upload now →
-                                </button>
-                            </div>
+                            <EmptyState
+                                icon={Folder}
+                                title="No extra documents uploaded"
+                                subtitle="Upload your resume, workshop certificates and achievements."
+                                actionText="Upload Now"
+                                onAction={() => setUploadOpen(true)}
+                                compact
+                            />
                         ) : (
                             <div className="space-y-3">
                                 {filteredExtra.map((doc, i) => (

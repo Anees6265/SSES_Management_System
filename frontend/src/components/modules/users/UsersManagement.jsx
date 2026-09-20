@@ -21,6 +21,7 @@ import { usePermissions } from '../../../hooks/usePermissions';
 import SearchBox from '../../shared/search-export/SearchBox';
 import ExportDropdown from '../../shared/search-export/ExportDropdown';
 import Header from '../../shared/sidebar/Header';
+import EmptyState from '../../shared/empty-state/EmptyState';
 
 const UsersManagement = () => {
     const navigate = useNavigate();
@@ -518,13 +519,16 @@ const UsersManagement = () => {
                         {/* ── MOBILE VIEW: MODERN RESPONSIVE USER CARDS (< 768px) ── */}
                         <div className="md:hidden space-y-3">
                             {displayData.length === 0 ? (
-                                <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-2xs space-y-2">
-                                    <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto text-xl">
-                                        <UserIcon size={22} />
-                                    </div>
-                                    <p className="text-sm font-bold text-gray-800">No users found</p>
-                                    <p className="text-xs text-gray-400">Try adjusting your search criteria</p>
-                                </div>
+                                <EmptyState
+                                    title="No Users Found"
+                                    subtitle={
+                                        searchTerm
+                                            ? `No users matched "${searchTerm}". Try checking your spelling or clear search.`
+                                            : "No user accounts match the current filters or no users exist yet."
+                                    }
+                                    actionText={searchTerm ? "Clear Search" : undefined}
+                                    onAction={searchTerm ? () => setSearchTerm("") : undefined}
+                                />
                             ) : (
                                 <>
                                     {paginatedMobileUsers.map((user) => (

@@ -15,6 +15,7 @@ import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import Header from "../../../shared/sidebar/Header";
 import CommonCard from "../CommonCard";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 
 const UNIVERSITY_OPTIONS = [
   {
@@ -280,21 +281,16 @@ const DepartmentManagement = () => {
 
         {/* Departments Cards Grid or Empty State */}
         {filteredDepartments.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-gray-200 rounded-2xl p-6">
-            <MdBusiness size={44} className="mx-auto text-gray-300 mb-2.5" />
-            <h3 className="text-sm sm:text-base font-bold text-gray-700">No departments found</h3>
-            <p className="text-xs text-gray-400 mt-1">
-              {searchQuery ? `No matching results for "${searchQuery}"` : "No departments added yet"}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="mt-3.5 px-3.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition cursor-pointer"
-              >
-                Clear Search
-              </button>
-            )}
-          </div>
+          <EmptyState
+            title={searchQuery ? "No Matching Departments" : "No Departments Found"}
+            subtitle={
+              searchQuery
+                ? `No departments matched your search for "${searchQuery}". Try adjusting your keywords.`
+                : "No academic departments are currently present. Use the 'Add Department' button above to create one."
+            }
+            actionText={searchQuery ? "Clear Search" : undefined}
+            onAction={searchQuery ? () => setSearchQuery("") : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
             {filteredDepartments.map((dept) => (

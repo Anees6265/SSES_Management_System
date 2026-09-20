@@ -1,5 +1,6 @@
 import { useGetMyStudentLevelHistoryQuery, useGetMyStudentSnapshotsQuery } from "../../../redux/api/studentApi";
 import { MdTrendingUp, MdCheckCircle, MdStar, MdAccessTime } from "react-icons/md";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
@@ -119,13 +120,12 @@ export default function StudentLevelHistory() {
 
                     <div className="p-5">
                         {history.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-14 text-center">
-                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-3">
-                                    <MdTrendingUp size={24} className="text-gray-300" />
-                                </div>
-                                <p className="text-sm font-semibold text-gray-500">No level history yet</p>
-                                <p className="text-xs text-gray-400 mt-1">Your progress will appear here</p>
-                            </div>
+                            <EmptyState
+                                icon={MdTrendingUp}
+                                title="No level history yet"
+                                subtitle="Your academic progress and level advancements will appear here."
+                                compact
+                            />
                         ) : (
                             <div className="relative">
                                 <div className="absolute left-[10px] top-3 bottom-3 w-0.5 bg-gray-100" />
@@ -221,12 +221,12 @@ export default function StudentLevelHistory() {
 
                     <div className="p-4">
                         {overallSnapshots.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mb-2">
-                                    <MdStar size={20} className="text-gray-300" />
-                                </div>
-                                <p className="text-xs text-gray-400">No snapshots yet</p>
-                            </div>
+                            <EmptyState
+                                icon={MdStar}
+                                title="No snapshots yet"
+                                subtitle="Periodic task and syllabus milestones will be recorded here."
+                                compact
+                            />
                         ) : (
                             <div className="space-y-2.5">
                                 {overallSnapshots.slice(0, 10).map((snap, i) => {

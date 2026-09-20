@@ -17,6 +17,7 @@ import {
     MdOutlineTopic
 } from "react-icons/md";
 import { toast } from "react-toastify";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const STATUS_COLS = [
     { key: "pending",    label: "Pending",     dot: "bg-amber-400",  colBg: "bg-amber-50/30",  border: "border-amber-200/80", badge: "bg-amber-100 text-amber-700",   emptyIcon: "text-amber-200" },
@@ -287,12 +288,12 @@ export default function StudentTasks() {
                     // Single status tab view on mobile
                     <div className="space-y-2">
                         {byStatus[mobileTab].length === 0 ? (
-                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70">
-                                <MdAssignment size={28} className="text-gray-300" />
-                                <p className="text-xs text-gray-400 mt-2 font-medium">
-                                    No {mobileTab === "inProgress" ? "in-progress" : mobileTab} tasks found
-                                </p>
-                            </div>
+                            <EmptyState
+                                icon={MdAssignment}
+                                title={`No ${mobileTab === "inProgress" ? "in-progress" : mobileTab} tasks found`}
+                                subtitle="Tasks assigned to you in this status will appear here."
+                                compact
+                            />
                         ) : (
                             byStatus[mobileTab].map(task => (
                                 <TaskCard
@@ -308,10 +309,13 @@ export default function StudentTasks() {
 
                 {/* Overall Empty State on Mobile */}
                 {filtered.length === 0 && (
-                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70">
-                        <MdAssignment size={30} className="text-gray-300" />
-                        <p className="text-xs text-gray-400 mt-2 font-semibold">No matching tasks found</p>
-                    </div>
+                    <EmptyState
+                        icon={MdAssignment}
+                        title="No matching tasks found"
+                        subtitle={search ? "Try searching for another topic or clear the search query." : "No tasks assigned for your current level yet."}
+                        actionText={search ? "Clear Search" : undefined}
+                        onAction={search ? () => setSearch("") : undefined}
+                    />
                 )}
             </div>
 

@@ -12,6 +12,7 @@ import Header from '../../shared/sidebar/Header';
 import StatsCard from './dashboard/StatsCard';
 import AddCompanyModal from './AddCompanyModal';
 import CompanyProfileModal from './CompanyProfileModal';
+import EmptyState from '../../shared/empty-state/EmptyState';
 import {
   MdBusiness, MdPeople, MdLocationOn, MdEmail, MdPhone,
   MdSearch, MdAdd, MdEdit, MdVisibility, MdToggleOn, MdToggleOff, MdFilterList, MdClose
@@ -393,8 +394,17 @@ const CompanyDetail = () => {
           {/* Mobile Card View */}
           <div className="block md:hidden divide-y divide-slate-100">
             {paginatedMobileCompanies.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-xs font-medium">
-                No companies found matching filters.
+              <div className="p-4">
+                <EmptyState
+                  title="No Companies Found"
+                  subtitle={
+                    searchTerm
+                      ? `No companies match "${searchTerm}". Try a different keyword.`
+                      : "No registered companies are currently available in the directory."
+                  }
+                  actionText={searchTerm ? "Clear Search" : undefined}
+                  onAction={searchTerm ? () => setSearchTerm("") : undefined}
+                />
               </div>
             ) : (
               paginatedMobileCompanies.map((row) => {

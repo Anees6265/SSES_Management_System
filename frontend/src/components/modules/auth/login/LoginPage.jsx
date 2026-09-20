@@ -6,6 +6,7 @@ import Loader from "../../../shared/loader/Loader";
 import CompactFaceLogin from "../../face-auth/CompactFaceLogin";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
+import SecurityHelmet from "../../../shared/SecurityHelmet";
 
 import logo from "../../../../assets/images/logo-ssism.png";
 import googleLogo from "../../../../assets/icons/google-icon.png";
@@ -99,6 +100,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-[100dvh] w-full relative flex flex-col justify-between overflow-x-hidden font-sans bg-white selection:bg-orange-500 selection:text-white">
+      <SecurityHelmet title="Login" />
       {isLoading && <Loader />}
 
       {/* College Building Background Image (positioned at bottom with realistic soft fade to white at top) */}

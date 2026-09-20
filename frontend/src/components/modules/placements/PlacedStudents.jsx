@@ -5,6 +5,7 @@ import Loader from '../../shared/loader/Loader';
 import CommonTable from '../../shared/table/CommonTable';
 import Header from '../../shared/sidebar/Header';
 import Avatar from '../../shared/Avatar';
+import EmptyState from '../../shared/empty-state/EmptyState';
 import { 
   MdArrowBack, MdBusiness, MdPeople, MdEmail, MdPhone, 
   MdLocationOn, MdAttachMoney, MdSearch, MdClose, 
@@ -159,11 +160,11 @@ const PlacedStudents = () => {
               </div>
             </div>
 
-            <div className="text-center py-12 sm:py-16 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-              <MdPeople className="text-5xl text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-gray-800">No Students Placed Yet</h3>
-              <p className="text-xs text-gray-400 mt-1">No confirmed offers recorded for {apiCompanyName}</p>
-            </div>
+            <EmptyState
+              icon={MdPeople}
+              title="No Students Placed Yet"
+              subtitle={`No confirmed offers recorded for ${apiCompanyName} yet.`}
+            />
           </div>
         </div>
       );
@@ -266,11 +267,14 @@ const PlacedStudents = () => {
         {/* ── Mobile View: Cards List ── */}
         <div className="md:hidden space-y-3">
           {filteredStudents.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
-              <MdPeople className="text-4xl text-gray-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-gray-700">No matching students found</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Try searching with a different term</p>
-            </div>
+            <EmptyState
+              icon={MdPeople}
+              title="No Matching Students Found"
+              subtitle={searchTerm ? `No placed students match "${searchTerm}".` : "No placed students available."}
+              actionText={searchTerm ? "Clear Search" : undefined}
+              onAction={searchTerm ? () => setSearchTerm('') : undefined}
+              compact
+            />
           ) : (
             paginatedStudents.map((row) => (
               <div

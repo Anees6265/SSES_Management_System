@@ -1,6 +1,7 @@
 import Sidebar from '../../shared/sidebar/Sidebar';
 import { SidebarProvider } from '../../../contexts/SidebarContext';
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import SecurityHelmet from '../../shared/SecurityHelmet';
 import AdminDashboard from "./AdminDashboard";
 import StudentDetailTable from "../students/StudentDetailTable";
 import DepartmentSelector from "../students/DepartmentSelector";
@@ -49,14 +50,54 @@ const RoleBasedStudentPage = () => {
   return <DepartmentSelector />;
 };
 
+const routeTitleMap = {
+    "/": "Dashboard",
+    "/attendance-details": "Attendance Details",
+    "/user-management": "User Management",
+    "/student-detail-table": "Student Records",
+    "/leave-requests": "Leave Requests",
+    "/student-permission": "Student Permissions",
+    "/readiness-status": "Placement Readiness",
+    "/placements/dashboard": "Placement Dashboard",
+    "/placements/drives": "Placement Drives",
+    "/placements/resume-sharing": "Resume Sharing",
+    "/placement-interview-record": "Placement Interview Records",
+    "/company-details": "Company Details",
+    "/placement-post": "Placement Posts",
+    "/department-management": "Department Management",
+    "/subdepartments": "Sub-Departments",
+    "/levels": "Levels Management",
+    "/task-management": "Task Management",
+    "/curriculum-management": "Curriculum Management",
+    "/session-management": "Session Management",
+    "/settings": "Settings",
+    "/support": "Support & Help",
+};
+
 const Layout = () => {
     const role = localStorage.getItem('role');
+    const location = useLocation();
+
     if (role === 'student') {
         return <Navigate to="/student-portal/dashboard" replace />;
     }
 
+    const getPageTitle = () => {
+        if (routeTitleMap[location.pathname]) {
+            return `${routeTitleMap[location.pathname]} - Admin Portal`;
+        }
+        if (location.pathname.startsWith("/student-detail-table")) return "Student Records - Admin Portal";
+        if (location.pathname.startsWith("/student/leveldata")) return "Student Level Data - Admin Portal";
+        if (location.pathname.startsWith("/student-profile")) return "Student Profile - Admin Portal";
+        if (location.pathname.startsWith("/placements/department")) return "Department Placements - Admin Portal";
+        if (location.pathname.startsWith("/placement/company")) return "Placed Students - Admin Portal";
+        if (location.pathname.startsWith("/subdepartment")) return "Department Hierarchy - Admin Portal";
+        return "Admin Portal";
+    };
+
     return (
         <div className="min-h-screen">
+            <SecurityHelmet title={getPageTitle()} />
             <SidebarProvider>
                 <Sidebar>
                 <Routes>

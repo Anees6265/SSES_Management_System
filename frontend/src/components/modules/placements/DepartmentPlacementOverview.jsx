@@ -8,6 +8,7 @@ import Loader from '../../shared/loader/Loader';
 import Header from '../../shared/sidebar/Header';
 import Avatar from '../../shared/Avatar';
 import StatsCard from './dashboard/StatsCard';
+import EmptyState from '../../shared/empty-state/EmptyState';
 import { MdPeople, MdWork, MdCheckCircle, MdSearch, MdArrowForward, MdSchool, MdFilterList } from 'react-icons/md';
 
 const DepartmentPlacementOverview = () => {
@@ -175,8 +176,12 @@ const DepartmentPlacementOverview = () => {
               <tbody className="divide-y divide-gray-50">
                 {departments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-gray-400 text-sm font-medium">
-                      No department data found
+                    <td colSpan={7} className="px-6 py-8 text-center bg-white">
+                      <EmptyState
+                        title="No Department Placement Data"
+                        subtitle="No department placement statistics are available currently."
+                        compact
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -304,8 +309,18 @@ const DepartmentPlacementOverview = () => {
               <Loader />
             </div>
           ) : paginated.length === 0 ? (
-            <div className="py-14 text-center">
-              <p className="text-gray-400 text-sm font-medium">No placed students found matching search</p>
+            <div className="p-6 bg-white">
+              <EmptyState
+                title="No Placed Students Found"
+                subtitle={
+                  searchTerm
+                    ? `No placed students matched "${searchTerm}". Try checking your spelling or clear search.`
+                    : "No placed students are recorded for this department yet."
+                }
+                actionText={searchTerm ? "Clear Search" : undefined}
+                onAction={searchTerm ? () => setSearchTerm("") : undefined}
+                compact
+              />
             </div>
           ) : (
             <>

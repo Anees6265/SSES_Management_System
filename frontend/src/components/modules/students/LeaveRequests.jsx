@@ -22,6 +22,7 @@ import Header from "../../shared/sidebar/Header";
 import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
 import Pagination from "../../shared/pagination/Pagination";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const FILTERS = [
   { label: "All", value: "all" },
@@ -563,30 +564,23 @@ const LeaveRequests = () => {
         {/* ── MOBILE VIEW: MODERN LEAVE REQUEST CARDS (< 768px) ── */}
         <div className="md:hidden space-y-3">
           {filteredRequests.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto">
-                <Inbox size={22} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">No leave requests found</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {searchTerm ? "No requests match your search criteria" : `No ${activeTab} leave requests`}
-                </p>
-              </div>
-              {(searchTerm || activeTab !== "all") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setActiveTab("all");
-                  }}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 px-3.5 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer"
-                >
-                  <RotateCcw size={13} />
-                  <span>Reset Filters</span>
-                </button>
-              )}
-            </div>
+            <EmptyState
+              title="No Leave Requests Found"
+              subtitle={
+                searchTerm
+                  ? "No leave requests match your search criteria."
+                  : `No ${activeTab} leave requests available at this time.`
+              }
+              actionText={searchTerm || activeTab !== "all" ? "Reset Filters" : undefined}
+              onAction={
+                searchTerm || activeTab !== "all"
+                  ? () => {
+                      setSearchTerm("");
+                      setActiveTab("all");
+                    }
+                  : undefined
+              }
+            />
           ) : (
             <>
               {paginatedMobileRequests.map((row) => {

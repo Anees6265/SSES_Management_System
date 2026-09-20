@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
 import Header from "../../../shared/sidebar/Header";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -814,18 +815,17 @@ const TaskManagement = () => {
 
                             {/* Empty State */}
                             {paginatedData.length === 0 ? (
-                                <div className="py-14 text-center text-slate-400 px-4 space-y-2">
-                                    <p className="text-xs font-bold text-slate-700">No task records matching selected filters</p>
-                                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">Try clearing search query or reset filter selections.</p>
-                                    {hasActiveFilters && (
-                                        <button
-                                            type="button"
-                                            onClick={resetFilters}
-                                            className="mt-2 text-xs font-bold text-orange-500 hover:text-orange-600 cursor-pointer"
-                                        >
-                                            Clear All Filters
-                                        </button>
-                                    )}
+                                <div className="p-4 sm:p-6">
+                                    <EmptyState
+                                        title="No Tasks Found"
+                                        subtitle={
+                                            searchTerm
+                                                ? `No tasks matched your search for "${searchTerm}". Try a different keyword.`
+                                                : "No task records match your current filter selections."
+                                        }
+                                        actionText={hasActiveFilters ? "Clear All Filters" : undefined}
+                                        onAction={hasActiveFilters ? resetFilters : undefined}
+                                    />
                                 </div>
                             ) : (
                                 <>

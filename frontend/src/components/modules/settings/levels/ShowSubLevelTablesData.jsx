@@ -25,6 +25,7 @@ import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import SyllabusTab, { TasksTab, ManualTaskForm, TaskUploadDrawer, SyllabusUploadModalContent } from "./SyllabusTab";
 import Loader from "../../../shared/loader/Loader";
 import Avatar from "../../../shared/Avatar";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 
 import SessionSelector from "../../../shared/SessionSelector";
 
@@ -148,13 +149,15 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
                 </div>
             </div>
             {searchedStudents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center bg-white border border-gray-200 rounded-xl">
-                    <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-3 border border-orange-100/50">
-                        <MdCloudUpload size={28} className="text-orange-400" />
-                    </div>
-                    <h3 className="text-sm font-bold text-gray-700 mb-1">No students found</h3>
-                    <p className="text-xs text-gray-400 max-w-xs mx-auto">No students found matching the selected session or sub-level filters.</p>
-                </div>
+                <EmptyState
+                    icon={MdCloudUpload}
+                    title="No Students Found"
+                    subtitle={searchTerm
+                        ? `No students matching "${searchTerm}". Try checking your spelling or clear search.`
+                        : "No students found matching the selected session or sub-level filters."}
+                    actionText={searchTerm ? "Clear Search" : undefined}
+                    onAction={searchTerm ? () => setSearchTerm("") : undefined}
+                />
             ) : (
                 <>
                     {/* Desktop Table View */}
@@ -414,13 +417,11 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     if (progressList.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mb-4 border border-orange-100/50">
-                    <MdCloudUpload size={32} className="text-orange-400" />
-                </div>
-                <h3 className="text-base font-bold text-gray-705 mb-1">No progress data found</h3>
-                <p className="text-xs text-gray-400 max-w-xs mx-auto">No student progress data is available for this sub-level.</p>
-            </div>
+            <EmptyState
+                icon={MdCloudUpload}
+                title="No Progress Data Found"
+                subtitle="No student progress data is currently available for this sub-level."
+            />
         );
     }
 
@@ -928,13 +929,13 @@ const ShowSubLevelTablesData = () => {
 
                 {/* No sublevels — show prompt */}
                 {subLevels.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-24 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mb-4">
-                            <MdCloudUpload size={32} className="text-orange-300" />
-                        </div>
-                        <h3 className="text-base font-bold text-gray-700 mb-1">No Sub-Levels yet</h3>
-                        <p className="text-sm text-gray-400 max-w-xs">Create at least one Sub-Level first. Students, Syllabus, and Tasks will be available after that.</p>
-                    </div>
+                    <EmptyState
+                        icon={MdLayers}
+                        title="No Sub-Levels Yet"
+                        subtitle="Create at least one Sub-Level first. Students, Syllabus, and Tasks will be available after that."
+                        actionText="Create Sub-Level"
+                        onAction={() => setIsAddSubLevelOpen(true)}
+                    />
                 )}
 
                 {/* Section Tabs — only when sublevels exist */}

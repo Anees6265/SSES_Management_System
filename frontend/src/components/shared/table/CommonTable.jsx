@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import Pagination from "../pagination/Pagination";
+import EmptyState from "../empty-state/EmptyState";
 
 const CommonTable = ({
   columns,
@@ -132,8 +133,18 @@ const CommonTable = ({
             <tbody className="bg-white">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={tableColumns.length} className="text-center py-10 text-gray-400">
-                    {emptyMessage}
+                  <td colSpan={tableColumns.length} className="p-4 sm:p-8 bg-white text-center">
+                    <EmptyState
+                      title={typeof emptyMessage === "string" ? emptyMessage : "No Data Found"}
+                      subtitle={
+                        searchTerm
+                          ? `No records matching "${searchTerm}". Try checking your spelling or clear your search filter.`
+                          : "There are no records available in this table right now."
+                      }
+                      actionText={searchTerm ? "Clear Search" : undefined}
+                      onAction={searchTerm ? () => setGlobalFilter("") : undefined}
+                      compact
+                    />
                   </td>
                 </tr>
               ) : (

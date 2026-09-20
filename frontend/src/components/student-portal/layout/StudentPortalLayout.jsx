@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
+import SecurityHelmet from "../../shared/SecurityHelmet";
 
 const navItems = [
   { to: "/student-portal/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
@@ -197,8 +198,12 @@ export default function StudentPortalLayout() {
     </div>
   );
 
+  const currentNav = navItems.find((item) => location.pathname.startsWith(item.to));
+  const pageTitle = currentNav ? `${currentNav.label} - Student Portal` : "Student Portal";
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden print:h-auto print:overflow-visible print:bg-white print:block">
+      <SecurityHelmet title={pageTitle} />
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 shrink-0 print:hidden">

@@ -212,19 +212,14 @@ const StudentLevelData = () => {
         </div>
         
         {/* Data Table */}
-        {filteredData.length > 0 ? (
-          <CommonTable
-            data={filteredData}
-            columns={columns}
-            pagination={true}
-            rowsPerPage={rowsPerPage}
-            searchTerm={searchTerm}
-          />
-        ) : (
-          <div className="p-8 text-center text-gray-500">
-            No data found for {activeTab}
-          </div>
-        )}
+        <CommonTable
+          data={filteredData}
+          columns={columns}
+          pagination={true}
+          rowsPerPage={rowsPerPage}
+          searchTerm={searchTerm}
+          emptyMessage={`No data found for ${activeTab}`}
+        />
       </div>
       
       {/* Task Upload Modal */}

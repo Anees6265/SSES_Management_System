@@ -13,6 +13,7 @@ import {
     useGetFacultiesQuery,
     useGetMyStudentProfileQuery
 } from "../../../redux/api/studentApi";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -1209,20 +1210,14 @@ export default function StudentPermissions() {
                     // Single status tab view on mobile
                     <div className="space-y-2">
                         {byStatus[mobileTab].length === 0 ? (
-                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70">
-                                <ShieldCheck size={28} className="text-gray-300" />
-                                <p className="text-xs text-gray-400 mt-2 font-medium">
-                                    No {mobileTab} requests found
-                                </p>
-                                {mobileTab === "pending" && (
-                                    <button
-                                        onClick={() => setApplyOpen(true)}
-                                        className="mt-2 text-xs font-semibold text-orange-500 hover:text-orange-600 underline"
-                                    >
-                                        Apply now →
-                                    </button>
-                                )}
-                            </div>
+                            <EmptyState
+                                icon={ShieldCheck}
+                                title={`No ${mobileTab} requests found`}
+                                subtitle={mobileTab === "pending" ? "Submit a new permission or leave request." : `No ${mobileTab} permission requests to display.`}
+                                actionText={mobileTab === "pending" ? "Apply Now" : undefined}
+                                onAction={mobileTab === "pending" ? () => setApplyOpen(true) : undefined}
+                                compact
+                            />
                         ) : (
                             byStatus[mobileTab].map(item => (
                                 <PermissionCard
@@ -1238,23 +1233,13 @@ export default function StudentPermissions() {
 
                 {/* Overall Empty State on Mobile */}
                 {sortedPermissions.length === 0 && (
-                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl py-12 bg-white/70 text-center p-4">
-                        <ShieldCheck size={32} className="text-gray-300" />
-                        <p className="text-xs text-gray-500 font-bold mt-2">
-                            {search ? "No matching permissions found" : "No permission requests yet"}
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                            {search ? "Try clearing search filter" : "Submit a leave request for fast faculty approval"}
-                        </p>
-                        {!search && (
-                            <button
-                                onClick={() => setApplyOpen(true)}
-                                className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold"
-                            >
-                                Apply for Permission
-                            </button>
-                        )}
-                    </div>
+                    <EmptyState
+                        icon={ShieldCheck}
+                        title={search ? "No matching permissions found" : "No permission requests yet"}
+                        subtitle={search ? "Try clearing your search query or reset filter." : "Submit a leave request for fast faculty approval."}
+                        actionText={!search ? "Apply for Permission" : undefined}
+                        onAction={!search ? () => setApplyOpen(true) : undefined}
+                    />
                 )}
             </div>
 
@@ -1339,11 +1324,13 @@ export default function StudentPermissions() {
 
                 {/* View Content: Kanban vs List */}
                 {desktopFilteredPermissions.length === 0 ? (
-                    <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center max-w-md mx-auto">
-                        <ShieldCheck size={32} className="text-gray-300 mx-auto mb-2" />
-                        <h4 className="text-sm font-bold text-gray-800">No permission requests found</h4>
-                        <p className="text-xs text-gray-400 mt-1">Try resetting search or filter options</p>
-                    </div>
+                    <EmptyState
+                        icon={ShieldCheck}
+                        title="No permission requests found"
+                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a new permission or leave request to get started."}
+                        actionText={!search ? "Apply for Permission" : undefined}
+                        onAction={!search ? () => setApplyOpen(true) : undefined}
+                    />
                 ) : viewMode === "list" ? (
                     /* Desktop List View */
                     <div className="space-y-2.5">

@@ -8,6 +8,7 @@ import {
     useGetMyPlacementQuery,
     useGetMyStudentProfileQuery
 } from "../../../redux/api/studentApi";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -281,10 +282,12 @@ export default function StudentPlacement() {
                             </div>
 
                             {interviews.length === 0 ? (
-                                <div className="text-center py-6 text-gray-400 text-xs">
-                                    <Building2 size={24} className="mx-auto text-gray-300 mb-1.5" />
-                                    <p>No interview records yet.</p>
-                                </div>
+                                <EmptyState
+                                    icon={Building2}
+                                    title="No interview records yet"
+                                    subtitle="Campus drives and interview updates will appear here."
+                                    compact
+                                />
                             ) : (
                                 <div className="space-y-2">
                                     {interviews.slice(0, 2).map((rec, i) => (
@@ -377,13 +380,12 @@ export default function StudentPlacement() {
                 {mobileTab === "interviews" && (
                     <div className="space-y-3">
                         {interviews.length === 0 ? (
-                            <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-8 text-center">
-                                <Building2 size={28} className="text-gray-300 mx-auto mb-2" />
-                                <h4 className="text-xs font-bold text-gray-700">No interview drives scheduled yet</h4>
-                                <p className="text-[11px] text-gray-400 mt-1">
-                                    Upcoming interview dates and drive evaluation rounds will show here.
-                                </p>
-                            </div>
+                            <EmptyState
+                                icon={Building2}
+                                title="No Interview Drives Scheduled Yet"
+                                subtitle="Upcoming interview dates and drive evaluation rounds will show here."
+                                compact
+                            />
                         ) : (
                             interviews.map((rec, i) => (
                                 <div
@@ -600,15 +602,12 @@ export default function StudentPlacement() {
 
                     <div className="p-4">
                         {interviews.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-300 flex items-center justify-center mb-2.5">
-                                    <Building2 size={24} />
-                                </div>
-                                <h4 className="text-xs font-bold text-gray-700">No interview history yet</h4>
-                                <p className="text-[11px] text-gray-400 mt-0.5 max-w-xs leading-relaxed">
-                                    As company drives are scheduled for your department, interview schedules and feedback rounds will appear here.
-                                </p>
-                            </div>
+                            <EmptyState
+                                icon={Building2}
+                                title="No Interview History Yet"
+                                subtitle="As company drives are scheduled for your department, interview schedules and feedback rounds will appear here."
+                                compact
+                            />
                         ) : (
                             <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
                                 {interviews.map((rec, i) => (

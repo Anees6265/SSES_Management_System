@@ -11,6 +11,7 @@ import StatsCard from "./StatsCard";
 import PlacementFunnel from "./PlacementFunnel";
 import StatusBreakdown from "./StatusBreakdown";
 import TopCompanies from "./TopCompanies";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 import { useGetAllSessionsQuery } from "../../../../redux/api/authApi";
 
 // ── Dummy / Fallback Data ──────────────────────────────────────
@@ -398,8 +399,18 @@ const DepartmentPlacementDetail = () => {
           {/* Mobile Card View */}
           <div className="block md:hidden divide-y divide-gray-100">
             {filteredReadyStudents.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-xs font-medium">
-                No ready students match search
+              <div className="p-4">
+                <EmptyState
+                  title="No Ready Students Found"
+                  subtitle={
+                    searchTerm
+                      ? `No students match "${searchTerm}". Try checking your spelling or clear search.`
+                      : "No students are currently marked as placement-ready for this department."
+                  }
+                  actionText={searchTerm ? "Clear Search" : undefined}
+                  onAction={searchTerm ? () => setSearchTerm("") : undefined}
+                  compact
+                />
               </div>
             ) : (
               filteredReadyStudents.map((s) => (

@@ -23,6 +23,7 @@ import {
 } from "../../../../redux/api/authApi";
 import Header from "../../../shared/sidebar/Header";
 import Loader from "../../../shared/loader/Loader";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 
 const STATUS_TABS = [
   { id: "all", label: "All Sessions" },
@@ -435,23 +436,16 @@ const SessionManagement = () => {
 
         {/* List of filtered session cards */}
         {filteredSessions.length === 0 ? (
-          <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center py-16 text-center shadow-2xs p-4">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-3 border border-orange-100">
-              <MdCalendarMonth size={24} />
-            </div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1">No sessions match filters</h3>
-            <p className="text-xs text-slate-400 font-medium max-w-sm">
-              Try adjusting your search query or create a new academic session.
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="mt-3 text-xs font-bold text-orange-500 hover:text-orange-600 cursor-pointer"
-              >
-                Clear search query
-              </button>
-            )}
-          </div>
+          <EmptyState
+            title="No Sessions Found"
+            subtitle={
+              searchQuery
+                ? `No sessions match "${searchQuery}". Try a different keyword.`
+                : "No academic sessions are currently created for the selected filter."
+            }
+            actionText={searchQuery ? "Clear Search" : undefined}
+            onAction={searchQuery ? () => setSearchQuery("") : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
             {filteredSessions.map((session) => {

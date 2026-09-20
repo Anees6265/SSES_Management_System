@@ -6,6 +6,7 @@ import CommonTable from "../../shared/table/CommonTable";
 import Header from "../../shared/sidebar/Header";
 import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
+import EmptyState from "../../shared/empty-state/EmptyState";
 import {
   Search,
   X,
@@ -256,27 +257,16 @@ const StudentPermission = () => {
         {/* ── MOBILE VIEW: MODERN DUMMY STUDENT CARDS (< 768px) ── */}
         <div className="md:hidden space-y-3">
           {filteredData.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto">
-                <AlertCircle size={22} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">No dummy students found</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {searchTerm ? "No students match your search keywords" : "No students are currently marked as dummy"}
-                </p>
-              </div>
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 px-3.5 py-2 rounded-xl border border-orange-200 hover:bg-orange-100 transition cursor-pointer"
-                >
-                  <RotateCcw size={13} />
-                  <span>Clear Search</span>
-                </button>
-              )}
-            </div>
+            <EmptyState
+              title="No Dummy Students Found"
+              subtitle={
+                searchTerm
+                  ? "No students match your search keywords."
+                  : "No students are currently marked as dummy."
+              }
+              actionText={searchTerm ? "Clear Search" : undefined}
+              onAction={searchTerm ? () => setSearchTerm("") : undefined}
+            />
           ) : (
             <>
               {paginatedMobileData.map((student) => {

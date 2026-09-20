@@ -19,6 +19,7 @@ import {
     useUpdateDepartmentPassingCriteriaMutation,
 } from "./../../../redux/api/authApi";
 import Header from "../../shared/sidebar/Header";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const themes = [
     { id: "orange", label: "Orange", color: "#F97316", shade: "#FFEDD5" },
@@ -418,7 +419,12 @@ const SettingFIle = () => {
                             {sessionsLoading ? (
                                 <p className="text-xs font-semibold text-slate-400">Loading sessions...</p>
                             ) : sessions.length === 0 ? (
-                                <p className="text-xs font-semibold text-slate-400">No sessions found in system.</p>
+                                <EmptyState
+                                    icon={MdCalendarToday}
+                                    title="No Sessions Found"
+                                    subtitle="No academic sessions have been set up in the system."
+                                    compact
+                                />
                             ) : (
                                 sessions.map((sess) => {
                                     const statusStr = (sess.isActive || sess.status === 'active') ? 'active' : (sess.status || 'upcoming').toLowerCase();

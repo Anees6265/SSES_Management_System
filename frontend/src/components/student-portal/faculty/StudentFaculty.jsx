@@ -4,6 +4,7 @@ import {
   Building, GraduationCap, X, ExternalLink, Sparkles
 } from "lucide-react";
 import { useGetFacultiesQuery } from "../../../redux/api/studentApi";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const ROLE_COLORS = {
   hod: "bg-amber-50 text-amber-700 border-amber-200/80",
@@ -187,25 +188,15 @@ export default function StudentFaculty() {
 
       {/* ── Faculty Directory Grid ── */}
       {filteredFaculties.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-xs flex flex-col items-center justify-center space-y-2.5">
-          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400">
-            <Users size={24} />
-          </div>
-          <h3 className="text-sm font-bold text-gray-800">No Faculty Found</h3>
-          <p className="text-xs text-gray-400 max-w-xs">
-            {searchQuery
-              ? "No faculty members match your search criteria. Try checking spelling or resetting."
-              : "No faculty members are registered in your department yet."}
-          </p>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-colors"
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No Faculty Found"
+          subtitle={searchQuery
+            ? "No faculty members match your search criteria. Try checking spelling or resetting."
+            : "No faculty members are registered in your department yet."}
+          actionText={searchQuery ? "Clear Search" : undefined}
+          onAction={searchQuery ? () => setSearchQuery("") : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {filteredFaculties.map((fac) => {

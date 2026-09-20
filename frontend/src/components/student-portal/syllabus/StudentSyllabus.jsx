@@ -6,6 +6,7 @@ import {
     MdOutlineDescription, MdClear, MdAutoStories,
     MdTableChart, MdViewAgenda, MdPrint, MdTopic
 } from "react-icons/md";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 export default function StudentSyllabus() {
     const { data: syllabusData, isLoading, error } = useGetMyStudentSyllabusQuery();
@@ -309,13 +310,13 @@ export default function StudentSyllabus() {
 
                     {/* Subjects Container */}
                     {filteredCurrentSubjects.length === 0 ? (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
-                            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-400 flex items-center justify-center mx-auto mb-3">
-                                <MdSearch size={24} />
-                            </div>
-                            <h3 className="text-sm font-bold text-gray-700">No matching subjects or topics found</h3>
-                            <p className="text-xs text-gray-400 mt-1">Try clearing your search query or subject filter.</p>
-                        </div>
+                        <EmptyState
+                            icon={MdSearch}
+                            title="No matching subjects or topics found"
+                            subtitle="Try clearing your search query or subject filter."
+                            actionText={searchQuery || selectedSubjectFilter !== "All" ? "Clear Filters" : undefined}
+                            onAction={searchQuery || selectedSubjectFilter !== "All" ? () => { setSearchQuery(""); setSelectedSubjectFilter("All"); } : undefined}
+                        />
                     ) : (
                         <div className="space-y-4 sm:space-y-6">
                             {filteredCurrentSubjects.map((subject, sIdx) => {
@@ -572,28 +573,13 @@ export default function StudentSyllabus() {
                 <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200">
 
                     {previousLevels.length === 0 ? (
-                        /* Empty state for students at initial level */
-                        <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-12 text-center max-w-xl mx-auto shadow-xs">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                                <MdSchool size={28} />
-                            </div>
-                            <h3 className="text-sm sm:text-base font-bold text-gray-800">You are in your Foundation Level</h3>
-                            <p className="text-[11px] sm:text-xs text-gray-500 mt-2 leading-relaxed max-w-md mx-auto">
-                                You are currently studying in your initial level (
-                                <span className="font-bold text-orange-600">
-                                    {currentLevel?.levelName} · SubLevel {currentLevel?.subLevelName}
-                                </span>
-                                ). Once you complete this level and advance to subsequent levels, the syllabus tables of your
-                                completed levels will be preserved and accessible right here for reference and revision.
-                            </p>
-                            <button
-                                onClick={() => setActiveTab("current")}
-                                className="mt-4 sm:mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 text-white hover:bg-orange-600 transition"
-                            >
-                                <MdAutoStories size={16} />
-                                View Current Syllabus
-                            </button>
-                        </div>
+                        <EmptyState
+                            icon={MdSchool}
+                            title="You are in your Foundation Level"
+                            subtitle={`You are currently studying in your initial level (${currentLevel?.levelName || "Level"} · SubLevel ${currentLevel?.subLevelName || "1"}). Once you advance to subsequent levels, previous syllabus tables will be accessible right here.`}
+                            actionText="View Current Syllabus"
+                            onAction={() => setActiveTab("current")}
+                        />
                     ) : (
                         <div className="space-y-4 sm:space-y-5">
                             {/* Previous Level Selector Bar */}

@@ -5,6 +5,7 @@ import { useGetInterviewHistoryQuery } from '../../../redux/api/authApi';
 import PageNavbar from '../../shared/navbar/PageNavbar';
 import Loader from '../../shared/loader/Loader';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import EmptyState from '../../shared/empty-state/EmptyState';
 
 const InterviewHistoryDetails = () => {
   const { companyName } = useParams();
@@ -131,10 +132,11 @@ const InterviewHistoryDetails = () => {
 
       <div className="p-6">
         {allCompanyRounds.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No rounds found for this company.</p>
-            <p className="text-xs text-gray-400 mt-2">Debug: Company: {decodeURIComponent(companyName)}, Total Round Count: {totalRoundCount}, Added Count: {addedCount}</p>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="No Rounds Found"
+            subtitle={`No interview rounds recorded for ${decodeURIComponent(companyName)} yet.`}
+          />
         ) : (
           <div className="space-y-6">
             {allCompanyRounds.map((round, index) => (

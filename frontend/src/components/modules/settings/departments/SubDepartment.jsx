@@ -12,6 +12,7 @@ import InputField from '../../../shared/form-fields/InputField';
 import RadioGroup from '../../../shared/form-fields/RadioGroup';
 import SubDepartmentCard from './SubDepartmentCard';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import EmptyState from '../../../shared/empty-state/EmptyState';
 
 // Reusable course checkbox list — shows courses from the selected department
 const CourseCheckboxes = ({ departmentId, departments, values, setFieldValue }) => {
@@ -156,9 +157,14 @@ const SubDepartment = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
                     {filteredSubdepartments.length === 0 ? (
-                        <div className="col-span-full text-center py-16">
-                            <MdAccountTree size={48} className="mx-auto text-gray-300 mb-3" />
-                            <p className="text-gray-500">No subdepartments found</p>
+                        <div className="col-span-full">
+                            <EmptyState
+                                icon={MdAccountTree}
+                                title="No Sub-Departments Found"
+                                subtitle="Add sub-departments to group student courses and academic tracks."
+                                actionText="+ Add Sub-Department"
+                                onAction={() => setIsModalOpen(true)}
+                            />
                         </div>
                     ) : (
                         filteredSubdepartments.map((subdept) => (

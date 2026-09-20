@@ -7,6 +7,7 @@ import CommonCard from "../../settings/CommonCard";
 import { MdAccountTree, MdOutlineMenuBook } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
 import PlacementDashboard from "./PlacementDashboard";
+import EmptyState from "../../../shared/empty-state/EmptyState";
 
 const RoleBasedPlacementDashboard = () => {
   const navigate = useNavigate();
@@ -61,7 +62,11 @@ const RoleBasedPlacementDashboard = () => {
         </p>
 
         {subDepts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">No departments found</div>
+          <EmptyState
+            icon={MdAccountTree}
+            title="No Departments Found"
+            subtitle="No departments are available for placement tracking."
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {subDepts.map((dept) => (

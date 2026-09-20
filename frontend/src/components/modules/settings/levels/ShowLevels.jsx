@@ -3,6 +3,7 @@ import PageNavbar from '../../../shared/navbar/PageNavbar';
 import { useGetAllLevelsQuery } from '../../../../redux/api/authApi';
 import Loader from '../../../shared/loader/Loader';
 import { Layers } from 'lucide-react';
+import EmptyState from '../../../shared/empty-state/EmptyState';
 import Pagination from '../../../shared/pagination/Pagination';
 import { useNavigate } from 'react-router-dom';
 import CommonCard from '../CommonCard';
@@ -92,25 +93,16 @@ const ShowLevels = () => {
         {/* Cards Grid */}
         <div className="p-3.5 sm:p-6">
           {filteredLevels.length === 0 ? (
-            <div className="col-span-full text-center py-16">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center">
-                <Layers className="w-7 h-7" />
-              </div>
-              <h4 className="text-sm font-bold text-slate-800">No levels found</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                {searchTerm
-                  ? `No levels match "${searchTerm}". Try searching by another keyword.`
-                  : "No levels have been created yet."}
-              </p>
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="mt-3 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 hover:bg-orange-100 rounded-lg transition cursor-pointer"
-                >
-                  Clear Search
-                </button>
-              )}
+            <div className="col-span-full">
+              <EmptyState
+                icon={Layers}
+                title="No Levels Found"
+                subtitle={searchTerm
+                  ? `No levels match "${searchTerm}". Try searching by another keyword or clear search.`
+                  : "No academic levels have been created yet."}
+                actionText={searchTerm ? "Clear Search" : undefined}
+                onAction={searchTerm ? clearSearch : undefined}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">

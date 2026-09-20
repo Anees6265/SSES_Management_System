@@ -6,6 +6,7 @@ import Layout from "./components/modules/dashboard/Layout.jsx";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
 import { PermissionProvider } from './contexts/PermissionContext';
 import { SessionProvider } from './contexts/SessionContext';
+import SecurityHelmet from "./components/shared/SecurityHelmet";
 
 // Lazy load components
 const LoginPage = React.lazy(() => import("./components/modules/auth/login/LoginPage"));
@@ -54,6 +55,7 @@ function App() {
       </div>
     }>
       <Router>
+        <SecurityHelmet />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/otp-verification" element={<OtpVerification />} />

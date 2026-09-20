@@ -13,6 +13,7 @@ import Pagination from '../../shared/pagination/Pagination';
 import profile from '../../../assets/images/profile-img.png';
 import { useNavigate } from 'react-router-dom';
 import GlobalPermissionMatrix from './GlobalPermissionMatrix';
+import EmptyState from '../../shared/empty-state/EmptyState';
 
 const RolesPermissions = () => {
     const navigate = useNavigate();
@@ -374,13 +375,12 @@ const RolesPermissions = () => {
                 </div>
                 
                 {allRoles.length === 0 && (
-                    <div className="text-center py-12">
-                        <div className="text-gray-400 text-4xl mb-4 flex justify-center">
-                            <FaUser />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Roles Found</h3>
-                        <p className="text-gray-500">No user roles are currently defined in the system.</p>
-                    </div>
+                    <EmptyState
+                        title="No Roles Found"
+                        subtitle="No user roles are currently defined in the system. Click 'Create Role' to add one."
+                        actionText="Create Role"
+                        onAction={() => setShowCreateRole(true)}
+                    />
                 )}
             </div>
             )}

@@ -16,6 +16,7 @@ import { FaCalendarAlt } from "react-icons/fa";
 import PageNavbar from "../../shared/navbar/PageNavbar";
 import { buttonStyles } from "../../../styles/buttonStyles";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
+import EmptyState from "../../shared/empty-state/EmptyState";
 
 const InterviewHistory = () => {
   const { id } = useParams();
@@ -292,11 +293,10 @@ const InterviewHistory = () => {
         <h3 className="text-xl font-bold text-gray-800 mb-4">Interview Records</h3>
         
         {interviews.length === 0 ? (
-          <div className="bg-white rounded-xl border shadow-sm p-8 text-center">
-            <div className="text-gray-400 text-6xl mb-4">📋</div>
-            <h4 className="text-lg font-semibold text-gray-600 mb-2">No Interview Records</h4>
-            <p className="text-gray-500">This student has attended any interviews yet.</p>
-          </div>
+          <EmptyState
+            title="No Interview Records"
+            subtitle="This candidate has not attended any placement interview rounds yet."
+          />
         ) : (
           <div className="space-y-6">
             {interviews.map((interview, index) => (

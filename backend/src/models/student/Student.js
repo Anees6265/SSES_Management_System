@@ -86,6 +86,11 @@ const studentSchema = new mongoose.Schema({
     ref: "Session",
     required: true
   },
+  batchYear: {
+    type: String,
+    trim: true,
+    default: null
+  },
   syllabusVersionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SyllabusVersion",
@@ -142,6 +147,7 @@ const studentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 studentSchema.index({ sessionId: 1, subDepartmentId: 1 });
+studentSchema.index({ batchYear: 1 });
 studentSchema.index({ currentSubLevelId: 1, syllabusVersionId: 1 });
 studentSchema.index({ status: 1 });
 studentSchema.index({ "permissionDetails.status": 1 });

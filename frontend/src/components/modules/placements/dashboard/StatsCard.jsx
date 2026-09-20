@@ -39,7 +39,11 @@ const StatsCard = ({ title, value, subtitle, icon, color = "orange", trend, tren
         </div>
         {icon && (
           <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center text-lg sm:text-xl shrink-0 ${selectedColor.iconBg}`}>
-            {icon}
+            {React.isValidElement(icon)
+              ? icon
+              : typeof icon === "function" || (typeof icon === "object" && icon !== null)
+              ? React.createElement(icon, { size: 20 })
+              : icon}
           </div>
         )}
       </div>

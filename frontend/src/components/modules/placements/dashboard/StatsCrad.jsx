@@ -1,3 +1,5 @@
+import React from "react";
+
 const StatsCard = ({ title, value, subtitle, icon, color = "orange" }) => {
   const colorMap = {
     orange: "bg-orange-50 text-orange-500 border-orange-100",
@@ -12,7 +14,11 @@ const StatsCard = ({ title, value, subtitle, icon, color = "orange" }) => {
     <div className={`bg-white rounded-xl border p-5 flex items-center gap-4 shadow-sm ${colorMap[color]}`}>
       {icon && (
         <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${colorMap[color]}`}>
-          {icon}
+          {React.isValidElement(icon)
+            ? icon
+            : typeof icon === "function" || (typeof icon === "object" && icon !== null)
+            ? React.createElement(icon, { size: 24 })
+            : icon}
         </div>
       )}
       <div>

@@ -161,16 +161,23 @@ const StudentDetailTable = () => {
     },
     {
       key: "level",
-      label: "Level / Session",
+      label: "Level / Batch",
       align: "center",
       render: (row) => (
         <div className="flex flex-col items-center">
           <span className="text-xs font-medium text-gray-600">
             {row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"}
           </span>
-          <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded mt-1">
-            {row.sessionId?.name || "Session N/A"}
-          </span>
+          <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
+            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded">
+              {row.sessionId?.name || "Session N/A"}
+            </span>
+            {row.batchYear && (
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
+                Batch: {row.batchYear}
+              </span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -465,10 +472,17 @@ const StudentDetailTable = () => {
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-gray-400 font-medium">Session:</span>
-                      <span className="text-[10.5px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 truncate">
-                        {row.sessionId?.name || "Session N/A"}
-                      </span>
+                      <span className="text-gray-400 font-medium">Session / Batch:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10.5px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 truncate">
+                          {row.sessionId?.name || "Session N/A"}
+                        </span>
+                        {row.batchYear && (
+                          <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 truncate">
+                            {row.batchYear}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-2">

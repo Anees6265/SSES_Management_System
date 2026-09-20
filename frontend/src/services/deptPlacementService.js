@@ -9,3 +9,7 @@ export const getDeptAlerts           = (id) => api.get(`${base(id)}/alerts`);
 export const getDeptReadyStudents    = (id) => api.get(`${base(id)}/ready-students`);
 export const getDeptRecentPlacements = (id) => api.get(`${base(id)}/recent-placements`);
 export const getDeptTopCompanies     = (id) => api.get(`${base(id)}/top-companies`);
+export const getDeptMonthlyTrend     = (id, params) => api.get(`${base(id)}/monthly-trend`, { params });
+export const getDeptFullDashboard    = (id, params) => api.get(`${base(id)}/dashboard`, { params });
+export const getGlobalPlacementDashboard = (params) => api.get('/placements/department/global/dashboard', { params });
+

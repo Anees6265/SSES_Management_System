@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MdBusiness } from 'react-icons/md';
 
-const CardLogo = ({ logo, title, icon: Icon, inactive }) => {
+const CardLogo = ({ logo, title, icon: Icon = MdBusiness, inactive }) => {
   const [aspect, setAspect] = useState(null); // 'circle' | 'wide' | null
   const [hasError, setHasError] = useState(false);
   const imgRef = useRef(null);
@@ -17,13 +17,18 @@ const CardLogo = ({ logo, title, icon: Icon, inactive }) => {
   }, [logo]);
 
   if (!logo || hasError) {
+    const EffectiveIcon = Icon || MdBusiness;
     return (
       <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs border ${
         inactive 
           ? 'bg-gray-100 border-gray-250' 
           : 'bg-gradient-to-tr from-orange-50 to-amber-50/50 border-orange-100'
       }`}>
-        <Icon size={22} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
+        {React.isValidElement(EffectiveIcon) ? (
+          EffectiveIcon
+        ) : (
+          <EffectiveIcon size={22} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
+        )}
       </div>
     );
   }
@@ -85,10 +90,61 @@ const ActionButtons = ({ onView, onEdit, inactive }) => (
   </div>
 );
 
+const CardDescription = ({ description, subtitle, inactive }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const text = (description || '').trim();
+  const isLong = text.length > 110 || text.includes('\n');
+
+  if (!text && !subtitle) return null;
+
+  return (
+    <div className="mb-3 sm:mb-3.5 flex flex-col gap-1.5">
+      {/* Subtitle / Affiliation if provided */}
+      {subtitle && (
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 tracking-wide">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+          <span className="truncate" title={subtitle}>{subtitle}</span>
+        </div>
+      )}
+
+      {/* Description Body */}
+      {text && (
+        <div>
+          <p
+            title={!isExpanded ? text : undefined}
+            className={`text-xs font-medium leading-relaxed break-words transition-all duration-200 ${
+              inactive ? 'text-gray-400' : 'text-slate-600'
+            } ${
+              isExpanded
+                ? 'whitespace-pre-line max-h-48 overflow-y-auto pr-1'
+                : 'line-clamp-2 min-h-[2.5rem]'
+            }`}
+          >
+            {text}
+          </p>
+          {isLong && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded((prev) => !prev);
+              }}
+              className="mt-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline inline-flex items-center gap-0.5 cursor-pointer select-none transition-colors"
+            >
+              {isExpanded ? 'Show less ↑' : 'Read more ↓'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CommonCard = ({
   icon: Icon = MdBusiness,
   logo,
   title,
+  subtitle,
   description,
   status,
   statusLabel,
@@ -168,7 +224,7 @@ const CommonCard = ({
 
   // card2 — icon + status badge top row, title with more space, description, divider, info list, VIEW + EDIT
   return (
-    <div className={`bg-gradient-to-b from-white to-slate-50/20 border rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col ${
+    <div className={`bg-gradient-to-b from-white to-slate-50/20 border rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col h-full ${
       inactive ? 'border-gray-150' : 'border-gray-250 hover:shadow-md hover:border-orange-300'
     }`}>
       {/* Top Accent Gradient Line */}
@@ -197,18 +253,18 @@ const CommonCard = ({
         </div>
 
         {/* Title */}
-        <h3 className={`text-base sm:text-lg font-extrabold mb-1 min-h-0 sm:min-h-[2.5rem] tracking-tight leading-snug ${
+        <h3 className={`text-base sm:text-lg font-extrabold mb-1 min-h-0 sm:min-h-[2.5rem] tracking-tight leading-snug break-words ${
           inactive ? 'text-gray-400' : 'text-gray-900'
         }`}>
           {title}
         </h3>
 
-        {/* Description */}
-        {description && (
-          <p className={`text-xs min-h-0 sm:min-h-[3rem] font-medium leading-relaxed line-clamp-2 mb-3 sm:mb-3.5 ${
-            inactive ? 'text-gray-400' : 'text-gray-500'
-          }`}>{description}</p>
-        )}
+        {/* Description & Subtitle */}
+        <CardDescription
+          description={description}
+          subtitle={subtitle}
+          inactive={inactive}
+        />
 
         {/* Divider */}
         <div className={`border-t my-3 sm:my-4 ${inactive ? 'border-gray-150' : 'border-slate-100/70'}`} />

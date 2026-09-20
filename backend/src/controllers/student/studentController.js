@@ -11,6 +11,7 @@ const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const { assignTasksToStudent } = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName } = require("../../utils/sessionHelper");
+const { calculateBatchYear } = require("../../utils/batchHelper");
 const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
 
@@ -71,8 +72,20 @@ exports.createStudent = async (req, res) => {
 
     if (!latestSyllabus) return res.status(404).json({ message: "No active syllabus version found for this session/level/sublevel" });
 
+    // Calculate student batch year based on session and department/course duration
+    let batchYear = req.body.batchYear;
+    if (!batchYear) {
+      batchYear = await calculateBatchYear({
+        sessionId: targetSessionId,
+        session: targetSession,
+        subDepartmentId,
+        course: req.body.course
+      });
+    }
+
     const student = new Student({
       ...req.body,
+      batchYear,
       sessionId: targetSessionId,
       currentLevelId: firstLevel._id,
       currentSubLevelId: firstSubLevel._id,
@@ -125,11 +138,31 @@ exports.getAllStudents = async (req, res) => {
     }
 
     const students = await Student.find(filter)
-      .populate("subDepartmentId", "name departmentId")
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: {
+          path: "departmentId",
+          select: "name code allowedCourses"
+        }
+      })
       .populate("sessionId", "name startDate endDate status isActive")
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Fallback batch calculation for any older records without batchYear
+    for (const st of students) {
+      if (!st.batchYear) {
+        st.batchYear = await calculateBatchYear({
+          session: st.sessionId,
+          subDepartmentId: st.subDepartmentId?._id || st.subDepartmentId,
+          departmentId: st.subDepartmentId?.departmentId?._id || st.subDepartmentId?.departmentId,
+          course: st.course
+        });
+      }
+    }
 
     return res.status(200).json({ count: students.length, data: students });
   } catch (error) {
@@ -147,10 +180,10 @@ exports.getStudentById = async (req, res) => {
         select: "name departmentId",
         populate: {
           path: "departmentId",
-          select: "name code reportConfig logo"
+          select: "name code reportConfig logo allowedCourses"
         }
       })
-      .populate("sessionId", "name")
+      .populate("sessionId", "name startDate endDate status isActive")
       .populate("syllabusVersionId", "version title")
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order");
@@ -185,6 +218,16 @@ exports.getStudentById = async (req, res) => {
     studentObj.technology = actualTech;
     studentObj.techno = student.techno || student.technology || student.track || (actualTech !== "Technology Not Updated" ? actualTech : "");
     studentObj.track = student.track || (actualTech !== "Technology Not Updated" ? actualTech : "");
+
+    // Ensure batchYear is computed if missing
+    if (!studentObj.batchYear) {
+      studentObj.batchYear = await calculateBatchYear({
+        session: student.sessionId,
+        subDepartmentId: student.subDepartmentId?._id || student.subDepartmentId,
+        departmentId: student.subDepartmentId?.departmentId?._id || student.subDepartmentId?.departmentId,
+        course: student.course
+      });
+    }
 
     return res.status(200).json({
       data: {
@@ -227,11 +270,14 @@ exports.updateTechnology = async (req, res) => {
 // ✅ Update Student Basic Info
 exports.updateStudent = async (req, res) => {
   try {
+    const existingStudent = await Student.findById(req.params.id);
+    if (!existingStudent) return res.status(404).json({ message: "Student not found" });
+
     const allowedFields = [
       "firstName", "lastName", "fatherName", "email", "studentMobile",
       "parentMobile", "gender", "dob", "aadharCard", "address", "track",
       "village", "stream", "course", "category", "subject12", "year12",
-      "percent12", "percent10", "status", "isFTP"
+      "percent12", "percent10", "status", "isFTP", "batchYear"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });
@@ -244,8 +290,16 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
+    // If course, sessionId, or subDepartmentId was updated (and batchYear wasn't explicitly passed), recalculate batchYear
+    if (req.body.batchYear === undefined && (updateData.course || updateData.sessionId)) {
+      updateData.batchYear = await calculateBatchYear({
+        sessionId: updateData.sessionId || existingStudent.sessionId,
+        subDepartmentId: existingStudent.subDepartmentId,
+        course: updateData.course || existingStudent.course
+      });
+    }
+
     const student = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
-    if (!student) return res.status(404).json({ message: "Student not found" });
     return res.status(200).json({ message: "Student updated successfully", data: student });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

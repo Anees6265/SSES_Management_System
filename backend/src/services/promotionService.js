@@ -401,7 +401,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       if (!reportCard) {
         reportCard = new StudentReportCard({
           studentRef: studentId,
-          batchYear: prevSession?.name || new Date().getFullYear().toString(),
+          batchYear: student.batchYear || prevSession?.name || new Date().getFullYear().toString(),
           generatedByName: actorName,
           templateType: "ITEG_STANDARD",
           dynamicSections: []

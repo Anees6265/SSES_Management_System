@@ -125,6 +125,7 @@ const DepartmentDetails = () => {
           {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
             <Header
               title={department.name}
+              subtitle={department.universityName}
               breadcrumbs={[
                 { label: "Departments", path: "/department-management" },
                 { label: department.name }
@@ -176,11 +177,40 @@ const DepartmentDetails = () => {
       ) : (
         <Header
           title={department.name}
+          subtitle={department.universityName}
           breadcrumbs={[
             { label: "Departments", path: "/department-management" },
             { label: department.name }
           ]}
         />
+      )}
+
+      {/* Department Description Overview Banner */}
+      {department?.description && (
+        <div className="px-3 sm:px-6 pt-4 sm:pt-6">
+          <div className="bg-gradient-to-r from-orange-50/60 via-white to-amber-50/40 border border-orange-100/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="w-10 h-10 rounded-xl bg-orange-100/80 text-orange-600 flex items-center justify-center shrink-0 border border-orange-200/60">
+                <MdAccountTree size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600 bg-orange-100/80 px-2 py-0.5 rounded-md">
+                    Department Overview
+                  </span>
+                  {department.headOfDepartment && (
+                    <span className="text-xs text-slate-500 font-medium">
+                      • HOD: <strong className="text-slate-700">{department.headOfDepartment}</strong>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-line break-words">
+                  {department.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
         {/* Sliding Carousel of Sub-Departments */}

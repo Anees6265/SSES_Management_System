@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   MdPeople, MdCheckCircle, MdWork, MdTrendingUp, MdPercent, 
-  MdWarningAmber, MdTrendingDown, MdBlock, MdArrowBack, MdFilterList,
-  MdRefresh, MdFileDownload, MdSearch, MdSchool, MdCheckCircleOutline, MdClose
+  MdWarningAmber, MdBlock, MdArrowBack, MdFilterList,
+  MdRefresh, MdFileDownload, MdSearch, MdCheckCircleOutline, MdClose
 } from "react-icons/md";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Header from "../../../shared/sidebar/Header";
@@ -12,51 +12,10 @@ import PlacementFunnel from "./PlacementFunnel";
 import StatusBreakdown from "./StatusBreakdown";
 import TopCompanies from "./TopCompanies";
 import EmptyState from "../../../shared/empty-state/EmptyState";
-import { useGetAllSessionsQuery } from "../../../../redux/api/authApi";
-
-// ── Dummy / Fallback Data ──────────────────────────────────────
-const DUMMY_DEPT_DETAILS = {
-  "6a0c462fb827b322a78d5727": { name: "ITEG", code: "ITEG" },
-  "6a6476a55a76e696c8d7e64b": { name: "UIUX", code: "UI/UX" },
-  "6a5f4cbf24be9c4955b306dd": { name: "ITEG - Software Engineering", code: "SE" },
-  "6a5f4cbf24be9c4955b306e0": { name: "AI & Data Science", code: "AI/DS" },
-  "6a0eebd80e812b062d541ec4": { name: "MEG", code: "MEG" },
-  "6a23de703ae885bdae033748": { name: "FTP", code: "FTP" },
-};
-
-const DUMMY = {
-  overview: { totalStudents: 40, readyStudents: 15, interviewRunning: 6, placedStudents: 32, placementPercentage: 80.0 },
-  funnel: { ready: 15, interview: 6, selected: 4, placed: 32 },
-  breakdown: { unmappedCount: 2, readyToProcessCount: 15, onProcessCount: 6, placedCount: 32 },
-  alerts: { unmappedStudents: 2 },
-  readyStudents: [
-    { studentId: "s1", name: "Rahul Sharma", prkey: "PRK-2024-001", levelName: "4th Year", gpa: 8.4, attendance: 88, backlogCount: 0, testPass: true, resumeUploaded: true },
-    { studentId: "s2", name: "Priya Patel",  prkey: "PRK-2024-005", levelName: "4th Year", gpa: 8.9, attendance: 92, backlogCount: 0, testPass: true, resumeUploaded: true },
-    { studentId: "s3", name: "Amit Kumar",   prkey: "PRK-2024-012", levelName: "3rd Year", gpa: 7.8, attendance: 82, backlogCount: 0, testPass: true, resumeUploaded: true },
-  ],
-  recentPlacements: [
-    { studentId: "6",  studentName: "Anjali Gupta",   prkey: "SS006", companyName: "TCS Pvt Ltd",      salary: 450000, placedDate: "2025-01-05" },
-    { studentId: "7",  studentName: "Rohan Mehta",    prkey: "SS007", companyName: "Infosys",          salary: 420000, placedDate: "2025-01-03" },
-    { studentId: "8",  studentName: "Kavya Nair",     prkey: "SS008", companyName: "Wipro",            salary: 400000, placedDate: "2024-12-28" },
-    { studentId: "9",  studentName: "Arjun Yadav",    prkey: "SS009", companyName: "HCL Technologies", salary: 380000, placedDate: "2024-12-20" },
-    { studentId: "10", studentName: "Pooja Sharma",   prkey: "SS010", companyName: "Tech Mahindra",    salary: 360000, placedDate: "2024-12-15" },
-  ],
-  topCompanies: [
-    { companyName: "TCS Pvt Ltd",       totalHires: 10, avgSalary: 450000 },
-    { companyName: "Infosys",           totalHires: 8,  avgSalary: 420000 },
-    { companyName: "Wipro",             totalHires: 6,  avgSalary: 400000 },
-    { companyName: "HCL Technologies",  totalHires: 4,  avgSalary: 380000 },
-  ],
-  monthlyTrend: [
-    { month: 'Jul', placed: 3 },
-    { month: 'Aug', placed: 6 },
-    { month: 'Sep', placed: 11 },
-    { month: 'Oct', placed: 16 },
-    { month: 'Nov', placed: 21 },
-    { month: 'Dec', placed: 25 },
-    { month: 'Jan', placed: 28 },
-  ]
-};
+import { 
+  useGetAllSessionsQuery,
+  useGetDeptPlacementDashboardQuery 
+} from "../../../../redux/api/authApi";
 
 const formatSalary = (n) => n ? `₹${(n / 100000).toFixed(1)} LPA` : "—";
 const formatDate   = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -65,8 +24,7 @@ const DepartmentPlacementDetail = () => {
   const { subDepartmentId } = useParams();
   const navigate = useNavigate();
   
-  const [loading, setLoading] = useState(false);
-  const [academicYear, setAcademicYear] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -74,23 +32,76 @@ const DepartmentPlacementDetail = () => {
   const sessionsList = sessionsData?.data || [];
 
   useEffect(() => {
-    if (sessionsList.length > 0 && !academicYear) {
+    if (sessionsList.length > 0 && !selectedSessionId) {
       const activeSess = sessionsList.find(s => s.isActive || s.status === 'active') || sessionsList[0];
-      const activeLabel = activeSess.name.startsWith("AY") ? activeSess.name : `AY ${activeSess.name}`;
-      setAcademicYear(activeLabel);
+      if (activeSess) {
+        setSelectedSessionId(activeSess._id);
+      }
     }
-  }, [sessionsList, academicYear]);
+  }, [sessionsList, selectedSessionId]);
 
-  const deptMeta = DUMMY_DEPT_DETAILS[subDepartmentId] || { 
-    name: `Department #${subDepartmentId}`, 
-    code: "DEPT" 
+  const activeSessionObj = sessionsList.find(s => s._id === selectedSessionId);
+  const activeSessionLabel = activeSessionObj 
+    ? (activeSessionObj.name.startsWith("AY") ? activeSessionObj.name : `AY ${activeSessionObj.name}`)
+    : (selectedSessionId ? "Selected Year" : "All Years");
+
+  // Real-time department placement API query
+  const { 
+    data: responseData, 
+    isLoading, 
+    isFetching, 
+    refetch 
+  } = useGetDeptPlacementDashboardQuery({
+    subDepartmentId,
+    sessionId: selectedSessionId,
+    level: selectedLevel
+  }, {
+    skip: !subDepartmentId
+  });
+
+  const deptData = responseData?.data || {};
+  const deptMeta = deptData.deptMeta || {
+    name: "Department",
+    code: "DEPT"
   };
+  const overview = deptData.overview || {
+    totalStudents: 0,
+    readyStudents: 0,
+    interviewRunning: 0,
+    placedStudents: 0,
+    placementPercentage: 0,
+  };
+  const funnel = deptData.funnel || {
+    ready: 0,
+    readyPlacement: 0,
+    readyDrive: 0,
+    interview: 0,
+    selected: 0,
+    placed: 0,
+  };
+  const breakdown = deptData.breakdown || {
+    notReady: 0,
+    inProgress: 0,
+    ready: 0,
+    readyForInterview: 0,
+    interview: 0,
+    selected: 0,
+    placed: 0,
+  };
+  const alerts = deptData.alerts || {
+    readyButNoInterview: 0,
+    multipleRejections: 0,
+    placementPercentage: 0,
+  };
+  const readyStudents = deptData.readyStudents || [];
+  const recentPlacements = deptData.recentPlacements || [];
+  const topCompanies = deptData.topCompanies || [];
+  const monthlyTrend = deptData.monthlyTrend || [];
 
-  const { overview, funnel, breakdown, alerts, readyStudents, recentPlacements, topCompanies, monthlyTrend } = DUMMY;
+  const loading = isLoading || isFetching;
 
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 400);
+    refetch();
   };
 
   const handleDownloadReport = () => {
@@ -98,8 +109,8 @@ const DepartmentPlacementDetail = () => {
   };
 
   const filteredReadyStudents = readyStudents.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.prkey.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.prkey || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const STATS = [
@@ -108,7 +119,7 @@ const DepartmentPlacementDetail = () => {
       value: overview.totalStudents,       
       icon: <MdPeople />,      
       color: "blue",
-      trend: "↗ Batch Size",
+      trend: overview.totalStudents > 0 ? `${overview.totalStudents} Batch` : "Batch Size",
       trendColor: "text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded",
       sub: "enrolled in department",
       onClick: () => navigate(`/student-detail-table/${subDepartmentId}`)
@@ -118,9 +129,11 @@ const DepartmentPlacementDetail = () => {
       value: overview.readyStudents,        
       icon: <MdCheckCircle />, 
       color: "green",
-      trend: "↗ Ready students",
+      trend: overview.totalStudents > 0 
+        ? `${Math.round((overview.readyStudents / overview.totalStudents) * 100)}% Ready` 
+        : "Ready students",
       trendColor: "text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded",
-      sub: "ready for placement",
+      sub: "cleared readiness evaluation",
       onClick: () => navigate(`/readiness-status?status=Ready for Placement&subDepartmentId=${subDepartmentId}`)
     },
     { 
@@ -130,27 +143,27 @@ const DepartmentPlacementDetail = () => {
       color: "teal",
       trend: "⚡ Drive ready",
       trendColor: "text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded",
-      sub: "eligible for drives",
+      sub: "eligible for campus drives",
       onClick: () => navigate(`/readiness-status?status=Ready for Drive&subDepartmentId=${subDepartmentId}`)
     },
     { 
-      title: "Interview", 
+      title: "In Interview", 
       value: overview.interviewRunning,     
       icon: <MdWork />,        
       color: "orange",
-      trend: "⚡ Active Drives",
+      trend: `${overview.interviewRunning} active`,
       trendColor: "text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded",
-      sub: "students in rounds",
+      sub: "students in interview rounds",
       onClick: () => navigate(`/readiness-status?status=Interview&subDepartmentId=${subDepartmentId}`)
     },
     { 
-      title: "Placed",    
+      title: "Confirmed Placed",    
       value: overview.placedStudents,       
       icon: <MdTrendingUp />,  
       color: "purple",
-      trend: "↗ Placed",
+      trend: `${overview.placementPercentage}% rate`,
       trendColor: "text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded",
-      sub: "confirmed offers",
+      sub: "confirmed job offers",
       onClick: () => navigate(`/readiness-status?status=Placed&subDepartmentId=${subDepartmentId}`)
     },
   ];
@@ -198,7 +211,7 @@ const DepartmentPlacementDetail = () => {
                 className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 hover:border-slate-300 bg-white transition shadow-2xs"
                 title="Refresh Department Data"
               >
-                <MdRefresh className={`text-lg ${loading ? "animate-spin text-slate-500" : ""}`} />
+                <MdRefresh className={`text-lg ${loading ? "animate-spin text-orange-500" : ""}`} />
               </button>
               <button
                 onClick={handleDownloadReport}
@@ -215,8 +228,15 @@ const DepartmentPlacementDetail = () => {
               <span className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                 <MdFilterList className="text-base text-slate-400" /> Filters:
               </span>
-              <span className="border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium">
-                AY: {academicYear}
+              <span className="border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+                AY: {activeSessionLabel}
+                {selectedSessionId && (
+                  <MdClose 
+                    className="cursor-pointer text-sm text-slate-400 hover:text-slate-600 ml-0.5" 
+                    onClick={() => setSelectedSessionId("")} 
+                    title="Clear Year Filter"
+                  />
+                )}
               </span>
               {selectedLevel !== "All" && (
                 <span className="border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
@@ -228,23 +248,20 @@ const DepartmentPlacementDetail = () => {
 
             <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
               <select
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
+                value={selectedSessionId}
+                onChange={(e) => setSelectedSessionId(e.target.value)}
                 className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white transition cursor-pointer"
               >
-                {sessionsList.length === 0 ? (
-                  <option value="">No Sessions Found</option>
-                ) : (
-                  sessionsList.map((s) => {
-                    const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
-                    const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
-                    return (
-                      <option key={s._id} value={label}>
-                        {label} ({statusText})
-                      </option>
-                    );
-                  })
-                )}
+                <option value="">All Academic Years</option>
+                {sessionsList.map((s) => {
+                  const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
+                  const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
+                  return (
+                    <option key={s._id} value={s._id}>
+                      {label} ({statusText})
+                    </option>
+                  );
+                })}
               </select>
 
               <select
@@ -287,10 +304,10 @@ const DepartmentPlacementDetail = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
               <div>
                 <h3 className="font-bold text-gray-800 text-sm sm:text-base">{deptMeta.name} — Placement Growth</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Monthly cumulative hires in {deptMeta.code}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Monthly hires in {deptMeta.code}</p>
               </div>
               <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 self-start sm:self-auto">
-                Target: 85% Placed
+                {overview.placementPercentage}% Placed
               </span>
             </div>
 
@@ -349,7 +366,7 @@ const DepartmentPlacementDetail = () => {
                   <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5 sm:mt-1">
                     {alerts.multipleRejections || 0} <span className="text-xs font-normal text-slate-500">students</span>
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">Students who rejected 2 or more drive offers; require counselling.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Students who faced 2 or more rejections in interviews; require mentoring.</p>
                 </div>
               </div>
 
@@ -422,7 +439,7 @@ const DepartmentPlacementDetail = () => {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-                        {s.name.charAt(0)}
+                        {(s.name || "S").charAt(0)}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-gray-800 truncate">{s.name}</p>
@@ -442,7 +459,7 @@ const DepartmentPlacementDetail = () => {
 
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      s.readinessStatus === "Ready for Interview"
+                      s.readinessStatus === "Ready for Interview" || s.readinessStatus === "Ready for Drive"
                         ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                         : "bg-blue-50 text-blue-700 border border-blue-200"
                     }`}>
@@ -488,7 +505,9 @@ const DepartmentPlacementDetail = () => {
                 {filteredReadyStudents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-gray-400 text-sm font-medium">
-                      No ready students match search
+                      {readyStudents.length === 0 
+                        ? "No students are currently marked as placement-ready in this department."
+                        : "No ready students match search"}
                     </td>
                   </tr>
                 ) : (
@@ -501,7 +520,7 @@ const DepartmentPlacementDetail = () => {
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-                            {s.name.charAt(0)}
+                            {(s.name || "S").charAt(0)}
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800 group-hover:text-orange-600 transition">{s.name}</p>
@@ -512,7 +531,7 @@ const DepartmentPlacementDetail = () => {
 
                       <td className="px-6 py-3.5">
                         <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
-                          s.readinessStatus === "Ready for Interview"
+                          s.readinessStatus === "Ready for Interview" || s.readinessStatus === "Ready for Drive"
                             ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                             : "bg-blue-50 text-blue-700 border border-blue-200"
                         }`}>
@@ -568,8 +587,12 @@ const DepartmentPlacementDetail = () => {
           {/* Mobile Card View */}
           <div className="block md:hidden divide-y divide-gray-100">
             {recentPlacements.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-xs font-medium">
-                No recent placements recorded yet
+              <div className="p-4">
+                <EmptyState
+                  title="No Recent Placements"
+                  subtitle="No confirmed placement offers have been recorded yet for this department."
+                  compact
+                />
               </div>
             ) : (
               recentPlacements.map((p) => (
@@ -581,7 +604,7 @@ const DepartmentPlacementDetail = () => {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-                        {p.studentName.charAt(0)}
+                        {(p.studentName || "S").charAt(0)}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-gray-800 truncate">{p.studentName}</p>
@@ -631,7 +654,7 @@ const DepartmentPlacementDetail = () => {
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-                            {p.studentName.charAt(0)}
+                            {(p.studentName || "S").charAt(0)}
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800 group-hover:text-emerald-600 transition">{p.studentName}</p>

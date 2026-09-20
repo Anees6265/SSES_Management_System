@@ -1,16 +1,17 @@
 /* eslint-disable react/prop-types */
+import React from "react";
 import { FolderSearch, RotateCcw, Plus } from "lucide-react";
 
 /**
  * Unified, modern EmptyState component used across all pages of the SSES Management System.
  * 
  * Props:
- * - icon: ReactNode (optional, defaults to an illustrated FolderSearch badge)
+ * - icon: ReactNode | ComponentType | string (optional, defaults to an illustrated FolderSearch badge)
  * - title: string (optional, defaults to "No Data Found")
  * - subtitle: string (optional, defaults to a helpful hint)
  * - actionText: string (optional button text, e.g. "Clear Search", "Reset Filters", "Add Record")
  * - onAction: function (optional callback for the primary action button)
- * - actionIcon: ReactNode (optional icon for action button)
+ * - actionIcon: ReactNode | ComponentType (optional icon for action button)
  * - secondaryActionText: string (optional second button text)
  * - onSecondaryAction: function (optional callback)
  * - compact: boolean (tighter padding for table cells, small cards, or modal dialogs)
@@ -28,6 +29,69 @@ const EmptyState = ({
   compact = false,
   className = "",
 }) => {
+  const renderIcon = () => {
+    if (!icon) {
+      return (
+        <FolderSearch
+          size={compact ? 22 : 32}
+          className="text-orange-500 stroke-[1.75]"
+        />
+      );
+    }
+
+    // 1. If it's already a rendered React element (e.g. <FolderSearch size={24} />)
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
+
+    // 2. If it's a React component reference (function or object with $$typeof like react-icons or lucide-react)
+    if (typeof icon === "function" || (typeof icon === "object" && icon !== null && (icon.$$typeof || icon.render))) {
+      const IconComponent = icon;
+      return (
+        <IconComponent
+          size={compact ? 22 : 32}
+          className="text-orange-500 stroke-[1.75]"
+        />
+      );
+    }
+
+    // 3. If it's a string URL or image path
+    if (typeof icon === "string") {
+      if (icon.startsWith("http") || icon.startsWith("/") || icon.startsWith("data:")) {
+        return (
+          <img
+            src={icon}
+            alt={title}
+            className={`${compact ? "w-6 h-6" : "w-9 h-9"} object-contain`}
+          />
+        );
+      }
+      return <span className={compact ? "text-xl" : "text-3xl"}>{icon}</span>;
+    }
+
+    // Default fallback
+    return (
+      <FolderSearch
+        size={compact ? 22 : 32}
+        className="text-orange-500 stroke-[1.75]"
+      />
+    );
+  };
+
+  const renderActionIcon = () => {
+    if (!actionIcon) {
+      return <RotateCcw size={14} className="shrink-0" />;
+    }
+    if (React.isValidElement(actionIcon)) {
+      return actionIcon;
+    }
+    if (typeof actionIcon === "function" || (typeof actionIcon === "object" && actionIcon !== null)) {
+      const ActionComp = actionIcon;
+      return <ActionComp size={14} className="shrink-0" />;
+    }
+    return <RotateCcw size={14} className="shrink-0" />;
+  };
+
   return (
     <div
       className={`w-full flex flex-col items-center justify-center text-center select-none animate-in fade-in zoom-in-95 duration-200 ${
@@ -43,14 +107,7 @@ const EmptyState = ({
             compact ? "w-12 h-12 rounded-2xl" : "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl"
           } bg-gradient-to-b from-orange-50 via-amber-50/40 to-slate-50 border border-orange-200/70 flex items-center justify-center text-orange-500 shadow-sm shadow-orange-500/10 ring-6 sm:ring-8 ring-orange-50/60 transition-transform duration-300 hover:scale-105`}
         >
-          {icon ? (
-            icon
-          ) : (
-            <FolderSearch
-              size={compact ? 22 : 32}
-              className="text-orange-500 stroke-[1.75]"
-            />
-          )}
+          {renderIcon()}
         </div>
 
         {/* Floating subtle dot accent */}
@@ -89,7 +146,7 @@ const EmptyState = ({
               onClick={onAction}
               className="inline-flex items-center gap-2 px-4 py-2 sm:px-4.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/25 transition-all duration-200 active:scale-95 cursor-pointer"
             >
-              {actionIcon || <RotateCcw size={14} className="shrink-0" />}
+              {renderActionIcon()}
               <span>{actionText}</span>
             </button>
           )}

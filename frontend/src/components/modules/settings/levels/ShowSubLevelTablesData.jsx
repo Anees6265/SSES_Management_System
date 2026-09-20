@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers } from "react-icons/md";
+import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import { 
@@ -150,7 +150,7 @@ const StudentsTab = ({ subLevel, searchTerm, setSearchTerm, onRowClick, onTaskBo
             </div>
             {searchedStudents.length === 0 ? (
                 <EmptyState
-                    icon={MdCloudUpload}
+                    icon={MdPeopleOutline}
                     title="No Students Found"
                     subtitle={searchTerm
                         ? `No students matching "${searchTerm}". Try checking your spelling or clear search.`
@@ -418,7 +418,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
     if (progressList.length === 0) {
         return (
             <EmptyState
-                icon={MdCloudUpload}
+                icon={MdTableChart}
                 title="No Progress Data Found"
                 subtitle="No student progress data is currently available for this sub-level."
             />

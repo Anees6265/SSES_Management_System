@@ -480,8 +480,8 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           </View>
           
           <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#4B5563" }}>
-            <Text>Academic Session: {reportCardData?.batchYear || "2025–26"}</Text>
-            <Text>Batch Year: {reportCardData?.batchYear || "2025–26"}</Text>
+            <Text>Academic Session: {studentData?.sessionId?.name || "AY 2025-26"}</Text>
+            <Text>Batch Year: {studentData?.batchYear || reportCardData?.batchYear || "2025 - 2028"}</Text>
             <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG")}</Text>
             <Text>Course / Level: {studentData?.course || "N/A"} ({studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"})</Text>
           </View>
@@ -531,7 +531,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 { label: "Father's Name", value: studentData?.fatherName || "N/A" },
                 { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || "ITEG" },
                 { label: "Course", value: studentData?.course || "N/A" },
-                { label: "Session", value: reportCardData?.batchYear || "2025–26" },
+                { label: "Session / Batch", value: `${studentData?.sessionId?.name || "AY 2025-26"}${studentData?.batchYear || reportCardData?.batchYear ? ` (${studentData?.batchYear || reportCardData?.batchYear})` : ""}` },
                 { label: "Current Level", value: `${translateLevelName(studentData?.currentLevelId?.name) || "1st Year"} (${studentData?.currentLevelId?.name || "Level 1"})` },
                 { label: "Current Sub-Level", value: studentData?.currentSubLevelId?.name || "1A" }
               ].map((info, idx) => (

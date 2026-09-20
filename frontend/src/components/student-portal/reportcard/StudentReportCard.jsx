@@ -225,7 +225,7 @@ export default function StudentReportCard() {
   const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.departmentId?.code || deptConfig.name;
   const departmentLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
-  const batchYear = rc?.batchYear || raw.sessionId?.name || "2025–26";
+  const batchYear = rc?.batchYear || raw.batchYear || raw.sessionId?.name || "2025–26";
   const overallGrade = rc?.overallGrade || "A";
 
   // Parse Dynamic Sections if available
@@ -290,7 +290,7 @@ export default function StudentReportCard() {
                   {collegeName}
                 </h1>
                 <p className="text-[10px] sm:text-xs font-semibold text-orange-500 uppercase tracking-wider truncate">
-                  {departmentName} · Performance Report Card · Session {batchYear}
+                  {departmentName} · Performance Report Card · Session {raw.sessionId?.name || "AY 2025-26"}{batchYear ? ` (Batch ${batchYear})` : ""}
                 </p>
               </div>
             </div>

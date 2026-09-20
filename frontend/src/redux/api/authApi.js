@@ -1085,6 +1085,41 @@ export const authApi = createApi({
       providesTags: ['PlacementStudent', 'Department'],
     }),
 
+    // Global placement dashboard analytics
+    getGlobalPlacementDashboard: builder.query({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        if (params?.sessionId) queryParams.append('sessionId', params.sessionId);
+        if (params?.subDepartmentId && params.subDepartmentId !== 'All') queryParams.append('subDepartmentId', params.subDepartmentId);
+        const qs = queryParams.toString();
+        return {
+          url: `/placements/department/global/dashboard${qs ? `?${qs}` : ''}`,
+          method: 'GET',
+        };
+      },
+      providesTags: ['PlacementStudent', 'Department'],
+    }),
+
+    // Department-specific placement full dashboard
+    getDeptPlacementDashboard: builder.query({
+      query: ({ subDepartmentId, sessionId, level } = {}) => {
+        const queryParams = new URLSearchParams();
+        if (sessionId) queryParams.append('sessionId', sessionId);
+        if (level && level !== 'All') queryParams.append('level', level);
+        const qs = queryParams.toString();
+        return {
+          url: `/placements/department/${subDepartmentId}/dashboard${qs ? `?${qs}` : ''}`,
+          method: 'GET',
+        };
+      },
+      providesTags: (result, error, arg) => [
+        { type: 'PlacementStudent', id: arg?.subDepartmentId },
+        'PlacementStudent',
+        'Department'
+      ],
+    }),
+
+
     // Get placed students by department
     getPlacedStudentsByDepartment: builder.query({
       query: (departmentId) => ({
@@ -2044,6 +2079,8 @@ export const {
   useGetCompanyByNameQuery,
   useGetPlacedStudentsByCompanyQuery,
   useGetDepartmentWisePlacementStatsQuery,
+  useGetGlobalPlacementDashboardQuery,
+  useGetDeptPlacementDashboardQuery,
   useGetPlacedStudentsByDepartmentQuery,
   useGetItegAttendanceQuery,
   useGetItegStudentAttendanceQuery,

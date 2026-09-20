@@ -555,6 +555,10 @@ const SessionManagement = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
+                <div className="bg-orange-50/70 border border-orange-200/80 rounded-xl p-2.5 sm:p-3 text-[11px] text-orange-950 leading-relaxed">
+                  <span className="font-bold text-orange-800">Academic Intake Guide:</span> Sessions represent the 1-year academic calendar (e.g. <span className="font-semibold">AY 2025-26</span> or <span className="font-semibold">2025-2026</span>). Specific course durations (3 years for BCA/BBA vs 4 years for B.Tech) are automatically applied to student batches.
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                     Session Name <span className="text-red-500">*</span>
@@ -590,7 +594,21 @@ const SessionManagement = () => {
                     <input
                       type="date"
                       value={formData.startDate}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData((prev) => {
+                          const next = { ...prev, startDate: val };
+                          if (val && !prev.endDate) {
+                            const d = new Date(val);
+                            if (!isNaN(d.getTime())) {
+                              d.setFullYear(d.getFullYear() + 1);
+                              d.setDate(d.getDate() - 1);
+                              next.endDate = d.toISOString().split("T")[0];
+                            }
+                          }
+                          return next;
+                        });
+                      }}
                       className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-700 transition cursor-pointer"
                     />
                   </div>

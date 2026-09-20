@@ -328,7 +328,8 @@ const DepartmentManagement = () => {
                   <CommonCard
                     icon={MdBusiness}
                     title={dept.name}
-                    description={dept.description || dept.universityName || "No description"}
+                    subtitle={dept.universityName}
+                    description={dept.description || ""}
                     status={dept.isActive}
                     logo={dept.logo}
                     infoItems={[

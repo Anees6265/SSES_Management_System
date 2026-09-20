@@ -455,7 +455,21 @@ export default function StudentProfile() {
                   <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 text-white">
                     {studentData.firstName} {studentData.lastName}
                   </h2>
-                  <p className="text-gray-300 mb-3 sm:mb-4 text-xs sm:text-base">Course: {studentData.course || "N/A"} | Year: {translateLevelName(currentLevelName)} | Level - {currentLevelName} / {currentSubLevelName}</p>
+                  <div className="text-gray-300 mb-3 sm:mb-4 text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                    <span>Course: <strong className="text-white font-semibold">{studentData.course || "N/A"}</strong></span>
+                    <span>•</span>
+                    <span>Session: <strong className="text-white font-semibold">{studentData.sessionId?.name || "N/A"}</strong></span>
+                    {studentData.batchYear && (
+                      <>
+                        <span>•</span>
+                        <span className="bg-orange-500/20 text-orange-200 border border-orange-400/30 px-2 py-0.5 rounded-full text-[11px] font-bold">
+                          Batch: {studentData.batchYear}
+                        </span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <span>Level: <strong className="text-white font-semibold">{currentLevelName} / {currentSubLevelName}</strong></span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2 lg:gap-6">
                     <ContactCard icon={<svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>} label="Email" value={studentData.email} />
                     <ContactCard icon={<svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} label="Phone" value={studentData.studentMobile || "N/A"} />
@@ -1199,6 +1213,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
               <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
                 <div><span className="font-medium text-gray-600">Student ID:</span> <br/><span className="font-semibold">{studentData._id?.slice(-8) || 'N/A'}</span></div>
                 <div><span className="font-medium text-gray-600">Course:</span> <br/><span className="font-semibold">{studentData.course || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Session / Batch:</span> <br/><span className="font-semibold">{studentData.sessionId?.name || 'N/A'}{studentData.batchYear ? ` (${studentData.batchYear})` : ''}</span></div>
                 <div><span className="font-medium text-gray-600">Current Semester:</span> <br/><span className="font-semibold">{currentSemester}</span></div>
                 <div><span className="font-medium text-gray-600">Email:</span> <br/><span className="font-semibold">{studentData.email}</span></div>
                 <div><span className="font-medium text-gray-600">Phone:</span> <br/><span className="font-semibold">{studentData.studentMobile || 'N/A'}</span></div>

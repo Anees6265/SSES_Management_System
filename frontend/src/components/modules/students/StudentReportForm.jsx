@@ -456,7 +456,7 @@ export default function StudentReportForm() {
   const autoPopulateFromData = (student, tasks, templateType = "ITEG_STANDARD", taskPerf = null) => {
     if (!student) return {};
 
-    const batchYear = student.sessionId?.name || "";
+    const batchYear = student.batchYear || student.sessionId?.name || "";
     const dynamicSections = generateDynamicSections(templateType, student, tasks, taskPerf);
 
     let resumeStatus = "Not created";
@@ -952,7 +952,7 @@ export default function StudentReportForm() {
                   type="text"
                   value={formData.batchYear}
                   onChange={(e) => setFormData(prev => ({ ...prev, batchYear: e.target.value }))}
-                  placeholder="e.g., 2024-25"
+                  placeholder="e.g., 2025 - 2029"
                   required
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
                 />

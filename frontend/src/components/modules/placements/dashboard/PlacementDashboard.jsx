@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { 
   MdPeople, MdCheckCircle, MdWork, MdTrendingUp, MdPercent, 
-  MdRefresh, MdFileDownload, MdFilterList, MdSearch, MdClose,
-  MdAttachMoney, MdBusinessCenter
+  MdRefresh, MdFileDownload, MdFilterList, MdClose,
+  MdAttachMoney
 } from "react-icons/md";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Header from "../../../shared/sidebar/Header";
@@ -11,89 +11,94 @@ import DepartmentTable from "./DepartmentTable";
 import PlacementFunnel from "./PlacementFunnel";
 import TopCompanies from "./TopCompanies";
 import AlertBox from "./AlertBox";
-import { useGetAllSessionsQuery } from "../../../../redux/api/authApi";
-
-// ── Dummy / Demo Data ─────────────────────────────────────────
-const DUMMY_OVERVIEW = {
-  totalStudents: 120,
-  readyStudents: 45,
-  interviewRunning: 18,
-  totalPlaced: 85,
-  placementPercentage: 70.83,
-};
-
-const DUMMY_DEPARTMENTS = [
-  { subDepartmentId: "6a0c462fb827b322a78d5727", subDepartmentName: "ITEG", subDepartmentCode: "ITEG", totalStudents: 40, placedStudents: 32, placementPercentage: 80.0 },
-  { subDepartmentId: "6a6476a55a76e696c8d7e64b", subDepartmentName: "UIUX", subDepartmentCode: "UI/UX", totalStudents: 20, placedStudents: 15, placementPercentage: 75.0 },
-  { subDepartmentId: "6a5f4cbf24be9c4955b306dd", subDepartmentName: "ITEG - Software Engineering", subDepartmentCode: "SE", totalStudents: 35, placedStudents: 25, placementPercentage: 71.4 },
-  { subDepartmentId: "6a5f4cbf24be9c4955b306e0", subDepartmentName: "AI & Data Science", subDepartmentCode: "AI/DS", totalStudents: 25, placedStudents: 18, placementPercentage: 72.0 },
-  { subDepartmentId: "6a0eebd80e812b062d541ec4", subDepartmentName: "MEG", subDepartmentCode: "MEG", totalStudents: 20, placedStudents: 6, placementPercentage: 30.0 },
-  { subDepartmentId: "6a23de703ae885bdae033748", subDepartmentName: "FTP", subDepartmentCode: "FTP", totalStudents: 15, placedStudents: 10, placementPercentage: 66.7 },
-];
-
-const DUMMY_FUNNEL = [
-  { stage: 'Total Eligible Batch', count: 120, fill: '#3b82f6' },
-  { stage: 'Industry Ready',      count: 45,  fill: '#06b6d4' },
-  { stage: 'Interview Process',   count: 18,  fill: '#f59e0b' },
-  { stage: 'Offers Confirmed',    count: 85,  fill: '#10b981' },
-];
-
-const DUMMY_COMPANIES = [
-  { companyName: "TCS Pvt Ltd",       totalHires: 22, avgSalary: 450000 },
-  { companyName: "Infosys",           totalHires: 18, avgSalary: 420000 },
-  { companyName: "Wipro",             totalHires: 15, avgSalary: 400000 },
-  { companyName: "HCL Technologies",  totalHires: 12, avgSalary: 380000 },
-  { companyName: "Tech Mahindra",     totalHires: 8,  avgSalary: 360000 },
-];
-
-const DUMMY_ALERTS = {
-  studentsReadyButNoInterview: 12,
-  lowestPerformingDepartment: { subDepartmentId: "6a0eebd80e812b062d541ec4", name: "MEG", placementPercentage: 30.0 },
-};
-
-// Monthly placement trend for Recharts
-const PLACEMENT_TREND_DATA = [
-  { month: 'Jul', drives: 4, placed: 8 },
-  { month: 'Aug', drives: 7, placed: 15 },
-  { month: 'Sep', drives: 12, placed: 24 },
-  { month: 'Oct', drives: 10, placed: 38 },
-  { month: 'Nov', drives: 15, placed: 55 },
-  { month: 'Dec', drives: 18, placed: 72 },
-  { month: 'Jan', drives: 14, placed: 85 },
-];
+import { 
+  useGetAllSessionsQuery,
+  useGetAllSubdepartmentsQuery,
+  useGetGlobalPlacementDashboardQuery 
+} from "../../../../redux/api/authApi";
 
 const PlacementDashboard = () => {
-  const [loading, setLoading] = useState(false);
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessionsList = sessionsData?.data || [];
 
-  const [academicYear, setAcademicYear] = useState("");
+  const { data: subDeptsData } = useGetAllSubdepartmentsQuery();
+  const subDeptsList = subDeptsData?.data || [];
+
+  const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedDeptFilter, setSelectedDeptFilter] = useState("All");
 
   useEffect(() => {
-    if (sessionsList.length > 0 && !academicYear) {
+    if (sessionsList.length > 0 && !selectedSessionId) {
       const activeSess = sessionsList.find(s => s.isActive || s.status === 'active') || sessionsList[0];
       if (activeSess) {
-        setAcademicYear(activeSess.name.startsWith("AY") ? activeSess.name : `AY ${activeSess.name}`);
+        setSelectedSessionId(activeSess._id);
       }
     }
-  }, [sessionsList, academicYear]);
+  }, [sessionsList, selectedSessionId]);
 
-  const overview    = DUMMY_OVERVIEW;
-  const departments = selectedDeptFilter === "All" 
-    ? DUMMY_DEPARTMENTS 
-    : DUMMY_DEPARTMENTS.filter(d => d.subDepartmentName === selectedDeptFilter);
-  const funnel      = DUMMY_FUNNEL;
-  const companies   = DUMMY_COMPANIES;
-  const alerts      = DUMMY_ALERTS;
+  const activeSessionObj = sessionsList.find(s => s._id === selectedSessionId);
+  const activeSessionLabel = activeSessionObj 
+    ? (activeSessionObj.name.startsWith("AY") ? activeSessionObj.name : `AY ${activeSessionObj.name}`)
+    : (selectedSessionId ? "Selected Year" : "All Years");
+
+  const selectedDeptObj = subDeptsList.find(d => d._id === selectedDeptFilter);
+  const selectedDeptLabel = selectedDeptObj ? selectedDeptObj.name : selectedDeptFilter;
+
+  // Real-time API query
+  const { 
+    data: responseData, 
+    isLoading, 
+    isFetching, 
+    refetch 
+  } = useGetGlobalPlacementDashboardQuery({
+    sessionId: selectedSessionId,
+    subDepartmentId: selectedDeptFilter,
+  });
+
+  const dashboardData = responseData?.data || {};
+  const overview = dashboardData.overview || {
+    totalStudents: 0,
+    readyStudents: 0,
+    interviewRunning: 0,
+    totalPlaced: 0,
+    placementPercentage: 0,
+  };
+  const funnel = dashboardData.funnel || {
+    ready: 0,
+    readyPlacement: 0,
+    readyDrive: 0,
+    interview: 0,
+    selected: 0,
+    placed: 0,
+  };
+  const departments = dashboardData.departments || [];
+  const companies = dashboardData.companies || [];
+  const alerts = dashboardData.alerts || {
+    studentsReadyButNoInterview: 0,
+    lowestPerformingDepartment: null,
+  };
+  const monthlyTrend = dashboardData.monthlyTrend || [];
+  const packageHighlights = dashboardData.packageHighlights || {
+    highestPackage: 0,
+    highestPackageCompany: "—",
+    averageSalary: 0,
+    drivesConducted: 0,
+    acceptanceRate: 0,
+  };
+
+  const loading = isLoading || isFetching;
 
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 500);
+    refetch();
   };
 
   const handleDownloadReport = () => {
     window.print();
+  };
+
+  const formatLPA = (amount) => {
+    if (!amount || amount <= 0) return "—";
+    return `₹${(amount / 100000).toFixed(1)} LPA`;
   };
 
   const STATS = [
@@ -102,8 +107,8 @@ const PlacementDashboard = () => {
       value: overview.totalStudents,                    
       icon: <MdPeople />,      
       color: "blue",
-      trend: "↗ +8.5%",
-      trendColor: "text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded",
+      trend: overview.totalStudents > 0 ? `${overview.totalStudents} Batch` : "No Students",
+      trendColor: "text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded",
       sub: "total enrolled batch"
     },
     { 
@@ -111,25 +116,27 @@ const PlacementDashboard = () => {
       value: overview.readyStudents,                    
       icon: <MdCheckCircle />, 
       color: "green",
-      trend: "↗ +12.3%",
+      trend: overview.totalStudents > 0 
+        ? `${Math.round((overview.readyStudents / overview.totalStudents) * 100)}% of batch`
+        : "0% of batch",
       trendColor: "text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded",
-      sub: "cleared readiness evaluation"
+      sub: "cleared readiness criteria"
     },
     { 
       title: "Active Drives / Interviews", 
       value: overview.interviewRunning,                 
       icon: <MdWork />,        
       color: "orange",
-      trend: "⚡ 5 Active Drives",
+      trend: `${overview.interviewRunning} in progress`,
       trendColor: "text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded",
-      sub: "currently in progress"
+      sub: "students in interview rounds"
     },
     { 
       title: "Total Students Placed",       
       value: overview.totalPlaced,                      
       icon: <MdTrendingUp />,  
       color: "purple",
-      trend: "↗ +15.4%",
+      trend: `${overview.totalPlaced} Confirmed`,
       trendColor: "text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded",
       sub: "confirmed job offers"
     },
@@ -138,9 +145,9 @@ const PlacementDashboard = () => {
       value: `${overview.placementPercentage}%`,        
       icon: <MdPercent />,     
       color: "teal",
-      trend: "↗ +4.2%",
+      trend: `${overview.totalPlaced} of ${overview.totalStudents} placed`,
       trendColor: "text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded",
-      sub: "target benchmark > 75%"
+      sub: "placement conversion rate"
     },
   ];
 
@@ -166,13 +173,20 @@ const PlacementDashboard = () => {
 
             {/* Active Chip */}
             <span className="border border-orange-200 bg-orange-50 text-orange-700 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold flex items-center gap-1 shadow-xs">
-              Academic Year: {academicYear}
+              Academic Year: {activeSessionLabel}
+              {selectedSessionId && (
+                <MdClose 
+                  className="cursor-pointer text-sm hover:text-orange-900 ml-0.5" 
+                  onClick={() => setSelectedSessionId("")} 
+                  title="Clear Year Filter"
+                />
+              )}
             </span>
 
             {selectedDeptFilter !== "All" && (
               <span className="border border-blue-200 bg-blue-50 text-blue-700 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold flex items-center gap-1 shadow-xs">
-                Dept: {selectedDeptFilter}
-                <MdClose className="cursor-pointer text-sm hover:text-blue-900" onClick={() => setSelectedDeptFilter("All")} />
+                Dept: {selectedDeptLabel}
+                <MdClose className="cursor-pointer text-sm hover:text-blue-900 ml-0.5" onClick={() => setSelectedDeptFilter("All")} />
               </span>
             )}
           </div>
@@ -181,23 +195,20 @@ const PlacementDashboard = () => {
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
               {/* Academic Year Select */}
               <select
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
+                value={selectedSessionId}
+                onChange={(e) => setSelectedSessionId(e.target.value)}
                 className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
               >
-                {sessionsList.length === 0 ? (
-                  <option value="">No Sessions Found</option>
-                ) : (
-                  sessionsList.map((s) => {
-                    const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
-                    const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
-                    return (
-                      <option key={s._id} value={label}>
-                        {label} ({statusText})
-                      </option>
-                    );
-                  })
-                )}
+                <option value="">All Academic Years</option>
+                {sessionsList.map((s) => {
+                  const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
+                  const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
+                  return (
+                    <option key={s._id} value={s._id}>
+                      {label} ({statusText})
+                    </option>
+                  );
+                })}
               </select>
 
               {/* Department Select */}
@@ -207,12 +218,11 @@ const PlacementDashboard = () => {
                 className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
               >
                 <option value="All">All Departments</option>
-                <option value="ITEG">ITEG</option>
-                <option value="UIUX">UIUX</option>
-                <option value="ITEG - Software Engineering">ITEG - SE</option>
-                <option value="AI & Data Science">AI & DS</option>
-                <option value="MEG">MEG</option>
-                <option value="FTP">FTP</option>
+                {subDeptsList.map((dept) => (
+                  <option key={dept._id} value={dept._id}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -275,7 +285,7 @@ const PlacementDashboard = () => {
 
             <div className="w-full h-60 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={PLACEMENT_TREND_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={monthlyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="placedGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
@@ -337,27 +347,39 @@ const PlacementDashboard = () => {
             <div className="space-y-3 sm:space-y-4 my-2">
               <div className="p-3.5 sm:p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl text-white shadow-md">
                 <p className="text-[10px] sm:text-xs uppercase tracking-wider font-bold opacity-80">Highest Package Offered</p>
-                <p className="text-2xl sm:text-3xl font-extrabold mt-0.5 sm:mt-1">₹18.0 LPA</p>
-                <p className="text-[11px] sm:text-xs mt-1 font-medium opacity-90">Offered by TCS Digital & Microsoft</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-0.5 sm:mt-1">
+                  {formatLPA(packageHighlights.highestPackage)}
+                </p>
+                <p className="text-[11px] sm:text-xs mt-1 font-medium opacity-90 truncate">
+                  {packageHighlights.highestPackage > 0 && packageHighlights.highestPackageCompany !== "—"
+                    ? `Offered by ${packageHighlights.highestPackageCompany}`
+                    : "No placement offers recorded yet"}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                 <div className="p-3 sm:p-3.5 bg-blue-50/80 border border-blue-100 rounded-xl">
                   <p className="text-[10px] sm:text-[11px] font-bold text-blue-600 uppercase">Average CTC</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">₹4.2 LPA</p>
-                  <p className="text-[10px] text-gray-400">across all drives</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">
+                    {formatLPA(packageHighlights.averageSalary)}
+                  </p>
+                  <p className="text-[10px] text-gray-400">across placed offers</p>
                 </div>
                 <div className="p-3 sm:p-3.5 bg-purple-50/80 border border-purple-100 rounded-xl">
                   <p className="text-[10px] sm:text-[11px] font-bold text-purple-600 uppercase">Drives Conducted</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">28 Companies</p>
-                  <p className="text-[10px] text-gray-400">this academic year</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-gray-800 mt-0.5">
+                    {packageHighlights.drivesConducted} Drives
+                  </p>
+                  <p className="text-[10px] text-gray-400">campus recruitment drives</p>
                 </div>
               </div>
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] sm:text-xs text-gray-500">
               <span>Live records</span>
-              <span className="font-bold text-emerald-600">88% Acceptance Rate</span>
+              <span className="font-bold text-emerald-600">
+                {packageHighlights.acceptanceRate}% Placement Rate
+              </span>
             </div>
           </div>
         </div>

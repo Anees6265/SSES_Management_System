@@ -221,8 +221,17 @@ exports.saveStudentReportCard = async (req, res) => {
     const totalSoftSkillMarks = calcSoftSkillMarks(softSkills);
     const totalDisciplineMarks = calcDisciplineMarks(discipline);
 
+    let resolvedBatchYear = batchYear;
+    if (!resolvedBatchYear || !resolvedBatchYear.trim()) {
+      const Student = require('../../models/student/Student');
+      const student = await Student.findById(studentRef).populate('sessionId');
+      resolvedBatchYear = student?.batchYear || student?.sessionId?.name || '2025–26';
+    }
+
     const reportCardData = {
-      studentRef, batchYear, generatedByName,
+      studentRef,
+      batchYear: resolvedBatchYear,
+      generatedByName,
       softSkills: { ...softSkills, totalSoftSkillMarks },
       discipline: { ...discipline, totalDisciplineMarks },
       technicalSkills, careerReadiness, academicPerformance,

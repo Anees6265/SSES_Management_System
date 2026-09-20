@@ -261,7 +261,7 @@ export default function StudentReport() {
   const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || deptConfig.name;
   const departmentLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
-  const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
+  const batchYear = reportCardData?.batchYear || studentData.batchYear || studentData.sessionId?.name || "2025–26";
   const overallGrade = reportCardData?.overallGrade || "A";
   const gradeStyle = getGradeBadgeStyle(overallGrade);
 
@@ -422,7 +422,10 @@ export default function StudentReport() {
 
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-400" /> Session: {batchYear}
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-400" /> Session: {studentData.sessionId?.name || "AY 2025-26"}
+                </span>
+                <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500" /> Batch: {studentData.batchYear || reportCardData?.batchYear || batchYear}
                 </span>
                 <span className={`text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full ${gradeStyle.bg} flex items-center gap-1.5`}>
                   <MdVerified size={13} /> {reportCardData?.isFinalReport ? "Official Final Evaluation" : "Semester Progress Report"}

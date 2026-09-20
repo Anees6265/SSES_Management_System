@@ -10,6 +10,7 @@ import {
 } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../utils/confirmToast";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import { FaCalendarAlt } from "react-icons/fa";
 import PageNavbar from "../../shared/navbar/PageNavbar";
@@ -83,7 +84,7 @@ const InterviewHistory = () => {
   };
 
   const handleMarkConductedSubmit = async () => {
-    if (!window.confirm("Are you sure this interview was conducted?")) return;
+    if (!(await confirmToast("Are you sure this interview was conducted?"))) return;
     try {
       await markInterviewConducted({
         studentId: id,
@@ -125,7 +126,7 @@ const InterviewHistory = () => {
   };
 
   const handleAddNextRoundSubmit = async () => {
-    if (!window.confirm(`Schedule ${round} for this candidate?`)) return;
+    if (!(await confirmToast(`Schedule ${round} for this candidate?`))) return;
     try {
       const interviewId = nextRoundData.baseInterview._id;
 
@@ -169,7 +170,7 @@ const InterviewHistory = () => {
   };
 
   const handleUpdateSubmit = async () => {
-    if (!window.confirm(`Confirm result update for ${selectedInterview?.companyName || 'Interview'}?`)) return;
+    if (!(await confirmToast(`Confirm result update for ${selectedInterview?.companyName || 'Interview'}?`))) return;
     try {
       await updateFinalResult({
         studentId: selectedInterview.studentId,

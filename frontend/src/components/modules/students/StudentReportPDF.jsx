@@ -23,7 +23,7 @@ import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
 import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
 import contactIcon from "../../../assets/icons/StuReport_Phone.png";
 import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
-import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName } from "./reportCardDepartmentConfig";
+import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName, getDepartmentLogo } from "./reportCardDepartmentConfig";
 
 const translateLevelName = (name) => {
   if (!name) return "";
@@ -447,14 +447,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
   const isBeg = deptType === "BEG";
   const isBTech = deptType === "BTECH";
 
-  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
-  const rawLogo = studentData?.subDepartmentId?.departmentId?.logo;
-  const isSwanLogo = typeof rawLogo === "string" && rawLogo.includes("mvmrynblzpwafc6zking");
-  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === "string" && rawLogo.includes("oyekfcv22l5gz7d2yicz");
-  const deptLogo =
-    (typeof rawLogo === "string" && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech)
-      ? rawLogo
-      : defaultDeptLogo;
+  const deptLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "SANT SINGAJI ENGINEERING COLLEGE" : "SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT";
 
   return (

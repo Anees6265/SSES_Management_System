@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Formik, Form, useFormikContext } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import {
   MdDeleteOutline,
   MdInsertDriveFile,
@@ -361,7 +362,7 @@ const CurriculumManagement = () => {
 
   const handleDelete = async (row) => {
     if (!row?.id) return;
-    if (!window.confirm(`Delete curriculum "${row.syllabusFile}"?`)) return;
+    if (!(await confirmToast(`Delete curriculum "${row.syllabusFile}"?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
 
     try {
       await deleteSyllabusVersion(row.id).unwrap();

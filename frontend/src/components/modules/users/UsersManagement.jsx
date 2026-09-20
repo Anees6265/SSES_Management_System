@@ -2,6 +2,7 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { confirmToast } from '../../../utils/confirmToast';
 import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
@@ -144,7 +145,7 @@ const UsersManagement = () => {
     })), [users]);
 
     const handleDeleteUser = async (userId, userName) => {
-        if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
+        if (await confirmToast(`Are you sure you want to delete ${userName}?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" })) {
             try {
                 await deleteUser(userId).unwrap();
                 toast.success('User deleted successfully');
@@ -195,7 +196,7 @@ const UsersManagement = () => {
                 email: trimmedEmail,
                 mobileNo: trimmedMobile,
                 adharCard: trimmedAdhar,
-                department: trimmedDept || 'General',
+                department: ['superadmin', 'admin'].includes(values.role) ? 'SSISM' : (trimmedDept || 'General'),
                 position: trimmedPos,
                 password: trimmedPass,
             };
@@ -295,13 +296,25 @@ const UsersManagement = () => {
                                         { value: 'superadmin', label: 'Super Admin' }
                                     ]} 
                                 />
-                                <InputField 
-                                    label="Department" 
-                                    name="department" 
-                                    type="select" 
-                                    placeholder="Select department"
-                                    options={departmentOptions} 
-                                />
+                                {['superadmin', 'admin'].includes(values.role) ? (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
+                                            Department
+                                        </label>
+                                        <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            SSISM (Institution Wide)
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <InputField 
+                                        label="Department" 
+                                        name="department" 
+                                        type="select" 
+                                        placeholder="Select department"
+                                        options={departmentOptions} 
+                                    />
+                                )}
                             </div>
                             <InputField 
                                 label="Position" 
@@ -414,8 +427,8 @@ const UsersManagement = () => {
             key: 'department', 
             label: 'Department',
             render: (user) => (
-                <span className="text-xs sm:text-sm font-medium text-gray-700">
-                    {user.department || '—'}
+                <span className={`text-xs sm:text-sm font-medium ${['superadmin', 'admin'].includes(user?.role) ? 'text-purple-700 font-semibold' : 'text-gray-700'}`}>
+                    {['superadmin', 'admin'].includes(user?.role) ? 'SSISM' : (user.department || '—')}
                 </span>
             )
         },
@@ -561,7 +574,7 @@ const UsersManagement = () => {
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-slate-400 font-medium">Department:</span>
                                                     <span className="font-bold text-slate-700 truncate">
-                                                        {user.department || "—"}
+                                                        {['superadmin', 'admin'].includes(user?.role) ? 'SSISM' : (user.department || "—")}
                                                     </span>
                                                 </div>
 
@@ -677,14 +690,20 @@ const UsersManagement = () => {
                             name: editModal.user?.name || '', 
                             position: editModal.user?.position || '', 
                             role: editModal.user?.role || '', 
-                            department: editModal.user?.department || '', 
+                            department: ['superadmin', 'admin'].includes(editModal.user?.role) ? 'SSISM' : (editModal.user?.department || ''), 
                             mobileNo: editModal.user?.mobileNo || '',
                             isActive: editModal.user?.isActive ?? true 
                         }}
                         validationSchema={editUserValidationSchema}
                         onSubmit={async (values) => {
                             try {
-                                await editUser({ id: editModal.user._id || editModal.user.id, ...values }).unwrap();
+                                const isGlobalRole = ['superadmin', 'admin'].includes(values.role);
+                                const payload = {
+                                    id: editModal.user._id || editModal.user.id,
+                                    ...values,
+                                    department: isGlobalRole ? 'SSISM' : values.department,
+                                };
+                                await editUser(payload).unwrap();
                                 toast.success('User updated successfully');
                                 setEditModal({ show: false, user: null });
                             } catch (err) {
@@ -741,13 +760,25 @@ const UsersManagement = () => {
                                                 { value: 'superadmin', label: 'Super Admin' }
                                             ]} 
                                         />
-                                        <InputField 
-                                            label="Department" 
-                                            name="department" 
-                                            type="select" 
-                                            placeholder="Select department"
-                                            options={departmentOptions} 
-                                        />
+                                        {['superadmin', 'admin'].includes(values.role) ? (
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
+                                                    Department
+                                                </label>
+                                                <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    SSISM (Institution Wide)
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <InputField 
+                                                label="Department" 
+                                                name="department" 
+                                                type="select" 
+                                                placeholder="Select department"
+                                                options={departmentOptions} 
+                                            />
+                                        )}
                                     </div>
 
                                     {/* Account Status Switch Box */}

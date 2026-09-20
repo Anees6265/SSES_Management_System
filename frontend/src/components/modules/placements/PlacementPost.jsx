@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 import { useGetNewPlacedStudentsQuery, useGetAllCompaniesQuery } from "../../../redux/api/authApi";
 import { pdf } from "@react-pdf/renderer";
 import CreatePostModal from "./CreatePostModal";
@@ -71,7 +72,7 @@ const PlacementPost = () => {
       URL.revokeObjectURL(link.href);
     } catch (err) {
       console.error('Error downloading post:', err);
-      alert('Failed to download post. Please try again.');
+      toast.error('Failed to download post. Please try again.');
     }
   };
 

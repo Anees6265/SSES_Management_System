@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useRef, useEffect } from "react";
 import { BsFillCloudDownloadFill } from "react-icons/bs";
+import { toast } from "react-toastify";
 import {
   downloadCSV,
   downloadExcel,
@@ -36,7 +37,7 @@ const ExportDropdown = ({
 
   const handleDownload = (type) => {
     if (!dataToExport.length) {
-      alert("No data available to export");
+      toast.warn("No data available to export");
       return;
     }
 

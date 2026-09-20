@@ -5,6 +5,7 @@ import {
     MdChevronLeft, MdChevronRight
 } from "react-icons/md";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import Header from "../../../shared/sidebar/Header";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import {
@@ -463,7 +464,7 @@ const TaskManagement = () => {
 
     const handleDelete = async (task) => {
         if (!task?.id || deleting) return;
-        if (!window.confirm(`Delete task "${task.taskTitle}"?`)) return;
+        if (!(await confirmToast(`Delete task "${task.taskTitle}"?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
 
         try {
             await deleteTask(task.id).unwrap();

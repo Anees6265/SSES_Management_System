@@ -6,6 +6,7 @@ import { FiSearch, FiX } from "react-icons/fi";
 import { useGetAllDepartmentsQuery, useDeleteDepartmentMutation, useAddDepartmentMutation, useUpdateDepartmentMutation } from "../../../../redux/api/authApi";
 import Loader from "../../../shared/loader/Loader";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import { useNavigate } from "react-router-dom";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import { Formik, Form, Field } from "formik";
@@ -120,7 +121,7 @@ const DepartmentManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this department?")) {
+    if (await confirmToast("Are you sure you want to delete this department?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" })) {
       try {
         await deleteDepartment(id).unwrap();
         toast.success("Department deleted successfully!");

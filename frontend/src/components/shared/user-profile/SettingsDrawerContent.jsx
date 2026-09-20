@@ -8,11 +8,12 @@ import FaceRegistration from "../../modules/face-auth/FaceRegistration";
 import { FiCamera, FiCheck } from "react-icons/fi";
 
 const SettingsDrawerContent = ({ user, saveButtonRef }) => {
+    const isGlobalAdmin = ['superadmin', 'admin'].includes(user?.role?.toLowerCase());
     const [formData, setFormData] = useState({
         name: user?.name || "",
         position: user?.position || "",
         role: user?.role || "",
-        department: user?.department || "",
+        department: isGlobalAdmin ? "SSISM" : (user?.department || ""),
         isActive: user?.isActive ?? true,
     });
     const [showFaceRegistration, setShowFaceRegistration] = useState(false);
@@ -79,11 +80,12 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        const resolvedDept = isGlobalAdmin ? "SSISM" : formData.department;
         const updatedData = {
             ...(formData.name && { name: formData.name }),
             ...(formData.position && { position: formData.position }),
             ...(formData.role && { role: formData.role }),
-            ...(formData.department && { department: formData.department }),
+            department: resolvedDept,
             ...(typeof formData.isActive === "boolean" && { isActive: formData.isActive }),
             ...(profileImageBase64 && { profileImage: profileImageBase64 }),
             updatedAt: new Date(),
@@ -204,19 +206,31 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                         Role
                     </label>
                 </div>
-                <div className="relative">
-                    <input
-                        type="text"
-                        name="department"
-                        value={formData.department}
-                        onChange={handleChange}
-                        placeholder=" "
-                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
-                    />
-                    <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.department ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
-                        Department
-                    </label>
-                </div>
+                {isGlobalAdmin ? (
+                    <div className="relative">
+                        <div className="h-12 w-full border border-gray-200 bg-gray-50 px-3 rounded-md flex items-center text-sm font-semibold text-gray-700 gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            SSISM (Institution Wide)
+                        </div>
+                        <label className="absolute left-3 bg-white px-1 text-xs -top-2 text-gray-500 pointer-events-none font-medium">
+                            Department
+                        </label>
+                    </div>
+                ) : (
+                    <div className="relative">
+                        <input
+                            type="text"
+                            name="department"
+                            value={formData.department}
+                            onChange={handleChange}
+                            placeholder=" "
+                            className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                        />
+                        <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.department ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
+                            Department
+                        </label>
+                    </div>
+                )}
                 <label className="flex items-center space-x-3">
                     <input
                         type="checkbox"

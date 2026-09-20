@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   useGetNewReadyStudentsQuery,
   useGetNewSelectedStudentsQuery,
@@ -165,10 +166,10 @@ const PlacementReadyStudents = () => {
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
           <div>
-            <p className="font-bold text-gray-800 hover:text-orange-600 transition cursor-pointer">
+            <p className="font-semibold text-slate-900 hover:text-slate-700 transition cursor-pointer text-xs sm:text-sm">
               {toTitle(`${row.firstName || ""} ${row.lastName || ""}`)}
             </p>
-            <p className="text-[11px] text-gray-400 font-medium">{row.prkey || "PR-KEY"}</p>
+            <p className="text-[11px] text-slate-400 font-mono mt-0.5">{row.prkey || "PR-KEY"}</p>
           </div>
         </div>
       ),
@@ -177,7 +178,7 @@ const PlacementReadyStudents = () => {
       key: "technology",
       label: "Technology / Track",
       render: (row) => (
-        <span className="text-xs font-semibold text-gray-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+        <span className="text-xs font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
           {row.technology || row.track || row.course || "General"}
         </span>
       ),
@@ -187,7 +188,7 @@ const PlacementReadyStudents = () => {
       label: "Current Stage",
       align: "center",
       render: (row) => (
-        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100">
+        <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
           {row.currentSubLevel || row.currentLevel || "Stage 2A"}
         </span>
       ),
@@ -197,7 +198,7 @@ const PlacementReadyStudents = () => {
       label: "Contact", 
       align: "center",
       render: (row) => (
-        <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
+        <span className="text-xs font-medium text-slate-600">
           {row.studentMobile ? `+91 ${row.studentMobile}` : "—"}
         </span>
       )
@@ -212,15 +213,15 @@ const PlacementReadyStudents = () => {
         else if (label === "Ready for Interview") label = "Ready for Drive";
 
         const badgeStyle = {
-          "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200",
-          "Ready for Drive":     "bg-indigo-50 text-indigo-700 border-indigo-200",
-          "Interview":           "bg-amber-50 text-amber-700 border-amber-200",
-          "Selected":            "bg-purple-50 text-purple-700 border-purple-200",
-          "Placed":              "bg-teal-50 text-teal-700 border-teal-200",
-        }[label] || "bg-emerald-50 text-emerald-700 border-emerald-200";
+          "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+          "Ready for Drive":     "bg-sky-50 text-sky-700 border-sky-200/80",
+          "Interview":           "bg-amber-50 text-amber-700 border-amber-200/80",
+          "Selected":            "bg-violet-50 text-violet-700 border-violet-200/80",
+          "Placed":              "bg-teal-50 text-teal-700 border-teal-200/80",
+        }[label] || "bg-slate-100 text-slate-700 border-slate-200";
 
         return (
-          <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${badgeStyle}`}>
+          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${badgeStyle}`}>
             {label}
           </span>
         );
@@ -238,15 +239,15 @@ const PlacementReadyStudents = () => {
             onClick={(e) => {
               e.stopPropagation();
               if (resumeURL) window.open(resumeURL, "_blank", "noopener,noreferrer");
-              else alert("Resume not uploaded yet.");
+              else toast.info("Resume not uploaded yet.");
             }}
-            className={`text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition ${
+            className={`text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 transition ${
               resumeURL 
-                ? "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100" 
-                : "bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
+                ? "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 shadow-2xs" 
+                : "bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed"
             }`}
           >
-            <MdOpenInNew size={12} /> {resumeURL ? "View Resume" : "No Resume"}
+            <MdOpenInNew size={13} /> {resumeURL ? "View Resume" : "No Resume"}
           </button>
         );
       }
@@ -265,7 +266,7 @@ const PlacementReadyStudents = () => {
             setSelectedStudent(row);
             setIsInterviewModalOpen(true);
           }}
-          className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1"
+          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1.5"
         >
           <MdCalendarToday className="text-sm" /> Schedule Drive
         </button>
@@ -285,7 +286,7 @@ const PlacementReadyStudents = () => {
             setSelectedStudent(row);
             setIsInterviewModalOpen(true);
           }}
-          className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1"
+          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1.5"
         >
           <MdCalendarToday className="text-sm" /> Schedule Drive
         </button>
@@ -304,11 +305,11 @@ const PlacementReadyStudents = () => {
         );
         return (
           <div>
-            <p className="text-xs font-bold text-gray-800">{active?.jobProfile || "Drive In Progress"}</p>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold mt-0.5 inline-block ${
-              active?.status === "Ongoing" ? "bg-amber-100 text-amber-800 border border-amber-200" :
-              active?.status === "Rescheduled" ? "bg-purple-100 text-purple-800 border border-purple-200" :
-              "bg-blue-100 text-blue-800 border border-blue-200"
+            <p className="text-xs font-semibold text-slate-800">{active?.jobProfile || "Drive In Progress"}</p>
+            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
+              active?.status === "Ongoing" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+              active?.status === "Rescheduled" ? "bg-violet-50 text-violet-700 border border-violet-200" :
+              "bg-slate-100 text-slate-700 border border-slate-200"
             }`}>{active?.status || "Scheduled"}</span>
           </div>
         );
@@ -320,7 +321,7 @@ const PlacementReadyStudents = () => {
       render: (row) => (
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/interview-history/${row.studentId?._id || row._id}`); }}
-          className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 transition"
+          className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-xl border border-slate-200 transition shadow-2xs"
         >
           View History
         </button>
@@ -336,7 +337,7 @@ const PlacementReadyStudents = () => {
       render: (row) => {
         const sel = row.selectedInterviews?.[0];
         return (
-          <span className="font-bold text-gray-800 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg border border-purple-100 text-xs">
+          <span className="font-medium text-slate-800 bg-slate-50 text-xs px-2.5 py-1 rounded-lg border border-slate-200">
             {toTitle(sel?.companyRef?.companyName || "Selected Company")}
           </span>
         );
@@ -349,13 +350,13 @@ const PlacementReadyStudents = () => {
         <div className="flex items-center gap-2">
           <button 
             onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); setIsInterviewModalOpen(true); }}
-            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1"
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
           >
             <MdAdd /> Next Round
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); setSelectedForPlacement(row); setIsConfirmModalOpen(true); }}
-            className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-xs"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs"
           >
             Confirm Placement
           </button>
@@ -366,16 +367,16 @@ const PlacementReadyStudents = () => {
 
   const placedColumns = [
     ...baseColumns,
-    { key: "company",    label: "Company",  render: (row) => <span className="font-bold text-gray-800">{toTitle(row.placedInfo?.companyName || "—")}</span> },
-    { key: "jobProfile", label: "Job Role",     render: (row) => <span className="text-xs font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">{toTitle(row.placedInfo?.jobProfile || "—")}</span> },
-    { key: "salary",     label: "Package",      render: (row) => <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">{row.placedInfo?.salary ? `₹${(row.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}</span> },
+    { key: "company",    label: "Company",  render: (row) => <span className="font-semibold text-slate-800">{toTitle(row.placedInfo?.companyName || "—")}</span> },
+    { key: "jobProfile", label: "Job Role",     render: (row) => <span className="text-xs font-medium bg-slate-50 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200">{toTitle(row.placedInfo?.jobProfile || "—")}</span> },
+    { key: "salary",     label: "Package",      render: (row) => <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80">{row.placedInfo?.salary ? `₹${(row.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}</span> },
     {
       key: "action", 
       label: "Actions",
       render: (row) => (
         <button 
           onClick={(e) => { e.stopPropagation(); setSelectedForPost(row); setIsPostModalOpen(true); }}
-          className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1"
+          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
         >
           <MdAdd /> Post Banner
         </button>
@@ -473,7 +474,7 @@ const PlacementReadyStudents = () => {
         </div>
 
         {/* ── Tabs & Search Toolbar Container ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3.5 sm:p-4 space-y-3 sm:space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div className="flex-1 overflow-x-auto -mx-1 px-1">
               <TabsCommon 
@@ -489,15 +490,15 @@ const PlacementReadyStudents = () => {
             {/* Filter Toolbar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0">
               {/* Technology Filter */}
-              <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 sm:py-1.5 text-xs font-semibold text-gray-700">
-                <div className="flex items-center gap-1.5">
-                  <MdFilterList className="text-gray-400 text-sm" />
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-1.5 text-xs font-medium text-slate-700">
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <MdFilterList className="text-slate-400 text-sm" />
                   <span>Technology:</span>
                 </div>
                 <select
                   value={selectedTech}
                   onChange={(e) => setSelectedTech(e.target.value)}
-                  className="bg-transparent font-bold text-orange-600 focus:outline-none cursor-pointer max-w-[150px] truncate text-right sm:text-left"
+                  className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer max-w-[150px] truncate text-right sm:text-left"
                 >
                   {availableTechnologies.map((tech) => (
                     <option key={tech} value={tech}>
@@ -509,18 +510,19 @@ const PlacementReadyStudents = () => {
 
               {/* Search Input */}
               <div className="relative w-full sm:w-64">
-                <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+                <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
                 <input
                   type="text"
                   placeholder="Search candidate name or PR-Key..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full transition"
+                  className="pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white w-full transition"
                 />
                 {searchTerm && (
                   <button 
                     onClick={() => setSearchTerm("")} 
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title="Clear search"
                   >
                     <MdClose size={16} />
                   </button>
@@ -531,11 +533,11 @@ const PlacementReadyStudents = () => {
         </div>
 
         {/* ── Main Data View (Mobile Cards + Desktop Table) ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
           {/* Mobile Card List View */}
-          <div className="block md:hidden divide-y divide-gray-100">
+          <div className="block md:hidden divide-y divide-slate-100">
             {paginatedMobileData.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 text-xs font-medium">
+              <div className="text-center py-10 text-slate-400 text-xs font-medium">
                 No candidates found matching filters.
               </div>
             ) : (
@@ -549,17 +551,17 @@ const PlacementReadyStudents = () => {
                 else if (label === "Ready for Interview") label = "Ready for Drive";
 
                 const badgeStyle = {
-                  "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200",
-                  "Ready for Drive":     "bg-indigo-50 text-indigo-700 border-indigo-200",
-                  "Interview":           "bg-amber-50 text-amber-700 border-amber-200",
-                  "Selected":            "bg-purple-50 text-purple-700 border-purple-200",
-                  "Placed":              "bg-teal-50 text-teal-700 border-teal-200",
-                }[label] || "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+                  "Ready for Drive":     "bg-sky-50 text-sky-700 border-sky-200/80",
+                  "Interview":           "bg-amber-50 text-amber-700 border-amber-200/80",
+                  "Selected":            "bg-violet-50 text-violet-700 border-violet-200/80",
+                  "Placed":              "bg-teal-50 text-teal-700 border-teal-200/80",
+                }[label] || "bg-slate-100 text-slate-700 border-slate-200";
 
                 return (
                   <div
                     key={sId}
-                    className="p-3.5 space-y-2.5 active:bg-orange-50/20 transition"
+                    className="p-4 space-y-3 hover:bg-slate-50/50 transition"
                   >
                     {/* Header Row: Profile + Current Stage */}
                     <div className="flex items-center justify-between gap-2">
@@ -568,21 +570,21 @@ const PlacementReadyStudents = () => {
                         <div className="min-w-0">
                           <p 
                             onClick={() => handleRowClick(row)}
-                            className="font-bold text-xs text-gray-800 hover:text-orange-600 transition cursor-pointer truncate"
+                            className="font-semibold text-xs text-slate-900 hover:text-slate-700 transition cursor-pointer truncate"
                           >
                             {toTitle(`${row.firstName || ""} ${row.lastName || ""}`)}
                           </p>
-                          <p className="text-[10px] text-gray-400 font-medium">{row.prkey || "PR-KEY"}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">{row.prkey || "PR-KEY"}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100 shrink-0">
+                      <span className="text-[10px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
                         {row.currentSubLevel || row.currentLevel || "Stage 2A"}
                       </span>
                     </div>
 
                     {/* Tags & Contact Row */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
-                      <span className="text-[10px] font-semibold text-gray-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 truncate max-w-[140px]">
+                      <span className="text-[10px] font-medium text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 truncate max-w-[140px]">
                         {row.technology || row.track || row.course || "General"}
                       </span>
 
@@ -590,31 +592,31 @@ const PlacementReadyStudents = () => {
                         <a 
                           href={`tel:${row.studentMobile}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-[10px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition"
+                          className="text-[10px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition"
                         >
                           <MdPhone size={10} /> +91 {row.studentMobile}
                         </a>
                       )}
 
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ml-auto ${badgeStyle}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ml-auto ${badgeStyle}`}>
                         {label}
                       </span>
                     </div>
 
                     {/* Resume + Extra Details Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-50 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
                       <div>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (resumeURL) window.open(resumeURL, "_blank", "noopener,noreferrer");
-                            else alert("Resume not uploaded yet.");
+                            else toast.info("Resume not uploaded yet.");
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold flex items-center gap-1 transition ${
+                          className={`text-[10px] px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition ${
                             resumeURL 
-                              ? "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100" 
-                              : "bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed"
+                              ? "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-2xs" 
+                              : "bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed"
                           }`}
                         >
                           <MdOpenInNew size={11} /> {resumeURL ? "View Resume" : "No Resume"}
@@ -626,10 +628,10 @@ const PlacementReadyStudents = () => {
                           ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
                         );
                         return (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            active?.status === "Ongoing" ? "bg-amber-100 text-amber-800" :
-                            active?.status === "Rescheduled" ? "bg-purple-100 text-purple-800" :
-                            "bg-blue-100 text-blue-800"
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            active?.status === "Ongoing" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                            active?.status === "Rescheduled" ? "bg-violet-50 text-violet-700 border border-violet-200" :
+                            "bg-slate-100 text-slate-700 border border-slate-200"
                           }`}>
                             {active?.jobProfile || "Drive"} • {active?.status || "Scheduled"}
                           </span>
@@ -639,7 +641,7 @@ const PlacementReadyStudents = () => {
                       {activeTab === "Selected" && (() => {
                         const sel = row.selectedInterviews?.[0];
                         return (
-                          <span className="font-bold text-purple-700 bg-purple-50 text-[10px] px-2 py-0.5 rounded-md border border-purple-100">
+                          <span className="font-medium text-slate-800 bg-slate-100 text-[10px] px-2 py-0.5 rounded-md border border-slate-200">
                             {toTitle(sel?.companyRef?.companyName || "Selected")}
                           </span>
                         );
@@ -647,8 +649,8 @@ const PlacementReadyStudents = () => {
 
                       {activeTab === "Placed" && (
                         <div className="flex items-center gap-1.5 text-[11px]">
-                          <span className="font-bold text-gray-800 truncate max-w-[120px]">{toTitle(row.placedInfo?.companyName || "—")}</span>
-                          <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
+                          <span className="font-medium text-slate-800 truncate max-w-[120px]">{toTitle(row.placedInfo?.companyName || "—")}</span>
+                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
                             {row.placedInfo?.salary ? `₹${(row.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}
                           </span>
                         </div>
@@ -656,7 +658,7 @@ const PlacementReadyStudents = () => {
                     </div>
 
                     {/* Actions Row */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                       {(activeTab === "Ready for Placement" || activeTab === "Ready for Drive") && (
                         <button
                           onClick={(e) => {
@@ -664,7 +666,7 @@ const PlacementReadyStudents = () => {
                             setSelectedStudent(row);
                             setIsInterviewModalOpen(true);
                           }}
-                          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 active:from-orange-700 text-white text-xs font-bold py-1.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                          className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white text-xs font-medium py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                         >
                           <MdCalendarToday className="text-sm" /> Schedule Drive
                         </button>
@@ -676,7 +678,7 @@ const PlacementReadyStudents = () => {
                             e.stopPropagation();
                             navigate(`/interview-history/${row.studentId?._id || row._id}`);
                           }}
-                          className="w-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 text-xs font-bold py-1.5 rounded-xl border border-gray-200 transition text-center cursor-pointer"
+                          className="w-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium py-2 rounded-xl border border-slate-200 transition text-center shadow-2xs cursor-pointer"
                         >
                           View History
                         </button>
@@ -686,13 +688,13 @@ const PlacementReadyStudents = () => {
                         <>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); setIsInterviewModalOpen(true); }}
-                            className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold py-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                            className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                           >
                             <MdAdd /> Next Round
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setSelectedForPlacement(row); setIsConfirmModalOpen(true); }}
-                            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 active:from-emerald-700 text-white text-xs font-bold py-1.5 rounded-xl transition shadow-2xs text-center cursor-pointer"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium py-2 rounded-xl transition shadow-2xs text-center cursor-pointer"
                           >
                             Confirm Placement
                           </button>
@@ -702,7 +704,7 @@ const PlacementReadyStudents = () => {
                       {activeTab === "Placed" && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); setSelectedForPost(row); setIsPostModalOpen(true); }}
-                          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 active:from-orange-700 text-white text-xs font-bold py-1.5 rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium py-2 rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <MdAdd /> Post Banner
                         </button>

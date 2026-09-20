@@ -7,6 +7,7 @@ import {
   MdAssignment, MdAdd, MdSearch, MdChevronRight, MdCalendarToday, MdAccessTime, MdPerson, MdClose,
 } from "react-icons/md";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import {
   useCreateSyllabusVersionMutation,
   useUploadCombinedSyllabusMutation,
@@ -2265,7 +2266,7 @@ const SyllabusTab = ({ level, subLevel }) => {
   const [activateSyllabusVersion] = useActivateSyllabusVersionMutation();
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this version?")) return;
+    if (!(await confirmToast("Delete this version?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
     try { await deleteSyllabusVersion(id).unwrap(); refetch(); }
     catch (err) { toast.error(err?.data?.message || "Delete failed"); }
   };

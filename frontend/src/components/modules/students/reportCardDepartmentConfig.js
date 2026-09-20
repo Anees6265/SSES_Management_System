@@ -1,8 +1,27 @@
+import itegLogo from "../../../assets/images/iteg-logo.png";
+import megLogo from "../../../assets/images/meg-logo.png";
+import begLogo from "../../../assets/images/beg-logo.png";
+import ssecLogo from "../../../assets/images/ssec-logo.png";
+
 /**
  * Department-specific configuration for Student Report Cards
  * Handles tailored interview readiness, mock assessments, growth areas, and subject defaults
  * for BEG (Bio), MEG (Management), B.Tech (Engineering), and ITEG (IT).
  */
+
+export const getDepartmentLogo = (deptType) => {
+  switch (deptType) {
+    case "BTECH":
+      return ssecLogo;
+    case "BEG":
+      return begLogo;
+    case "MEG":
+      return megLogo;
+    case "ITEG":
+    default:
+      return itegLogo;
+  }
+};
 
 export const detectDepartment = (student = {}, reportCardData = {}) => {
   const templateType = reportCardData?.templateType || "";
@@ -20,13 +39,14 @@ export const detectDepartment = (student = {}, reportCardData = {}) => {
   ).toUpperCase();
   const courseUpper = (student?.course || student?.subDepartmentId?.name || "").toUpperCase();
 
-  // 1. BEG (Bio / Biotechnology / Microbiology / Biology)
+  // 1. BEG (Bio / Biotechnology / Microbiology / Biology / Science)
   if (
     templateType === "BEG_CUTOFF" ||
     deptCode.includes("BEG") ||
     deptName.includes("BEG") ||
     deptName.includes("BIO") ||
     deptName.includes("MICRO") ||
+    deptName.includes("SCIENCE") ||
     courseUpper.includes("BIO") ||
     courseUpper.includes("MICRO")
   ) {
@@ -45,11 +65,12 @@ export const detectDepartment = (student = {}, reportCardData = {}) => {
     return "MEG";
   }
 
-  // 3. B.Tech (Engineering / SSEC / CSE / Mechanical / Civil / Electrical)
+  // 3. B.Tech (Engineering / SSEC / CSE / AIML / IT branches under B.Tech)
   if (
     templateType === "BTECH_STAGE" ||
     deptCode.includes("CSE") ||
     deptCode.includes("BTECH") ||
+    deptCode.includes("B-001") ||
     deptCode.includes("SSEC") ||
     deptCode.includes("ENG") ||
     deptName.includes("ENGINEERING") ||
@@ -58,12 +79,16 @@ export const detectDepartment = (student = {}, reportCardData = {}) => {
     deptName.includes("SSEC") ||
     courseUpper.includes("B.TECH") ||
     courseUpper.includes("BTECH") ||
-    courseUpper.includes("ENGINEERING")
+    courseUpper.includes("ENGINEERING") ||
+    courseUpper === "CSE" ||
+    courseUpper.includes("AIML") ||
+    courseUpper.includes("AI/ML") ||
+    (courseUpper === "IT" && (deptName.includes("BTECH") || deptCode.includes("B-001")))
   ) {
     return "BTECH";
   }
 
-  // 4. Default: ITEG (IT / Computer Science / BCA / MCA)
+  // 4. Default: ITEG (IT Excellence Group - BCA, Diploma, etc.)
   return "ITEG";
 };
 

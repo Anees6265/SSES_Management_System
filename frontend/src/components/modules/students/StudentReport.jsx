@@ -38,7 +38,7 @@ import begLogo from '../../../assets/images/beg-logo.png';
 import ssecLogo from '../../../assets/images/ssec-logo.png';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import StudentReportPDF from './StudentReportPDF';
-import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName } from './reportCardDepartmentConfig';
+import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName, getDepartmentLogo } from './reportCardDepartmentConfig';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -258,12 +258,8 @@ export default function StudentReport() {
   const isMeg = deptType === "MEG";
   const isBeg = deptType === "BEG";
   const isBTech = deptType === "BTECH";
-  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || deptConfig.shortName;
-  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
-  const rawLogo = studentData.subDepartmentId?.departmentId?.logo;
-  const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
-  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === 'string' && rawLogo.includes('oyekfcv22l5gz7d2yicz');
-  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech) ? rawLogo : defaultDeptLogo;
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.subDepartmentId?.departmentId?.code || deptConfig.name;
+  const departmentLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
   const batchYear = reportCardData?.batchYear || studentData.sessionId?.name || "2025–26";
   const overallGrade = reportCardData?.overallGrade || "A";

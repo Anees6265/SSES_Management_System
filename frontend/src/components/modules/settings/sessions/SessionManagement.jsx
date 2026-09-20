@@ -12,6 +12,7 @@ import {
   MdExpandMore,
 } from "react-icons/md";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import {
   useGetAllSessionsQuery,
   useCreateSessionMutation,
@@ -257,17 +258,18 @@ const SessionManagement = () => {
   const handleDelete = async (session) => {
     const id = session?._id || session;
     const sessionName = session?.name || "this session";
-    if (!window.confirm(`Delete session "${sessionName}"?`)) return;
+    if (!(await confirmToast(`Delete session "${sessionName}"?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
     try {
       await deleteSession(id).unwrap();
       toast.success("Session deleted successfully!");
       refetch();
     } catch (err) {
       if (err?.data?.hasStudents) {
-        const confirmForce = window.confirm(
+        const confirmForce = await confirmToast(
           `Session "${sessionName}" has ${err.data.studentCount} enrolled student(s).\n\n` +
           `Deleting it will reassign these students to the active session.\n\n` +
-          `Do you want to proceed with deleting this session?`
+          `Do you want to proceed with deleting this session?`,
+          { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white", confirmText: "Delete & Reassign" }
         );
         if (confirmForce) {
           try {

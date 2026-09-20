@@ -359,7 +359,7 @@ const UserProfile = () => {
                   <p className="text-xs sm:text-sm font-semibold text-slate-600 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                     <span className="font-bold text-orange-600">{userData?.position || "Designation Not Assigned"}</span>
                     <span className="text-slate-300">•</span>
-                    <span>{userData?.department || "General Department"}</span>
+                    <span>{['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM (Institution Wide)" : (userData?.department || "General Department")}</span>
                   </p>
 
                   {/* Badges row: Active/Inactive & Quick Copy ID */}
@@ -433,7 +433,7 @@ const UserProfile = () => {
           <ProfessionalMetricCard
             icon={<FiBriefcase />}
             title="Department"
-            value={userData?.department || "N/A"}
+            value={['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM" : (userData?.department || "N/A")}
             color="orange"
             description="Academic unit group"
           />
@@ -645,7 +645,7 @@ const UserProfile = () => {
               icon={<FiBriefcase />}
             >
               <div className="space-y-2.5">
-                <ProfessionalDetailRow icon={<FiBriefcase />} label="Department" value={userData?.department} />
+                <ProfessionalDetailRow icon={<FiBriefcase />} label="Department" value={['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM (Institution Wide)" : userData?.department} />
                 <ProfessionalDetailRow icon={<FiUser />} label="Designated Position" value={userData?.position} />
                 <ProfessionalDetailRow icon={<FiShield />} label="Access Role" value={userData?.role} capitalize />
                 <ProfessionalDetailRow 
@@ -882,10 +882,11 @@ const ProfessionalDetailRow = ({ icon, label, value, capitalize, action }) => (
 
 // ── Edit Profile Modal ──
 const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSave }) => {
+  const isGlobalRole = ['superadmin', 'admin'].includes(user?.role?.toLowerCase());
   const [formData, setFormData] = useState({
     name: user?.name || "",
     position: user?.position || "",
-    department: user?.department || "",
+    department: isGlobalRole ? "SSISM" : (user?.department || ""),
     mobileNo: user?.mobileNo || "",
     adharCard: user?.adharCard || "",
     isActive: user?.isActive !== undefined ? user.isActive : true
@@ -912,7 +913,10 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    onSave(formData);
+    onSave({
+      ...formData,
+      department: isGlobalRole ? "SSISM" : formData.department,
+    });
   };
 
   useEffect(() => {
@@ -991,19 +995,26 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Department
               </label>
-              <select
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition cursor-pointer"
-              >
-                <option value="">Select Department</option>
-                {departments.map((dept, i) => (
-                  <option key={i} value={dept}>{dept}</option>
-                ))}
-                {formData.department && !departments.includes(formData.department) && (
-                  <option value={formData.department}>{formData.department}</option>
-                )}
-              </select>
+              {isGlobalRole ? (
+                <div className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-100 font-bold text-slate-700 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  SSISM (Institution Wide)
+                </div>
+              ) : (
+                <select
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition cursor-pointer"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept, i) => (
+                    <option key={i} value={dept}>{dept}</option>
+                  ))}
+                  {formData.department && !departments.includes(formData.department) && (
+                    <option value={formData.department}>{formData.department}</option>
+                  )}
+                </select>
+              )}
             </div>
           </div>
 

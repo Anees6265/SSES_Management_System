@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../../utils/confirmToast";
 import {
   MdAdd, MdEdit, MdDelete, MdAssignment, MdBook, MdTopic, MdSubject,
   MdSearch, MdCalendarToday, MdAccessTime, MdCloudUpload,
@@ -184,7 +185,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
   };
 
   const handleDelete = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    if (!(await confirmToast("Are you sure you want to delete this task?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
 
     try {
       await deleteTask(taskId).unwrap();

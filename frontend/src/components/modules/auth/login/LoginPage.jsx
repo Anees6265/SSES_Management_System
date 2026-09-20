@@ -45,10 +45,14 @@ const LoginPage = () => {
 
     try {
       const response = await login(adminForm).unwrap();
+      const userData = {
+        ...response.user,
+        department: ['superadmin', 'admin'].includes(response.user.role?.toLowerCase()) ? 'SSISM' : response.user.department
+      };
       localStorage.setItem("token", encrypt(response.token));
-      localStorage.setItem("user", JSON.stringify(response.user));
-      localStorage.setItem("role", response.user.role);
-      localStorage.setItem("positionRole", response.user.positionRole || "admin");
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("role", userData.role);
+      localStorage.setItem("positionRole", userData.positionRole || "admin");
       toast.success("Login successful!");
       navigate("/", { replace: true });
     } catch (error) {

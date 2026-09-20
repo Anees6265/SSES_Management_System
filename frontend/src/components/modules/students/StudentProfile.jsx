@@ -155,13 +155,13 @@ export default function StudentProfile() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file');
+      toast.error('Please select a valid image file');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size should be less than 5MB');
+      toast.error('Image size should be less than 5MB');
       return;
     }
 
@@ -184,7 +184,7 @@ export default function StudentProfile() {
       } catch (error) {
         // console.error('Error uploading image:', error);
         const errorMessage = error?.data?.message || error?.message || 'Unknown error';
-        alert(`Failed to upload image: ${errorMessage}`);
+        toast.error(`Failed to upload image: ${errorMessage}`);
       } finally {
         setIsImageUploading(false);
       }
@@ -192,7 +192,7 @@ export default function StudentProfile() {
 
     reader.onerror = () => {
       // console.error('Error reading file');
-      alert('Error reading file');
+      toast.error('Error reading file');
       setIsImageUploading(false);
     };
 

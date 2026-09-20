@@ -1,3 +1,4 @@
+import { confirmToast } from "../../../../utils/confirmToast";
 
 const SyllabusTab = ({ level, subLevel }) => {
   const subLevelId = subLevel?._id;
@@ -26,7 +27,7 @@ const SyllabusTab = ({ level, subLevel }) => {
   const [activateSyllabusVersion] = useActivateSyllabusVersionMutation();
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this version?")) return;
+    if (!(await confirmToast("Delete this version?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
     try { await deleteSyllabusVersion(id).unwrap(); toast.success("Deleted"); refetch(); }
     catch (err) { toast.error(err?.data?.message || "Delete failed"); }
   };

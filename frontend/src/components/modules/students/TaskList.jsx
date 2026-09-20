@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { HiArrowNarrowLeft } from "react-icons/hi";
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import * as XLSX from 'xlsx';
+import { toast } from 'react-toastify';
 import { taskAPI, studentAPI } from '../../../services/taskService';
 
 export default function TaskList() {
@@ -113,13 +114,13 @@ export default function TaskList() {
         setNewTask({ title: "", description: "", subject: "", customSubject: "", priority: "2nd", dueDate: new Date().toISOString().split('T')[0] });
         setAddModalOpen(false);
         
-        alert('Task created successfully!');
+        toast.success('Task created successfully!');
       } catch (error) {
         console.error('Error creating task:', error);
-        alert('Error creating task. Please try again.');
+        toast.error('Error creating task. Please try again.');
       }
     } else {
-      alert('Please fill in title, description, and subject.');
+      toast.warn('Please fill in title, description, and subject.');
     }
   };
 
@@ -166,7 +167,7 @@ export default function TaskList() {
       ));
     } catch (error) {
       console.error('Error updating task status:', error);
-      alert('Error updating task status');
+      toast.error('Error updating task status');
     }
   };
 
@@ -222,7 +223,7 @@ export default function TaskList() {
         setBulkUploadModalOpen(false);
         event.target.value = '';
       } catch (error) {
-        alert('Error reading file. Please check the format.');
+        toast.error('Error reading file. Please check the format.');
       }
     };
     reader.readAsArrayBuffer(file);

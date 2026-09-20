@@ -37,7 +37,7 @@ import begLogo from "../../../assets/images/beg-logo.png";
 import ssecLogo from "../../../assets/images/ssec-logo.png";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import StudentReportPDF from "../../modules/students/StudentReportPDF";
-import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName } from "../../modules/students/reportCardDepartmentConfig";
+import { detectDepartment, DEPARTMENT_CONFIGS, mapInterviewItemName, getDepartmentLogo } from "../../modules/students/reportCardDepartmentConfig";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -243,13 +243,9 @@ export default function StudentReportCard() {
   const isMeg = deptType === "MEG";
   const isBeg = deptType === "BEG";
   const isBTech = deptType === "BTECH";
-  const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.name || deptConfig.shortName;
-  const defaultDeptLogo = isBTech ? ssecLogo : isBeg ? begLogo : isMeg ? megLogo : itegLogo;
-  const rawLogo = raw.subDepartmentId?.departmentId?.logo;
-  const isSwanLogo = typeof rawLogo === 'string' && rawLogo.includes('mvmrynblzpwafc6zking');
-  const isOldItegLogoOnBtech = isBTech && typeof rawLogo === 'string' && rawLogo.includes('oyekfcv22l5gz7d2yicz');
-  const departmentLogo = (typeof rawLogo === 'string' && rawLogo.trim() && !isSwanLogo && !isOldItegLogoOnBtech) ? rawLogo : defaultDeptLogo;
-  const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science and Management";
+  const departmentName = raw.subDepartmentId?.departmentId?.name || raw.subDepartmentId?.departmentId?.code || deptConfig.name;
+  const departmentLogo = getDepartmentLogo(deptType);
+  const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
   const batchYear = rc?.batchYear || raw.sessionId?.name || "2025–26";
   const overallGrade = rc?.overallGrade || "A";
 

@@ -7,6 +7,7 @@ import {
     MdEdit, MdDelete, MdClose, MdSchool, MdSecurity
 } from "react-icons/md";
 import { toast } from "react-toastify";
+import { confirmToast } from "../../../utils/confirmToast";
 import {
     useGetAllSessionsQuery,
     useCreateSessionMutation,
@@ -277,17 +278,18 @@ const SettingFIle = () => {
         }
         const id = sess?._id || sess;
         const name = sess?.name || "this session";
-        if (!window.confirm(`Delete session "${name}"?`)) return;
+        if (!(await confirmToast(`Delete session "${name}"?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
         try {
             await deleteSession(id).unwrap();
             toast.success("Session deleted successfully!");
             refetchSessions();
         } catch (err) {
             if (err?.data?.hasStudents) {
-                const confirmForce = window.confirm(
+                const confirmForce = await confirmToast(
                     `Session "${name}" has ${err.data.studentCount} enrolled student(s).\n\n` +
                     `Deleting it will reassign these students to the active session.\n\n` +
-                    `Do you want to proceed with deleting this session?`
+                    `Do you want to proceed with deleting this session?`,
+                    { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white", confirmText: "Delete & Reassign" }
                 );
                 if (confirmForce) {
                     try {
@@ -774,13 +776,13 @@ const SettingFIle = () => {
                             <button
                                 type="button"
                                 disabled={!canManageGlobal}
-                                onClick={() => {
+                                onClick={async () => {
                                     if (!canManageGlobal) {
                                         toast.warning("Only Superadmin can lock an academic year.");
                                         return;
                                     }
                                     const targetName = sessions[0]?.name || 'Current Session';
-                                    if (window.confirm(`Are you sure you want to lock ${targetName}? This cannot be undone.`)) {
+                                    if (await confirmToast(`Are you sure you want to lock ${targetName}? This cannot be undone.`, { confirmButtonClass: "bg-rose-600 hover:bg-rose-700 text-white" })) {
                                         toast.success(`${targetName} locked successfully`);
                                     }
                                 }}

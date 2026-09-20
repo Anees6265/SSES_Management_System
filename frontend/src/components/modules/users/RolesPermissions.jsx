@@ -7,6 +7,7 @@ import InputField from '../../shared/form-fields/InputField';
 import { Formik, Form } from 'formik';
 import { X, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { confirmToast } from '../../../utils/confirmToast';
 import CommonTable from '../../shared/table/CommonTable';
 import Pagination from '../../shared/pagination/Pagination';
 import profile from '../../../assets/images/profile-img.png';
@@ -105,7 +106,7 @@ const RolesPermissions = () => {
     };
     
     const handleDeleteUser = async (userId, userName) => {
-        if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
+        if (await confirmToast(`Are you sure you want to delete ${userName}?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" })) {
             try {
                 await deleteUser(userId).unwrap();
                 toast.success('User deleted successfully');

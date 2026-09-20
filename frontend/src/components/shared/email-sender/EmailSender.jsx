@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 
 const StudentList = () => {
     // Dummy student data
@@ -10,7 +11,7 @@ const StudentList = () => {
 
     // Simulate email notification
     const sendEmailNotification = (email) => {
-        alert(`Test email sent to: ${email}\n\nHere is the test link: https://your-test-link.com`);
+        toast.info(`Test email sent to: ${email}\n\nHere is the test link: https://your-test-link.com`);
 
     };
 

@@ -119,21 +119,21 @@ const CompanyDetail = () => {
             <img
               src={row.companyLogo}
               alt={row.companyName}
-              className="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-xs"
+              className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs shrink-0"
             />
           ) : (
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
+            <div className="w-10 h-10 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center font-bold text-sm shrink-0">
               {row.companyName?.charAt(0)?.toUpperCase() || 'C'}
             </div>
           )}
           <div>
             <p
               onClick={() => handleViewProfile(row)}
-              className="font-bold text-gray-800 text-sm hover:text-orange-600 cursor-pointer transition"
+              className="font-semibold text-slate-900 text-xs sm:text-sm hover:text-slate-700 cursor-pointer transition"
             >
               {row.companyName}
             </p>
-            <span className="text-[10px] text-gray-400 font-medium">
+            <span className="text-[11px] text-slate-400 font-medium">
               {row.industry || 'IT Services'} • {row.companyType || 'Partner Company'}
             </span>
           </div>
@@ -145,11 +145,11 @@ const CompanyDetail = () => {
       label: "Contact Person / HR",
       render: (row) => (
         <div className="space-y-0.5">
-          <p className="text-xs font-bold text-gray-800">
+          <p className="text-xs font-semibold text-slate-800">
             {row.contactPersonName || row.hrEmail?.split('@')[0] || "TPO Liaison"}
           </p>
-          <span className="text-[11px] font-medium text-gray-500 flex items-center gap-1">
-            <MdEmail className="text-gray-400" /> {row.contactPersonEmail || row.companyEmail || row.hrEmail || "—"}
+          <span className="text-[11px] font-normal text-slate-500 flex items-center gap-1">
+            <MdEmail className="text-slate-400" /> {row.contactPersonEmail || row.companyEmail || row.hrEmail || "—"}
           </span>
         </div>
       )
@@ -158,8 +158,8 @@ const CompanyDetail = () => {
       key: "hrContact",
       label: "Contact Phone",
       render: (row) => (
-        <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
-          <MdPhone className="text-gray-400" /> {row.contactPersonPhone || row.companyContact || row.hrContact || 'N/A'}
+        <span className="text-xs font-medium text-slate-600 flex items-center gap-1">
+          <MdPhone className="text-slate-400" /> {row.contactPersonPhone || row.companyContact || row.hrContact || '—'}
         </span>
       ),
     },
@@ -167,8 +167,8 @@ const CompanyDetail = () => {
       key: "location",
       label: "Location",
       render: (row) => (
-        <span className="text-xs font-bold text-gray-700 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100 flex items-center gap-1 w-fit">
-          <MdLocationOn /> {row.location || row.city || "N/A"}
+        <span className="text-xs font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 flex items-center gap-1.5 w-fit">
+          <MdLocationOn className="text-slate-400" /> {row.location || row.city || "—"}
         </span>
       )
     },
@@ -180,10 +180,10 @@ const CompanyDetail = () => {
         return (
           <div className="flex items-center gap-2">
             <span
-              className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border uppercase tracking-wider ${
+              className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                 isActive
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-red-50 text-red-600 border-red-200"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                  : "bg-slate-100 text-slate-600 border-slate-200"
               }`}
             >
               {row.status || 'Active'}
@@ -196,7 +196,7 @@ const CompanyDetail = () => {
                   handleToggleStatus(row);
                 }}
                 title={isActive ? "Mark as Inactive" : "Mark as Active"}
-                className={`text-lg transition ${isActive ? "text-emerald-500 hover:text-emerald-700" : "text-gray-400 hover:text-gray-600"}`}
+                className={`text-lg transition cursor-pointer ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"}`}
               >
                 {isActive ? <MdToggleOn size={24} /> : <MdToggleOff size={24} />}
               </button>
@@ -212,7 +212,7 @@ const CompanyDetail = () => {
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => handleViewProfile(row)}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
           >
             <MdVisibility size={14} /> View
           </button>
@@ -220,7 +220,7 @@ const CompanyDetail = () => {
           {isAuthorizedToManage && (
             <button
               onClick={() => handleOpenEditModal(row)}
-              className="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-3 py-1.5 rounded-xl transition flex items-center gap-1"
             >
               <MdEdit size={14} /> Edit
             </button>
@@ -271,7 +271,7 @@ const CompanyDetail = () => {
             title="Total Companies"
             value={companies.length}
             icon={<MdBusiness />}
-            color="orange"
+            color="slate"
             trend="Recruiter Network"
             sub="registered partners"
           />
@@ -302,19 +302,19 @@ const CompanyDetail = () => {
         </div>
 
         {/* ── Toolbar: Action Button + Search & Filters ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3.5 sm:p-4 space-y-3 sm:space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h3 className="font-bold text-gray-800 text-sm sm:text-base">Corporate Recruiting Master Database</h3>
-              <p className="text-xs text-gray-500">Centralized database of placement partner companies and recruiters</p>
+              <h3 className="font-semibold text-slate-900 text-sm sm:text-base">Corporate Recruiting Master Database</h3>
+              <p className="text-xs text-slate-500">Centralized database of placement partner companies and recruiters</p>
             </div>
 
             {isAuthorizedToManage && (
               <button
                 onClick={handleOpenAddModal}
-                className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:from-orange-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-medium text-xs px-4 py-2.5 rounded-xl transition shadow-2xs flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto cursor-pointer"
               >
-                <MdAdd size={18} /> + Add Company
+                <MdAdd size={18} /> Add Company
               </button>
             )}
           </div>
@@ -323,13 +323,13 @@ const CompanyDetail = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-2 border-t border-slate-100">
             {/* Search Input */}
             <div className="relative">
-              <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+              <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
               <input
                 type="text"
                 placeholder="Search company, HR, or city..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500 w-full transition"
+                className="pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white w-full transition"
               />
               {searchTerm && (
                 <button 
@@ -343,13 +343,13 @@ const CompanyDetail = () => {
             </div>
 
             {/* Industry Filter */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 border border-gray-200 rounded-xl">
-              <MdFilterList className="text-gray-400 shrink-0" />
-              <span className="text-[11px] font-bold text-gray-500 shrink-0">Industry:</span>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
+              <MdFilterList className="text-slate-400 shrink-0" />
+              <span className="text-[11px] font-medium text-slate-500 shrink-0">Industry:</span>
               <select
                 value={industryFilter}
                 onChange={(e) => setIndustryFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer truncate"
+                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
               >
                 {industryOptions.map((ind) => (
                   <option key={ind} value={ind}>{ind}</option>
@@ -358,13 +358,13 @@ const CompanyDetail = () => {
             </div>
 
             {/* Location Filter */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 border border-gray-200 rounded-xl">
-              <MdLocationOn className="text-gray-400 shrink-0" />
-              <span className="text-[11px] font-bold text-gray-500 shrink-0">Location:</span>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
+              <MdLocationOn className="text-slate-400 shrink-0" />
+              <span className="text-[11px] font-medium text-slate-500 shrink-0">Location:</span>
               <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer truncate"
+                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
               >
                 {locationOptions.map((loc) => (
                   <option key={loc} value={loc}>{loc}</option>
@@ -373,27 +373,27 @@ const CompanyDetail = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 border border-gray-200 rounded-xl">
-              <span className="text-[11px] font-bold text-gray-500 shrink-0">Status:</span>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
+              <span className="text-[11px] font-medium text-slate-500 shrink-0">Status:</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 outline-none w-full cursor-pointer"
+                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
               >
-                <option value="All">All Companies</option>
-                <option value="Active">Active Only</option>
-                <option value="Inactive">Inactive Only</option>
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
               </select>
             </div>
           </div>
         </div>
 
         {/* ── Main Content View (Mobile Cards + Desktop Table) ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
           {/* Mobile Card View */}
-          <div className="block md:hidden divide-y divide-gray-100">
+          <div className="block md:hidden divide-y divide-slate-100">
             {paginatedMobileCompanies.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 text-xs font-medium">
+              <div className="text-center py-10 text-slate-400 text-xs font-medium">
                 No companies found matching filters.
               </div>
             ) : (
@@ -403,7 +403,7 @@ const CompanyDetail = () => {
                 return (
                   <div
                     key={row._id}
-                    className="p-3.5 space-y-2.5 active:bg-orange-50/20 transition"
+                    className="p-4 space-y-3 hover:bg-slate-50/50 transition border-b border-slate-100 last:border-0"
                   >
                     {/* Header: Logo + Name + Status */}
                     <div className="flex items-start justify-between gap-2.5">
@@ -412,21 +412,21 @@ const CompanyDetail = () => {
                           <img
                             src={row.companyLogo}
                             alt={row.companyName}
-                            className="w-10 h-10 rounded-xl object-cover border border-gray-100 shadow-2xs shrink-0"
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-2xs shrink-0">
+                          <div className="w-10 h-10 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
                             {row.companyName?.charAt(0)?.toUpperCase() || 'C'}
                           </div>
                         )}
                         <div className="min-w-0">
                           <p
                             onClick={() => handleViewProfile(row)}
-                            className="font-bold text-xs text-gray-900 hover:text-orange-600 transition cursor-pointer truncate"
+                            className="font-semibold text-xs text-slate-900 hover:text-slate-700 transition cursor-pointer truncate"
                           >
                             {row.companyName}
                           </p>
-                          <p className="text-[10px] text-gray-400 truncate">
+                          <p className="text-[10px] text-slate-400 truncate">
                             {row.industry || 'IT Services'} • {row.companyType || 'Partner'}
                           </p>
                         </div>
@@ -434,10 +434,10 @@ const CompanyDetail = () => {
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                          className={`text-[9px] font-medium px-2 py-0.5 rounded-full border uppercase tracking-wider ${
                             isActive
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-red-50 text-red-600 border-red-200"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
                           }`}
                         >
                           {row.status || 'Active'}
@@ -448,7 +448,7 @@ const CompanyDetail = () => {
                               e.stopPropagation();
                               handleToggleStatus(row);
                             }}
-                            className={`text-lg cursor-pointer ${isActive ? "text-emerald-500" : "text-gray-400"}`}
+                            className={`text-lg cursor-pointer ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"}`}
                           >
                             {isActive ? <MdToggleOn size={22} /> : <MdToggleOff size={22} />}
                           </button>
@@ -457,47 +457,47 @@ const CompanyDetail = () => {
                     </div>
 
                     {/* Contact & Location Info */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-50 text-[11px]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[11px]">
                       <div className="min-w-0">
-                        <p className="font-semibold text-gray-800 text-[11px] truncate">
+                        <p className="font-semibold text-slate-800 text-[11px] truncate">
                           {row.contactPersonName || row.hrEmail?.split('@')[0] || "HR Liaison"}
                         </p>
                         {(row.contactPersonEmail || row.companyEmail || row.hrEmail) && (
-                          <p className="text-[10px] text-gray-500 flex items-center gap-1 truncate">
-                            <MdEmail className="text-gray-400 shrink-0" /> {row.contactPersonEmail || row.companyEmail || row.hrEmail}
+                          <p className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
+                            <MdEmail className="text-slate-400 shrink-0" /> {row.contactPersonEmail || row.companyEmail || row.hrEmail}
                           </p>
                         )}
                       </div>
 
-                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-1 shrink-0">
-                        <MdLocationOn size={12} /> {row.location || row.city || "N/A"}
+                      <span className="text-[10px] font-medium text-slate-700 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1 shrink-0">
+                        <MdLocationOn size={12} className="text-slate-400" /> {row.location || row.city || "—"}
                       </span>
                     </div>
 
                     {/* Contact Phone & Actions */}
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-50">
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                       {row.contactPersonPhone || row.companyContact || row.hrContact ? (
                         <a
                           href={`tel:${row.contactPersonPhone || row.companyContact || row.hrContact}`}
-                          className="text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition"
+                          className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition"
                         >
-                          <MdPhone size={12} className="text-gray-400" /> {row.contactPersonPhone || row.companyContact || row.hrContact}
+                          <MdPhone size={12} className="text-slate-400" /> {row.contactPersonPhone || row.companyContact || row.hrContact}
                         </a>
                       ) : (
-                        <span className="text-[10px] text-gray-400">No phone recorded</span>
+                        <span className="text-[10px] text-slate-400">No phone</span>
                       )}
 
                       <div className="flex items-center gap-1.5 ml-auto">
                         <button
                           onClick={() => handleViewProfile(row)}
-                          className="bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                          className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-2.5 py-1 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer"
                         >
                           <MdVisibility size={13} /> View
                         </button>
                         {isAuthorizedToManage && (
                           <button
                             onClick={() => handleOpenEditModal(row)}
-                            className="bg-orange-50 hover:bg-orange-100 active:bg-orange-200 text-orange-600 border border-orange-200 text-xs font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-2.5 py-1 rounded-xl transition flex items-center gap-1 cursor-pointer"
                           >
                             <MdEdit size={13} /> Edit
                           </button>

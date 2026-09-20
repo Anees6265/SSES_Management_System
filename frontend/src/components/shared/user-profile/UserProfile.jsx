@@ -18,7 +18,19 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const rawUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const isGlobalAdmin = ['superadmin', 'admin'].includes(rawUser?.role?.toLowerCase());
+  const user = {
+    ...rawUser,
+    department: isGlobalAdmin ? 'SSISM' : rawUser.department
+  };
+
+  useEffect(() => {
+    if (isGlobalAdmin && rawUser.department !== 'SSISM') {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [isGlobalAdmin, rawUser.department]);
+
   const [logout] = useLogoutMutation();
 
   /* ---------------- ESCAPE & SCROLL LOCK ---------------- */

@@ -9,6 +9,7 @@ import { resetPasswordValidationSchema } from "../../../shared/forms/validationS
 import InputField from "../../../shared/form-fields/InputField";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "react-toastify";
 
 const ConfirmPassword = () => {
   const { token } = useParams();
@@ -35,14 +36,14 @@ const ConfirmPassword = () => {
       const response = await resetPassword(payload).unwrap();
 
       if (response) {
-        // alert("Password reset successful!");
+        toast.success("Password reset successful!");
         navigate("/login");
       } else {
-        alert("Password reset failed. Please try again.");
+        toast.error("Password reset failed. Please try again.");
       }
     } catch (err) {
       console.error("Reset failed:", err);
-      alert(err?.data?.message || "Something went wrong.");
+      toast.error(err?.data?.message || "Something went wrong.");
     }
   };
 

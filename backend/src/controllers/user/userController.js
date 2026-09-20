@@ -96,7 +96,10 @@ exports.createUser = async (req, res) => {
     let departmentId = null;
     let resolvedDepartment = department || "General";
 
-    if (department && department.toLowerCase() !== "general") {
+    if (["superadmin", "admin"].includes(role)) {
+      resolvedDepartment = "SSISM";
+      departmentId = null;
+    } else if (department && department.toLowerCase() !== "general") {
       const isObjId = mongoose.Types.ObjectId.isValid(department) && /^[0-9a-fA-F]{24}$/.test(department);
       const queryOr = isObjId
         ? [{ _id: department }, { name: new RegExp(`^${escapeRegex(department)}$`, "i") }]
@@ -255,8 +258,8 @@ exports.login = async (req, res) => {
         email: user.email,
         role: user.role,
         position: user.position,
-        department: user.department,
-        departmentId: user.departmentId,
+        department: ["superadmin", "admin"].includes(user.role) ? "SSISM" : user.department,
+        departmentId: ["superadmin", "admin"].includes(user.role) ? null : user.departmentId,
         profileImage: user.profileImage,
       },
     });
@@ -420,7 +423,10 @@ exports.updateUserFields = async (req, res) => {
       }
     }
 
-    if (["faculty", "hod", "placement_officer"].includes(targetRole)) {
+    if (["superadmin", "admin"].includes(targetRole)) {
+      updateData.department = "SSISM";
+      updateData.departmentId = null;
+    } else if (["faculty", "hod", "placement_officer"].includes(targetRole)) {
       if (targetDept) {
         const deptDoc = await Department.findOne({
           isActive: true,

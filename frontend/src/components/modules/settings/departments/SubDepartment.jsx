@@ -161,9 +161,7 @@ const SubDepartment = () => {
                             <EmptyState
                                 icon={MdAccountTree}
                                 title="No Sub-Departments Found"
-                                subtitle="Add sub-departments to group student courses and academic tracks."
-                                actionText="+ Add Sub-Department"
-                                onAction={() => setIsModalOpen(true)}
+                                subtitle="Add sub-departments using the '+ Add Subdepartment' button above."
                             />
                         </div>
                     ) : (

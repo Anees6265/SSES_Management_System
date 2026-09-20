@@ -6,6 +6,7 @@ import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaChevronDown, FaChevronRigh
 import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
 import { taskAPI, studentAPI } from '../../../services/taskService';
+import OrangeButton from '../../shared/sidebar/OrangeButton';
 
 export default function TaskList() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function TaskList() {
   const [dragOverColumn, setDragOverColumn] = useState(null);
   
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [isBulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const fileInputRef = useRef(null);
   const [newTask, setNewTask] = useState({
@@ -304,8 +306,14 @@ export default function TaskList() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setBulkUploadModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors text-sm cursor-pointer"
+            >
+              <span>Bulk Upload</span>
+            </button>
+            <button
               onClick={() => setAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FDA92D] hover:bg-[#E6941A] text-white rounded-lg font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#FDA92D] hover:bg-[#E6941A] text-white rounded-lg font-medium transition-colors cursor-pointer"
             >
               <FaPlus className="text-sm" />
               <span>Add Task</span>
@@ -421,6 +429,17 @@ export default function TaskList() {
           setTask={setNewTask}
           onSave={editingTask ? handleUpdateTask : handleAddTask}
           isEditing={!!editingTask}
+        />
+      )}
+
+      {/* Bulk Upload Modal */}
+      {isBulkUploadModalOpen && (
+        <BulkUploadModal
+          isOpen={isBulkUploadModalOpen}
+          onClose={() => setBulkUploadModalOpen(false)}
+          onUpload={handleBulkUpload}
+          onDownloadTemplate={downloadTemplate}
+          fileInputRef={fileInputRef}
         />
       )}
     </div>

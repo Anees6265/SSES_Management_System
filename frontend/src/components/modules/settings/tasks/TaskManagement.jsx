@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
     MdMoreVert, MdSearch, MdAdd, MdFilterList,
     MdExpandMore, MdClose, MdViewList, MdGridView,
@@ -88,11 +88,21 @@ const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
 };
 
 const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
+    const [title, setTitle] = useState(task?.taskTitle || "");
+    const [description, setDescription] = useState(task?.description || "");
+    const [priority, setPriority] = useState(task?.priority || "medium");
+    const [status, setStatus] = useState(task?.status || "active");
+
+    useEffect(() => {
+        if (task) {
+            setTitle(task.taskTitle || "");
+            setDescription(task.description || "");
+            setPriority(task.priority || "medium");
+            setStatus(task.status || "active");
+        }
+    }, [task]);
+
     if (!task) return null;
-    const [title, setTitle] = useState(task.taskTitle || "");
-    const [description, setDescription] = useState(task.description || "");
-    const [priority, setPriority] = useState(task.priority || "medium");
-    const [status, setStatus] = useState(task.status || "active");
 
     const handleSubmit = (e) => {
         e.preventDefault();

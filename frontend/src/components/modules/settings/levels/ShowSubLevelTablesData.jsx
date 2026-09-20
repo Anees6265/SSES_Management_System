@@ -932,9 +932,7 @@ const ShowSubLevelTablesData = () => {
                     <EmptyState
                         icon={MdLayers}
                         title="No Sub-Levels Yet"
-                        subtitle="Create at least one Sub-Level first. Students, Syllabus, and Tasks will be available after that."
-                        actionText="Create Sub-Level"
-                        onAction={() => setIsAddSubLevelOpen(true)}
+                        subtitle="Create at least one Sub-Level using '+ Add Sub Level' above. Students, Syllabus, and Tasks will be available after that."
                     />
                 )}
 

@@ -2,24 +2,22 @@ import { useField } from "formik";
 import { Field, ErrorMessage } from "formik";
 import SelectDropdown from "./SelectDropdown";
 
-const InputField = ({
+const InputFieldCore = ({
   label,
   name,
-  type = "text",        // text | select | textarea | password etc.
-  options = [],         // for select
+  type = "text",
+  options = [],
   placeholder = "",
   disabled = false,
   className = "",
-  value,                // for controlled inputs outside Formik
-  onChange,             // for controlled inputs outside Formik
   maxLength,
   onInput,
+  field,
+  helpers,
+  isFormikControlled,
+  onChange,
   ...rest
 }) => {
-  // Only use Formik's useField if we're inside a Formik context
-  const isFormikControlled = !value && !onChange;
-  const [field, meta, helpers] = isFormikControlled ? useField(name) : [{ name, value: value || "", onChange }, {}];
-
   const baseInputStyle = `
     w-full h-11 px-3 rounded-lg
     border border-gray-200
@@ -36,7 +34,6 @@ const InputField = ({
 
   return (
     <div className={`w-full ${className}`}>
-      
       {/* label */}
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -62,7 +59,7 @@ const InputField = ({
         <SelectDropdown
           value={field.value}
           onChange={(val) => {
-            if (isFormikControlled) {
+            if (isFormikControlled && helpers?.setValue) {
               helpers.setValue(val);
             } else if (onChange) {
               onChange({ target: { name, value: val } });
@@ -107,6 +104,44 @@ const InputField = ({
       )}
     </div>
   );
+};
+
+const FormikInputField = (props) => {
+  const [field, meta, helpers] = useField(props.name);
+  return (
+    <InputFieldCore
+      {...props}
+      field={field}
+      meta={meta}
+      helpers={helpers}
+      isFormikControlled={true}
+    />
+  );
+};
+
+const ControlledInputField = (props) => {
+  const field = {
+    name: props.name,
+    value: props.value !== undefined ? props.value : "",
+    onChange: props.onChange
+  };
+  return (
+    <InputFieldCore
+      {...props}
+      field={field}
+      meta={{}}
+      helpers={{}}
+      isFormikControlled={false}
+    />
+  );
+};
+
+const InputField = (props) => {
+  const isFormikControlled = props.value === undefined && props.onChange === undefined;
+  if (isFormikControlled) {
+    return <FormikInputField {...props} />;
+  }
+  return <ControlledInputField {...props} />;
 };
 
 export default InputField;

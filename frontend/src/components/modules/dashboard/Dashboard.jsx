@@ -8,6 +8,7 @@ import AdmissionEditPage from "../../../admition-process/AdmissionEditPage";
 // Student records components
 import StudentDetailTable from "../students/StudentDetailTable";
 import StudentEditPage from "../students/StudentEditPage";
+import StudentDashboard from "../../student-portal/dashboard/StudentDashboard";
 import StudentProfile from "../students/StudentProfile";
 import StudentReport from "../students/StudentReport";
 import StudentReportForm from "../students/StudentReportForm";

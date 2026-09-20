@@ -211,15 +211,6 @@ export default function StudentReportCard() {
 
   const isLoading = rcLoading || profileLoading;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center pt-24 space-y-3">
-        <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-slate-400">Loading student report card...</p>
-      </div>
-    );
-  }
-
   const raw = profileData?.data || {};
   const rc = rcData?.data || null;
   const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
@@ -256,6 +247,15 @@ export default function StudentReportCard() {
     const total = interviewItemsList.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
     return (total / interviewItemsList.length).toFixed(1);
   }, [interviewItemsList]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center pt-24 space-y-3">
+        <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-slate-400">Loading student report card...</p>
+      </div>
+    );
+  }
 
   // Academic SGPA & CGPA
   const cgpaValue = rc?.academicPerformance?.cgpa || 7.5;

@@ -235,7 +235,6 @@ const FaceLogin = ({ onLoginSuccess, onClose }) => {
   };
 
   return (
-  return (
     <OrangeButton
       isOpen={true}
       onClose={() => {

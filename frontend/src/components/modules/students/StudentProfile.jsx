@@ -939,6 +939,7 @@ export default function StudentProfile() {
         onClose={() => setReportCardOpen(false)}
         studentData={studentData}
         currentLevel={currentLevel}
+        daysInSubLevel={daysInSubLevel}
       />
     </div>
   );
@@ -1131,8 +1132,10 @@ const StatusBadge = ({ status }) => {
 };
 
 // Report Card Modal Component
-const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel }) => {
+const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSubLevel }) => {
   if (!isOpen) return null;
+
+  const currentLevelName = currentLevel?.name || studentData?.currentLevelId?.name || '';
 
   const calculateGrade = (percentage) => {
     if (percentage >= 90) return 'A+';

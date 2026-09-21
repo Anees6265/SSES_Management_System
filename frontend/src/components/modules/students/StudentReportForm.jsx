@@ -253,6 +253,115 @@ export default function StudentReportForm() {
     isFinalReport: false
   });
 
+  // Helper to detect if a subject is related to Soft Skills
+  const isSoftSkillSubject = (name = "") => {
+    if (!name || typeof name !== "string") return false;
+    const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return (
+      clean.includes("softskill") ||
+      clean.includes("communicationskill") ||
+      clean.includes("personalitydevelopment") ||
+      clean === "softskills" ||
+      clean === "softskill"
+    );
+  };
+
+  // Helper to extract Soft Skills syllabus topics & task completion progress
+  const extractSoftSkillsSyllabus = (tasksInput) => {
+    if (!tasksInput) return null;
+
+    let softSkillSubjectName = null;
+    let allSoftTasks = [];
+
+    // 1. Check groupedBySubject
+    if (tasksInput.groupedBySubject) {
+      for (const key of Object.keys(tasksInput.groupedBySubject)) {
+        if (isSoftSkillSubject(key)) {
+          softSkillSubjectName = key;
+          const subjTasks = tasksInput.groupedBySubject[key]?.tasks || [];
+          allSoftTasks.push(...subjTasks);
+        }
+      }
+    }
+
+    // 2. Check raw tasks array
+    const rawList = Array.isArray(tasksInput) ? tasksInput : (Array.isArray(tasksInput.tasks) ? tasksInput.tasks : []);
+    if (allSoftTasks.length === 0 && rawList.length > 0) {
+      rawList.forEach(t => {
+        if (isSoftSkillSubject(t.subjectName)) {
+          if (!softSkillSubjectName) softSkillSubjectName = t.subjectName;
+          allSoftTasks.push(t);
+        }
+      });
+    }
+
+    if (allSoftTasks.length === 0) return null;
+
+    // Group tasks by topic
+    const topicMap = {};
+    allSoftTasks.forEach(t => {
+      const topic = (t.topicName || "General Topics").trim();
+      if (!topicMap[topic]) topicMap[topic] = [];
+      topicMap[topic].push(t);
+    });
+
+    const topicKeys = Object.keys(topicMap);
+    if (topicKeys.length === 0) return null;
+
+    const items = topicKeys.map(topicName => {
+      const tTasks = topicMap[topicName];
+      const total = tTasks.length;
+      const completed = tTasks.filter(t => t.status === "completed").length;
+      const inProgress = tTasks.filter(t => t.status === "inProgress").length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      let scoreSum = 0;
+      let gradedCount = 0;
+      tTasks.forEach(t => {
+        if (t.status === "completed" && typeof t.marks === "number" && t.marks >= 0) {
+          const max = t.maxMarks || 5;
+          scoreSum += (t.marks / max) * 5;
+          gradedCount++;
+        }
+      });
+
+      let rating = 4.0;
+      if (gradedCount > 0) {
+        rating = Number((scoreSum / gradedCount).toFixed(1));
+      } else if (completed > 0) {
+        rating = Number(Math.min(5, Math.max(1, 2.5 + ((completed / total) * 2.5))).toFixed(1));
+      } else if (inProgress > 0) {
+        rating = 2.5;
+      } else {
+        rating = 0;
+      }
+
+      let remark = "Needs Improvement";
+      if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
+      else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
+      else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
+      else if (rating >= 3.0 || pct >= 50) remark = "Good";
+      else if (completed > 0) remark = "Average";
+
+      return {
+        itemName: topicName,
+        value: rating,
+        maxMarks: 5,
+        score: completed,
+        totalTasks: total,
+        completedTasks: completed,
+        completionPercentage: pct,
+        remark: remark,
+        isFromSyllabus: true
+      };
+    });
+
+    return {
+      subjectName: softSkillSubjectName ? softSkillSubjectName.split("(")[0].trim() : "Soft Skills",
+      items
+    };
+  };
+
   const generateDynamicSections = (templateType, student, tasks, taskPerf = null) => {
     const resumeStatus = (student?.placement?.resumeURL || student?.resumeURL || student?.resume || student?.resumeUrl || student?.resume_url) ? "Created" : "Not created";
     
@@ -311,11 +420,13 @@ export default function StudentReportForm() {
     const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
     const isMeg = deptType === "MEG";
 
+    const softSkillsSyllabus = extractSoftSkillsSyllabus(tasks) || (taskPerf?.softSkills?.hasSyllabusTasks ? taskPerf.softSkills : null);
     const subjectItems = [];
 
     // Prioritize taskPerf from /tasks/student/:id/performance if available
     if (taskPerf?.technicalSkills && taskPerf.technicalSkills.length > 0) {
       taskPerf.technicalSkills.forEach(skill => {
+        if (softSkillsSyllabus && isSoftSkillSubject(skill.skillName)) return;
         subjectItems.push({
           itemName: skill.skillName,
           value: skill.remark || "Good",
@@ -327,6 +438,7 @@ export default function StudentReportForm() {
     } else if (tasks?.groupedBySubject) {
       Object.keys(tasks.groupedBySubject).forEach(subjectName => {
         if (subjectName.trim() === "" || subjectName.toLowerCase() === "other") return;
+        if (softSkillsSyllabus && isSoftSkillSubject(subjectName)) return;
         const subjTasks = tasks.groupedBySubject[subjectName].tasks || [];
         const total = subjTasks.length;
         const evaluated = subjTasks.filter(t => t.status === "completed").length;
@@ -334,32 +446,31 @@ export default function StudentReportForm() {
         let scoreSum = 0;
         let gradedCount = 0;
         subjTasks.forEach(t => {
-          if (t.status === "completed" && t.marks !== undefined && t.marks !== null) {
+          if (t.status === "completed" && typeof t.marks === "number" && t.marks >= 0) {
             const max = t.maxMarks || 5;
             scoreSum += (t.marks / max) * 5;
             gradedCount++;
           }
         });
-        const avg = gradedCount > 0 ? parseFloat((scoreSum / gradedCount).toFixed(2)) : 4.0;
-        
-        let performance = "Good";
-        if (avg >= 4.5) performance = "Outstanding";
-        else if (avg >= 4.0) performance = "Excellent";
-        else if (avg >= 3.5) performance = "Very Good";
-        else if (avg >= 3.0) performance = "Good";
-        else performance = "Average";
+        const rating = gradedCount > 0 ? (scoreSum / gradedCount).toFixed(2) : "4.00";
+        const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
+        let level = "Needs Improvement";
+        if (pct >= 85) level = "Outstanding";
+        else if (pct >= 70) level = "Excellent";
+        else if (pct >= 50) level = "Very Good";
+        else if (evaluated > 0) level = "Good";
 
         subjectItems.push({
           itemName: subjectName,
-          value: performance,
+          value: level,
           score: evaluated,
           maxMarks: total,
-          remark: avg.toFixed(2)
+          remark: rating
         });
       });
     }
 
-    if (subjectItems.length === 0) {
+    if (subjectItems.length === 0 && deptConfig.defaultSubjects) {
       deptConfig.defaultSubjects.forEach(s => subjectItems.push({ ...s }));
     }
 
@@ -369,17 +480,18 @@ export default function StudentReportForm() {
       items: subjectItems
     };
 
-    // 3. Soft Skills & Behavioural Evaluation (Fully Customizable)
+    // 3. Soft Skills & Behavioural Evaluation (Auto from Soft Skills Syllabus if available, else default editable)
     const softSkillsSection = {
       sectionName: "Soft Skills & Behavioural Evaluation",
       sectionType: "SoftSkillsRating",
-      items: [
-        { itemName: "Communication", value: 4.2, maxMarks: 5 },
-        { itemName: "Confidence", value: 4.0, maxMarks: 5 },
-        { itemName: "Teamwork", value: 4.1, maxMarks: 5 },
-        { itemName: "Leadership", value: 3.8, maxMarks: 5 },
-        { itemName: "Presentation", value: 4.0, maxMarks: 5 },
-        { itemName: "Professional Behaviour", value: 4.2, maxMarks: 5 }
+      subjectName: softSkillsSyllabus?.subjectName || "Soft Skills",
+      hasSyllabusTasks: !!softSkillsSyllabus,
+      items: softSkillsSyllabus ? softSkillsSyllabus.items : [
+        { itemName: "Communication Skills", value: 4.2, maxMarks: 5 },
+        { itemName: "Team Collaboration", value: 4.1, maxMarks: 5 },
+        { itemName: "Problem Solving", value: 4.0, maxMarks: 5 },
+        { itemName: "Presentation Clarity", value: 4.2, maxMarks: 5 },
+        { itemName: "Professional Punctuality", value: 4.4, maxMarks: 5 }
       ]
     };
 
@@ -633,16 +745,18 @@ export default function StudentReportForm() {
       const reportData = existingReportData.data;
       const templateType = studentData?.data?.subDepartmentId?.departmentId?.reportConfig?.templateType || reportData.templateType || "ITEG_STANDARD";
 
-      // Always auto-fill LevelProgressTable and SubjectPerformanceTable from real student records
+      // Always auto-fill LevelProgressTable, SubjectPerformanceTable, and SoftSkills (if syllabus exists)
       const autoSections = generateDynamicSections(templateType, studentData?.data, tasksData, taskPerformance);
       const autoLevelProgress = autoSections.find(s => s.sectionType === "LevelProgressTable");
       const autoSubjectPerf = autoSections.find(s => s.sectionType === "SubjectPerformanceTable");
+      const autoSoftSkills = autoSections.find(s => s.sectionType === "SoftSkillsRating");
 
       let resolvedDynamicSections = [];
       if (reportData.dynamicSections && reportData.dynamicSections.length > 0) {
         resolvedDynamicSections = reportData.dynamicSections.map(sec => {
           if (sec.sectionType === "LevelProgressTable" && autoLevelProgress) return autoLevelProgress;
           if (sec.sectionType === "SubjectPerformanceTable" && autoSubjectPerf) return autoSubjectPerf;
+          if (sec.sectionType === "SoftSkillsRating" && autoSoftSkills?.hasSyllabusTasks) return autoSoftSkills;
           return sec;
         });
         if (!resolvedDynamicSections.some(s => s.sectionType === "LevelProgressTable") && autoLevelProgress) {
@@ -652,49 +766,56 @@ export default function StudentReportForm() {
           const lIdx = resolvedDynamicSections.findIndex(s => s.sectionType === "LevelProgressTable");
           resolvedDynamicSections.splice(lIdx + 1, 0, autoSubjectPerf);
         }
+        if (!resolvedDynamicSections.some(s => s.sectionType === "SoftSkillsRating") && autoSoftSkills) {
+          resolvedDynamicSections.push(autoSoftSkills);
+        }
       } else {
         resolvedDynamicSections = autoSections;
       }
 
-      const next = deepClone({
-        batchYear: reportData.batchYear || "",
-        generatedByName: reportData.generatedByName || loggedInUser?.name || "",
-        templateType: reportData.templateType || "ITEG_STANDARD",
-        dynamicSections: resolvedDynamicSections,
-        softSkills: {
-          sectionTitle: reportData.softSkills?.sectionTitle || "Soft Skills Evaluation (50 Marks)",
-          totalSoftSkillMarks: reportData.softSkills?.totalSoftSkillMarks || 0,
-          categories: reportData.softSkills?.categories?.length > 0
-            ? reportData.softSkills.categories
-            : undefined
-        },
-        discipline: {
-          sectionTitle: reportData.discipline?.sectionTitle || "Discipline Evaluation (30 Marks)",
-          totalDisciplineMarks: reportData.discipline?.totalDisciplineMarks || 0,
-          categories: reportData.discipline?.categories?.length > 0
-            ? reportData.discipline.categories
-            : undefined
-        },
-        technicalSkills: reportData.technicalSkills?.length > 0
-          ? [...reportData.technicalSkills]
-          : undefined,
-        careerReadiness: reportData.careerReadiness || undefined,
-        academicPerformance: reportData.academicPerformance?.yearWiseSGPA?.length > 0
-          ? reportData.academicPerformance
-          : undefined,
-        coCurricular: reportData.coCurricular?.length > 0 ? [...reportData.coCurricular] : undefined,
-        overallGrade: reportData.overallGrade || "",
-        facultyRemark: reportData.facultyRemark || "",
-        isFinalReport: reportData.isFinalReport || false
-      });
-
-      // Merge with defaults (do not remove default fields if undefined in API)
       setFormData(prev => {
         const merged = deepClone(prev);
-        // shallow replace only provided keys
-        Object.keys(next).forEach(key => {
-          if (next[key] !== undefined) merged[key] = next[key];
-        });
+        if (reportData.batchYear) merged.batchYear = reportData.batchYear;
+        if (reportData.generatedByName) merged.generatedByName = reportData.generatedByName;
+        else if (loggedInUser?.name) merged.generatedByName = loggedInUser.name;
+        if (reportData.templateType) merged.templateType = reportData.templateType;
+        if (resolvedDynamicSections && resolvedDynamicSections.length > 0) {
+          merged.dynamicSections = resolvedDynamicSections;
+        }
+        if (reportData.softSkills) {
+          merged.softSkills = {
+            sectionTitle: reportData.softSkills.sectionTitle || merged.softSkills?.sectionTitle || "Soft Skills Evaluation (50 Marks)",
+            totalSoftSkillMarks: Number(reportData.softSkills.totalSoftSkillMarks) || 0,
+            categories: (Array.isArray(reportData.softSkills.categories) && reportData.softSkills.categories.length > 0)
+              ? reportData.softSkills.categories
+              : (merged.softSkills?.categories || [])
+          };
+        }
+        if (reportData.discipline) {
+          merged.discipline = {
+            sectionTitle: reportData.discipline.sectionTitle || merged.discipline?.sectionTitle || "Discipline Evaluation (30 Marks)",
+            totalDisciplineMarks: Number(reportData.discipline.totalDisciplineMarks) || 0,
+            categories: (Array.isArray(reportData.discipline.categories) && reportData.discipline.categories.length > 0)
+              ? reportData.discipline.categories
+              : (merged.discipline?.categories || [])
+          };
+        }
+        if (Array.isArray(reportData.technicalSkills) && reportData.technicalSkills.length > 0) {
+          merged.technicalSkills = [...reportData.technicalSkills];
+        }
+        if (reportData.careerReadiness) {
+          merged.careerReadiness = { ...(merged.careerReadiness || {}), ...reportData.careerReadiness };
+        }
+        if (reportData.academicPerformance?.yearWiseSGPA?.length > 0) {
+          merged.academicPerformance = { ...(merged.academicPerformance || {}), ...reportData.academicPerformance };
+        }
+        if (Array.isArray(reportData.coCurricular) && reportData.coCurricular.length > 0) {
+          merged.coCurricular = [...reportData.coCurricular];
+        }
+        if (reportData.overallGrade) merged.overallGrade = reportData.overallGrade;
+        if (reportData.facultyRemark) merged.facultyRemark = reportData.facultyRemark;
+        if (typeof reportData.isFinalReport === 'boolean') merged.isFinalReport = reportData.isFinalReport;
+
         return merged;
       });
     } else {
@@ -703,19 +824,21 @@ export default function StudentReportForm() {
     }
   }, [existingReportData, studentData, tasksData, taskPerformance, loggedInUser?.name]);
 
-  // Keep LevelProgress and SubjectPerformance synchronized with live student & task performance
+  // Keep LevelProgress, SubjectPerformance and SoftSkills synchronized with live student & task performance
   useEffect(() => {
     if (studentData?.data && (tasksData || taskPerformance)) {
       const templateType = studentData.data.subDepartmentId?.departmentId?.reportConfig?.templateType || formData.templateType || "ITEG_STANDARD";
       const freshAuto = generateDynamicSections(templateType, studentData.data, tasksData, taskPerformance);
       const freshLevel = freshAuto.find(s => s.sectionType === "LevelProgressTable");
       const freshSubject = freshAuto.find(s => s.sectionType === "SubjectPerformanceTable");
+      const freshSoftSkills = freshAuto.find(s => s.sectionType === "SoftSkillsRating");
 
       setFormData(prev => {
         if (!prev.dynamicSections || prev.dynamicSections.length === 0) return prev;
         const updated = prev.dynamicSections.map(sec => {
           if (sec.sectionType === "LevelProgressTable" && freshLevel) return freshLevel;
           if (sec.sectionType === "SubjectPerformanceTable" && freshSubject) return freshSubject;
+          if (sec.sectionType === "SoftSkillsRating" && freshSoftSkills?.hasSyllabusTasks) return freshSoftSkills;
           return sec;
         });
         return { ...prev, dynamicSections: updated };
@@ -723,79 +846,123 @@ export default function StudentReportForm() {
     }
   }, [studentData, tasksData, taskPerformance]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.batchYear.trim()) {
+  const validateForm = () => {
+    if (!formData.batchYear || !formData.batchYear.trim()) {
       toast.error('Please enter batch year');
-      return;
+      return false;
     }
-    if (!formData.generatedByName.trim()) {
+    if (!formData.generatedByName || !formData.generatedByName.trim()) {
       toast.error('Please enter faculty name');
-      return;
+      return false;
     }
     if (!formData.overallGrade) {
       toast.error('Please select overall grade');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const buildReportPayload = () => {
+    const softSkillCats = Array.isArray(formData.softSkills?.categories) ? formData.softSkills.categories : [];
+    const discCats = Array.isArray(formData.discipline?.categories) ? formData.discipline.categories : [];
+    const techSkills = Array.isArray(formData.technicalSkills) ? formData.technicalSkills : [];
+    const coCurr = Array.isArray(formData.coCurricular) ? formData.coCurricular : [];
+
+    return {
+      studentRef: id,
+      batchYear: (formData.batchYear || "").trim(),
+      generatedByName: (formData.generatedByName || "").trim(),
+      templateType: formData.templateType || "ITEG_STANDARD",
+      dynamicSections: formData.dynamicSections || [],
+      softSkills: {
+        sectionTitle: formData.softSkills?.sectionTitle || "Soft Skills Evaluation (50 Marks)",
+        totalSoftSkillMarks: softSkillCats.reduce((sum, cat) => sum + (Number(cat?.score) || 0), 0),
+        categories: softSkillCats.map(cat => ({
+          title: cat?.title || "",
+          maxMarks: Number(cat?.maxMarks) || 10,
+          score: Number(cat?.score) || 0,
+          subcategories: Array.isArray(cat?.subcategories) ? cat.subcategories : []
+        }))
+      },
+      discipline: {
+        sectionTitle: formData.discipline?.sectionTitle || "Discipline Evaluation (30 Marks)",
+        totalDisciplineMarks: discCats.reduce((sum, cat) => sum + (Number(cat?.score) || 0), 0),
+        categories: discCats.map(cat => ({
+          title: cat?.title || "",
+          maxMarks: Number(cat?.maxMarks) || 10,
+          score: Number(cat?.score) || 0,
+          subcategories: Array.isArray(cat?.subcategories) ? cat.subcategories : []
+        }))
+      },
+      technicalSkills: techSkills
+        .filter(skill => skill?.skillName && skill.skillName.trim() !== "" && (Number(skill.theoryMarks) > 0 || Number(skill.practicalMarks) > 0))
+        .map(skill => ({
+          skillName: skill.skillName.trim(),
+          theoryMarks: Number(skill.theoryMarks) || 0,
+          practicalMarks: Number(skill.practicalMarks) || 0,
+          totalPercentage: Number(skill.totalPercentage) || 0,
+          remark: skill?.remark?.trim() || "No remarks"
+        })),
+      careerReadiness: formData.careerReadiness || {},
+      academicPerformance: formData.academicPerformance || {},
+      coCurricular: coCurr
+        .filter(item => item?.title && item.title.trim() !== "" && item?.category && item.category.trim() !== "")
+        .map(item => ({
+          title: item.title.trim(),
+          category: item.category.trim(),
+          remark: item.remark?.trim() || ""
+        })),
+      overallGrade: formData.overallGrade || "",
+      facultyRemark: (formData.facultyRemark || "").trim() || "No specific remarks",
+      isFinalReport: Boolean(formData.isFinalReport)
+    };
+  };
+
+  const handleUpdate = async () => {
+    if (!validateForm()) return;
 
     try {
-      const reportData = {
-        studentRef: id,
-        batchYear: formData.batchYear.trim(),
-        generatedByName: formData.generatedByName.trim(),
-        templateType: formData.templateType || "ITEG_STANDARD",
-        dynamicSections: formData.dynamicSections || [],
-        softSkills: {
-          sectionTitle: "Soft Skills Evaluation (50 Marks)",
-          totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-          categories: formData.softSkills.categories.map(cat => ({
-            title: cat.title,
-            maxMarks: cat.maxMarks,
-            score: cat.score || 0,
-            subcategories: cat.subcategories
-          }))
-        },
-        discipline: {
-          sectionTitle: "Discipline Evaluation (30 Marks)",
-          totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-          categories: formData.discipline.categories.map(cat => ({
-            title: cat.title,
-            maxMarks: cat.maxMarks,
-            score: cat.score || 0,
-            subcategories: cat.subcategories
-          }))
-        },
-        technicalSkills: formData.technicalSkills
-          .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
-          .map(skill => ({
-            skillName: skill.skillName.trim(),
-            theoryMarks: skill.theoryMarks || 0,
-            practicalMarks: skill.practicalMarks || 0,
-            totalPercentage: skill.totalPercentage || 0,
-            remark: skill.remark.trim() || "No remarks"
-          })),
-        careerReadiness: formData.careerReadiness,
-        academicPerformance: formData.academicPerformance,
-        coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
-        overallGrade: formData.overallGrade,
-        facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
-        isFinalReport: formData.isFinalReport
-      };
+      const reportData = buildReportPayload();
+      const reportId = existingReportData?.data?._id;
+      if (!reportId) {
+        toast.error('Report card ID missing');
+        return;
+      }
+      await updateReportCard({ id: reportId, ...reportData }).unwrap();
+      toast.success('Report card updated successfully!');
+      navigate(`/student/${id}/report`);
+    } catch (error) {
+      console.error('Update Error:', error);
+      let errorMsg = 'Failed to update report card';
+      if (error?.data?.message) {
+        errorMsg = error.data.message;
+      }
+      toast.error(errorMsg);
+    }
+  };
 
-      const result = await createReportCard(reportData).unwrap();
-      console.log('Report card created:', result);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
-      toast.success(existingReportData?.data ? 'Report card updated successfully!' : 'Report card created successfully!');
+    try {
+      const reportData = buildReportPayload();
+      if (existingReportData?.data?._id) {
+        await updateReportCard({ id: existingReportData.data._id, ...reportData }).unwrap();
+        toast.success('Report card updated successfully!');
+      } else {
+        await createReportCard(reportData).unwrap();
+        toast.success('Report card created successfully!');
+      }
       navigate(`/student/${id}/report`);
     } catch (error) {
       console.error('Submit Error:', error);
-      let errorMsg = 'Failed to create report card';
-      if (error.status === 400) {
+      let errorMsg = 'Failed to save report card';
+      if (error?.status === 400) {
         errorMsg = 'Invalid data format. Please check all fields.';
-      } else if (error.status === 500) {
+      } else if (error?.status === 500) {
         errorMsg = 'Server error. Please try again later.';
-      } else if (error.data?.message) {
+      } else if (error?.data?.message) {
         errorMsg = error.data.message;
       }
       toast.error(errorMsg);
@@ -806,9 +973,10 @@ export default function StudentReportForm() {
   const updateSoftSkillSubcategory = (categoryIndex, subcategoryIndex, value) => {
     setFormData(prev => {
       const next = deepClone(prev);
+      if (!next.softSkills?.categories?.[categoryIndex]?.subcategories?.[subcategoryIndex]) return prev;
       next.softSkills.categories[categoryIndex].subcategories[subcategoryIndex].value = !!value;
-      // recalc score
-      const checkedCount = next.softSkills.categories[categoryIndex].subcategories.filter(s => s.value).length;
+      const subcats = next.softSkills.categories[categoryIndex].subcategories || [];
+      const checkedCount = subcats.filter(s => s.value).length;
       next.softSkills.categories[categoryIndex].score = checkedCount * 2;
       return next;
     });
@@ -817,8 +985,10 @@ export default function StudentReportForm() {
   const updateDisciplineSubcategory = (categoryIndex, subcategoryIndex, value) => {
     setFormData(prev => {
       const next = deepClone(prev);
+      if (!next.discipline?.categories?.[categoryIndex]?.subcategories?.[subcategoryIndex]) return prev;
       next.discipline.categories[categoryIndex].subcategories[subcategoryIndex].value = !!value;
-      const checkedCount = next.discipline.categories[categoryIndex].subcategories.filter(s => s.value).length;
+      const subcats = next.discipline.categories[categoryIndex].subcategories || [];
+      const checkedCount = subcats.filter(s => s.value).length;
       next.discipline.categories[categoryIndex].score = checkedCount * 2;
       return next;
     });
@@ -981,7 +1151,7 @@ export default function StudentReportForm() {
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
-              {formData.academicPerformance.yearWiseSGPA.map((year, index) => (
+              {(formData.academicPerformance?.yearWiseSGPA || []).map((year, index) => (
                 <div key={index} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100">
                   <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                     {year.year} SGPA
@@ -1262,52 +1432,120 @@ export default function StudentReportForm() {
 
                   {section.sectionType === "SoftSkillsRating" && (
                     <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100">
-                        <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                          Customize, rename or add behavioural & soft skill metrics:
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => addDynamicItem(sIdx, { itemName: "New Soft Skill", value: 4.0, maxMarks: 5 })}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
-                        >
-                          <FaPlus size={10} /> Add Skill Metric
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
-                        {section.items.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2 sm:p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80 hover:border-slate-300 transition gap-2">
-                            <input
-                              type="text"
-                              value={item.itemName || ""}
-                              onChange={(e) => setDynamicItemField(sIdx, idx, "itemName", e.target.value)}
-                              placeholder="Parameter Name"
-                              className="font-semibold text-slate-800 text-xs sm:text-sm bg-white border border-slate-200 focus:border-orange-400 rounded-lg px-2.5 py-1 outline-none transition flex-1 min-w-0"
-                              title="Click to rename this metric"
-                            />
-                            <div className="flex items-center gap-1 shrink-0">
-                              <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                max="5"
-                                value={item.value ?? 0}
-                                onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
-                                className="w-14 sm:w-16 px-1.5 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white text-slate-800"
-                              />
-                              <span className="text-slate-400 text-xs font-medium">/ 5</span>
-                              <button
-                                type="button"
-                                onClick={() => removeDynamicItem(sIdx, idx)}
-                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition cursor-pointer ml-1"
-                                title="Delete metric"
-                              >
-                                <MdDelete size={16} />
-                              </button>
+                      {(section.hasSyllabusTasks || section.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined)) ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-black text-violet-700 uppercase tracking-wider bg-violet-50 px-2.5 py-0.5 rounded-full border border-violet-200">
+                                  Subject: {section.subjectName || "Soft Skills"}
+                                </span>
+                                <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                                  <FaLock size={10} /> Live Syllabus Driven (Non-Editable)
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-1">
+                                Syllabus topics, marks, and progress bars are automatically driven by student task completion and cannot be edited manually.
+                              </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+
+                          {/* Topics list with bullet points and progress bars */}
+                          <div className="space-y-2.5">
+                            {section.items.map((item, idx) => {
+                              const completed = item.completedTasks ?? item.score ?? 0;
+                              const total = item.totalTasks ?? item.maxMarks ?? 0;
+                              const pct = item.completionPercentage ?? (total > 0 ? Math.round((completed / total) * 100) : 0);
+                              const rating = Number(item.value) || 0;
+
+                              return (
+                                <div key={idx} className="bg-slate-50/90 rounded-xl border border-slate-200/80 p-3 hover:border-slate-300 transition space-y-2">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="w-2 h-2 rounded-full bg-violet-600 shrink-0" />
+                                      <span className="font-bold text-xs sm:text-sm text-slate-800 truncate" title={item.itemName}>
+                                        {item.itemName}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                                      <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                        {completed} / {total} Tasks ({pct}%)
+                                      </span>
+                                      {item.totalMaxMarks > 0 && (
+                                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                          Marks: {item.obtainedMarks}/{item.totalMaxMarks}
+                                        </span>
+                                      )}
+                                      <span className="text-[11px] font-black text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-200">
+                                        {item.remark || "Good"}
+                                      </span>
+                                      <span className="text-xs font-bold text-violet-800 bg-violet-100/70 px-2.5 py-0.5 rounded-lg border border-violet-200 shadow-2xs">
+                                        {rating.toFixed(1)} <span className="text-slate-400 font-normal">/ 5</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {/* Progress bar based on task completion */}
+                                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-600 transition-all duration-500"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                            <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                              Customize, rename or add behavioural & soft skill metrics:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => addDynamicItem(sIdx, { itemName: "New Soft Skill", value: 4.0, maxMarks: 5 })}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
+                            >
+                              <FaPlus size={10} /> Add Skill Metric
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 mt-2.5">
+                            {section.items.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 sm:p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80 hover:border-slate-300 transition gap-2">
+                                <input
+                                  type="text"
+                                  value={item.itemName || ""}
+                                  onChange={(e) => setDynamicItemField(sIdx, idx, "itemName", e.target.value)}
+                                  placeholder="Parameter Name"
+                                  className="font-semibold text-slate-800 text-xs sm:text-sm bg-white border border-slate-200 focus:border-orange-400 rounded-lg px-2.5 py-1 outline-none transition flex-1 min-w-0"
+                                  title="Click to rename this metric"
+                                />
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="5"
+                                    value={item.value ?? 0}
+                                    onChange={(e) => setDynamicItemField(sIdx, idx, "value", parseFloat(e.target.value) || 0)}
+                                    className="w-14 sm:w-16 px-1.5 py-1 border border-slate-300 rounded-lg text-center text-xs sm:text-sm font-bold bg-white text-slate-800"
+                                  />
+                                  <span className="text-slate-400 text-xs font-medium">/ 5</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDynamicItem(sIdx, idx)}
+                                    className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition cursor-pointer ml-1"
+                                    title="Delete metric"
+                                  >
+                                    <MdDelete size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1556,7 +1794,7 @@ export default function StudentReportForm() {
                     + Add Activity
                   </button>
                 </div>
-                {formData.coCurricular.map((activity, index) => (
+                {(formData.coCurricular || []).map((activity, index) => (
                   <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 p-3 bg-slate-50/70 rounded-xl border border-slate-100">
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">Category</label>
@@ -1596,11 +1834,11 @@ export default function StudentReportForm() {
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-800 pb-2 border-b border-slate-100">Soft Skills Evaluation</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-                  {formData.softSkills.categories.map((category, categoryIndex) => (
+                  {(formData.softSkills?.categories || []).map((category, categoryIndex) => (
                     <div key={categoryIndex} className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/40 space-y-2.5">
                       <h4 className="text-xs sm:text-sm font-bold text-slate-800 pb-1 border-b border-slate-200/60">{category.title}</h4>
                       <div className="space-y-1.5">
-                        {category.subcategories.map((sub, subIndex) => (
+                        {(category.subcategories || []).map((sub, subIndex) => (
                           <label key={subIndex} className="flex items-center gap-2.5 cursor-pointer py-0.5">
                             <input
                               type="checkbox"
@@ -1622,7 +1860,9 @@ export default function StudentReportForm() {
                               const v = parseInt(e.target.value || 0, 10) || 0;
                               setFormData(prev => {
                                 const next = deepClone(prev);
-                                next.softSkills.categories[categoryIndex].score = v;
+                                if (next.softSkills?.categories?.[categoryIndex]) {
+                                  next.softSkills.categories[categoryIndex].score = v;
+                                }
                                 return next;
                               });
                             }}
@@ -1640,11 +1880,11 @@ export default function StudentReportForm() {
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-800 pb-2 border-b border-slate-100">Discipline Evaluation</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-                  {formData.discipline.categories.map((category, categoryIndex) => (
+                  {(formData.discipline?.categories || []).map((category, categoryIndex) => (
                     <div key={categoryIndex} className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/40 space-y-2.5">
                       <h4 className="text-xs sm:text-sm font-bold text-slate-800 pb-1 border-b border-slate-200/60">{category.title}</h4>
                       <div className="space-y-1.5">
-                        {category.subcategories.map((sub, subIndex) => (
+                        {(category.subcategories || []).map((sub, subIndex) => (
                           <label key={subIndex} className="flex items-center gap-2.5 cursor-pointer py-0.5">
                             <input
                               type="checkbox"
@@ -1666,7 +1906,9 @@ export default function StudentReportForm() {
                               const v = parseInt(e.target.value || 0, 10) || 0;
                               setFormData(prev => {
                                 const next = deepClone(prev);
-                                next.discipline.categories[categoryIndex].score = v;
+                                if (next.discipline?.categories?.[categoryIndex]) {
+                                  next.discipline.categories[categoryIndex].score = v;
+                                }
                                 return next;
                               });
                             }}
@@ -1692,7 +1934,7 @@ export default function StudentReportForm() {
                     + Add Skill
                   </button>
                 </div>
-                {formData.technicalSkills.map((skill, index) => (
+                {(formData.technicalSkills || []).map((skill, index) => (
                   <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-600 mb-1">Skill Name</label>
@@ -1814,70 +2056,7 @@ export default function StudentReportForm() {
             {existingReportData?.data && (
               <button
                 type="button"
-                onClick={async () => {
-                  if (!formData.batchYear.trim()) {
-                    toast.error('Please enter batch year');
-                    return;
-                  }
-                  if (!formData.generatedByName.trim()) {
-                    toast.error('Please enter faculty name');
-                    return;
-                  }
-                  if (!formData.overallGrade) {
-                    toast.error('Please select overall grade');
-                    return;
-                  }
-
-                  try {
-                    const reportData = {
-                      studentRef: id,
-                      batchYear: formData.batchYear.trim(),
-                      generatedByName: formData.generatedByName.trim(),
-                      softSkills: {
-                        sectionTitle: "Soft Skills Evaluation (50 Marks)",
-                        totalSoftSkillMarks: formData.softSkills.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-                        categories: formData.softSkills.categories.map(cat => ({
-                          title: cat.title,
-                          maxMarks: cat.maxMarks,
-                          score: cat.score || 0,
-                          subcategories: cat.subcategories
-                        }))
-                      },
-                      discipline: {
-                        sectionTitle: "Discipline Evaluation (30 Marks)",
-                        totalDisciplineMarks: formData.discipline.categories.reduce((sum, cat) => sum + (cat.score || 0), 0),
-                        categories: formData.discipline.categories.map(cat => ({
-                          title: cat.title,
-                          maxMarks: cat.maxMarks,
-                          score: cat.score || 0,
-                          subcategories: cat.subcategories
-                        }))
-                      },
-                      technicalSkills: formData.technicalSkills
-                        .filter(skill => skill.skillName && skill.skillName.trim() !== "" && (skill.theoryMarks > 0 || skill.practicalMarks > 0))
-                        .map(skill => ({
-                          skillName: skill.skillName.trim(),
-                          theoryMarks: skill.theoryMarks || 0,
-                          practicalMarks: skill.practicalMarks || 0,
-                          totalPercentage: skill.totalPercentage || 0,
-                          remark: skill.remark.trim() || "No remarks"
-                        })),
-                      careerReadiness: formData.careerReadiness,
-                      academicPerformance: formData.academicPerformance,
-                      coCurricular: formData.coCurricular.filter(item => item.title && item.title.trim() !== "" && item.category && item.category.trim() !== ""),
-                      overallGrade: formData.overallGrade,
-                      facultyRemark: formData.facultyRemark.trim() || "No specific remarks",
-                      isFinalReport: formData.isFinalReport
-                    };
-
-                    await updateReportCard({ id: existingReportData.data._id, ...reportData }).unwrap();
-                    toast.success('Report card updated successfully!');
-                    navigate(`/student/${id}/report`);
-                  } catch (error) {
-                    console.error('Update Error:', error);
-                    toast.error('Failed to update report card');
-                  }
-                }}
+                onClick={handleUpdate}
                 disabled={isUpdating}
                 className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition text-center"
               >

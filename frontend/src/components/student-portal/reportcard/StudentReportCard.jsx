@@ -635,9 +635,16 @@ export default function StudentReportCard() {
             
             {/* Soft Skills */}
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100">
-                Soft Skills & Behaviour
-              </h3>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="text-xs font-bold text-slate-800">
+                  Soft Skills & Behaviour
+                </h3>
+                {(softSkillsSection?.hasSyllabusTasks || softSkillsSection?.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined)) && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                    {softSkillsSection.subjectName || "Soft Skills"}
+                  </span>
+                )}
+              </div>
               <div className="space-y-2.5">
                 {(softSkillsSection?.items?.length > 0
                   ? softSkillsSection.items
@@ -648,13 +655,30 @@ export default function StudentReportCard() {
                     { itemName: "Time Management", value: 4.3 }
                   ]
                 ).map((item, idx) => {
+                  const isSyllabus = item.isFromSyllabus || item.completedTasks !== undefined || softSkillsSection?.hasSyllabusTasks;
                   const score = parseFloat(item.value) || 0;
-                  const pct = Math.min(Math.round((score / 5) * 100), 100);
+                  const max = item.maxMarks || 5;
+                  const completed = item.completedTasks ?? item.score;
+                  const total = item.totalTasks ?? max;
+                  const pct = item.completionPercentage !== undefined
+                    ? item.completionPercentage
+                    : (isSyllabus && total > 0 ? Math.min(Math.round((completed / total) * 100), 100) : Math.min(Math.round((score / 5) * 100), 100));
+
                   return (
-                    <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-slate-700">{item.itemName}</span>
-                        <span className="font-black text-slate-800">{score.toFixed(1)} / 5</span>
+                    <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {isSyllabus && <span className="w-1.5 h-1.5 rounded-full bg-violet-600 shrink-0" />}
+                          <span className="font-bold text-slate-700 truncate">{item.itemName}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isSyllabus && item.completedTasks !== undefined && (
+                            <span className="text-[9px] font-bold text-slate-500 bg-white px-1.5 py-0.2 rounded border border-slate-200">
+                              {item.completedTasks}/{item.totalTasks}
+                            </span>
+                          )}
+                          <span className="font-black text-slate-800">{score.toFixed(1)} / {max}</span>
+                        </div>
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-1">
                         <div className="h-1 rounded-full bg-violet-500" style={{ width: `${pct}%` }} />
@@ -974,14 +998,25 @@ export default function StudentReportCard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Soft Skills */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shadow-sm">
+                    <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center">
                       <FaBrain size={17} />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-800">Soft Skills & Behavioural Evaluation</h3>
-                      <p className="text-xs text-slate-400">Interpersonal and communication mastery</p>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-800">Soft Skills & Behavioural Evaluation</h3>
+                        {(softSkillsSection?.hasSyllabusTasks || softSkillsSection?.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined)) && (
+                          <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                            Subject: {softSkillsSection.subjectName || "Soft Skills"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        {(softSkillsSection?.hasSyllabusTasks || softSkillsSection?.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined))
+                          ? "Topic-wise syllabus progress & task completion review"
+                          : "Interpersonal and communication mastery"}
+                      </p>
                     </div>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
@@ -999,19 +1034,39 @@ export default function StudentReportCard() {
                       { itemName: "Time Management", value: 4.3 }
                     ]
                   ).map((item, idx) => {
+                    const isSyllabus = item.isFromSyllabus || item.completedTasks !== undefined || softSkillsSection?.hasSyllabusTasks;
                     const score = parseFloat(item.value) || 0;
                     const max = item.maxMarks || 5;
-                    const pct = Math.min(Math.round((score / max) * 100), 100);
+                    const completed = item.completedTasks ?? item.score;
+                    const total = item.totalTasks ?? max;
+                    const pct = item.completionPercentage !== undefined
+                      ? item.completionPercentage
+                      : (isSyllabus && total > 0 ? Math.min(Math.round((completed / total) * 100), 100) : Math.min(Math.round((score / max) * 100), 100));
 
                     return (
-                      <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-bold text-slate-700">{item.itemName}</span>
-                          <div className="flex items-center gap-2">
-                            <StarRating rating={score} size="text-[11px]" />
-                            <span className="text-xs font-black text-slate-800">
-                              {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
-                            </span>
+                      <div key={idx} className="bg-slate-50/70 rounded-2xl p-3.5 border border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between mb-1 gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isSyllabus && <span className="w-1.5 h-1.5 rounded-full bg-violet-600 shrink-0" />}
+                            <span className="text-xs font-bold text-slate-700 truncate" title={item.itemName}>{item.itemName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isSyllabus && item.completedTasks !== undefined && (
+                              <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                {item.completedTasks}/{item.totalTasks} Tasks ({pct}%)
+                              </span>
+                            )}
+                            {item.remark && (
+                              <span className="text-[11px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded border border-violet-200">
+                                {item.remark}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <StarRating rating={score} size="text-[11px]" />
+                              <span className="text-xs font-black text-slate-800">
+                                {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">

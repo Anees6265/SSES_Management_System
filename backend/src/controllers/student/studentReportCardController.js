@@ -5,8 +5,9 @@ const calcSoftSkillMarks = (softSkills) => {
   let total = 0;
   if (softSkills?.categories?.length > 0) {
     softSkills.categories = softSkills.categories.map((cat) => {
-      const checked = cat.subcategories.filter((s) => s.value === true).length;
-      const score = Math.round((checked / (cat.subcategories.length || 1)) * (cat.maxMarks || 10));
+      const subcategories = Array.isArray(cat?.subcategories) ? cat.subcategories : [];
+      const checked = subcategories.filter((s) => s.value === true).length;
+      const score = Math.round((checked / (subcategories.length || 1)) * (cat?.maxMarks || 10));
       total += score;
       return { ...cat, score };
     });
@@ -18,8 +19,9 @@ const calcDisciplineMarks = (discipline) => {
   let total = 0;
   if (discipline?.categories?.length > 0) {
     discipline.categories = discipline.categories.map((cat) => {
-      const checked = cat.subcategories.filter((s) => s.value === true).length;
-      const score = Math.round((checked / (cat.subcategories.length || 1)) * (cat.maxMarks || 10));
+      const subcategories = Array.isArray(cat?.subcategories) ? cat.subcategories : [];
+      const checked = subcategories.filter((s) => s.value === true).length;
+      const score = Math.round((checked / (subcategories.length || 1)) * (cat?.maxMarks || 10));
       total += score;
       return { ...cat, score };
     });
@@ -164,9 +166,17 @@ const syncReportCardLive = async (studentId, reportCard) => {
         reportCard.dynamicSections.push(subjectPerformanceSec);
       }
 
+      const isSoftSkillSubject = (name = "") => {
+        const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return clean.includes("softskill") || clean.includes("communicationskill") || clean.includes("personalitydevelopment");
+      };
+
+      const softTasks = tasks.filter(t => isSoftSkillSubject(t.subjectName));
+
       const subjectItems = [];
       Object.keys(grouped).forEach(subjectName => {
         if (subjectName.trim() === "" || subjectName.toLowerCase() === "other" || subjectName.toLowerCase().startsWith("other")) return;
+        if (softTasks.length > 0 && isSoftSkillSubject(subjectName)) return;
 
         const subjectTasks = grouped[subjectName].tasks || [];
         const totalTasks = subjectTasks.length;
@@ -200,6 +210,83 @@ const syncReportCardLive = async (studentId, reportCard) => {
 
       subjectItems.sort((a, b) => a.itemName.localeCompare(b.itemName));
       subjectPerformanceSec.items = subjectItems;
+
+      // 3. Re-calculate "SoftSkillsRating" if Soft Skills tasks exist
+      if (softTasks.length > 0) {
+        const topicMap = {};
+        softTasks.forEach(t => {
+          const topic = (t.topicName || "General Topics").trim();
+          if (!topicMap[topic]) topicMap[topic] = [];
+          topicMap[topic].push(t);
+        });
+
+        const softItems = Object.keys(topicMap).map(topicName => {
+          const tTasks = topicMap[topicName];
+          const total = tTasks.length;
+          const completed = tTasks.filter(t => t.status === "completed").length;
+          const inProgress = tTasks.filter(t => t.status === "inProgress").length;
+          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+          let scoreSum = 0;
+          let gradedCount = 0;
+          tTasks.forEach(t => {
+            if (t.status === "completed" && typeof t.marks === "number" && t.marks >= 0) {
+              const max = t.maxMarks || 5;
+              scoreSum += (t.marks / max) * 5;
+              gradedCount++;
+            }
+          });
+
+          let rating = 4.0;
+          if (gradedCount > 0) {
+            rating = Number((scoreSum / gradedCount).toFixed(1));
+          } else if (completed > 0) {
+            rating = Number(Math.min(5, Math.max(1, 2.5 + ((completed / total) * 2.5))).toFixed(1));
+          } else if (inProgress > 0) {
+            rating = 2.5;
+          } else {
+            rating = 0;
+          }
+
+          let remark = "Needs Improvement";
+          if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
+          else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
+          else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
+          else if (rating >= 3.0 || pct >= 50) remark = "Good";
+          else if (completed > 0) remark = "Average";
+
+          return {
+            itemName: topicName,
+            value: rating,
+            maxMarks: 5,
+            score: completed,
+            totalTasks: total,
+            completedTasks: completed,
+            completionPercentage: pct,
+            remark: remark,
+            isFromSyllabus: true
+          };
+        });
+
+        let softSkillsSec = reportCard.dynamicSections.find(
+          (s) => s.sectionName === "Soft Skills & Behavioural Evaluation" || s.sectionType === "SoftSkillsRating"
+        );
+
+        if (!softSkillsSec) {
+          softSkillsSec = {
+            sectionName: "Soft Skills & Behavioural Evaluation",
+            sectionType: "SoftSkillsRating",
+            subjectName: softTasks[0]?.subjectName || "Soft Skills",
+            hasSyllabusTasks: true,
+            items: softItems
+          };
+          reportCard.dynamicSections.push(softSkillsSec);
+        } else {
+          softSkillsSec.hasSyllabusTasks = true;
+          softSkillsSec.subjectName = softTasks[0]?.subjectName || "Soft Skills";
+          softSkillsSec.items = softItems;
+        }
+      }
     }
 
     await reportCard.save({ validateBeforeSave: false });

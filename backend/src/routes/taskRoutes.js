@@ -237,6 +237,21 @@ router.get("/level/:subLevelId", verifyToken, checkRole([...writeRoles, "placeme
 
 // ── Student Task Endpoints ──────────────────────────────────────────────────
 // Get student task performance (Subject-wise metrics & completion rate)
+const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
+
+const isSoftSkillSubject = (name = "") => {
+  if (!name || typeof name !== "string") return false;
+  const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return (
+    clean.includes("softskill") ||
+    clean.includes("communicationskill") ||
+    clean.includes("personalitydevelopment") ||
+    clean === "softskills" ||
+    clean === "softskill"
+  );
+};
+
+// Get student task performance (Subject-wise metrics & completion rate)
 router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRoles, "placement_officer", "student"]), async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -257,6 +272,8 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
     });
 
     const technicalSkills = [];
+    const softSkillsTasks = [];
+    let softSkillSubjectName = null;
     let totalAllTasks = 0;
     let completedAllTasks = 0;
 
@@ -266,6 +283,12 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
       const subjectTasks = grouped[subjectName].tasks || [];
       const totalTasks = subjectTasks.length;
       if (totalTasks === 0) return;
+
+      if (isSoftSkillSubject(subjectName)) {
+        if (!softSkillSubjectName) softSkillSubjectName = subjectName;
+        softSkillsTasks.push(...subjectTasks);
+        return;
+      }
 
       totalAllTasks += totalTasks;
       const completedTasks = subjectTasks.filter(t => t.status === "completed");
@@ -300,6 +323,112 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
 
     technicalSkills.sort((a, b) => a.skillName.localeCompare(b.skillName));
 
+    // Calculate topic-wise Soft Skills
+    let softSkillsData = null;
+    if (softSkillsTasks.length > 0) {
+      const topicMap = {};
+      softSkillsTasks.forEach(t => {
+        const topic = (t.topicName || "General Topics").trim();
+        if (!topicMap[topic]) topicMap[topic] = [];
+        topicMap[topic].push(t);
+      });
+
+      const softItems = Object.keys(topicMap).map(topicName => {
+        const tTasks = topicMap[topicName];
+        const total = tTasks.length;
+        const completed = tTasks.filter(t => t.status === "completed").length;
+        const inProgress = tTasks.filter(t => t.status === "inProgress").length;
+        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        let scoreSum = 0;
+        let gradedCount = 0;
+        let obtainedMarks = 0;
+        let totalMaxMarks = 0;
+
+        tTasks.forEach(t => {
+          if (t.status === "completed" && typeof t.marks === "number" && t.marks >= 0) {
+            const max = t.maxMarks || 5;
+            scoreSum += (t.marks / max) * 5;
+            gradedCount++;
+            obtainedMarks += t.marks;
+            totalMaxMarks += max;
+          }
+        });
+
+        let rating = 4.0;
+        if (gradedCount > 0) {
+          rating = Number((scoreSum / gradedCount).toFixed(1));
+        } else if (completed > 0) {
+          rating = Number(Math.min(5, Math.max(1, 2.5 + ((completed / total) * 2.5))).toFixed(1));
+        } else if (inProgress > 0) {
+          rating = 2.5;
+        } else {
+          rating = 0;
+        }
+
+        let remark = "Needs Improvement";
+        if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
+        else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
+        else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
+        else if (rating >= 3.0 || pct >= 50) remark = "Good";
+        else if (completed > 0) remark = "Average";
+
+        return {
+          itemName: topicName,
+          value: rating,
+          maxMarks: 5,
+          score: completed,
+          totalTasks: total,
+          completedTasks: completed,
+          completionPercentage: pct,
+          obtainedMarks: obtainedMarks,
+          totalMaxMarks: totalMaxMarks,
+          remark: remark,
+          isFromSyllabus: true
+        };
+      });
+
+      softSkillsData = {
+        sectionName: "Soft Skills & Behavioural Evaluation",
+        sectionType: "SoftSkillsRating",
+        subjectName: softSkillSubjectName ? softSkillSubjectName.split("(")[0].trim() : "Soft Skills",
+        hasSyllabusTasks: true,
+        items: softItems
+      };
+    } else {
+      // Check if student has a syllabus with soft skills topics even if no tasks completed yet
+      const studentDoc = await Student.findById(studentId).select("syllabusVersionId currentSubLevelId").lean();
+      let sv = null;
+      if (studentDoc?.syllabusVersionId) {
+        sv = await SyllabusVersion.findById(studentDoc.syllabusVersionId).lean();
+      }
+      if (!sv && studentDoc?.currentSubLevelId) {
+        sv = await SyllabusVersion.findOne({ subLevelId: studentDoc.currentSubLevelId, status: "active" }).lean();
+      }
+      if (sv?.subjects) {
+        const softSub = sv.subjects.find(s => isSoftSkillSubject(s.name));
+        if (softSub && softSub.topics?.length > 0) {
+          softSkillsData = {
+            sectionName: "Soft Skills & Behavioural Evaluation",
+            sectionType: "SoftSkillsRating",
+            subjectName: softSub.name,
+            hasSyllabusTasks: true,
+            items: softSub.topics.map(t => ({
+              itemName: t.name,
+              value: 0,
+              maxMarks: 5,
+              score: 0,
+              totalTasks: 0,
+              completedTasks: 0,
+              completionPercentage: 0,
+              remark: "Pending",
+              isFromSyllabus: true
+            }))
+          };
+        }
+      }
+    }
+
     const overallPct = totalAllTasks > 0 ? Math.round((completedAllTasks / totalAllTasks) * 100) : 0;
 
     res.status(200).json({
@@ -308,7 +437,17 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
         totalTasks: totalAllTasks,
         completedTasks: completedAllTasks,
         completionRate: overallPct,
-        technicalSkills
+        technicalSkills,
+        softSkills: softSkillsData,
+        tasks: tasks.map(t => ({
+          _id: t._id,
+          subjectName: t.subjectName,
+          topicName: t.topicName,
+          title: t.title,
+          status: t.status,
+          marks: t.marks,
+          maxMarks: t.maxMarks
+        }))
       }
     });
   } catch (error) {

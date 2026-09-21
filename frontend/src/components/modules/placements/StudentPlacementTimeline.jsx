@@ -19,7 +19,19 @@ const StudentPlacementTimeline = ({ student, placement }) => {
 
   if (!student) return null;
 
-  const readinessStatus = placement?.readinessStatus || "Not Ready";
+  const readinessStatus = placement?.readinessStatus || student?.readinessStatus || "Not Ready";
+  const isPlacementReady = [
+    "Ready",
+    "Ready for Placement",
+    "Ready for Drive",
+    "Ready for Interview",
+    "Interview",
+    "Selected",
+    "Placed"
+  ].includes(readinessStatus);
+
+  if (!isPlacementReady) return null;
+
   const interviews = placement?.PlacementinterviewRecord || [];
   const placedInfo = placement?.placedInfo;
 

@@ -1192,6 +1192,15 @@ const StudentProfilePage = () => {
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = (name.split(" ").map(n => n[0]).filter(Boolean).join("").slice(0, 2) || "ST").toUpperCase();
     const readinessStatus = (typeof raw.placement === "object" ? raw.placement?.readinessStatus : null) || raw.readinessStatus || "Not Ready";
+    const isPlacementReady = [
+        "Ready",
+        "Ready for Placement",
+        "Ready for Drive",
+        "Ready for Interview",
+        "Interview",
+        "Selected",
+        "Placed"
+    ].includes(readinessStatus);
 
     const resumeURL = useMemo(() => {
         return (
@@ -1867,7 +1876,9 @@ const StudentProfilePage = () => {
                 </div>
 
                 {/* PLACEMENT JOURNEY & TIMELINE */}
-                <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
+                {isPlacementReady && (
+                    <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
+                )}
 
 
                         {/* 4 STAT CARDS ROW (2x2 on mobile) */}

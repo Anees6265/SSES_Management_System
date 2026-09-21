@@ -665,22 +665,85 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 </View>
 
                 {/* 6. Soft Skills & Behavioural Evaluation */}
-                {softSkills && (
-                  <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>6. Soft Skills & Behavioural Evaluation</Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                      {softSkills.items.map((item, idx) => (
-                        <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
-                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{item.itemName}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#7335DD", marginTop: 2 }}>{item.value} / 5</Text>
+                {softSkills && (() => {
+                  const hasSyllabus = softSkills.hasSyllabusTasks || softSkills.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined);
+                  return (
+                    <View style={styles.section} wrap={false}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <Text style={styles.sectionTitle}>6. Soft Skills & Behavioural Evaluation</Text>
+                        {hasSyllabus && (
+                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#6D28D9", backgroundColor: "#EDE9FE", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 }}>
+                            Subject: {softSkills.subjectName || "Soft Skills"}
+                          </Text>
+                        )}
+                      </View>
+
+                      {hasSyllabus ? (
+                        <View style={{ gap: 6 }}>
+                          {softSkills.items.map((item, idx) => {
+                            const completed = item.completedTasks !== undefined ? item.completedTasks : item.score;
+                            const total = item.totalTasks || 5;
+                            const pct = item.completionPercentage !== undefined
+                              ? item.completionPercentage
+                              : (total > 0 && completed !== undefined ? Math.min(Math.round((completed / total) * 100), 100) : 0);
+
+                            return (
+                              <View key={idx} style={{ backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                                  <View style={{ flexDirection: "row", alignItems: "center", width: "55%" }}>
+                                    <Text style={{ fontSize: 9, color: "#6D28D9", marginRight: 4 }}>•</Text>
+                                    <Text style={{ fontSize: 8, fontWeight: "bold", color: "#1F2937" }}>{item.itemName}</Text>
+                                  </View>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                    {item.completedTasks !== undefined && (
+                                      <Text style={{ fontSize: 7, color: "#4B5563" }}>
+                                        {item.completedTasks}/{item.totalTasks} Tasks ({pct}%)
+                                      </Text>
+                                    )}
+                                    {item.totalMaxMarks > 0 && (
+                                      <Text style={{ fontSize: 7, color: "#059669", fontWeight: "bold", backgroundColor: "#ECFDF5", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 2 }}>
+                                        Marks: {item.obtainedMarks}/{item.totalMaxMarks}
+                                      </Text>
+                                    )}
+                                    {item.remark && (
+                                      <Text style={{ fontSize: 7, color: "#6D28D9", fontWeight: "bold", backgroundColor: "#F3E8FF", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 2 }}>
+                                        {item.remark}
+                                      </Text>
+                                    )}
+                                    <Text style={{ fontSize: 8, fontWeight: "bold", color: "#7335DD" }}>
+                                      {item.value} / 5
+                                    </Text>
+                                  </View>
+                                </View>
+                                {/* Task Completion Progress Bar */}
+                                <View style={{ width: "100%", height: 3.5, backgroundColor: "#E5E7EB", borderRadius: 2, overflow: "hidden" }}>
+                                  <View style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, height: 3.5, backgroundColor: "#7335DD", borderRadius: 2 }} />
+                                </View>
+                              </View>
+                            );
+                          })}
+                          <Text style={{ fontSize: 7, color: "#9CA3AF", textAlign: "right", marginTop: 2, fontStyle: "italic" }}>
+                            * Ratings & progress automatically calculated based on live task completion
+                          </Text>
                         </View>
-                      ))}
+                      ) : (
+                        <>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                            {softSkills.items.map((item, idx) => (
+                              <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
+                                <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{item.itemName}</Text>
+                                <Text style={{ fontSize: 9, fontWeight: "bold", color: "#7335DD", marginTop: 2 }}>{item.value} / 5</Text>
+                              </View>
+                            ))}
+                          </View>
+                          <Text style={{ fontSize: 7, color: "#9CA3AF", textAlign: "center", marginTop: 6, fontStyle: "italic" }}>
+                            Evaluation Method: Faculty Observation & Interview
+                          </Text>
+                        </>
+                      )}
                     </View>
-                    <Text style={{ fontSize: 7, color: "#9CA3AF", textAlign: "center", marginTop: 6, fontStyle: "italic" }}>
-                      Evaluation Method: Faculty Observation & Interview
-                    </Text>
-                  </View>
-                )}
+                  );
+                })()}
 
                 {/* 7. Interview Evaluation / Readiness */}
                 {(interview || deptConfig.interviewItems) && (

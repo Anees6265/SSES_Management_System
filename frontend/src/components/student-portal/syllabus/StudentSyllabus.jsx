@@ -178,11 +178,10 @@ export default function StudentSyllabus() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                     <button
                         onClick={() => setActiveTab("current")}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
-                            activeTab === "current"
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${activeTab === "current"
                                 ? "bg-orange-500 text-white shadow-xs"
                                 : "text-gray-600 bg-white border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
-                        }`}
+                            }`}
                     >
                         <MdAutoStories size={16} />
                         Current Syllabus ({currentLevel?.subLevelName || "Current"})
@@ -190,23 +189,21 @@ export default function StudentSyllabus() {
 
                     <button
                         onClick={() => setActiveTab("previous")}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
-                            activeTab === "previous"
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${activeTab === "previous"
                                 ? "bg-orange-500 text-white shadow-xs"
                                 : "text-gray-600 bg-white border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
-                        }`}
+                            }`}
                     >
                         <MdHistory size={16} />
-                        Previous Syllabi ({previousLevels.length})
+                        Previous Syllabus ({previousLevels.length})
                     </button>
 
                     <button
                         onClick={() => setActiveTab("roadmap")}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
-                            activeTab === "roadmap"
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${activeTab === "roadmap"
                                 ? "bg-orange-500 text-white shadow-xs"
                                 : "text-gray-600 bg-white border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
-                        }`}
+                            }`}
                     >
                         <MdLayers size={16} />
                         Curriculum Track
@@ -219,22 +216,20 @@ export default function StudentSyllabus() {
                     <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 self-start sm:self-auto shrink-0">
                         <button
                             onClick={() => setViewMode("table")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                                viewMode === "table"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${viewMode === "table"
                                     ? "bg-white text-gray-900 shadow-2xs"
                                     : "text-gray-500 hover:text-gray-800"
-                            }`}
+                                }`}
                         >
                             <MdTableChart size={14} className={viewMode === "table" ? "text-orange-500" : ""} />
                             Table Form
                         </button>
                         <button
                             onClick={() => setViewMode("cards")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                                viewMode === "cards"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${viewMode === "cards"
                                     ? "bg-white text-gray-900 shadow-2xs"
                                     : "text-gray-500 hover:text-gray-800"
-                            }`}
+                                }`}
                         >
                             <MdViewAgenda size={14} className={viewMode === "cards" ? "text-orange-500" : ""} />
                             Cards
@@ -278,11 +273,10 @@ export default function StudentSyllabus() {
                                 <span className="text-[11px] font-bold text-gray-400 shrink-0 ml-1">Subject Filter:</span>
                                 <button
                                     onClick={() => setSelectedSubjectFilter("All")}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition ${
-                                        selectedSubjectFilter === "All"
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition ${selectedSubjectFilter === "All"
                                             ? "bg-gray-800 text-white"
                                             : "bg-gray-50 text-gray-600 border border-gray-200/80 hover:bg-gray-100"
-                                    }`}
+                                        }`}
                                 >
                                     All ({currentLevel.subjects.length})
                                 </button>
@@ -290,16 +284,14 @@ export default function StudentSyllabus() {
                                     <button
                                         key={s.name}
                                         onClick={() => setSelectedSubjectFilter(s.name)}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition flex items-center gap-1.5 ${
-                                            selectedSubjectFilter === s.name
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition flex items-center gap-1.5 ${selectedSubjectFilter === s.name
                                                 ? "bg-orange-500 text-white shadow-xs"
                                                 : "bg-gray-50 text-gray-600 border border-gray-200/80 hover:bg-orange-50 hover:text-orange-600"
-                                        }`}
+                                            }`}
                                     >
                                         <span className="truncate max-w-[130px] sm:max-w-none">{s.name}</span>
-                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                                            selectedSubjectFilter === s.name ? "bg-orange-600 text-white" : "bg-gray-200 text-gray-600"
-                                        }`}>
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${selectedSubjectFilter === s.name ? "bg-orange-600 text-white" : "bg-gray-200 text-gray-600"
+                                            }`}>
                                             {s.topics?.length || 0}
                                         </span>
                                     </button>
@@ -595,18 +587,16 @@ export default function StudentSyllabus() {
                                             <button
                                                 key={lvl.subLevelId || idx}
                                                 onClick={() => setSelectedPrevIndex(idx)}
-                                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                                                    isSelected
+                                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${isSelected
                                                         ? "bg-gray-900 text-white shadow-xs ring-2 ring-gray-300"
                                                         : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
-                                                }`}
+                                                    }`}
                                             >
                                                 <MdCheckCircle size={14} className={isSelected ? "text-emerald-400" : "text-emerald-600"} />
                                                 {lvl.levelName} · SubLevel {lvl.subLevelName}
                                                 <span
-                                                    className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                                                        isSelected ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-700"
-                                                    }`}
+                                                    className={`text-[10px] px-1.5 py-0.5 rounded-md ${isSelected ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-700"
+                                                        }`}
                                                 >
                                                     {lvl.totalSubjects} subjects
                                                 </span>
@@ -845,22 +835,20 @@ export default function StudentSyllabus() {
                                 return (
                                     <div
                                         key={step.subLevelId || idx}
-                                        className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all ${
-                                            isCurrent
+                                        className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all ${isCurrent
                                                 ? "bg-orange-50/70 border-orange-200 shadow-xs"
                                                 : isCompleted
-                                                ? "bg-emerald-50/50 border-emerald-200"
-                                                : "bg-gray-50/50 border-gray-200 opacity-65"
-                                        }`}
+                                                    ? "bg-emerald-50/50 border-emerald-200"
+                                                    : "bg-gray-50/50 border-gray-200 opacity-65"
+                                            }`}
                                     >
                                         <div
-                                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                                                isCurrent
+                                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isCurrent
                                                     ? "bg-orange-500 text-white shadow-xs"
                                                     : isCompleted
-                                                    ? "bg-emerald-600 text-white"
-                                                    : "bg-gray-200 text-gray-500"
-                                            }`}
+                                                        ? "bg-emerald-600 text-white"
+                                                        : "bg-gray-200 text-gray-500"
+                                                }`}
                                         >
                                             {isCompleted ? <MdCheckCircle size={18} /> : <span>{step.subLevelName}</span>}
                                         </div>
@@ -885,8 +873,8 @@ export default function StudentSyllabus() {
                                                 {isCompleted
                                                     ? "Curriculum modules completed and archived."
                                                     : isCurrent
-                                                    ? "Currently enrolled in this syllabus."
-                                                    : "Upcoming curriculum level."}
+                                                        ? "Currently enrolled in this syllabus."
+                                                        : "Upcoming curriculum level."}
                                             </p>
                                         </div>
 

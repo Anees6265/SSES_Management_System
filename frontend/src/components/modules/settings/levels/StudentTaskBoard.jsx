@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
@@ -355,14 +355,39 @@ const StudentTaskBoard = () => {
         return dateB - dateA;
     });
 
-    const subjects = Object.keys(data?.groupedBySubject || {});
+    // Extract unique clean subject names directly from allTasks and groups
+    const subjectsFromGroups = Object.keys(data?.groupedBySubject || {}).map(k => k.replace(/\s*\([^)]*\)$/, '').trim());
+    const subjects = Array.from(new Set([
+        ...allTasks.map(t => t.subjectName?.trim()).filter(Boolean),
+        ...subjectsFromGroups.filter(Boolean)
+    ])).sort((a, b) => a.localeCompare(b));
+
+    // Calculate count of tasks per subject for display in filter dropdown
+    const subjectTaskCounts = useMemo(() => {
+        const counts = {};
+        allTasks.forEach(t => {
+            const sName = t.subjectName?.trim();
+            if (sName) {
+                counts[sName] = (counts[sName] || 0) + 1;
+            }
+        });
+        return counts;
+    }, [allTasks]);
 
     const filtered = sortedTasks.filter(t => {
         const matchSearch = !search ||
             t.title?.toLowerCase().includes(search.toLowerCase()) ||
             t.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
             t.topicName?.toLowerCase().includes(search.toLowerCase());
-        const matchSubject = !subjectFilter || t.subjectName === subjectFilter;
+
+        const taskSubName = t.subjectName?.trim().toLowerCase() || "";
+        const filterSubName = subjectFilter?.trim().toLowerCase() || "";
+
+        const matchSubject = !subjectFilter || (
+            taskSubName === filterSubName ||
+            (taskSubName && filterSubName && filterSubName.startsWith(taskSubName)) ||
+            (taskSubName && filterSubName && taskSubName.startsWith(filterSubName))
+        );
         return matchSearch && matchSubject;
     });
 
@@ -372,10 +397,10 @@ const StudentTaskBoard = () => {
         completed:  filtered.filter(t => t.status === "completed"),
     };
 
-    const total     = allTasks.length;
-    const completed = allTasks.filter(t => t.status === "completed").length;
-    const inProgressCount = allTasks.filter(t => t.status === "inProgress").length;
-    const pendingCount = allTasks.filter(t => t.status === "pending" || !t.status).length;
+    const total     = filtered.length;
+    const completed = filtered.filter(t => t.status === "completed").length;
+    const inProgressCount = filtered.filter(t => t.status === "inProgress").length;
+    const pendingCount = filtered.filter(t => t.status === "pending" || !t.status).length;
     const percent   = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const handleDragStart = (task) => setDragTask(task);
@@ -628,28 +653,53 @@ const StudentTaskBoard = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilterDrawer(p => !p)}
-                                className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-[0.98] font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer"
+                                className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 border font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer ${
+                                    subjectFilter
+                                        ? "bg-orange-50 border-orange-300 text-orange-600"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                                }`}
                             >
-                                <MdFilterList size={16} /> <span className="truncate">{subjectFilter || "Filter"}</span>
+                                <MdFilterList size={16} />
+                                <span className="truncate max-w-[110px] sm:max-w-none">{subjectFilter || "Filter"}</span>
+                                {subjectFilter && (
+                                    <span
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSubjectFilter("");
+                                        }}
+                                        className="ml-0.5 hover:bg-orange-200/70 p-0.5 rounded-full"
+                                        title="Clear filter"
+                                    >
+                                        <MdClose size={13} />
+                                    </span>
+                                )}
                             </button>
                             {showFilterDrawer && (
                                 <>
                                     <div className="fixed inset-0 z-20" onClick={() => setShowFilterDrawer(false)} />
-                                    <div className="absolute right-0 top-11 z-30 bg-white border border-slate-100 rounded-2xl shadow-xl w-52 max-w-[calc(100vw-2rem)] py-2 text-slate-700 text-xs font-semibold">
+                                    <div className="absolute right-0 top-11 z-30 bg-white border border-slate-100 rounded-2xl shadow-xl w-60 max-w-[calc(100vw-2rem)] py-2 text-slate-700 text-xs font-semibold">
                                         <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter by Subject</div>
                                         <button
                                             onClick={() => { setSubjectFilter(""); setShowFilterDrawer(false); }}
-                                            className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${!subjectFilter ? "text-orange-500 font-bold" : ""}`}
+                                            className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 cursor-pointer ${!subjectFilter ? "text-orange-500 font-bold bg-orange-50/50" : ""}`}
                                         >
-                                            All Subjects
+                                            <span>All Subjects</span>
+                                            <span className="text-[10px] font-extrabold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                                                {allTasks.length}
+                                            </span>
                                         </button>
                                         {subjects.map(s => (
                                             <button
                                                 key={s}
                                                 onClick={() => { setSubjectFilter(s); setShowFilterDrawer(false); }}
-                                                className={`w-full text-left px-4 py-2 hover:bg-slate-50 ${subjectFilter === s ? "text-orange-500 font-bold" : ""}`}
+                                                className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 cursor-pointer ${subjectFilter === s ? "text-orange-500 font-bold bg-orange-50/50" : ""}`}
                                             >
-                                                {s}
+                                                <span className="truncate">{s}</span>
+                                                {subjectTaskCounts[s] !== undefined && (
+                                                    <span className="text-[10px] font-extrabold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-2">
+                                                        {subjectTaskCounts[s]}
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
                                     </div>

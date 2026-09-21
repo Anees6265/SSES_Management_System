@@ -5,9 +5,11 @@ import {
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
     MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified
 } from "react-icons/md";
+import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
 import { useGetNewStudentTasksQuery, useAssignExtraTaskMutation, useGetSyllabusVersionWithHierarchyQuery } from "../../../../redux/api/authApi";
+import { useSidebar } from "../../../../contexts/SidebarContext";
 import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 
@@ -31,7 +33,6 @@ const STATUS_COLUMNS = [
     { key: "inProgress", label: "In Progress", badgeBg: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
     { key: "completed",  label: "Completed",   badgeBg: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
 ];
-
 
 function formatTimeAgo(dateString) {
     if (!dateString) return "";
@@ -61,7 +62,7 @@ function formatTimeAgo(dateString) {
     return "Just now";
 }
 
-// ── Task Card (Reference UI Replica) ──────────────────────────────────────────
+// ── Task Card ─────────────────────────────────────────────────────────────────
 const TaskCard = ({ task, onDragStart, onStatusChange }) => {
     const priority    = task.priority || "medium";
     const isCompleted = task.status === "completed";
@@ -79,21 +80,21 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
         <div
             draggable
             onDragStart={() => onDragStart(task)}
-            className={`bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-grab active:cursor-grabbing select-none space-y-3.5 ${activeBorderClass}`}
+            className={`bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-grab active:cursor-grabbing select-none space-y-3 ${activeBorderClass}`}
         >
             {/* Header: Priority Badge + Status Dropdown */}
-            <div className="flex items-center justify-between gap-2 pb-1">
-                <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm ${
+            <div className="flex items-center justify-between gap-2 pb-0.5">
+                <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${
                     isCompleted ? "bg-slate-50 text-slate-400 border-slate-200" : (PRIORITY_BADGES[priority] || PRIORITY_BADGES.medium)
                 }`}>
                     {isCompleted ? "COMPLETED" : `${priority} PRIORITY`}
                 </span>
 
-                <div className="relative">
+                <div className="relative shrink-0">
                     <select
                         value={task.status || "pending"}
                         onChange={(e) => onStatusChange(task, e.target.value)}
-                        className="!h-auto !py-1 !px-2 !border !border-slate-200/50 !rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-700 bg-slate-50 outline-none focus:outline-none cursor-pointer transition"
+                        className="!h-auto !py-1 !px-2 !border !border-slate-200/70 !rounded-lg text-[10px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-600 hover:text-slate-800 bg-slate-50/80 outline-none focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer transition shadow-2xs"
                     >
                         <option value="pending">PENDING ▾</option>
                         <option value="inProgress">IN PROGRESS ▾</option>
@@ -105,36 +106,34 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
             {/* Title */}
             <div className="min-w-0">
                 <h4
-                    className={`text-xs font-extrabold text-slate-800 leading-snug tracking-tight break-words ${isCompleted ? "line-through text-slate-400" : ""}`}
+                    className={`text-xs sm:text-sm font-extrabold text-slate-800 leading-snug tracking-tight break-words ${isCompleted ? "line-through text-slate-400" : ""}`}
                     style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
                 >
                     {task.title}
                 </h4>
                 {(task.subjectName || task.description) && (
-                    <p className="text-[10.5px] text-slate-400 mt-1.5 line-clamp-2 font-medium leading-relaxed break-words">
+                    <p className="text-[10.5px] sm:text-[11px] text-slate-400 mt-1 line-clamp-2 font-medium leading-relaxed break-words">
                         {task.description || (task.subjectName ? `${task.subjectName}${task.topicName ? ` › ${task.topicName}` : ""}` : "")}
                     </p>
                 )}
             </div>
 
             {/* Given by & Time ago */}
-            <div className="flex items-center justify-between text-[9.5px] text-slate-400 font-semibold pt-2 border-t border-slate-100/70">
+            <div className="flex items-center justify-between text-[9.5px] sm:text-[10px] text-slate-400 font-semibold pt-2 border-t border-slate-100/70 gap-2 flex-wrap sm:flex-nowrap">
                 {task.assignedByName ? (
-                    <span className="truncate max-w-[60%] flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full" title={task.assignedByName}>
-                        <span className="w-1 h-1 rounded-full bg-slate-400 flex-shrink-0" />
-                        <span className="text-slate-500 font-bold truncate">{task.assignedByName}</span>
+                    <span className="truncate max-w-[70%] sm:max-w-[60%] flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full" title={task.assignedByName}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                        <span className="text-slate-600 font-bold truncate">{task.assignedByName}</span>
                     </span>
                 ) : (
                     <span className="text-slate-400 font-bold bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">Auto-assigned</span>
                 )}
                 {(task.assignedAt || task.createdAt) && (
-                    <span className="text-slate-400/90 font-medium">{formatTimeAgo(task.assignedAt || task.createdAt)}</span>
+                    <span className="text-slate-400/90 font-medium shrink-0">{formatTimeAgo(task.assignedAt || task.createdAt)}</span>
                 )}
             </div>
 
-
-
-            {/* Marks & Verified Badge for Completed & In Progress */}
+            {/* Marks & Rating Badge - Only shown when inProgress or completed */}
             {(isInProgress || isCompleted) && (
                 <div className="flex items-center justify-between pt-1 text-xs">
                     {isCompleted ? (
@@ -159,12 +158,12 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                                         e.stopPropagation();
                                         onStatusChange(task, task.status, { marks: star });
                                     }}
-                                    className={`transition ${isCompleted ? "cursor-default" : "hover:scale-125 cursor-pointer"}`}
+                                    className={`p-0.5 transition ${isCompleted ? "cursor-default" : "hover:scale-125 cursor-pointer"}`}
                                 >
                                     {isSelected ? (
-                                        <MdStar size={14} className="text-orange-400" />
+                                        <MdStar size={15} className="text-orange-400" />
                                     ) : (
-                                        <MdStarBorder size={14} className="text-slate-350" />
+                                        <MdStarBorder size={15} className="text-slate-300" />
                                     )}
                                 </button>
                             );
@@ -177,9 +176,9 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
             )}
 
             {/* Footer Row */}
-            <div className="flex items-center justify-between pt-2.5 border-t border-slate-100/70 text-[10px] font-bold text-slate-400">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100/70 text-[10px] font-bold text-slate-400">
                 <div className="flex items-center gap-1.5 text-slate-400/90">
-                    <MdCalendarToday size={12} className="text-slate-400" />
+                    <MdCalendarToday size={12} className="text-slate-400 shrink-0" />
                     <span>
                         {task.dueDate
                             ? new Date(task.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
@@ -188,7 +187,7 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                     </span>
                 </div>
 
-                <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200/45 font-black flex items-center justify-center text-[9px] shadow-sm">
+                <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200/45 font-black flex items-center justify-center text-[9px] shadow-2xs shrink-0" title={`Type: ${task.type || "Task"}`}>
                     {task.type?.[0]?.toUpperCase() || "T"}
                 </div>
             </div>
@@ -275,7 +274,7 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={lc}>Type</label>
                             <select className={ic} value={form.type} onChange={set("type")}>
@@ -290,7 +289,7 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={lc}>Max Marks</label>
                             <input type="number" min={1} max={10} className={ic} value={form.maxMarks} onChange={set("maxMarks")} />
@@ -307,8 +306,8 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                     </div>
 
                     <div className="flex gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="flex-1 py-2.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+                        <button type="button" onClick={onClose} className="flex-1 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">Cancel</button>
+                        <button type="submit" disabled={isLoading} className="flex-1 py-2.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
                             {isLoading ? "Assigning..." : "Assign Task"}
                         </button>
                     </div>
@@ -322,16 +321,20 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
 const StudentTaskBoard = () => {
     const location   = useLocation();
     const navigate   = useNavigate();
+    const sidebarContext = useSidebar();
+    const openMobileSidebar = sidebarContext?.openMobileSidebar;
+
     const { student, level, subdepartment } = location.state || {};
 
-    const [search,          setSearch]          = useState("");
-    const [subjectFilter,   setSubjectFilter]   = useState("");
-    const [showFilterDrawer, setShowFilterDrawer] = useState(false);
-    const [tasks,           setTasks]           = useState(null);
-    const [dragTask,        setDragTask]        = useState(null);
-    const [dragOver,        setDragOver]        = useState(null);
-    const [saving,          setSaving]          = useState(false);
-    const [showExtraModal,  setShowExtraModal]  = useState(false);
+    const [search,            setSearch]            = useState("");
+    const [subjectFilter,     setSubjectFilter]     = useState("");
+    const [showFilterDrawer,  setShowFilterDrawer]  = useState(false);
+    const [tasks,             setTasks]             = useState(null);
+    const [dragTask,          setDragTask]          = useState(null);
+    const [dragOver,          setDragOver]          = useState(null);
+    const [saving,            setSaving]            = useState(false);
+    const [showExtraModal,    setShowExtraModal]    = useState(false);
+    const [activeMobileTab,   setActiveMobileTab]   = useState("all");
 
     useEffect(() => {
         setTasks(null);
@@ -364,13 +367,15 @@ const StudentTaskBoard = () => {
     });
 
     const byStatus = {
-        pending:    filtered.filter(t => t.status === "pending"),
+        pending:    filtered.filter(t => t.status === "pending" || !t.status),
         inProgress: filtered.filter(t => t.status === "inProgress"),
         completed:  filtered.filter(t => t.status === "completed"),
     };
 
     const total     = allTasks.length;
     const completed = allTasks.filter(t => t.status === "completed").length;
+    const inProgressCount = allTasks.filter(t => t.status === "inProgress").length;
+    const pendingCount = allTasks.filter(t => t.status === "pending" || !t.status).length;
     const percent   = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const handleDragStart = (task) => setDragTask(task);
@@ -446,9 +451,18 @@ const StudentTaskBoard = () => {
 
     if (!student) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-[#F8F9FA]">
-                <p className="text-slate-500 font-semibold text-sm">No student data found.</p>
-                <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold">Go Back</button>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mb-3">
+                    <MdArrowBack size={24} />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">No Student Data Found</h3>
+                <p className="text-slate-400 text-xs mt-1 max-w-xs">Please access the task board from the student profile or student details table.</p>
+                <button
+                    onClick={() => navigate(-1)}
+                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                    Go Back
+                </button>
             </div>
         );
     }
@@ -456,8 +470,15 @@ const StudentTaskBoard = () => {
     const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
     const initials = studentName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
+    const mobileTabs = [
+        { key: "all",        label: "All",         count: filtered.length },
+        { key: "pending",    label: "Pending",     count: byStatus.pending.length,    dot: "bg-slate-400" },
+        { key: "inProgress", label: "In Progress", count: byStatus.inProgress.length, dot: "bg-amber-500" },
+        { key: "completed",  label: "Completed",   count: byStatus.completed.length,  dot: "bg-emerald-500" },
+    ];
+
     return (
-        <div className="min-h-screen bg-[#F8F9FA] px-8 py-6 space-y-6">
+        <div className="min-h-screen bg-[#F8F9FA] px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
 
             {/* Modals */}
             {showExtraModal && (
@@ -469,32 +490,81 @@ const StudentTaskBoard = () => {
                 />
             )}
 
-            {/* TOP TITLE BAR WITH SEARCH & ID (REFERENCE REPLICA) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">Student Record</h1>
-                    {student.prkey && (
-                        <span className="bg-slate-200/70 text-slate-700 text-xs font-semibold px-3 py-1 rounded-md border border-slate-300/50">
-                            ID: {student.prkey}
-                        </span>
-                    )}
+            {/* TOP NAVIGATION & SEARCH BAR */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        {/* Back Button */}
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50/50 shadow-xs transition shrink-0 cursor-pointer"
+                            title="Go Back"
+                            aria-label="Go Back"
+                        >
+                            <MdArrowBack size={18} />
+                        </button>
+
+                        {/* Mobile Sidebar Hamburger Toggle */}
+                        {openMobileSidebar && (
+                            <button
+                                onClick={openMobileSidebar}
+                                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-orange-500 hover:bg-orange-50/50 shadow-xs transition shrink-0 cursor-pointer"
+                                title="Open Sidebar"
+                                aria-label="Open Sidebar"
+                            >
+                                <Menu size={18} />
+                            </button>
+                        )}
+
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight truncate">Student Record</h1>
+                                {student.prkey && (
+                                    <span className="bg-slate-100 text-slate-700 text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                        ID: {student.prkey}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Notifications Button on Mobile */}
+                    <div className="flex items-center gap-2 sm:hidden">
+                        <button
+                            type="button"
+                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-xs relative shrink-0"
+                            title="Notifications"
+                        >
+                            <MdNotificationsNone size={18} />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center h-10 w-72 sm:w-80 bg-white border border-slate-200/90 rounded-xl px-3.5 shadow-sm hover:border-slate-300 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all duration-200">
-                        <MdSearch className="text-slate-400 flex-shrink-0 mr-2.5" size={18} />
+                {/* Search Bar & Desktop Notification */}
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="flex items-center h-9 sm:h-10 w-full sm:w-72 lg:w-80 bg-white border border-slate-200 rounded-xl px-3 shadow-xs hover:border-slate-300 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+                        <MdSearch className="text-slate-400 shrink-0 mr-2" size={17} />
                         <input
                             type="text"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Search tasks..."
-                            className="w-full !h-full bg-transparent !border-none !outline-none !ring-0 focus:!ring-0 focus:!outline-none focus:!border-none text-xs font-medium text-slate-800 placeholder-slate-400 !p-0 !shadow-none"
+                            className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"
                         />
+                        {search && (
+                            <button
+                                onClick={() => setSearch("")}
+                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded-md"
+                            >
+                                <MdClose size={14} />
+                            </button>
+                        )}
                     </div>
 
                     <button
                         type="button"
-                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all duration-200 relative flex-shrink-0"
+                        className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition relative shrink-0 cursor-pointer"
                         title="Notifications"
                     >
                         <MdNotificationsNone size={18} />
@@ -503,59 +573,69 @@ const StudentTaskBoard = () => {
                 </div>
             </div>
 
-            {/* BREADCRUMB & HEADER CONTAINER (REFERENCE REPLICA) */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+            {/* BREADCRUMB & HEADER CONTAINER */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xs p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
                 {/* Breadcrumb Row */}
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-                    <button onClick={() => navigate(-1)} className="hover:text-slate-700 transition flex items-center gap-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-400 flex-wrap">
+                    <button onClick={() => navigate(-1)} className="hover:text-slate-700 transition flex items-center gap-1 cursor-pointer">
                         ← Student Record
                     </button>
                     <span>/</span>
-                    <span className="text-slate-600 font-bold">{studentName}</span>
+                    <span className="text-slate-600 font-bold truncate max-w-[150px] sm:max-w-none">{studentName}</span>
                     <span>/</span>
                     <span className="text-slate-900 font-black">Task Board</span>
                 </div>
 
                 {/* Student Tag Line */}
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 font-bold text-xs flex items-center justify-center border border-orange-200">
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 font-bold text-xs flex items-center justify-center border border-orange-200 shrink-0">
                         {initials}
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-extrabold">
+                    <div className="flex items-center gap-2 text-xs font-extrabold flex-wrap">
                         <span className="text-slate-900">{studentName}</span>
                         <span className="text-slate-300">|</span>
-                        <span className="text-slate-500">{student.course || "BCA"} - {level?.name || "3rd Year"}</span>
-                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] px-2.5 py-0.5 rounded-full uppercase">
+                        <span className="text-slate-500">{student.course || "Course"} {level?.name ? `- ${level.name}` : ""}</span>
+                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-black">
                             ACTIVE
                         </span>
                     </div>
                 </div>
 
                 {/* Title & Action Buttons */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Task Board</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-100/70">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Task Board</h2>
+                            {saving && (
+                                <span className="text-[10px] font-bold text-orange-500 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full animate-pulse">
+                                    Saving...
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-400 font-medium">Manage and track student assignments & evaluations</p>
+                    </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         {/* + New Task Button */}
                         <button
                             onClick={() => setShowExtraModal(true)}
-                            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition"
+                            className="flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer"
                         >
-                            <MdAdd size={16} /> New Task
+                            <MdAdd size={16} /> <span>New Task</span>
                         </button>
 
                         {/* Filter Button / Subject Dropdown */}
                         <div className="relative">
                             <button
                                 onClick={() => setShowFilterDrawer(p => !p)}
-                                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition"
+                                className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-[0.98] font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer"
                             >
-                                <MdFilterList size={16} /> {subjectFilter || "Filter"}
+                                <MdFilterList size={16} /> <span className="truncate">{subjectFilter || "Filter"}</span>
                             </button>
                             {showFilterDrawer && (
                                 <>
                                     <div className="fixed inset-0 z-20" onClick={() => setShowFilterDrawer(false)} />
-                                    <div className="absolute right-0 top-11 z-30 bg-white border border-slate-100 rounded-2xl shadow-xl w-52 py-2 text-slate-700 text-xs font-semibold">
+                                    <div className="absolute right-0 top-11 z-30 bg-white border border-slate-100 rounded-2xl shadow-xl w-52 max-w-[calc(100vw-2rem)] py-2 text-slate-700 text-xs font-semibold">
                                         <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter by Subject</div>
                                         <button
                                             onClick={() => { setSubjectFilter(""); setShowFilterDrawer(false); }}
@@ -578,66 +658,148 @@ const StudentTaskBoard = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Progress Stats Summary Banner */}
+                <div className="pt-2 sm:pt-3 border-t border-slate-100/70">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-2.5">
+                        <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Tasks</span>
+                            <span className="text-base sm:text-lg font-black text-slate-800">{total}</span>
+                        </div>
+                        <div className="bg-amber-50/60 rounded-xl p-2.5 border border-amber-100/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Pending</span>
+                            <span className="text-base sm:text-lg font-black text-amber-700">{pendingCount}</span>
+                        </div>
+                        <div className="bg-orange-50/60 rounded-xl p-2.5 border border-orange-100/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 block">In Progress</span>
+                            <span className="text-base sm:text-lg font-black text-orange-700">{inProgressCount}</span>
+                        </div>
+                        <div className="bg-emerald-50/60 rounded-xl p-2.5 border border-emerald-100/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Completed</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-base sm:text-lg font-black text-emerald-700">{completed}</span>
+                                <span className="text-[10px] font-bold text-emerald-600">({percent}%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                        <div
+                            className="bg-emerald-500 h-full transition-all duration-300"
+                            style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
+                            title={`Completed: ${completed}`}
+                        />
+                        <div
+                            className="bg-orange-500 h-full transition-all duration-300"
+                            style={{ width: `${total > 0 ? (inProgressCount / total) * 100 : 0}%` }}
+                            title={`In Progress: ${inProgressCount}`}
+                        />
+                        <div
+                            className="bg-slate-300 h-full transition-all duration-300"
+                            style={{ width: `${total > 0 ? (pendingCount / total) * 100 : 0}%` }}
+                            title={`Pending: ${pendingCount}`}
+                        />
+                    </div>
+                </div>
             </div>
 
-            {/* KANBAN BOARD 3 COLUMNS (REFERENCE REPLICA) */}
+            {/* KANBAN BOARD 3 COLUMNS */}
             {isLoading ? (
                 <div className="flex justify-center pt-20"><Loader /></div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {STATUS_COLUMNS.map(col => (
-                        <div
-                            key={col.key}
-                            onDragOver={e => handleDragOver(e, col.key)}
-                            onDragLeave={() => setDragOver(null)}
-                            onDrop={e => handleDrop(e, col.key)}
-                            className={`space-y-4 rounded-3xl p-2 transition-all duration-200 ${
-                                dragOver === col.key ? "ring-2 ring-orange-400 bg-orange-50/50" : ""
-                            }`}
-                        >
-                            {/* Column Header */}
-                            <div className="flex items-center justify-between px-2">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-sm font-black text-slate-900">{col.label}</h3>
-                                    <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${col.badgeBg}`}>
-                                        {byStatus[col.key].length}
-                                    </span>
-                                </div>
-                                <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                                    <MdMoreHoriz size={18} />
-                                </button>
-                            </div>
-
-                            {/* Task Cards List */}
-                            <div className="space-y-3.5 min-h-[300px]">
-                                {byStatus[col.key].length === 0 ? (
-                                    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-white/60">
-                                        <p className="text-xs font-bold text-slate-400">
-                                            {dragOver === col.key ? "Drop task here" : `No ${col.label.toLowerCase()} tasks`}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    byStatus[col.key].map(task => (
-                                        <TaskCard
-                                            key={task._id}
-                                            task={task}
-                                            onDragStart={handleDragStart}
-                                            onStatusChange={(t, st, extra = {}) => {
-                                                if (st === "completed" && (t.marks === null || t.marks === undefined) && extra.marks === undefined) {
-                                                    toast.error("Please rate/mark the task before completing it!");
-                                                    return;
-                                                }
-                                                const finalMarks = extra.marks !== undefined
-                                                    ? extra.marks
-                                                    : (st === "pending" ? null : t.marks);
-                                                applyStatusChange(t, st, { marks: finalMarks, ...extra });
-                                            }}
-                                        />
-                                    ))
-                                )}
-                            </div>
+                <div className="space-y-3.5 sm:space-y-4">
+                    {/* Mobile Status Tabs (md:hidden) */}
+                    <div className="md:hidden">
+                        <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 rounded-2xl overflow-x-auto no-scrollbar">
+                            {mobileTabs.map(tab => {
+                                const isActive = activeMobileTab === tab.key;
+                                return (
+                                    <button
+                                        key={tab.key}
+                                        type="button"
+                                        onClick={() => setActiveMobileTab(tab.key)}
+                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                                            isActive
+                                                ? "bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80"
+                                                : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+                                        }`}
+                                    >
+                                        {tab.dot && <span className={`w-2 h-2 rounded-full ${tab.dot}`} />}
+                                        <span>{tab.label}</span>
+                                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                            isActive ? "bg-orange-100 text-orange-700" : "bg-slate-300/60 text-slate-600"
+                                        }`}>
+                                            {tab.count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Columns Grid: md:grid-cols-3, on mobile respects activeMobileTab */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                        {STATUS_COLUMNS.map(col => {
+                            const isHiddenOnMobile = activeMobileTab !== "all" && activeMobileTab !== col.key;
+                            return (
+                                <div
+                                    key={col.key}
+                                    onDragOver={e => handleDragOver(e, col.key)}
+                                    onDragLeave={() => setDragOver(null)}
+                                    onDrop={e => handleDrop(e, col.key)}
+                                    className={`space-y-3 sm:space-y-4 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 transition-all duration-200 ${
+                                        isHiddenOnMobile ? "hidden md:block" : "block"
+                                    } ${
+                                        dragOver === col.key ? "ring-2 ring-orange-400 bg-orange-50/50" : "bg-slate-100/40"
+                                    }`}
+                                >
+                                    {/* Column Header */}
+                                    <div className="flex items-center justify-between px-2 py-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
+                                            <h3 className="text-sm font-black text-slate-900">{col.label}</h3>
+                                            <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${col.badgeBg}`}>
+                                                {byStatus[col.key].length}
+                                            </span>
+                                        </div>
+                                        <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                                            <MdMoreHoriz size={18} />
+                                        </button>
+                                    </div>
+
+                                    {/* Task Cards List */}
+                                    <div className="space-y-3 min-h-[160px] sm:min-h-[300px]">
+                                        {byStatus[col.key].length === 0 ? (
+                                            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 sm:p-8 text-center bg-white/70">
+                                                <p className="text-xs font-bold text-slate-400">
+                                                    {dragOver === col.key ? "Drop task here" : `No ${col.label.toLowerCase()} tasks`}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            byStatus[col.key].map(task => (
+                                                <TaskCard
+                                                    key={task._id}
+                                                    task={task}
+                                                    onDragStart={handleDragStart}
+                                                    onStatusChange={(t, st, extra = {}) => {
+                                                        if (st === "completed" && (t.marks === null || t.marks === undefined) && extra.marks === undefined) {
+                                                            toast.error("Please rate/mark the task before completing it!");
+                                                            return;
+                                                        }
+                                                        const finalMarks = extra.marks !== undefined
+                                                            ? extra.marks
+                                                            : (st === "pending" ? null : t.marks);
+                                                        applyStatusChange(t, st, { marks: finalMarks, ...extra });
+                                                    }}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>

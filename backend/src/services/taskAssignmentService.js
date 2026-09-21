@@ -154,15 +154,15 @@ const ensureManualAssignmentState = (studentTask, assignmentMeta) => {
 };
 
 const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) => {
-  const student = await Student.findById(studentId);
+  const student = options.student || await Student.findById(studentId);
 
   if (!student) {
     throw new Error("Student not found");
   }
 
-  const syllabusVersion = await getSyllabusVersionForStudent(student, syllabusVersionId);
+  const syllabusVersion = options.syllabusVersion || await getSyllabusVersionForStudent(student, syllabusVersionId);
   validateStudentVersionMatch(student, syllabusVersion);
-  const taskEntries = await buildTaskEntries(syllabusVersion._id);
+  const taskEntries = options.taskEntries || await buildTaskEntries(syllabusVersion._id);
 
   if (taskEntries.length === 0) {
     throw new Error("No active tasks found in syllabus");
@@ -171,7 +171,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   const existingTasks = await StudentTask.find({
     studentId: student._id,
     syllabusVersionId: syllabusVersion._id
-  }).select("_id taskId");
+  }).select("_id taskId assignedType");
 
   const existingMap = new Map(
     existingTasks.map((item) => [item.taskId.toString(), item])
@@ -179,6 +179,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
 
   let createdCount = 0;
   let updatedCount = 0;
+  const bulkOps = [];
 
   for (const entry of taskEntries) {
     const payload = buildStudentTaskPayload(student, syllabusVersion, entry, {
@@ -188,12 +189,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
     const existing = existingMap.get(entry.taskId.toString());
 
     if (existing) {
-      const existingTask = await StudentTask.findById(existing._id);
-      if (!existingTask) {
-        continue;
-      }
-
-      if (existingTask.assignedType === "manual") {
+      if (existing.assignedType === "manual") {
         delete payload.assignedType;
         delete payload.assignedBy;
         delete payload.assignedByName;
@@ -201,20 +197,30 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
         delete payload.assignedAt;
       }
 
-      await StudentTask.updateOne(
-        { _id: existing._id },
-        { $set: payload }
-      );
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: existing._id },
+          update: { $set: payload }
+        }
+      });
       updatedCount += 1;
       continue;
     }
 
-    await StudentTask.create({
-      studentId: student._id,
-      taskId: entry.taskId,
-      ...payload
+    bulkOps.push({
+      insertOne: {
+        document: {
+          studentId: student._id,
+          taskId: entry.taskId,
+          ...payload
+        }
+      }
     });
     createdCount += 1;
+  }
+
+  if (bulkOps.length > 0) {
+    await StudentTask.bulkWrite(bulkOps, { ordered: false });
   }
 
   const activeTaskIds = taskEntries.map((task) => task.taskId);
@@ -692,39 +698,66 @@ const syncSyllabusTasksToStudents = async (syllabusVersionId) => {
 // Finds the active SyllabusVersion for the subLevel, then assigns tasks to every
 // active student currently in that subLevel — regardless of whether they already
 // have a syllabusVersionId set.
-const syncTasksToSubLevelStudents = async (syllabusVersionId) => {
-  const syllabusVersion = await SyllabusVersion.findById(syllabusVersionId)
-    .select("sessionId levelId subLevelId status");
+const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null) => {
+  let syllabusVersion = null;
+  if (syllabusVersionId) {
+    syllabusVersion = await SyllabusVersion.findById(syllabusVersionId)
+      .select("sessionId levelId subLevelId status");
+  } else if (subLevelId) {
+    syllabusVersion = await SyllabusVersion.findOne({
+      subLevelId,
+      status: "active",
+      isActive: true
+    }).sort({ createdAt: -1 }).select("sessionId levelId subLevelId status");
+  }
+
   if (!syllabusVersion) throw new Error("Syllabus version not found");
+
+  const effectiveVersionId = syllabusVersion._id;
 
   // Find all active students currently in this subLevel
   const students = await Student.find({
     currentSubLevelId: syllabusVersion.subLevelId,
     currentLevelId:    syllabusVersion.levelId,
     status:            { $in: ACTIVE_STUDENT_STATUSES }
-  }).select("_id syllabusVersionId");
+  });
 
   if (students.length === 0) return [];
 
   // Pin syllabusVersionId on students who don't have it set yet
   const unpinned = students.filter(
-    (s) => !s.syllabusVersionId || s.syllabusVersionId.toString() !== syllabusVersionId.toString()
+    (s) => !s.syllabusVersionId || s.syllabusVersionId.toString() !== effectiveVersionId.toString()
   );
   if (unpinned.length > 0) {
     await Student.updateMany(
       { _id: { $in: unpinned.map((s) => s._id) } },
-      { $set: { syllabusVersionId } }
+      { $set: { syllabusVersionId: effectiveVersionId } }
     );
   }
 
+  const taskEntries = await buildTaskEntries(effectiveVersionId);
+
+  // Run in concurrency batches of 10
+  const CONCURRENCY = 10;
   const results = [];
-  for (const student of students) {
-    try {
-      const result = await assignTasksToStudent(student._id, syllabusVersionId);
-      results.push({ success: true, studentId: student._id, ...result });
-    } catch (error) {
-      results.push({ success: false, studentId: student._id, message: error.message });
-    }
+  for (let i = 0; i < students.length; i += CONCURRENCY) {
+    const batch = students.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.allSettled(
+      batch.map((student) =>
+        assignTasksToStudent(student._id, effectiveVersionId, {
+          student,
+          syllabusVersion,
+          taskEntries
+        })
+      )
+    );
+    batchResults.forEach((r, idx) => {
+      if (r.status === "fulfilled") {
+        results.push({ success: true, studentId: batch[idx]._id, ...r.value });
+      } else {
+        results.push({ success: false, studentId: batch[idx]._id, message: r.reason?.message || "Unknown error" });
+      }
+    });
   }
   return results;
 };

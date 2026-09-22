@@ -226,7 +226,7 @@ export default function StudentReport() {
   const [taskLoading, setTaskLoading] = useState(true);
 
   const { data: studentResponse, isLoading, isError } = useGetAdmittedStudentsByIdQuery(id);
-  const studentData = studentResponse?.data || {};
+  const studentData = studentResponse?.data?.data || studentResponse?.data || studentResponse || {};
   const { data: reportCardResponse, isLoading: reportLoading } = useGetReportCardQuery(id);
   const reportCardData = reportCardResponse?.data;
 
@@ -252,7 +252,7 @@ export default function StudentReport() {
   const initials = fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST";
   const prkey = studentData.admissionNo || studentData.enrollmentNo || studentData.prkey || "N/A";
   const currentSubLevel = studentData.currentSubLevelId?.name || studentData.currentLevel || "1A";
-  const currentYear = translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
+  const currentYear = studentData.year || studentData?.data?.year || translateLevelName(studentData.currentLevelId?.name || studentData.currentLevel);
   const deptType = detectDepartment(studentData, reportCardData);
   const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
   const isMeg = deptType === "MEG";

@@ -53,7 +53,7 @@ const STUDENT_COLUMNS = [
     { label: "Course",      key: "course", render: (row) => (
         <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
             {row.course}
-            {row.raw?.withITEG && !row.course?.toUpperCase().includes("ITEG") && (
+            {row.raw?.withITEG && !row.course?.toUpperCase().includes("ITEG") && !row.course?.toUpperCase().includes("BCA") && !row.course?.toUpperCase().includes("DIPLOMA") && (
                 <span className="bg-orange-500 text-white text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-full">
                     + ITEG
                 </span>
@@ -215,7 +215,7 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                                         <span className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block">Course</span>
                                         <div className="flex items-center gap-1 mt-0.5">
                                             <span className="font-semibold text-blue-700 inline-block">{st.course || "N/A"}</span>
-                                            {st.raw?.withITEG && !st.course?.toUpperCase().includes("ITEG") && (
+                                            {st.raw?.withITEG && !st.course?.toUpperCase().includes("ITEG") && !st.course?.toUpperCase().includes("BCA") && !st.course?.toUpperCase().includes("DIPLOMA") && (
                                                 <span className="bg-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">
                                                     + ITEG
                                                 </span>

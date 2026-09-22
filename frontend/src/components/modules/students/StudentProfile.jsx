@@ -52,6 +52,11 @@ const translateLevelName = (name) => {
   return name;
 };
 
+const isNaturallyITEG = (c) => {
+  const s = String(c || "").trim().toLowerCase();
+  return s.includes("bca") || s.includes("diploma");
+};
+
 export default function StudentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -459,11 +464,11 @@ export default function StudentProfile() {
                     <span>
                       Course:{" "}
                       <strong className="text-white font-semibold">
-                        {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG")
+                        {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG") && !isNaturallyITEG(studentData.course)
                           ? `${studentData.course} + ITEG`
                           : studentData.course || "N/A"}
                       </strong>
-                      {studentData.withITEG && (
+                      {studentData.withITEG && !isNaturallyITEG(studentData.course) && (
                         <span className="ml-1.5 px-1.5 py-0.5 rounded bg-indigo-500/30 border border-indigo-400/50 text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
                           ITEG Program
                         </span>
@@ -479,6 +484,8 @@ export default function StudentProfile() {
                         </span>
                       </>
                     )}
+                    <span>•</span>
+                    <span>Year: <strong className="text-white font-semibold">{studentData.year || "1st Year"}</strong></span>
                     <span>•</span>
                     <span>Level: <strong className="text-white font-semibold">{currentLevelName} / {currentSubLevelName}</strong></span>
                   </div>
@@ -1227,10 +1234,10 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 <div>
                   <span className="font-medium text-gray-600">Course:</span> <br/>
                   <span className="font-semibold inline-flex items-center gap-1.5 flex-wrap">
-                    {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG")
+                    {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG") && !isNaturallyITEG(studentData.course)
                       ? `${studentData.course} + ITEG`
                       : studentData.course || 'N/A'}
-                    {studentData.withITEG && (
+                    {studentData.withITEG && !isNaturallyITEG(studentData.course) && (
                       <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
                         ITEG
                       </span>
@@ -1273,7 +1280,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 )}
               </div>
               <div className="mt-3 pt-3 border-t">
-                <div className="text-sm text-gray-600">Current: {translateLevelName(currentLevelName)} ({studentData?.currentLevelId?.name || '—'} / {studentData?.currentSubLevelId?.name || '—'}){daysInSubLevel ? ` (${daysInSubLevel})` : ''}</div>
+                <div className="text-sm text-gray-600">Current: {studentData?.year || translateLevelName(currentLevelName)} ({studentData?.currentLevelId?.name || '—'} / {studentData?.currentSubLevelId?.name || '—'}){daysInSubLevel ? ` (${daysInSubLevel})` : ''}</div>
               </div>
             </div>
 

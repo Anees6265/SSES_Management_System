@@ -19,6 +19,12 @@ const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
 
 
+const isNaturallyITEG = (course) => {
+  if (!course || typeof course !== "string") return false;
+  const c = course.trim().toLowerCase();
+  return c.includes("bca") || c.includes("diploma");
+};
+
 // ✅ Create Student
 exports.createStudent = async (req, res) => {
   try {
@@ -38,7 +44,8 @@ exports.createStudent = async (req, res) => {
 
     // 3️⃣ Determine Session (Find or auto-create from session/year string, or fallback to latest active session)
     let targetSessionId = null;
-    const sessionInput = inputSessionId || session || year || academicYear;
+    const sessionYearInput = (year && /^\d{4}$/.test(String(year).trim())) ? String(year).trim() : null;
+    const sessionInput = inputSessionId || session || sessionYearInput || (academicYear && /^\d{4}$/.test(String(academicYear).trim()) ? String(academicYear).trim() : null);
     if (sessionInput) {
       targetSessionId = await findOrCreateSessionByName(sessionInput);
     }
@@ -106,6 +113,19 @@ exports.createStudent = async (req, res) => {
       }
     }
 
+    // Determine Year (e.g. 1st Year, 2nd Year, 3rd Year, 4th Year)
+    let resolvedYear = req.body.year;
+    if (!resolvedYear || /^\d{4}$/.test(String(resolvedYear).trim())) {
+      const sName = targetSession?.name || "";
+      if (sName.includes("2024")) resolvedYear = "3rd Year";
+      else if (sName.includes("2025")) resolvedYear = "2nd Year";
+      else if (sName.includes("2026")) resolvedYear = "1st Year";
+      else if (sName.includes("2023")) resolvedYear = "4th Year";
+      else resolvedYear = "1st Year";
+    }
+
+    const resolvedWithITEG = isNaturallyITEG(resolvedCourse) ? true : Boolean(req.body.withITEG);
+
     const student = new Student({
       ...req.body,
       prkey,
@@ -115,6 +135,8 @@ exports.createStudent = async (req, res) => {
       address: req.body.address || req.body.village || "Local",
       village: req.body.village || req.body.address || "Local",
       batchYear,
+      year: resolvedYear,
+      withITEG: resolvedWithITEG,
       sessionId: targetSessionId,
       currentLevelId: firstLevel._id,
       currentSubLevelId: firstSubLevel._id,
@@ -298,7 +320,18 @@ exports.importStudentsExcel = async (req, res) => {
 
     // Pre-fetch all existing PR keys in MongoDB
     const existingStudents = await Student.find({}, "prkey").lean();
-    const existingPrkeySet = new Set(existingStudents.map(s => String(s.prkey).trim().toLowerCase()));
+    const existingPrkeySet = new Set(existingStudents.map(s => String(s.prkey || "").toLowerCase()));
+
+    // Default Year for this import batch
+    let defaultYear = req.body.year;
+    if (!defaultYear || /^\d{4}$/.test(String(defaultYear).trim())) {
+      const sName = targetSession?.name || "";
+      if (sName.includes("2024")) defaultYear = "3rd Year";
+      else if (sName.includes("2025")) defaultYear = "2nd Year";
+      else if (sName.includes("2026")) defaultYear = "1st Year";
+      else if (sName.includes("2023")) defaultYear = "4th Year";
+      else defaultYear = "1st Year";
+    }
 
     const seenInFilePrkeys = new Set();
     const validStudentsToInsert = [];
@@ -331,6 +364,7 @@ exports.importStudentsExcel = async (req, res) => {
         else if (["percent12", "12thpercent", "12percentage", "12thpercentage"].includes(nk)) normalizedRow.percent12 = val;
         else if (["percent10", "10thpercent", "10percentage", "10thpercentage"].includes(nk)) normalizedRow.percent10 = val;
         else if (["year12", "12thyear", "12passoutyear"].includes(nk)) normalizedRow.year12 = val;
+        else if (["year", "academicyear", "currentyear", "classyear", "studyingyear"].includes(nk)) normalizedRow.year = val;
         else if (["withiteg", "iteg", "with_iteg", "isiteg", "withitegyesno"].includes(nk) || nk.includes("iteg")) {
           const v = String(val || "").toLowerCase().trim();
           normalizedRow.withITEG = ["yes", "y", "true", "1", "iteg", "with iteg"].includes(v);
@@ -416,6 +450,15 @@ exports.importStudentsExcel = async (req, res) => {
         batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
       }
 
+      let studentYear = normalizedRow.year || defaultYear;
+      if (/^\d+$/.test(String(studentYear).trim())) {
+        const num = String(studentYear).trim();
+        if (num === "1") studentYear = "1st Year";
+        else if (num === "2") studentYear = "2nd Year";
+        else if (num === "3") studentYear = "3rd Year";
+        else if (num === "4") studentYear = "4th Year";
+      }
+
       const newStudentDoc = {
         prkey,
         password: hashedPassword,
@@ -429,6 +472,7 @@ exports.importStudentsExcel = async (req, res) => {
         address: normalizedRow.address || normalizedRow.village || "Local",
         village: normalizedRow.village || normalizedRow.address || "Local",
         course,
+        year: studentYear,
         track: normalizedRow.technology || "",
         technology: normalizedRow.technology || "",
         aadharCard: normalizedRow.aadharCard || "",
@@ -442,7 +486,7 @@ exports.importStudentsExcel = async (req, res) => {
         currentLevelId: firstLevel._id,
         currentSubLevelId: firstSubLevel._id,
         syllabusVersionId: latestSyllabus ? latestSyllabus._id : null,
-        withITEG: Boolean(normalizedRow.withITEG),
+        withITEG: isNaturallyITEG(normalizedRow.course) ? true : Boolean(normalizedRow.withITEG),
         status: "Active"
       };
 
@@ -524,14 +568,13 @@ exports.downloadSampleExcel = async (req, res) => {
       { header: "Student Mobile*", key: "studentMobile", width: 18 },
       { header: "Parent Mobile", key: "parentMobile", width: 18 },
       { header: "Course*", key: "course", width: 16 },
-      { header: "With ITEG? (Yes/No)", key: "withITEG", width: 18 },
+      { header: "Academic Year (1st Year / 2nd Year / 3rd Year)", key: "year", width: 25 },
       { header: "Gender", key: "gender", width: 12 },
       { header: "Email", key: "email", width: 24 },
       { header: "Address", key: "address", width: 26 },
       { header: "Village/City", key: "village", width: 16 },
       { header: "Aadhar Card", key: "aadharCard", width: 18 },
       { header: "Category", key: "category", width: 12 },
-      { header: "Technology", key: "technology", width: 16 },
       { header: "12th Percentage", key: "percent12", width: 16 },
       { header: "10th Percentage", key: "percent10", width: 16 },
     ];
@@ -560,14 +603,13 @@ exports.downloadSampleExcel = async (req, res) => {
       studentMobile: "9876543210",
       parentMobile: "9876543211",
       course: sampleCourse1,
-      withITEG: "No",
+      year: "2nd Year",
       gender: "Male",
       email: "rahul.sharma@example.com",
       address: "123 Vijay Nagar",
       village: "Indore",
       aadharCard: "123456789012",
       category: "GEN",
-      technology: "MERN Stack",
       percent12: "82.5%",
       percent10: "88.0%"
     });
@@ -581,14 +623,12 @@ exports.downloadSampleExcel = async (req, res) => {
       studentMobile: "9123456780",
       parentMobile: "9123456781",
       course: sampleCourse2,
-      withITEG: "Yes",
       gender: "Female",
       email: "priya.patel@example.com",
       address: "45 Navlakha",
       village: "Indore",
       aadharCard: "987654321098",
       category: "OBC",
-      technology: "Python",
       percent12: "85.0%",
       percent10: "90.2%"
     });
@@ -618,13 +658,12 @@ exports.downloadSampleExcel = async (req, res) => {
     guideSheet.addRow({ field: "Student Mobile*", required: "YES", desc: "10-digit mobile number of student." });
     guideSheet.addRow({ field: "Parent Mobile", required: "NO", desc: "Parent mobile number. Defaults to student mobile if left empty." });
     guideSheet.addRow({ field: "Course*", required: "YES", desc: `Allowed courses for this department (${subDeptName}): ${allowedCourses.join(", ")}` });
-    guideSheet.addRow({ field: "With ITEG? (Yes/No)", required: "NO", desc: "Set 'Yes' if a student from BBA, B.Com, B.Sc etc is also enrolled in ITEG training (they will show up in ITEG department as Course + ITEG)." });
+    guideSheet.addRow({ field: "Academic Year", required: "NO", desc: "1st Year, 2nd Year, 3rd Year, or 4th Year. If left empty, calculated from session." });
     guideSheet.addRow({ field: "Gender", required: "NO", desc: "Male, Female, or Other." });
     guideSheet.addRow({ field: "Address", required: "NO", desc: "Residential address." });
     guideSheet.addRow({ field: "Village/City", required: "NO", desc: "Village or city name." });
     guideSheet.addRow({ field: "Aadhar Card", required: "NO", desc: "12-digit Aadhar number." });
     guideSheet.addRow({ field: "Category", required: "NO", desc: "GEN, OBC, SC, ST, etc." });
-    guideSheet.addRow({ field: "Technology", required: "NO", desc: "e.g. Python, MERN Stack, Java, UI/UX." });
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="students_import_template_${subDeptName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx"`);
@@ -641,7 +680,7 @@ exports.downloadSampleExcel = async (req, res) => {
 // ✅ Get All Students (with department-based access control)
 exports.getAllStudents = async (req, res) => {
   try {
-    const { sessionId, currentLevelId, currentSubLevelId, status, subDepartmentId } = req.query;
+    const { sessionId, currentLevelId, currentSubLevelId, status, subDepartmentId, year } = req.query;
 
     let subDeptFilter = req.subDeptFilter ? { ...req.subDeptFilter } : null;
 
@@ -658,6 +697,7 @@ exports.getAllStudents = async (req, res) => {
     if (sessionId) andConditions.push({ sessionId });
     if (currentLevelId) andConditions.push({ currentLevelId });
     if (currentSubLevelId) andConditions.push({ currentSubLevelId });
+    if (year) andConditions.push({ year });
     if (status) {
       andConditions.push({ status });
     } else {
@@ -806,12 +846,16 @@ exports.updateStudent = async (req, res) => {
       "firstName", "lastName", "fatherName", "email", "studentMobile",
       "parentMobile", "gender", "dob", "aadharCard", "address", "track",
       "village", "stream", "course", "category", "subject12", "year12",
-      "percent12", "percent10", "status", "isFTP", "batchYear", "withITEG"
+      "percent12", "percent10", "status", "isFTP", "batchYear", "year", "withITEG"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });
 
-    const sessionInput = req.body.sessionId || req.body.session || req.body.year || req.body.academicYear;
+    if (isNaturallyITEG(updateData.course || existingStudent.course)) {
+      updateData.withITEG = true;
+    }
+
+    const sessionInput = req.body.sessionId || req.body.session || (req.body.year && /^\d{4}$/.test(String(req.body.year).trim()) ? req.body.year : null);
     if (sessionInput) {
       const targetSessionId = await findOrCreateSessionByName(sessionInput);
       if (targetSessionId) {

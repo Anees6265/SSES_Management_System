@@ -86,6 +86,12 @@ const studentSchema = new mongoose.Schema({
     ref: "Session",
     required: true
   },
+  year: {
+    type: String,
+    enum: ["1st Year", "2nd Year", "3rd Year", "4th Year"],
+    default: "1st Year",
+    trim: true
+  },
   batchYear: {
     type: String,
     trim: true,

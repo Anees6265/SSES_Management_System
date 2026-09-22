@@ -211,12 +211,12 @@ export default function StudentReportCard() {
 
   const isLoading = rcLoading || profileLoading;
 
-  const raw = profileData?.data || {};
-  const rc = rcData?.data || null;
+  const raw = profileData?.data?.data || profileData?.data || profileData || {};
+  const rc = rcData?.data?.data || rcData?.data || null;
   const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
   const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST";
   const currentSubLevel = raw.currentSubLevelId?.name || raw.currentLevel || "1A";
-  const currentYear = translateLevelName(raw.currentLevelId?.name || raw.currentLevel);
+  const currentYear = raw.year || raw?.data?.year || translateLevelName(raw.currentLevelId?.name || raw.currentLevel);
   const deptType = detectDepartment(raw, rc);
   const deptConfig = DEPARTMENT_CONFIGS[deptType] || DEPARTMENT_CONFIGS.ITEG;
   const isMeg = deptType === "MEG";

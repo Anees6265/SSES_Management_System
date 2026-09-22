@@ -43,6 +43,7 @@ const manualStudentValidationSchema = Yup.object({
   course: Yup.string().required("Course is required"),
   subDepartmentId: Yup.string().required("Sub-Department is required"),
   sessionId: Yup.string().required("Academic Session is required"),
+  year: Yup.string().required("Academic Year is required"),
   gender: Yup.string(),
   address: Yup.string(),
   village: Yup.string(),
@@ -52,10 +53,16 @@ const manualStudentValidationSchema = Yup.object({
 
 const normalizeKey = (k) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+export const isNaturallyITEG = (c) => {
+  const s = String(c || "").trim().toLowerCase();
+  return s.includes("bca") || s.includes("diploma");
+};
+
 const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdded }) => {
   const [activeTab, setActiveTab] = useState("excel"); // "excel" | "manual"
   const [selectedSubDeptId, setSelectedSubDeptId] = useState(defaultSubDepartmentId || "");
   const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
 
   useEffect(() => {
     if (defaultSubDepartmentId) {
@@ -107,6 +114,29 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
     return active?._id || "";
   }, [sessions, selectedSessionId]);
 
+  // Active year calculation and smart fallback based on session
+  const activeYear = useMemo(() => {
+    if (selectedYear) return selectedYear;
+    const s = sessions.find(sess => sess._id === activeSessionId);
+    const name = s?.name || "";
+    if (name.includes("2024")) return "3rd Year";
+    if (name.includes("2025")) return "2nd Year";
+    if (name.includes("2026")) return "1st Year";
+    if (name.includes("2023")) return "4th Year";
+    return "1st Year";
+  }, [selectedYear, sessions, activeSessionId]);
+
+  const handleSessionChange = (newSessionId) => {
+    setSelectedSessionId(newSessionId);
+    const s = sessions.find(sess => sess._id === newSessionId);
+    const name = s?.name || "";
+    if (name.includes("2024")) setSelectedYear("3rd Year");
+    else if (name.includes("2025")) setSelectedYear("2nd Year");
+    else if (name.includes("2026")) setSelectedYear("1st Year");
+    else if (name.includes("2023")) setSelectedYear("4th Year");
+    else setSelectedYear("1st Year");
+  };
+
   if (!isOpen) return null;
 
   // ── Download Sample Excel Template ──────────────────────────
@@ -125,14 +155,13 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "Student Mobile*",
           "Parent Mobile",
           "Course*",
-          "With ITEG? (Yes/No)",
+          "Academic Year (1st Year / 2nd Year / 3rd Year)",
           "Gender",
           "Email",
           "Address",
           "Village/City",
           "Aadhar Card",
           "Category",
-          "Technology",
           "12th Percentage",
           "10th Percentage"
         ],
@@ -145,14 +174,13 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "9876543210",
           "9876543211",
           coursesList[0] || "BCA",
-          "No",
+          "2nd Year",
           "Male",
           "rahul.sharma@example.com",
           "123 Vijay Nagar",
           "Indore",
           "123456789012",
           "GEN",
-          "MERN Stack",
           "82.5%",
           "88.0%"
         ],
@@ -164,15 +192,14 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "Ramesh Patel",
           "9123456780",
           "9123456781",
-          coursesList[1] || coursesList[0] || "BBA",
-          "Yes",
+          coursesList[1] || coursesList[0] || "B.Tech",
+          "3rd Year",
           "Female",
           "priya.patel@example.com",
           "45 Navlakha",
           "Indore",
           "987654321098",
           "OBC",
-          "Python",
           "85.0%",
           "90.2%"
         ]
@@ -189,14 +216,12 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         { wch: 18 }, // Student Mobile
         { wch: 18 }, // Parent Mobile
         { wch: 15 }, // Course
-        { wch: 18 }, // With ITEG?
         { wch: 12 }, // Gender
         { wch: 25 }, // Email
         { wch: 25 }, // Address
         { wch: 16 }, // Village/City
         { wch: 18 }, // Aadhar
         { wch: 12 }, // Category
-        { wch: 16 }, // Technology
         { wch: 16 }, // 12th %
         { wch: 16 }, // 10th %
       ];
@@ -218,18 +243,16 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         ["                     Scholar No, or leave BLANK. If blank, system will auto-generate a unique PR Key."],
         ["- Password          : (OPTIONAL) Initial password for student portal login."],
         ["                     If left blank, default password 'ssism@123' will be assigned."],
-        ["- With ITEG? (Yes/No): (OPTIONAL) Set 'Yes' if student from BBA, B.Com, B.Sc etc is also"],
-        ["                     enrolled in ITEG training (they will show up in ITEG department as Course + ITEG)."],
         ["- Student Login     : Students can log in at the portal using:"],
         ["                     (1) PR Key / Roll Number, OR"],
         ["                     (2) 10-digit Student Mobile Number, OR"],
         ["                     (3) Student Email,"],
         ["                     along with their set password."],
         [""],
-        ["Optional Columns:"],
+        ["- Optional Columns:"],
         ["- Parent Mobile     : Defaults to Student Mobile if left empty."],
         ["- Address & Village : Defaults to 'Local' if left empty."],
-        ["- Gender, Email, Aadhar Card, Category, Technology, 12th/10th Percentage"],
+        ["- Gender, Email, Aadhar Card, Category, 12th/10th Percentage"],
         [""],
         ["Department: " + deptName],
         ["Allowed Courses: " + coursesList.join(", ")]
@@ -308,6 +331,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             else if (["percent12", "12thpercent", "12percentage", "12thpercentage"].includes(nk)) normalized.percent12 = val;
             else if (["percent10", "10thpercent", "10percentage", "10thpercentage"].includes(nk)) normalized.percent10 = val;
             else if (["year12", "12thyear", "12passoutyear"].includes(nk)) normalized.year12 = val;
+            else if (["year", "academicyear", "currentyear", "classyear"].includes(nk)) normalized.year = val;
             else if (["withiteg", "iteg", "with_iteg", "isiteg"].includes(nk)) {
               const v = String(val || "").toLowerCase().trim();
               normalized.withITEG = ["yes", "y", "true", "1", "iteg", "with iteg"].includes(v);
@@ -362,6 +386,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             studentMobile,
             parentMobile: normalized.parentMobile || studentMobile,
             course,
+            year: normalized.year || selectedYear || "1st Year",
             gender: normalized.gender || "Other",
             address: normalized.address || normalized.village || "Local",
             village: normalized.village || normalized.address || "Local",
@@ -371,7 +396,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             category: normalized.category || "",
             percent12: normalized.percent12 || "",
             percent10: normalized.percent10 || "",
-            withITEG: Boolean(normalized.withITEG),
+            withITEG: isNaturallyITEG(course) ? true : Boolean(normalized.withITEG),
             isValid,
             errorMsg
           };
@@ -433,6 +458,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         formData.append("file", excelFile);
         formData.append("subDepartmentId", targetSubDeptId);
         formData.append("sessionId", activeSessionId);
+        formData.append("year", activeYear);
         if (parsedRows && parsedRows.length > 0) {
           formData.append("students", JSON.stringify(parsedRows));
         }
@@ -441,6 +467,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         res = await importStudentsExcel({
           subDepartmentId: targetSubDeptId,
           sessionId: activeSessionId,
+          year: activeYear,
           students: parsedRows
         }).unwrap();
       }
@@ -457,7 +484,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   // ── Submit Single Student Manual Form ───────────────────────
   const handleManualSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      await createNewStudent(values).unwrap();
+      const finalPayload = {
+        ...values,
+        withITEG: isNaturallyITEG(values.course) ? true : Boolean(values.withITEG)
+      };
+      await createNewStudent(finalPayload).unwrap();
       toast.success(`Student ${values.firstName} ${values.lastName} added successfully!`);
       resetForm();
       if (onStudentAdded) onStudentAdded();
@@ -531,8 +562,8 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Sub-Department and Session Selectors (Common Context) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200/60">
+          {/* Sub-Department, Session and Year Selectors (Common Context) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200/60">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                 Sub-Department <span className="text-orange-500">*</span>
@@ -560,7 +591,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               </label>
               <select
                 value={activeSessionId}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
+                onChange={(e) => handleSessionChange(e.target.value)}
                 className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
               >
                 {sessions.map((s) => (
@@ -568,6 +599,22 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                     {s.name} {s.isActive ? " (Active)" : ""}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                Academic Year <span className="text-orange-500">*</span>
+              </label>
+              <select
+                value={activeYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
+              >
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
               </select>
             </div>
           </div>
@@ -751,7 +798,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                                     <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
                                       {r.course}
                                     </span>
-                                    {r.withITEG && (
+                                    {r.withITEG && !isNaturallyITEG(r.course) && (
                                       <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
                                         + ITEG
                                       </span>
@@ -822,7 +869,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               initialValues={{
                 prkey: "",
                 password: "",
-                withITEG: false,
+                withITEG: isNaturallyITEG(allowedCourses[0] || ""),
                 firstName: "",
                 lastName: "",
                 fatherName: "",
@@ -832,6 +879,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 course: allowedCourses[0] || "",
                 subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || currentSubDept?._id || "",
                 sessionId: activeSessionId,
+                year: activeYear,
                 gender: "Male",
                 address: "",
                 village: "",
@@ -865,7 +913,13 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                       <select
                         name="course"
                         value={values.course}
-                        onChange={(e) => setFieldValue("course", e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFieldValue("course", val);
+                          if (isNaturallyITEG(val)) {
+                            setFieldValue("withITEG", true);
+                          }
+                        }}
                         className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
                       >
                         {allowedCourses.map((c) => (
@@ -874,26 +928,24 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                       </select>
                     </div>
 
-                    {/* With ITEG Program Toggle Box */}
-                    <div className="bg-orange-50/70 border border-orange-200/80 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-900">With ITEG Program</span>
-                          <span className="px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-orange-500 text-white">ITEG</span>
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                          Also enroll in ITEG department (Course + ITEG)
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(values.withITEG)}
-                          onChange={(e) => setFieldValue("withITEG", e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        Academic Year *
                       </label>
+                      <select
+                        name="year"
+                        value={values.year || activeYear}
+                        onChange={(e) => {
+                          setFieldValue("year", e.target.value);
+                          setSelectedYear(e.target.value);
+                        }}
+                        className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
+                      >
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                      </select>
                     </div>
 
                     <InputField

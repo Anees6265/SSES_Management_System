@@ -35,6 +35,7 @@ const StudentDetailTable = () => {
   const [activeTab, setActiveTab] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedYear, setSelectedYear] = useState("All");
   const [selectedTech, setSelectedTech] = useState("All");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
@@ -96,6 +97,7 @@ const StudentDetailTable = () => {
       const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(s.status);
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
+      const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
       const stdTech = (s.track || s.course || "General").toLowerCase();
       const matchTech = selectedTech === "All" || stdTech.includes(selectedTech.toLowerCase());
       const name = `${s.firstName} ${s.lastName}`.toLowerCase();
@@ -103,34 +105,32 @@ const StudentDetailTable = () => {
         name.includes(searchTerm.toLowerCase()) ||
         s.prkey?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.studentMobile?.includes(searchTerm);
-      return matchTab && matchStatus && matchSession && matchTech && matchSearch;
+      return matchTab && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
-  }, [students, activeTab, selectedStatus, selectedSessionId, selectedTech, searchTerm]);
+  }, [students, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
 
   // Reset mobile page whenever filters/tabs change
   useEffect(() => {
     setMobilePage(1);
-  }, [searchTerm, activeTab, selectedStatus, selectedSessionId, selectedTech]);
+  }, [searchTerm, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedTech !== "All") count++;
     if (selectedStatus.length > 0) count++;
     if (selectedSessionId) count++;
+    if (selectedYear !== "All") count++;
     return count;
-  }, [selectedTech, selectedStatus, selectedSessionId]);
+  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear]);
 
-  const hasActiveFilters = Boolean(
-    searchTerm ||
-    activeTab !== "All" ||
-    activeFilterCount > 0
-  );
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(searchTerm);
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setActiveTab("All");
     setSelectedStatus([]);
     setSelectedSessionId("");
+    setSelectedYear("All");
     setSelectedTech("All");
   };
 
@@ -167,7 +167,7 @@ const StudentDetailTable = () => {
         return (
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-bold text-gray-800">{courseUpper || "N/A"}</span>
-            {row.withITEG && !courseUpper.includes("ITEG") && (
+            {row.withITEG && !courseUpper.includes("ITEG") && !courseUpper.includes("BCA") && !courseUpper.includes("DIPLOMA") && (
               <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
                 + ITEG
               </span>
@@ -178,13 +178,18 @@ const StudentDetailTable = () => {
     },
     {
       key: "level",
-      label: "Level / Batch",
+      label: "Year & Level",
       align: "center",
       render: (row) => (
         <div className="flex flex-col items-center">
-          <span className="text-xs font-medium text-gray-600">
-            {row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full shadow-2xs">
+              {row.year || "1st Year"}
+            </span>
+            <span className="text-xs font-medium text-gray-600">
+              ({row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"})
+            </span>
+          </div>
           <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
             <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded">
               {row.sessionId?.name || "Session N/A"}
@@ -361,12 +366,27 @@ const StudentDetailTable = () => {
                   { value: "", label: "All Sessions" },
                   ...sessions.map((s) => {
                     const statusText = s.status 
-                      ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
+                       ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
                       : (s.isActive ? 'Active' : 'Inactive');
                     return { value: s._id, label: `${s.name} (${statusText})` };
                   })
                 ]}
                 className="w-full md:w-auto md:min-w-[145px]"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+              />
+
+              {/* Year Dropdown Filter */}
+              <SelectDropdown
+                value={selectedYear}
+                onChange={(val) => setSelectedYear(val)}
+                options={[
+                  { value: "All", label: "All Years" },
+                  { value: "1st Year", label: "1st Year" },
+                  { value: "2nd Year", label: "2nd Year" },
+                  { value: "3rd Year", label: "3rd Year" },
+                  { value: "4th Year", label: "4th Year" }
+                ]}
+                className="w-full md:w-auto md:min-w-[130px]"
                 buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
               />
 
@@ -414,6 +434,12 @@ const StudentDetailTable = () => {
                     setSelectedSessionId(match ? match._id : vals[0]);
                   }
                 },
+              },
+              {
+                title: "Year",
+                options: ["1st Year", "2nd Year", "3rd Year", "4th Year"],
+                selected: selectedYear === "All" ? [] : [selectedYear],
+                setter: (vals) => setSelectedYear(vals.length > 0 ? vals[0] : "All"),
               },
             ]}
             extraColumn={{
@@ -483,6 +509,13 @@ const StudentDetailTable = () => {
                   {/* Middle Details Grid */}
                   <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-150 text-xs space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
+                      <span className="text-gray-400 font-medium">Academic Year:</span>
+                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full">
+                        {row.year || "1st Year"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-gray-400 font-medium">Level / Sub-Level:</span>
                       <span className="font-bold text-gray-700 truncate">
                         {row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"}
@@ -509,7 +542,7 @@ const StudentDetailTable = () => {
                         <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 text-[10.5px] uppercase truncate">
                           {row.course || "N/A"}
                         </span>
-                        {row.withITEG && !row.course?.toUpperCase().includes("ITEG") && (
+                        {row.withITEG && !row.course?.toUpperCase().includes("ITEG") && !row.course?.toUpperCase().includes("BCA") && !row.course?.toUpperCase().includes("DIPLOMA") && (
                           <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200">
                             + ITEG
                           </span>

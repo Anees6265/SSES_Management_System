@@ -532,7 +532,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || "ITEG" },
                 { label: "Course", value: studentData?.course || "N/A" },
                 { label: "Session / Batch", value: `${studentData?.sessionId?.name || "AY 2025-26"}${studentData?.batchYear || reportCardData?.batchYear ? ` (${studentData?.batchYear || reportCardData?.batchYear})` : ""}` },
-                { label: "Current Level", value: `${translateLevelName(studentData?.currentLevelId?.name) || "1st Year"} (${studentData?.currentLevelId?.name || "Level 1"})` },
+                { label: "Current Year / Level", value: `${studentData?.year || translateLevelName(studentData?.currentLevelId?.name) || "1st Year"} (${studentData?.currentLevelId?.name || "Level 1"})` },
                 { label: "Current Sub-Level", value: studentData?.currentSubLevelId?.name || "1A" }
               ].map((info, idx) => (
                 <View key={idx} style={{ width: "25%", marginBottom: 6, paddingRight: 4 }}>

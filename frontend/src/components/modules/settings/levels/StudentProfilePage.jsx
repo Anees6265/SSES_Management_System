@@ -374,6 +374,11 @@ const ReadyStudentModal = ({ name, currentStatus, onConfirm, onCancel, loading }
     );
 };
 
+const isNaturallyITEG = (c) => {
+    const s = String(c || "").trim().toLowerCase();
+    return s.includes("bca") || s.includes("diploma");
+};
+
 const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
     const fileInputRef = useRef(null);
     const [form, setForm] = useState({
@@ -388,7 +393,8 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
         course: raw.course || "",
         gender: raw.gender || "",
         image: raw.image || "",
-        withITEG: Boolean(raw.withITEG),
+        year: raw.year || "1st Year",
+        withITEG: isNaturallyITEG(raw.course) ? true : Boolean(raw.withITEG),
     });
     const ic = "w-full !h-10 !border !border-gray-200 !rounded-xl !px-3 !py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
     const lc = "block text-xs font-semibold text-gray-600 mb-1";
@@ -404,7 +410,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
             leftBtnText="Cancel"
             rightBtnText={loading ? "Saving..." : "Save Changes"}
             onLeftClick={onCancel}
-            onRightClick={() => onConfirm(form)}
+            onRightClick={() => onConfirm({ ...form, withITEG: isNaturallyITEG(form.course) ? true : Boolean(form.withITEG) })}
             maxWidth="sm:max-w-lg"
             drawerContent={
                 <div className="space-y-4">
@@ -533,24 +539,14 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                                 <option value="Other">Other</option>
                             </select>
                         </div>
-                        <div className="flex flex-col justify-end">
-                            <label className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-50 cursor-pointer transition-colors shadow-sm">
-                                <div className="pr-2">
-                                    <span className="block text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                                        With ITEG Program
-                                        <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-600 text-white rounded">ITEG</span>
-                                    </span>
-                                    <span className="block text-[10px] text-indigo-700 leading-tight mt-0.5 font-medium">
-                                        Show in ITEG Dept as {form.course ? `${form.course} + ITEG` : "Course + ITEG"}
-                                    </span>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(form.withITEG)}
-                                    onChange={(e) => setForm(p => ({ ...p, withITEG: e.target.checked }))}
-                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
-                                />
-                            </label>
+                        <div>
+                            <label className={lc}>Academic Year</label>
+                            <select className={ic} value={form.year || "1st Year"} onChange={set("year")}>
+                                <option value="1st Year">1st Year</option>
+                                <option value="2nd Year">2nd Year</option>
+                                <option value="3rd Year">3rd Year</option>
+                                <option value="4th Year">4th Year</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -1133,6 +1129,7 @@ const StudentProfilePage = () => {
         technology: student?.technology || student?.techno || student?.track || "MERN Stack",
         track: student?.track || student?.techno || "MERN Stack",
         gender: "Male",
+        year: student?.year || "1st Year",
         status: "Active",
         isFTP: false,
         currentLevelId: student?.currentLevelId || { _id: "level2a", name: "Level 2", order: 2 },
@@ -1690,7 +1687,7 @@ const StudentProfilePage = () => {
                                             FTP
                                         </span>
                                     )}
-                                    {raw.withITEG && (
+                                    {raw.withITEG && !isNaturallyITEG(raw.course) && (
                                         <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 border border-indigo-200 shadow-sm shrink-0">
                                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                                             + ITEG Program
@@ -1699,18 +1696,20 @@ const StudentProfilePage = () => {
                                 </div>
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-xs font-bold text-orange-500">
                                     <span>
-                                        {raw.withITEG && !raw.course?.toUpperCase().includes("ITEG") ? (
+                                        {raw.withITEG && !raw.course?.toUpperCase().includes("ITEG") && !isNaturallyITEG(raw.course) ? (
                                             <span className="inline-flex items-center gap-1 font-black text-indigo-600 mr-1">
                                                 {raw.course} <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] uppercase font-black tracking-wider">+ ITEG</span>
                                             </span>
                                         ) : (
                                             raw.course || "Course"
                                         )}
-                                        {" "}• {translateLevelName(currentLevelLabel)} • {currentLevelLabel} ({currentSubLevelName}){daysInSubLevel ? ` • ${daysInSubLevel}` : ''}
+                                        {" "}• {raw.year || translateLevelName(currentLevelLabel)} • {currentLevelLabel} ({currentSubLevelName}){daysInSubLevel ? ` • ${daysInSubLevel}` : ''}
                                     </span>
-                                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 text-[11px] font-bold">
-                                        Technology: {trackName}
-                                    </span>
+                                    {trackName && trackName !== "Technology Not Updated" && isNaturallyITEG(raw.course) && (
+                                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 text-[11px] font-bold">
+                                            Technology: {trackName}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Placement Badge */}
@@ -1793,13 +1792,15 @@ const StudentProfilePage = () => {
                                             <button onClick={handleFtpToggle} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-orange-600 flex items-center gap-2">
                                                 <MdArrowUpward size={14} /> {raw.isFTP ? "Remove FTP" : "Shift to FTP"}
                                             </button>
-                                            <button 
-                                                onClick={handleItegToggle} 
-                                                disabled={itegLoading}
-                                                className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-600 flex items-center gap-2 font-medium"
-                                            >
-                                                <MdSchool size={14} /> {raw.withITEG ? "Remove ITEG Program" : "Enroll with ITEG Program"}
-                                            </button>
+                                            {!isNaturallyITEG(raw.course) && (
+                                                <button 
+                                                    onClick={handleItegToggle} 
+                                                    disabled={itegLoading}
+                                                    className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-600 flex items-center gap-2 font-medium"
+                                                >
+                                                    <MdSchool size={14} /> {raw.withITEG ? "Remove ITEG Program" : "Enroll with ITEG Program"}
+                                                </button>
+                                            )}
                                             {isEligibleForPlacement && (
                                                 <button onClick={() => { setMoreOpen(false); setReadyModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
                                                     <MdCheckCircle size={14} /> Shift Placement Status
@@ -2133,10 +2134,12 @@ const StudentProfilePage = () => {
                                             <span className="font-semibold text-slate-400 block uppercase tracking-wider text-[10px]">Placement Stage</span>
                                             <span className="font-extrabold text-slate-800 text-sm">{readinessStatus || "Not Ready"}</span>
                                         </div>
-                                        <div>
-                                            <span className="font-semibold text-slate-400 block uppercase tracking-wider text-[10px]">Technology / Track</span>
-                                            <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md inline-block mt-0.5">{trackName}</span>
-                                        </div>
+                                        {isNaturallyITEG(raw.course) && (
+                                            <div>
+                                                <span className="font-semibold text-slate-400 block uppercase tracking-wider text-[10px]">Technology / Track</span>
+                                                <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md inline-block mt-0.5">{trackName}</span>
+                                            </div>
+                                        )}
                                         <div>
                                             <span className="font-semibold text-slate-400 block uppercase tracking-wider text-[10px]">Academic Level</span>
                                             <span className="font-bold text-orange-600 bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-md inline-block mt-0.5">{subLevelName} ({levelName})</span>

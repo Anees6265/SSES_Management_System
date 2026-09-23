@@ -6,20 +6,25 @@ const cloudinary = require("../../config/cloudinaryConfig");
 const User = require("../../models/user/user");
 const SubDepartment = require("../../models/department/SubDepartment");
 
-// ✅ Student Login (PR Key / Email + Password)
+// ✅ Student Login (Only Student Email + Password)
 exports.studentLogin = async (req, res) => {
   try {
-    const { prkey, password } = req.body;
-    if (!prkey || !password)
-      return res.status(400).json({ message: "prkey and password are required" });
+    const rawEmail = req.body.email || req.body.prkey;
+    const { password } = req.body;
+    if (!rawEmail || !password)
+      return res.status(400).json({ message: "Student email and password are required" });
 
-    const trimmedInput = prkey.trim();
+    const trimmedEmail = String(rawEmail).trim().toLowerCase();
+
+    // Check if input is a valid @ssism.org email
+    if (!/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(trimmedEmail)) {
+      return res.status(400).json({
+        message: "Students can only login using their official @ssism.org email address"
+      });
+    }
+
     const student = await Student.findOne({
-      $or: [
-        { prkey: trimmedInput },
-        { email: trimmedInput },
-        { studentMobile: trimmedInput }
-      ]
+      email: { $regex: new RegExp(`^${trimmedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
     })
       .populate("subDepartmentId", "name")
       .populate("sessionId", "name")
@@ -27,7 +32,7 @@ exports.studentLogin = async (req, res) => {
       .populate("currentSubLevelId", "name order");
 
     if (!student)
-      return res.status(404).json({ message: "Student not found" });
+      return res.status(404).json({ message: "Student not found with this email" });
 
     if (student.status === "Dropped")
       return res.status(403).json({ message: "Your account has been deactivated. Contact admin." });

@@ -30,6 +30,24 @@ exports.createStudent = async (req, res) => {
   try {
     const { subDepartmentId, session, year, academicYear, sessionId: inputSessionId } = req.body;
 
+    // Validate Student Mobile (Strict 10 digits)
+    const cleanStudentMobile = String(req.body.studentMobile || "").trim();
+    if (!/^[0-9]{10}$/.test(cleanStudentMobile)) {
+      return res.status(400).json({ message: "Student mobile number must be exactly 10 digits" });
+    }
+
+    // Validate Parent Mobile (Required, Strict 10 digits)
+    const cleanParentMobile = String(req.body.parentMobile || "").trim();
+    if (!/^[0-9]{10}$/.test(cleanParentMobile)) {
+      return res.status(400).json({ message: "Parent mobile number is required and must be exactly 10 digits" });
+    }
+
+    // Validate Student Email (Required, strictly @ssism.org)
+    const cleanEmail = String(req.body.email || "").trim().toLowerCase();
+    if (!cleanEmail || !/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(cleanEmail)) {
+      return res.status(400).json({ message: "Student email is required and must end with @ssism.org (e.g. name@ssism.org)" });
+    }
+
     // Validate subDepartment
     const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
     if (!subDept) return res.status(404).json({ message: "SubDepartment not found" });
@@ -129,9 +147,11 @@ exports.createStudent = async (req, res) => {
     const student = new Student({
       ...req.body,
       prkey,
+      email: cleanEmail,
+      studentMobile: cleanStudentMobile,
+      parentMobile: cleanParentMobile,
       password: hashedPassword,
       course: resolvedCourse,
-      parentMobile: req.body.parentMobile || req.body.studentMobile,
       address: req.body.address || req.body.village || "Local",
       village: req.body.village || req.body.address || "Local",
       batchYear,
@@ -850,6 +870,30 @@ exports.updateStudent = async (req, res) => {
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });
+
+    if (updateData.studentMobile !== undefined) {
+      const clean = String(updateData.studentMobile).trim();
+      if (!/^[0-9]{10}$/.test(clean)) {
+        return res.status(400).json({ message: "Student mobile number must be exactly 10 digits" });
+      }
+      updateData.studentMobile = clean;
+    }
+
+    if (updateData.parentMobile !== undefined) {
+      const clean = String(updateData.parentMobile).trim();
+      if (!/^[0-9]{10}$/.test(clean)) {
+        return res.status(400).json({ message: "Parent mobile number must be exactly 10 digits" });
+      }
+      updateData.parentMobile = clean;
+    }
+
+    if (updateData.email !== undefined) {
+      const clean = String(updateData.email).trim().toLowerCase();
+      if (clean && !/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(clean)) {
+        return res.status(400).json({ message: "Student email must end with @ssism.org (e.g. name@ssism.org)" });
+      }
+      updateData.email = clean;
+    }
 
     if (isNaturallyITEG(updateData.course || existingStudent.course)) {
       updateData.withITEG = true;

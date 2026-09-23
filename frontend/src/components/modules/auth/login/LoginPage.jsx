@@ -23,7 +23,7 @@ const LoginPage = () => {
   // Admin form state
   const [adminForm, setAdminForm] = useState({ email: "", password: "" });
   // Student form state
-  const [studentForm, setStudentForm] = useState({ prkey: "", password: "" });
+  const [studentForm, setStudentForm] = useState({ email: "", password: "" });
 
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
@@ -61,18 +61,28 @@ const LoginPage = () => {
     }
   };
 
-  // Handle Student Login
+  // Handle Student Login (Strictly @ssism.org Email)
   const handleStudentSubmit = async (e) => {
     e.preventDefault();
     setLoginError("");
 
-    if (!studentForm.prkey.trim() || !studentForm.password.trim()) {
-      setLoginError("PR Key and Password are required.");
+    const inputEmail = (studentForm.email || "").trim().toLowerCase();
+    if (!inputEmail || !studentForm.password.trim()) {
+      setLoginError("Student email and password are required.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(inputEmail)) {
+      setLoginError("Please enter your official @ssism.org student email address.");
       return;
     }
 
     try {
-      const res = await studentLogin(studentForm).unwrap();
+      const res = await studentLogin({
+        email: inputEmail,
+        prkey: inputEmail,
+        password: studentForm.password
+      }).unwrap();
       localStorage.setItem("studentToken", encrypt(res.token));
       localStorage.setItem("studentRefreshToken", encrypt(res.refreshToken));
       localStorage.setItem("studentData", JSON.stringify(res.student));
@@ -265,11 +275,12 @@ const LoginPage = () => {
             <form onSubmit={handleStudentSubmit} className="space-y-3 text-left">
               <div>
                 <input
-                  type="text"
-                  value={studentForm.prkey}
-                  onChange={(e) => setStudentForm((prev) => ({ ...prev, prkey: e.target.value }))}
-                  placeholder="PR Key or Email"
+                  type="email"
+                  value={studentForm.email}
+                  onChange={(e) => setStudentForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="Student Email (e.g. rahul@ssism.org)"
                   required
+                  autoComplete="email"
                   className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
                 />
               </div>

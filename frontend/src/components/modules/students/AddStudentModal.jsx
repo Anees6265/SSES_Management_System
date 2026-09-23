@@ -34,12 +34,20 @@ const manualStudentValidationSchema = Yup.object({
   lastName: Yup.string().required("Last Name is required"),
   fatherName: Yup.string().required("Father's Name is required"),
   studentMobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Mobile number must be 10 digits")
-    .required("Student Mobile is required"),
+    .trim()
+    .required("Student Mobile is required")
+    .matches(/^[0-9]{10}$/, "Student mobile number must be exactly 10 digits"),
   parentMobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Mobile number must be 10 digits")
-    .nullable(),
-  email: Yup.string().email("Invalid email address").nullable(),
+    .trim()
+    .required("Parent Mobile is required")
+    .matches(/^[0-9]{10}$/, "Parent mobile number must be exactly 10 digits"),
+  email: Yup.string()
+    .trim()
+    .required("Student Email is required")
+    .matches(
+      /^[a-zA-Z0-9._%+-]+@ssism\.org$/i,
+      "Email must be a valid @ssism.org address (e.g. name@ssism.org)"
+    ),
   course: Yup.string().required("Course is required"),
   subDepartmentId: Yup.string().required("Sub-Department is required"),
   sessionId: Yup.string().required("Academic Session is required"),
@@ -489,6 +497,9 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
     try {
       const finalPayload = {
         ...values,
+        email: values.email?.trim().toLowerCase(),
+        studentMobile: values.studentMobile?.trim(),
+        parentMobile: values.parentMobile?.trim(),
         withITEG: isNaturallyITEG(values.course) ? true : Boolean(values.withITEG)
       };
       await createNewStudent(finalPayload).unwrap();
@@ -988,22 +999,30 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                     </div>
 
                     <InputField
-                      label="Student Mobile (Login ID) *"
+                      label="Student Mobile *"
                       name="studentMobile"
                       placeholder="10-digit mobile number"
+                      maxLength={10}
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                      }}
                     />
 
                     <InputField
-                      label="Student Email (Login ID)"
+                      label="Student Email (Login ID) *"
                       name="email"
                       type="email"
-                      placeholder="e.g. rahul@example.com"
+                      placeholder="e.g. rahul@ssism.org"
                     />
 
                     <InputField
-                      label="Parent Mobile"
+                      label="Parent Mobile *"
                       name="parentMobile"
-                      placeholder="Optional, defaults to student's"
+                      placeholder="10-digit mobile number"
+                      maxLength={10}
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                      }}
                     />
 
                     <InputField

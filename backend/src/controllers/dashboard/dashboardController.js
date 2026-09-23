@@ -186,7 +186,7 @@ exports.getDashboardOverview = async (req, res) => {
       }
     }
 
-    const [sessionCourseAgg, levelCourseAgg] = await Promise.all([
+    const [sessionCourseAgg, levelCourseAgg, yearCourseAgg] = await Promise.all([
       Student.aggregate([
         { $match: matrixBase },
         {
@@ -210,6 +210,18 @@ exports.getDashboardOverview = async (req, res) => {
             count: { $sum: 1 }
           }
         }
+      ]),
+      Student.aggregate([
+        { $match: matrixBase },
+        {
+          $group: {
+            _id: {
+              year: { $ifNull: ["$year", "1st Year"] },
+              course: "$course"
+            },
+            count: { $sum: 1 }
+          }
+        }
       ])
     ]);
 
@@ -217,7 +229,8 @@ exports.getDashboardOverview = async (req, res) => {
     const activeLevelIds = levelCourseAgg.map(item => item._id.levelId).filter(Boolean);
     const activeCourses = [...new Set([
       ...sessionCourseAgg.map(item => item._id.course),
-      ...levelCourseAgg.map(item => item._id.course)
+      ...levelCourseAgg.map(item => item._id.course),
+      ...yearCourseAgg.map(item => item._id.course)
     ])].filter(Boolean);
 
     const [matrixSessions, matrixLevels] = await Promise.all([
@@ -231,12 +244,20 @@ exports.getDashboardOverview = async (req, res) => {
       levels: matrixLevels.map(l => ({ id: l._id.toString(), name: l.name })),
       sessionCounts: sessionCourseAgg.map(item => ({
         subDepartmentId: item._id.course || "",
+        course: item._id.course || "",
         sessionId: item._id.sessionId?.toString() || "",
         count: item.count
       })),
       levelCounts: levelCourseAgg.map(item => ({
         subDepartmentId: item._id.course || "",
+        course: item._id.course || "",
         levelId: item._id.levelId?.toString() || "",
+        count: item.count
+      })),
+      yearCounts: yearCourseAgg.map(item => ({
+        subDepartmentId: item._id.course || "",
+        course: item._id.course || "",
+        year: item._id.year || "1st Year",
         count: item.count
       }))
     };

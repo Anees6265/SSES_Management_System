@@ -67,8 +67,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   useEffect(() => {
     if (defaultSubDepartmentId) {
       setSelectedSubDeptId(defaultSubDepartmentId);
+    } else {
+      setSelectedSubDeptId("");
     }
-  }, [defaultSubDepartmentId]);
+  }, [defaultSubDepartmentId, isOpen]);
   
   // Excel File State
   const [excelFile, setExcelFile] = useState(null);
@@ -94,7 +96,8 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   // Selected subdepartment object
   const currentSubDept = useMemo(() => {
     const targetId = selectedSubDeptId || defaultSubDepartmentId;
-    return subDepartments.find(sd => sd._id === targetId) || subDepartments[0] || null;
+    if (!targetId) return null;
+    return subDepartments.find(sd => sd._id === targetId) || null;
   }, [subDepartments, selectedSubDeptId, defaultSubDepartmentId]);
 
   // Allowed courses for the selected subdepartment
@@ -577,6 +580,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 disabled={Boolean(defaultSubDepartmentId)}
                 className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-2xs"
               >
+                <option value="">Select Sub Department</option>
                 {subDepartments.map((sd) => (
                   <option key={sd._id} value={sd._id}>
                     {sd.name} ({sd.departmentId?.name || "Dept"})
@@ -876,8 +880,8 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 email: "",
                 studentMobile: "",
                 parentMobile: "",
-                course: allowedCourses[0] || "",
-                subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || currentSubDept?._id || "",
+                course: allowedCourses.length === 1 ? allowedCourses[0] : "",
+                subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || "",
                 sessionId: activeSessionId,
                 year: activeYear,
                 gender: "Male",
@@ -922,6 +926,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         }}
                         className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
                       >
+                        <option value="">{allowedCourses.length === 0 ? "Select Sub Department first" : "Select Course"}</option>
                         {allowedCourses.map((c) => (
                           <option key={c} value={c}>{c}</option>
                         ))}

@@ -128,7 +128,7 @@ const CourseYearMatrixTable = ({ matrix }) => {
     );
   }
 
-  const { courses, sessions, levels, sessionCounts, levelCounts } = matrix;
+  const { courses, sessions, levels = [], sessionCounts = [], levelCounts = [], yearCounts = [] } = matrix;
 
   const translateLevelName = (name) => {
     if (!name) return "";
@@ -155,19 +155,31 @@ const CourseYearMatrixTable = ({ matrix }) => {
     columns = sessions;
   } else {
     const defaultYears = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
-    const yearNames = [...new Set([...defaultYears, ...levels.map(l => translateLevelName(l.name))])];
-    const yearOrder = { "1st Year": 1, "2nd Year": 2, "3rd Year": 3, "4th Year": 4 };
-    yearNames.sort((a, b) => (yearOrder[a] || 99) - (yearOrder[b] || 99));
-    columns = yearNames.map(name => ({ id: name, name }));
+    columns = defaultYears.map(name => ({ id: name, name }));
   }
 
   const getStudentCount = (courseId, colId) => {
     if (viewMode === "session") {
       const match = sessionCounts.find(
-        (c) => c.subDepartmentId === courseId && c.sessionId === colId
+        (c) =>
+          ((c.subDepartmentId || c.course || "").toLowerCase().trim() === String(courseId || "").toLowerCase().trim()) &&
+          c.sessionId === colId
       );
       return match ? match.count : 0;
     } else {
+      // 1. Primary: Use yearCounts directly from student's academic year
+      if (yearCounts && yearCounts.length > 0) {
+        const match = yearCounts.find((c) => {
+          const cCourse = (c.subDepartmentId || c.course || "").toLowerCase().trim();
+          const targetCourse = String(courseId || "").toLowerCase().trim();
+          const cYear = (c.year || "").toLowerCase().trim();
+          const targetYear = String(colId || "").toLowerCase().trim();
+          return cCourse === targetCourse && cYear === targetYear;
+        });
+        return match ? match.count : 0;
+      }
+
+      // 2. Fallback: levelCounts mapping if yearCounts is empty
       const matchingLevelIds = levels
         .filter((l) => translateLevelName(l.name) === colId)
         .map((l) => l.id);
@@ -175,7 +187,8 @@ const CourseYearMatrixTable = ({ matrix }) => {
       return levelCounts
         .filter(
           (c) =>
-            c.subDepartmentId === courseId && matchingLevelIds.includes(c.levelId)
+            ((c.subDepartmentId || c.course || "").toLowerCase().trim() === String(courseId || "").toLowerCase().trim()) &&
+            matchingLevelIds.includes(c.levelId)
         )
         .reduce((sum, item) => sum + item.count, 0);
     }
@@ -375,43 +388,31 @@ const AdminDashboard = () => {
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessionsList = sessionsData?.data || [];
 
-  // Filter States
-  const [selectedSessionId, setSelectedSessionId] = useState(() => {
-    return localStorage.getItem("dashboard_selectedSessionId") || "all";
-  });
-  const [academicYearLabel, setAcademicYearLabel] = useState(() => {
-    return localStorage.getItem("dashboard_academicYearLabel") || "All Sessions";
-  });
+  // Filter States - By default, "All Sessions" is selected when opening dashboard
+  const [selectedSessionId, setSelectedSessionId] = useState("all");
+  const [academicYearLabel, setAcademicYearLabel] = useState("All Sessions");
   const [selectedLevel, setSelectedLevel] = useState("All");
   const [showNotification, setShowNotification] = useState(false);
 
-  // Sync filters to local storage
+  // Clear legacy localStorage cache on mount so dashboard always opens with All Sessions by default
   useEffect(() => {
-    localStorage.setItem("dashboard_selectedSessionId", selectedSessionId);
-    localStorage.setItem("dashboard_academicYearLabel", academicYearLabel);
-  }, [selectedSessionId, academicYearLabel]);
+    localStorage.removeItem("dashboard_selectedSessionId");
+    localStorage.removeItem("dashboard_academicYearLabel");
+  }, []);
 
-  // Default to active session if not selected
+  // If a specific session was manually selected, keep label updated if sessionsList reloads
   useEffect(() => {
-    if (sessionsList.length > 0) {
-      const currentSavedId = localStorage.getItem("dashboard_selectedSessionId") || "all";
-      if (currentSavedId === "all") {
-        const activeSess = sessionsList.find((s) => s.isActive || s.status === "active");
-        if (activeSess) {
-          setSelectedSessionId(activeSess._id);
-          const label = activeSess.name.startsWith("AY") ? activeSess.name : `AY ${activeSess.name}`;
-          setAcademicYearLabel(label);
-        }
+    if (selectedSessionId !== "all" && sessionsList.length > 0) {
+      const found = sessionsList.find((s) => s._id === selectedSessionId);
+      if (found) {
+        const label = found.name.startsWith("AY") ? found.name : `AY ${found.name}`;
+        setAcademicYearLabel(label);
       } else {
-        const found = sessionsList.find((s) => s._id === currentSavedId);
-        if (found) {
-          setSelectedSessionId(currentSavedId);
-          const label = found.name.startsWith("AY") ? found.name : `AY ${found.name}`;
-          setAcademicYearLabel(label);
-        }
+        setSelectedSessionId("all");
+        setAcademicYearLabel("All Sessions");
       }
     }
-  }, [sessionsList]);
+  }, [sessionsList, selectedSessionId]);
 
   const handleSessionChange = (e) => {
     const newId = e.target.value;
@@ -554,7 +555,7 @@ const AdminDashboard = () => {
               <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
               <span>
                 Logged in as <strong>{userObj.name || "Faculty"}</strong> ({role.toUpperCase()}) for the{" "}
-                <strong>{departmentName}</strong> department. Active session: <strong>{academicYearLabel}</strong>.
+                <strong>{departmentName}</strong> department. Selected session: <strong>{academicYearLabel}</strong>.
               </span>
             </div>
             <button

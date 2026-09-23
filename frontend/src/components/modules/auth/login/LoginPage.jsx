@@ -113,21 +113,21 @@ const LoginPage = () => {
       <SecurityHelmet title="Login" />
       {isLoading && <Loader />}
 
-      {/* College Building Background Image (positioned at bottom with realistic soft fade to white at top) */}
+      {/* College Building Background Image */}
       <div
-        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover opacity-85"
+        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover opacity-90"
         style={{
           backgroundImage: `url(${singajiBg})`,
           backgroundPosition: "bottom center",
           backgroundSize: "cover",
         }}
       />
-      {/* Soft gradient overlay to achieve the clean, bright white upper section matching the reference design */}
+      {/* Soft gradient overlay: crisp white shade at the top fading smoothly towards the building at the bottom */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 30%, rgba(255, 255, 255, 0.88) 60%, rgba(255, 255, 255, 0.25) 100%)",
+            "linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.90) 18%, rgba(255, 255, 255, 0.58) 42%, rgba(255, 255, 255, 0.18) 72%, rgba(255, 255, 255, 0.04) 100%)",
         }}
       />
 
@@ -153,12 +153,12 @@ const LoginPage = () => {
           <p className="text-[#E67E22] font-bold text-sm sm:text-base tracking-wide uppercase mb-1">
             Empowering Rural Youth
           </p>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-800 tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight drop-shadow-xs">
             SANT SINGAJI EDUCATIONAL SOCIETY
           </h1>
 
           {/* Context content from previous version */}
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-4 font-medium max-w-lg">
+          <p className="text-slate-700 text-sm sm:text-base leading-relaxed mt-4 font-semibold max-w-lg">
             A comprehensive digital institutional portal to streamline academic progress, student records,
             curriculum syllabus, and placement analytics for faculty and students.
           </p>
@@ -201,11 +201,10 @@ const LoginPage = () => {
                 setActiveTab("admin");
                 setLoginError("");
               }}
-              className={`flex-1 py-1.5 rounded-lg transition-all ${
-                activeTab === "admin"
-                  ? "bg-white text-orange-600 shadow-xs font-bold"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
+              className={`flex-1 py-1.5 rounded-lg transition-all ${activeTab === "admin"
+                ? "bg-white text-orange-600 shadow-xs font-bold"
+                : "text-slate-500 hover:text-slate-800"
+                }`}
             >
               Admin / Faculty
             </button>
@@ -215,11 +214,10 @@ const LoginPage = () => {
                 setActiveTab("student");
                 setLoginError("");
               }}
-              className={`flex-1 py-1.5 rounded-lg transition-all ${
-                activeTab === "student"
-                  ? "bg-white text-orange-600 shadow-xs font-bold"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
+              className={`flex-1 py-1.5 rounded-lg transition-all ${activeTab === "student"
+                ? "bg-white text-orange-600 shadow-xs font-bold"
+                : "text-slate-500 hover:text-slate-800"
+                }`}
             >
               Student Portal
             </button>

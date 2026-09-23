@@ -68,26 +68,38 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid role. Only admin, superadmin, faculty, HOD, and Placement Officer are allowed." });
     }
 
-    // Privilege Protection: Only superadmin can create superadmin or admin accounts.
-    // Allow initial bootstrap if no users exist in the database yet.
-    if (role === "superadmin" || role === "admin") {
-      const existingUserCount = await User.countDocuments();
-      if (existingUserCount > 0) {
-        const authHeader = req.header("Authorization");
-        let isSuperAdmin = false;
-        if (authHeader && authHeader.startsWith("Bearer ")) {
-          const token = authHeader.split(" ")[1];
-          try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            if (decoded.role === "superadmin") {
-              isSuperAdmin = true;
-            }
-          } catch {
-            isSuperAdmin = false;
-          }
+    // Privilege Protection:
+    // If users exist, anonymous registration is blocked.
+    // - Only Superadmin can create Superadmin or Admin accounts.
+    // - Only Superadmin or Admin can create Faculty, HOD, or Placement Officer accounts.
+    const existingUserCount = await User.countDocuments();
+    if (existingUserCount > 0) {
+      const authHeader = req.header("Authorization");
+      let caller = null;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        try {
+          caller = jwt.verify(token, process.env.JWT_SECRET);
+        } catch {
+          caller = null;
         }
-        if (!isSuperAdmin) {
+      }
+
+      if (!caller) {
+        return res.status(401).json({
+          message: "Authentication required to create a user account. Anonymous registration is disabled."
+        });
+      }
+
+      const callerRole = String(caller.role || "").toLowerCase();
+
+      if (role === "superadmin" || role === "admin") {
+        if (callerRole !== "superadmin") {
           return res.status(403).json({ message: "Only Superadmin can create admin or superadmin accounts." });
+        }
+      } else {
+        if (!["superadmin", "admin"].includes(callerRole)) {
+          return res.status(403).json({ message: "Only administrators can create staff accounts." });
         }
       }
     }

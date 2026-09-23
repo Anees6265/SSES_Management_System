@@ -3,6 +3,7 @@ const usercontroller = require("../controllers/user/userController");
 const passport = require("passport");
 const { googleAuthCallback } = require('../controllers/user/userController');
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
+const rateLimit = require("express-rate-limit");
 
 const router = express.Router();
 
@@ -10,19 +11,37 @@ const superAdminOnly = [verifyToken, checkRole(["superadmin"])];
 const adminRoles = ["superadmin", "admin"];
 const adminOnly = [verifyToken, checkRole(adminRoles)];
 
+// Rate Limiter for Login (Anti-Brute Force: Max 10 attempts per 15 min per IP)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many login attempts from this IP. Please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate Limiter for Password Reset Requests (Max 5 attempts per 15 min per IP)
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: "Too many password reset requests. Please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/users/signup - Handled with permission checks in usercontroller.createUser
 router.post("/signup", usercontroller.createUser);
-router.post("/login", usercontroller.login);
+router.post("/login", loginLimiter, usercontroller.login);
 router.post("/logout", usercontroller.logout);
 router.patch('/update/:id', verifyToken, usercontroller.updateUserFields);
 
 router.post("/refresh_token", usercontroller.refreshAccessToken);
 
 // Forgot Password - send email
-router.post("/forgot_password", usercontroller.forgotPassword);
+router.post("/forgot_password", forgotPasswordLimiter, usercontroller.forgotPassword);
 
 // Reset Password using link
-router.post("/reset_password/:token", usercontroller.resetPassword);
+router.post("/reset_password/:token", forgotPasswordLimiter, usercontroller.resetPassword);
 
 router.get("/get/:id", verifyToken, usercontroller.getUserById);
 

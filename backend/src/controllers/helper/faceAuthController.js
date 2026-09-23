@@ -14,11 +14,29 @@ class FaceAuthController {
         });
       }
 
-      const user = await User.findOne({ email });
+      // Authorization Check
+      const requester = req.user;
+      if (!requester) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      const cleanEmail = String(email).trim().toLowerCase();
+      const user = await User.findOne({ email: cleanEmail });
       if (!user) {
         return res.status(404).json({
           success: false,
           message: 'User not found'
+        });
+      }
+
+      const isPrivileged = ['superadmin', 'admin'].includes(String(requester.role || '').toLowerCase());
+      const isSelf = (requester.email && requester.email.toLowerCase() === cleanEmail) ||
+                     (requester.id && requester.id.toString() === user._id.toString());
+
+      if (!isPrivileged && !isSelf) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized: You can only register face data for your own account'
         });
       }
 

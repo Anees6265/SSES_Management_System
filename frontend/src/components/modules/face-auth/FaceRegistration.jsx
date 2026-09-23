@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { toast } from 'react-toastify';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
+import { getDecryptedToken } from '../../../helpers/authUtils';
 
 const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
   
@@ -201,11 +202,15 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
       
       // Registering face for user
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const rawApi = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+      const API_URL = rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`;
+      const token = getDecryptedToken() || "";
+
       const response = await fetch(`${API_URL}/face-auth/register-face`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(payload),
       });

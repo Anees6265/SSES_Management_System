@@ -25,6 +25,9 @@ const GoogleAuthSuccess = () => {
             localStorage.setItem("role", parsedUser.role);
             localStorage.setItem("positionRole", parsedUser.positionRole);
 
+            // Immediately clear tokens from browser URL history & referrer
+            window.history.replaceState({}, document.title, window.location.pathname);
+
             navigate("/", { replace: true }); // Go to dashboard/home
         } else {
             console.error("Missing data from Google login callback.");

@@ -16,15 +16,59 @@ app.use(
   })
 );
 
+// Whitelist of allowed origins for secure CORS
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "http://localhost:5001",
+  "https://iteg.ssism.org",
+  "https://iteg-management-system.vercel.app",
+  "https://iteg-management-system-nth9.vercel.app",
+];
+
+const envOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map(u => u.trim().replace(/\/api\/?$/, ""))
+  .filter(Boolean);
+
+const clientOrigins = (process.env.CLIENT_BASE_URL || "")
+  .split(",")
+  .map(u => {
+    try {
+      return new URL(u.trim()).origin;
+    } catch {
+      return u.trim();
+    }
+  })
+  .filter(Boolean);
+
+const allowedOriginsSet = new Set([...defaultAllowedOrigins, ...envOrigins, ...clientOrigins]);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // Allow non-browser agents, tools, or mobile requests
+  if (allowedOriginsSet.has(origin)) return true;
+  if (/^https:\/\/iteg-management-system.*\.vercel\.app$/.test(origin)) return true;
+  if (/^https:\/\/.*\.ssism\.org$/.test(origin)) return true;
+  return false;
+};
+
 // CORS configuration
-app.use(cors({
-  origin: true,
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for unauthorized origin: ${origin}`));
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
-}));
+};
 
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

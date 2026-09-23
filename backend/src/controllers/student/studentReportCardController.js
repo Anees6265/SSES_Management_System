@@ -289,7 +289,10 @@ const syncReportCardLive = async (studentId, reportCard) => {
       }
     }
 
-    await reportCard.save({ validateBeforeSave: false });
+    await StudentReportCard.updateOne(
+      { _id: reportCard._id },
+      { $set: { dynamicSections: reportCard.dynamicSections } }
+    );
   } catch (err) {
     console.error("Error in syncReportCardLive:", err);
   }

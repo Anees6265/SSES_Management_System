@@ -128,18 +128,20 @@ const StudentReportCardSchema = new mongoose.Schema(
     dynamicSections: [
       {
         sectionName: { type: String, required: true },
-        sectionType: { 
-          type: String, 
-          enum: ["ProgressList", "RatingList", "ScoreCard", "StatusBadge", "TextFeedback", "GradeBlock"], 
-          required: true 
-        },
+        sectionType: { type: String, required: true },
+        subjectName: { type: String },
+        hasSyllabusTasks: { type: Boolean },
         items: [
           {
             itemName: { type: String, required: true },
             value: { type: mongoose.Schema.Types.Mixed },
             maxMarks: { type: Number },
             score: { type: Number },
-            remark: { type: String }
+            totalTasks: { type: Number },
+            completedTasks: { type: Number },
+            completionPercentage: { type: Number },
+            remark: { type: String },
+            isFromSyllabus: { type: Boolean }
           }
         ]
       }

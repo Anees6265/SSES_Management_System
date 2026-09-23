@@ -491,7 +491,14 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       });
 
       levelProgressSec.items = sortedItems;
-      await reportCard.save({ validateBeforeSave: false });
+      if (reportCard.isNew) {
+        await reportCard.save({ validateBeforeSave: false });
+      } else {
+        await StudentReportCard.updateOne(
+          { _id: reportCard._id },
+          { $set: { dynamicSections: reportCard.dynamicSections } }
+        );
+      }
     } catch (rcErr) {
       console.error("Auto report card update failed on promotion:", rcErr.message);
     }

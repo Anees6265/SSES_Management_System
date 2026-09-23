@@ -43,10 +43,13 @@ const sendOtpToEmail = async (req, res) => {
         const otp = generateOTP();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
 
+        // Securely hash OTP before storing in database to prevent plaintext exposure
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
         // Save or update OTP in DB, resetting attempts when generating a new OTP (unless blocked)
         await OtpModel.findOneAndUpdate(
             { email },
-            { otp, expiresAt, attempts: 0 },
+            { otp: hashedOtp, expiresAt, attempts: 0 },
             { upsert: true, new: true }
         );
 
@@ -68,28 +71,26 @@ const verifyEmailOtp = async (req, res) => {
         if (!otpRecord) return res.status(400).json({ message: 'No OTP found' });
 
         if (otpRecord.blockedUntil && otpRecord.blockedUntil > new Date()) {
-      const remaining = Math.ceil((otpRecord.blockedUntil - new Date()) / 60000);
-      return res.status(429).json({ message: `Too many attempts. Try again in ${remaining} min` });
-    }
+          const remaining = Math.ceil((otpRecord.blockedUntil - new Date()) / 60000);
+          return res.status(429).json({ message: `Too many attempts. Try again in ${remaining} min` });
+        }
 
         if (Date.now() > otpRecord.expiresAt.getTime()) {
             await OtpModel.deleteOne({ email });
             return res.status(400).json({ message: 'OTP expired' });
         }
 
-        if (otpRecord.otp !== otp) {
-      otpRecord.attempts += 1;
+        // Securely compare provided OTP against the hashed OTP in database
+        const isMatch = await bcrypt.compare(String(otp).trim(), otpRecord.otp);
+        if (!isMatch) {
+          otpRecord.attempts += 1;
 
-      if (otpRecord.attempts >= 5) {
-        otpRecord.blockedUntil = new Date(Date.now() + 10 * 60 * 1000); // 10 min block
-      }
+          if (otpRecord.attempts >= 5) {
+            otpRecord.blockedUntil = new Date(Date.now() + 10 * 60 * 1000); // 10 min block
+          }
 
-      await otpRecord.save();
-      return res.status(400).json({ message: 'Invalid OTP' });
-    }
-
-        if (otpRecord.otp !== otp) {
-            return res.status(400).json({ message: 'Invalid OTP' });
+          await otpRecord.save();
+          return res.status(400).json({ message: 'Invalid OTP' });
         }
 
         const user = await User.findOne({ email });

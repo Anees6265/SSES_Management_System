@@ -265,6 +265,24 @@ export default function StudentPortalLayout() {
           </div>
         </header>
 
+        {/* Security Warning Banner if using default password */}
+        {studentData?.mustChangePassword && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-xs text-amber-850 print:hidden">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>Security Alert:</strong> You are currently using the default initial password (<code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">ssism@123</code>). For your security, please update your password.
+              </span>
+            </div>
+            <button
+              onClick={() => navigate("/student-portal/profile")}
+              className="ml-3 font-bold text-amber-900 underline hover:text-orange-600 cursor-pointer shrink-0"
+            >
+              Change Password Now
+            </button>
+          </div>
+        )}
+
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto px-3.5 sm:px-4 md:px-6 pt-2.5 sm:pt-3.5 md:pt-4 pb-8 sm:pb-10 print:h-auto print:overflow-visible print:p-0 print:block">
           <Outlet />

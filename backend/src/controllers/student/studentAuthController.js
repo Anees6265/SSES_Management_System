@@ -63,10 +63,13 @@ exports.studentLogin = async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    const isDefaultPassword = (password === "ssism@123");
+
     return res.status(200).json({
       message: "Login successful",
       token,
       refreshToken,
+      mustChangePassword: isDefaultPassword,
       student: {
         _id: student._id,
         prkey: student.prkey,
@@ -82,6 +85,7 @@ exports.studentLogin = async (req, res) => {
         sessionId: student.sessionId,
         currentLevelId: student.currentLevelId,
         currentSubLevelId: student.currentSubLevelId,
+        mustChangePassword: isDefaultPassword,
       },
     });
   } catch (error) {

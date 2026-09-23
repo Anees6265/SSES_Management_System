@@ -1,6 +1,36 @@
 import CryptoJS from "crypto-js";
 
-const secretKey = "ITEG@123";
+// Uses environment-configured key or institutional fallback key
+const secretKey = import.meta.env.VITE_STORAGE_KEY || "ITEG@123";
+
+/**
+ * Encrypt arbitrary string (e.g. token or role) for obscured storage
+ */
+export const encryptToken = (data) => {
+  if (!data) return "";
+  try {
+    return CryptoJS.AES.encrypt(String(data), secretKey).toString();
+  } catch {
+    return String(data);
+  }
+};
+
+/**
+ * Decrypt token or string safely
+ */
+export const decryptToken = (cipherText) => {
+  if (!cipherText) return "";
+  if (typeof cipherText === "string" && cipherText.split(".").length === 3) {
+    return cipherText; // raw standard JWT token
+  }
+  try {
+    const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return decrypted || cipherText;
+  } catch {
+    return cipherText;
+  }
+};
 
 // Safe role reader from localStorage (supports plain and AES-encrypted roles)
 export const getDecryptedRole = () => {
@@ -39,4 +69,17 @@ export const getDecryptedToken = () => {
     return token;
   }
 };
+
+// Clear all auth sessions cleanly
+export const clearAllAuthTokens = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("studentToken");
+  localStorage.removeItem("studentRefreshToken");
+  localStorage.removeItem("user");
+  localStorage.removeItem("studentData");
+  localStorage.removeItem("role");
+  localStorage.removeItem("positionRole");
+};
+
 

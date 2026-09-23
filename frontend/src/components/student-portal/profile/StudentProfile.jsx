@@ -62,6 +62,14 @@ const ChangePasswordModal = ({ onClose }) => {
         }
         try {
             await changePassword({ currentPassword: form.currentPassword, newPassword: form.newPassword }).unwrap();
+            const rawStored = localStorage.getItem("studentData");
+            if (rawStored) {
+              try {
+                const current = JSON.parse(rawStored);
+                current.mustChangePassword = false;
+                localStorage.setItem("studentData", JSON.stringify(current));
+              } catch (_) {}
+            }
             toast.success("Password changed successfully!");
             onClose();
         } catch (err) {

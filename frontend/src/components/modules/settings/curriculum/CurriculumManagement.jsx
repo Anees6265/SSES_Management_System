@@ -400,11 +400,41 @@ const CurriculumManagement = () => {
   };
 
   const years = getOptionValues(curriculumRows, "academicYear");
-  const sessionNames = getOptionValues(curriculumRows, "session");
-  const depts = getOptionValues(curriculumRows, "department");
-  const subs = getOptionValues(curriculumRows, "subDept");
-  const levelNames = getOptionValues(curriculumRows, "level");
-  const statuses = getOptionValues(curriculumRows, "status");
+  const sessionNames = useMemo(() => {
+    const fromApi = sessions.map((s) => s.name).filter(Boolean);
+    const fromRows = getOptionValues(curriculumRows, "session");
+    return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+  }, [sessions, curriculumRows]);
+
+  const depts = useMemo(() => {
+    const fromApi = departments.map((d) => d.name).filter(Boolean);
+    const fromRows = getOptionValues(curriculumRows, "department");
+    return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+  }, [departments, curriculumRows]);
+
+  const subs = useMemo(() => {
+    let activeSubs = subDepartments;
+    if (filterDept) {
+      const selectedDept = departments.find((d) => d.name === filterDept);
+      if (selectedDept) {
+        activeSubs = subDepartments.filter((sd) => getId(sd.departmentId) === selectedDept._id);
+      }
+    }
+    const fromApi = activeSubs.map((sd) => sd.name).filter(Boolean);
+    const fromRows = getOptionValues(curriculumRows, "subDept");
+    return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+  }, [subDepartments, departments, filterDept, curriculumRows]);
+
+  const levelNames = useMemo(() => {
+    const fromApi = levels.map((l) => l.name).filter(Boolean);
+    const fromRows = getOptionValues(curriculumRows, "level");
+    return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+  }, [levels, curriculumRows]);
+
+  const statuses = useMemo(() => {
+    const fromRows = getOptionValues(curriculumRows, "status");
+    return [...new Set(["active", "draft", "archived", ...fromRows])].filter(Boolean);
+  }, [curriculumRows]);
 
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 

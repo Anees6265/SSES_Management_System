@@ -6,7 +6,9 @@ const taskAssignmentController = require("../controllers/syllabus/taskAssignment
 const taskMasterBulkController = require("../controllers/syllabus/taskMasterBulkController");
 const excelUpload = require("../config/excelUploadConfig");
 const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
+const Task = require("../models/syllabus/Task");
 const StudentTask = require("../models/syllabus/StudentTask");
+const Student = require("../models/student/Student");
 const { updateStudentTaskStatus } = require("../services/taskAssignmentService");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod"];
@@ -110,11 +112,31 @@ router.patch("/:id", verifyToken, checkRole(writeRoles), embeddedSyllabusControl
 router.delete("/:id", verifyToken, checkRole(writeRoles), async (req, res) => {
   try {
     const sv = await SyllabusVersion.findById(req.params.id);
-    if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Not found" });
-    if (sv.status === "active") return res.status(400).json({ success: false, message: "Cannot delete active syllabus" });
+    if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
+
     sv.isActive = false;
+    sv.status = "archived";
     await sv.save();
-    res.json({ success: true, message: "Deleted successfully" });
+
+    // Deactivate associated tasks
+    await Task.updateMany(
+      { syllabusVersionId: sv._id },
+      { $set: { isActive: false, deletedAt: new Date() } }
+    );
+
+    // Deactivate associated student tasks
+    await StudentTask.updateMany(
+      { syllabusVersionId: sv._id },
+      { $set: { isActive: false } }
+    );
+
+    // Clear student syllabusVersionId reference
+    await Student.updateMany(
+      { syllabusVersionId: sv._id },
+      { $set: { syllabusVersionId: null } }
+    );
+
+    res.json({ success: true, message: "Curriculum deleted successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -79,7 +79,7 @@ const syllabusVersionSchema = new mongoose.Schema({
 
 syllabusVersionSchema.index(
   { sessionId: 1, levelId: 1, subLevelId: 1, version: 1 },
-  { unique: true }
+  { unique: true, partialFilterExpression: { isActive: true } }
 );
 
 module.exports = mongoose.model("SyllabusVersion", syllabusVersionSchema);

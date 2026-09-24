@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
+import { useState, useRef, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
   MdCloudUpload, MdCheckCircle, MdExpandMore, MdExpandLess,
@@ -504,8 +504,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
       const mapped = parsed.map((r) => ({
         subject:     String(r["Subject"]     || r["subject"]     || "").trim(),
         topic:       String(r["Topic"]       || r["topic"]       || "").trim(),
-        subTopic:    String(r["SubTopic"]    || r["subtopic"]    || r["sub_topic"] || "").trim(),
-        taskTitle:   String(r["TaskTitle"]   || r["Task Title"]  || r["taskTitle"] || "").trim(),
+        taskTitle:   String(r["TaskTitle"]   || r["Task Title"]  || r["taskTitle"] || r["Task"] || r["task"] || r["Tasks"] || r["TASK"] || r["title"] || r["Title"] || "").trim(),
         taskType:    String(r["TaskType"]    || r["Task Type"]   || r["taskType"]  || "assessment").trim(),
         maxMarks:    r["MaxMarks"]   || r["Max Marks"]  || r["maxMarks"]  || 100,
         cutoff:      r["Cutoff"]     || r["cutoff"]     || 40,

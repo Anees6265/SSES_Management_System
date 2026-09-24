@@ -162,16 +162,18 @@ exports.createSyllabusVersion = async (req, res) => {
 
     // Check if a version with this subLevelId + resolvedVersion already exists
     const existingVersion = await SyllabusVersion.findOne({
-      sessionId, levelId, subLevelId, version: resolvedVersion, isActive: true
+      sessionId, levelId, subLevelId, version: resolvedVersion
     });
 
     if (existingVersion) {
+      existingVersion.isActive = true;
+      existingVersion.status = "active";
       // Add subjects to existing version instead of creating new
       upsertSubjectTree(existingVersion, subjects);
       await existingVersion.save();
       return res.status(200).json({
         success: true,
-        message: `Subjects added to existing version ${resolvedVersion}`,
+        message: `Subjects added to version ${resolvedVersion}`,
         data: existingVersion
       });
     }
@@ -594,16 +596,19 @@ exports.uploadCombined = async (req, res) => {
       return res.status(400).json({ success: false, message: "No valid subject/topic rows found" });
 
     // Step 2: Create or update SyllabusVersion
-    let sv = await SyllabusVersion.findOne({ sessionId, levelId, subLevelId, isActive: true }).sort({ createdAt: -1 });
+    let sv = await SyllabusVersion.findOne({ sessionId, levelId, subLevelId }).sort({ createdAt: -1 });
     if (sv) {
+      sv.isActive = true;
+      sv.status = "active";
       upsertSubjectTree(sv, subjects);
       await sv.save();
     } else {
-      sv = await SyllabusVersion.create({ sessionId, levelId, subLevelId, version: "v1.0", subjects: normalizeSubjects(subjects) });
+      sv = await SyllabusVersion.create({ sessionId, levelId, subLevelId, version: "v1.0", subjects: normalizeSubjects(subjects), status: "active", isActive: true });
     }
 
     // Step 3: Create tasks for rows that have taskTitle
-    const taskRows = rows.filter(r => (r.taskTitle || "").trim());
+    const getTaskTitle = (r) => (r.taskTitle || r["Task Title"] || r.TaskTitle || r.Task || r.task || r.Tasks || r.TASK || r.title || r.Title || "").trim();
+    const taskRows = rows.filter(r => Boolean(getTaskTitle(r)));
     const taskDocs = [];
     const taskErrors = [];
 
@@ -612,7 +617,7 @@ exports.uploadCombined = async (req, res) => {
       const subjectName  = (row.subject  || row.Subject || "").trim();
       const topicName    = (row.topic    || row.Topic || "").trim();
       const subTopicName = (row.subTopic || row["Sub Topic"] || row.SubTopic || "").trim();
-      const taskTitle    = (row.taskTitle || row["Task Title"] || row.TaskTitle || "").trim();
+      const taskTitle    = getTaskTitle(row);
       const taskType     = (row.taskType || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
       const maxMarks     = Number(row.maxMarks || row["Max Marks"]) || 5;
       const timeDays     = row.timeDays || row["Time Days"] ? Number(row.timeDays || row["Time Days"]) : null;

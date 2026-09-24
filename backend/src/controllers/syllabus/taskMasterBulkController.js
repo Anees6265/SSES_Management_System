@@ -29,8 +29,7 @@ exports.bulkUploadTasks = async (req, res) => {
 
       const subjectName    = (row.subject          || row.Subject || "").trim();
       const topicName       = (row.topic            || row.Topic || "").trim();
-      const subTopicName    = (row.subTopic          || row["Sub Topic"] || row.SubTopic || "").trim();
-      const taskTitle       = (row.taskTitle         || row["Task Title"] || row.TaskTitle || "").trim();
+      const taskTitle       = (row.taskTitle         || row["Task Title"] || row.TaskTitle || row.Task || row.task || row.Tasks || row.TASK || row.title || row.Title || "").trim();
       const taskType        = (row.taskType          || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
       const priority        = (row.priority          || row.Priority || "medium").trim().toLowerCase();
       const maxMarks        = Number(row.maxMarks)   || Number(row["Max Marks"]) || 5;

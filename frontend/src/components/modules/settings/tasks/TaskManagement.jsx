@@ -13,6 +13,11 @@ import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
     useUpdateTaskMasterMutation,
+    useGetAllDepartmentsQuery,
+    useGetAllSessionsQuery,
+    useGetAllSubdepartmentsQuery,
+    useGetAllLevelsQuery,
+    useGetAllSubLevelsQuery,
 } from "../../../../redux/api/authApi";
 
 const getOptionValues = (items, key) => (
@@ -389,8 +394,20 @@ const TaskManagement = () => {
     const [editingTask, setEditingTask] = useState(null);
 
     const { data: tasksResponse, isLoading, isError, refetch } = useGetAllTasksQuery({ status: "all" });
+    const { data: departmentsData } = useGetAllDepartmentsQuery();
+    const { data: sessionsData } = useGetAllSessionsQuery(true);
+    const { data: subDepartmentsData } = useGetAllSubdepartmentsQuery();
+    const { data: levelsData } = useGetAllLevelsQuery();
+    const { data: subLevelsData } = useGetAllSubLevelsQuery();
+
     const [deleteTask, { isLoading: deleting }] = useDeleteTaskMutation();
     const [updateTask, { isLoading: isUpdatingTask }] = useUpdateTaskMasterMutation();
+
+    const departments = departmentsData?.data || [];
+    const sessionsList = sessionsData?.data || [];
+    const subDepartments = subDepartmentsData?.data || [];
+    const levelsList = levelsData?.data || [];
+    const subLevelsList = subLevelsData?.data || [];
 
     const taskRows = useMemo(() => {
         const tasks = tasksResponse?.data || [];
@@ -417,11 +434,42 @@ const TaskManagement = () => {
     }, [tasksResponse]);
 
     const years = getOptionValues(taskRows, "academicYear").filter((v) => v !== "-");
-    const sessions = getOptionValues(taskRows, "session").filter((v) => v !== "-");
-    const depts = getOptionValues(taskRows, "department").filter((v) => v !== "-");
-    const subDepts = getOptionValues(taskRows, "subDept").filter((v) => v !== "-");
-    const levels = getOptionValues(taskRows, "level").filter((v) => v !== "-");
-    const subLevels = getOptionValues(taskRows, "subLevel").filter((v) => v !== "-");
+    const sessions = useMemo(() => {
+        const fromApi = sessionsList.map((s) => s.name).filter(Boolean);
+        const fromRows = getOptionValues(taskRows, "session").filter((v) => v !== "-");
+        return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [sessionsList, taskRows]);
+
+    const depts = useMemo(() => {
+        const fromApi = departments.map((d) => d.name).filter(Boolean);
+        const fromRows = getOptionValues(taskRows, "department").filter((v) => v !== "-");
+        return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [departments, taskRows]);
+
+    const subDepts = useMemo(() => {
+        let activeSubs = subDepartments;
+        if (filterDept) {
+            const selectedDept = departments.find((d) => d.name === filterDept);
+            if (selectedDept) {
+                activeSubs = subDepartments.filter((sd) => String(sd.departmentId?._id || sd.departmentId) === String(selectedDept._id));
+            }
+        }
+        const fromApi = activeSubs.map((sd) => sd.name).filter(Boolean);
+        const fromRows = getOptionValues(taskRows, "subDept").filter((v) => v !== "-");
+        return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [subDepartments, departments, filterDept, taskRows]);
+
+    const levels = useMemo(() => {
+        const fromApi = levelsList.map((l) => l.name).filter(Boolean);
+        const fromRows = getOptionValues(taskRows, "level").filter((v) => v !== "-");
+        return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [levelsList, taskRows]);
+
+    const subLevels = useMemo(() => {
+        const fromApi = subLevelsList.map((sl) => sl.name).filter(Boolean);
+        const fromRows = getOptionValues(taskRows, "subLevel").filter((v) => v !== "-");
+        return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [subLevelsList, taskRows]);
 
     const activeFilterCount = [
         Boolean(filterYear),

@@ -1172,8 +1172,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
       const mapped = parsed.map((r) => ({
         subject:           String(r["Subject"]          || r["subject"]          || r["SUBJECT"] || "").trim(),
         topic:             String(r["Topic"]            || r["topic"]            || r["Topic Name"] || r["TOPIC"] || "").trim(),
-        subTopic:          String(r["Sub Topic"]        || r["subTopic"]         || r["SubTopic"]   || r["sub_topic"] || r["SUBTOPIC"] || "").trim(),
-        taskTitle:         String(r["Task Title"]       || r["taskTitle"]        || r["TaskTitle"]  || r["Tasks"] || r["TASK"] || "").trim(),
+        taskTitle:         String(r["Task Title"]       || r["taskTitle"]        || r["TaskTitle"]  || r["Task"] || r["task"] || r["Tasks"] || r["TASK"] || r["title"] || r["Title"] || "").trim(),
         taskType:          String(r["taskType"]         || r["TaskType"]         || r["Task Type"]  || r["TASK TYPE"] || "assessment").trim(),
         priority:          String(r["priority"]         || r["Priority"]         || r["PRIORITY"] || "medium").trim(),
         maxMarks:          Number(r["maxMarks"]         || r["MaxMarks"]         || r["Max Marks"]  || r["MAX MARKS"] || 5),

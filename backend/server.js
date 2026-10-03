@@ -26,6 +26,7 @@ const defaultAllowedOrigins = [
   "https://iteg.ssism.org",
   "https://iteg-management-system.vercel.app",
   "https://iteg-management-system-nth9.vercel.app",
+  "https://sses-management-system.vercel.app",
 ];
 
 const envOrigins = (process.env.FRONTEND_URL || "")
@@ -50,6 +51,7 @@ const isAllowedOrigin = (origin) => {
   if (!origin) return true; // Allow non-browser agents, tools, or mobile requests
   if (allowedOriginsSet.has(origin)) return true;
   if (/^https:\/\/iteg-management-system.*\.vercel\.app$/.test(origin)) return true;
+  if (/^https:\/\/sses-management-system.*\.vercel\.app$/.test(origin)) return true;
   if (/^https:\/\/.*\.ssism\.org$/.test(origin)) return true;
   return false;
 };

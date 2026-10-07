@@ -22,7 +22,7 @@ export const studentApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["StudentProfile", "StudentTasks", "StudentHistory", "StudentSnapshots", "StudentEvents"],
+  tagTypes: ["StudentProfile", "StudentTasks", "StudentHistory", "StudentSnapshots", "StudentEvents", "StudentThesis"],
   endpoints: (builder) => ({
 
     getMyStudentProfile: builder.query({
@@ -110,6 +110,41 @@ export const studentApi = createApi({
       providesTags: ["StudentProfile"],
     }),
 
+    // AI Thesis Endpoints
+    getMyStudentThesis: builder.query({
+      query: (version) => ({ url: `/ai-thesis/my-thesis${version ? `?version=${version}` : ""}`, method: "GET" }),
+      providesTags: ["StudentThesis"],
+    }),
+
+    getMyThesisVersions: builder.query({
+      query: () => ({ url: "/ai-thesis/my-versions", method: "GET" }),
+      providesTags: ["StudentThesis"],
+    }),
+
+    saveMyDraftThesis: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/draft", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    analyzeMyThesis: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/analyze", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    startMyNewThesisVersion: builder.mutation({
+      query: () => ({ url: "/ai-thesis/new-version", method: "POST" }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    updateMyThesisStatements: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/statements", method: "PUT", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    submitMyReflection: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/reflect", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
   }),
 });
 
@@ -130,4 +165,11 @@ export const {
   useGetMyExtraDocumentsQuery,
   useGetMyPlacementQuery,
   useGetMyReportCardQuery,
+  useGetMyStudentThesisQuery,
+  useGetMyThesisVersionsQuery,
+  useSaveMyDraftThesisMutation,
+  useAnalyzeMyThesisMutation,
+  useStartMyNewThesisVersionMutation,
+  useUpdateMyThesisStatementsMutation,
+  useSubmitMyReflectionMutation,
 } = studentApi;

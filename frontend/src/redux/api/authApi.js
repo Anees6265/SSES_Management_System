@@ -2012,6 +2012,75 @@ export const authApi = createApi({
       }),
     }),
 
+    // AI Thesis Endpoints
+    getStudentThesis: builder.query({
+      query: ({ studentId, version }) => ({
+        url: `/ai-thesis/${studentId}${version ? `?version=${version}` : ""}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    getStudentThesisVersions: builder.query({
+      query: (studentId) => ({
+        url: `/ai-thesis/${studentId}/versions`,
+        method: "GET",
+      }),
+      providesTags: (result, error, studentId) => [{ type: "Student", id: studentId }],
+    }),
+
+    saveStudentDraftThesis: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/draft`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    analyzeStudentThesis: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/analyze`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    startStudentNewThesisVersion: builder.mutation({
+      query: (studentId) => ({
+        url: `/ai-thesis/${studentId}/new-version`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, studentId) => [{ type: "Student", id: studentId }],
+    }),
+
+    updateStudentThesisStatements: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/statements`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    addThesisMentorFeedback: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/mentor-feedback`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    updateThesisFacultyAction: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/faculty-actions`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
   }),
 });
 
@@ -2200,4 +2269,12 @@ export const {
   useGetMyStudentReportCardQuery,
   useCreateNewStudentMutation,
   useImportStudentsExcelMutation,
+  useGetStudentThesisQuery,
+  useGetStudentThesisVersionsQuery,
+  useSaveStudentDraftThesisMutation,
+  useAnalyzeStudentThesisMutation,
+  useStartStudentNewThesisVersionMutation,
+  useUpdateStudentThesisStatementsMutation,
+  useAddThesisMentorFeedbackMutation,
+  useUpdateThesisFacultyActionMutation,
 } = authApi;

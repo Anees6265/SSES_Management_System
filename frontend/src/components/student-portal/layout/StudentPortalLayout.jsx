@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
-  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen
+  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen,
+  Sparkles
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
@@ -14,6 +15,7 @@ const navItems = [
   { to: "/student-portal/syllabus",    icon: BookOpen,        label: "My Syllabus" },
   { to: "/student-portal/tasks",        icon: ClipboardList,   label: "My Tasks" },
   { to: "/student-portal/progress",     icon: TrendingUp,      label: "Level History" },
+  { to: "/student-portal/passion-vision", icon: Sparkles,      label: "Passion & Vision" },
   { to: "/student-portal/permissions",  icon: ShieldCheck,     label: "Permissions" },
   { to: "/student-portal/documents",    icon: FolderOpen,      label: "Documents" },
   { to: "/student-portal/placement",    icon: Award,           label: "Placement" },

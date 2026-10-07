@@ -30,6 +30,7 @@ const StudentPlacement = React.lazy(() => import("./components/student-portal/pl
 const StudentReportCard = React.lazy(() => import("./components/student-portal/reportcard/StudentReportCard"));
 const StudentFaculty = React.lazy(() => import("./components/student-portal/faculty/StudentFaculty"));
 const StudentSyllabus = React.lazy(() => import("./components/student-portal/syllabus/StudentSyllabus"));
+const StudentAIThesis = React.lazy(() => import("./components/student-portal/ai-thesis/StudentAIThesis"));
 
 
 // ✅ Protected Route Component (Admin/Faculty)
@@ -79,6 +80,8 @@ function App() {
             <Route path="syllabus" element={<StudentSyllabus />} />
             <Route path="tasks" element={<StudentTasks />} />
             <Route path="progress" element={<StudentLevelHistory />} />
+            <Route path="passion-vision" element={<StudentAIThesis />} />
+            <Route path="ai-thesis" element={<StudentAIThesis />} />
             <Route path="permissions" element={<StudentPermissions />} />
             <Route path="documents" element={<StudentDocuments />} />
             <Route path="placement" element={<StudentPlacement />} />

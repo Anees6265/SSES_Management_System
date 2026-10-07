@@ -38,6 +38,8 @@ import {
     useMarkStudentDroppedMutation,
     useMarkStudentDummyMutation
 } from "../../../../redux/api/authApi";
+import AIThesisContainer from "../../ai-thesis/AIThesisContainer";
+import { Sparkles, Compass, MapPin, X } from "lucide-react";
 
 const SECRET_KEY = "ITEG@123";
 const getToken = () => {
@@ -1092,6 +1094,7 @@ const StudentProfilePage = () => {
     const [editLoading, setEditLoading] = useState(false);
     const [dropLoading, setDropLoading] = useState(false);
     const [dummyLoading, setDummyLoading] = useState(false);
+    const [isPassionVisionOpen, setPassionVisionOpen] = useState(false);
 
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
@@ -1768,6 +1771,13 @@ const StudentProfilePage = () => {
                             >
                                 <MdEdit size={16} /> Edit Profile
                             </button>
+                            <button
+                                onClick={() => setPassionVisionOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm"
+                                title="View Student Passion & Vision"
+                            >
+                                <Sparkles size={15} /> Passion & Vision
+                            </button>
 
                             {/* Actions Dropdown */}
                             <div className="relative">
@@ -1881,9 +1891,8 @@ const StudentProfilePage = () => {
                     <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
                 )}
 
-
-                        {/* 4 STAT CARDS ROW (2x2 on mobile) */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                {/* 4 STAT CARDS ROW (2x2 on mobile) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                             {/* Card 1: LEVEL HISTORY */}
                             <div
                                 onClick={() => setHistoryDrawerOpen(true)}
@@ -2272,10 +2281,37 @@ const StudentProfilePage = () => {
                                     </div>
                                 </div>
                                 <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
-                            </div>
                         </div>
-
+                    </div>
             </div>
+
+            {/* Passion & Vision Modal */}
+            {isPassionVisionOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
+                    <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-6xl max-h-[92vh] overflow-y-auto p-4 sm:p-7 relative">
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 sticky top-0 bg-white z-20">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-sm">
+                                    <Sparkles size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base sm:text-lg font-black text-gray-900">
+                                        {raw.firstName} {raw.lastName} • Passion & Vision
+                                    </h3>
+                                    <p className="text-xs text-gray-500">Student Purpose, Passion, Vision & Career Discovery</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPassionVisionOpen(false)}
+                                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <AIThesisContainer studentId={studentId} isFacultyView={true} />
+                    </div>
+                </div>
+            )}
         </>
     );
 };

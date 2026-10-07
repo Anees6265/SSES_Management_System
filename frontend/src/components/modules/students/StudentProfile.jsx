@@ -31,6 +31,8 @@ import download from "../../../assets/icons/download-icon.png";
 import studentProfileBg from "../../../assets/images/Student_profile_2nd_bg.jpg";
 import Header from '../../shared/sidebar/Header';
 import { IoCamera } from "react-icons/io5";
+import { Sparkles, X, Target } from "lucide-react";
+import AIThesisContainer from "../ai-thesis/AIThesisContainer";
 
 const translateLevelName = (name) => {
   if (!name) return "";
@@ -116,6 +118,7 @@ export default function StudentProfile() {
   const [isEmailModalOpen, setEmailModalOpen]           = useState(false);
   const [isReportCardOpen, setReportCardOpen]           = useState(false);
   const [isSetPasswordOpen, setSetPasswordOpen]         = useState(false);
+  const [isAiThesisModalOpen, setAiThesisModalOpen]     = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -409,6 +412,15 @@ export default function StudentProfile() {
               >
                 <span className="hidden sm:inline">Set Password</span>
                 <span className="sm:hidden">Password</span>
+              </button>
+              <button
+                onClick={() => setAiThesisModalOpen(true)}
+                className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 hover:shadow-xl hover:scale-105 text-white flex items-center gap-1.5"
+                title="View Student's Passion & Vision Thesis"
+              >
+                <Sparkles size={14} />
+                <span className="hidden sm:inline">Passion & Vision</span>
+                <span className="sm:hidden">Passion & Vision</span>
               </button>
               {/* <button
                 onClick={() => document.getElementById('resume-upload').click()}
@@ -974,6 +986,33 @@ export default function StudentProfile() {
         currentLevel={currentLevel}
         daysInSubLevel={daysInSubLevel}
       />
+
+      {isAiThesisModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-6xl max-h-[92vh] overflow-y-auto p-4 sm:p-7 relative">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 sticky top-0 bg-white z-20">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-sm">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-gray-900">
+                    {studentData?.firstName} {studentData?.lastName} • Passion & Vision
+                  </h3>
+                  <p className="text-xs text-gray-500">Faculty Review & Intervention Dashboard</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAiThesisModalOpen(false)}
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <AIThesisContainer studentId={id} isFacultyView={true} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

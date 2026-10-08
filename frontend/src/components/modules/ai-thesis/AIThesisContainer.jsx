@@ -215,7 +215,8 @@ export default function AIThesisContainer({
 
   const handleAddMentorFeedback = async (feedbackData) => {
     try {
-      await addFeedback({ studentId, ...feedbackData }).unwrap();
+      const ver = selectedVersion || currentVersionNumber;
+      await addFeedback({ studentId, version: ver, ...feedbackData }).unwrap();
       setIsMentorModalOpen(false);
       refetch();
       toast.success("Mentor feedback submitted successfully!");
@@ -227,7 +228,8 @@ export default function AIThesisContainer({
   const handleUpdateFacultyAction = async (actionData) => {
     try {
       const targetId = isFacultyView ? studentId : studentContext.studentId;
-      await updateFacultyAction({ studentId: targetId, ...actionData }).unwrap();
+      const ver = selectedVersion || currentVersionNumber;
+      await updateFacultyAction({ studentId: targetId, version: ver, ...actionData }).unwrap();
       refetch();
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update action");

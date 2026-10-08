@@ -512,13 +512,23 @@ exports.submitReflection = async (req, res) => {
 exports.addMentorFeedback = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
-    const { comment, recommendedActions } = req.body;
+    const { comment, recommendedActions, version } = req.body;
 
     if (!comment || !comment.trim()) {
       return res.status(400).json({ success: false, message: "Mentor feedback comment is required" });
     }
 
-    const assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    let assessment;
+    if (version) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, status: { $in: ["analyzed", "finalized"] } }).sort({ assessmentVersion: -1 });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
     if (!assessment) {
       return res.status(404).json({ success: false, message: "No AI Thesis found for this student" });
     }
@@ -568,13 +578,35 @@ exports.addMentorFeedback = async (req, res) => {
 exports.updateFacultyActionStatus = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
-    const { actionId, status, notes } = req.body;
+    const { actionId, status, notes, version } = req.body;
 
     if (!actionId || !status) {
       return res.status(400).json({ success: false, message: "actionId and status are required" });
     }
 
-    const assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    let assessment;
+    if (version) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({
+        studentId,
+        "facultyInterventions.actionId": actionId,
+      });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({
+        studentId,
+        "facultyInterventions._id": actionId,
+      });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, status: { $in: ["analyzed", "finalized"] } }).sort({ assessmentVersion: -1 });
+    }
+    if (!assessment) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
     if (!assessment) {
       return res.status(404).json({ success: false, message: "No AI Thesis found for this student" });
     }

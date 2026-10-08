@@ -187,20 +187,21 @@ export default function AIThesisOverview({
           <span>Career Directions</span>
         </button>
 
-        {isFacultyView && (
-          <button
-            type="button"
-            onClick={() => setActiveTab("faculty")}
-            className={`flex-1 min-w-[140px] py-2.5 px-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === "faculty"
-                ? "bg-white text-slate-900 shadow-xs font-black ring-1 ring-slate-900/5"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold"
-            }`}
-          >
-            <Users size={15} className={activeTab === "faculty" ? "text-purple-600" : "text-slate-400"} />
-            <span>Faculty Review</span>
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setActiveTab("faculty")}
+          className={`flex-1 min-w-[140px] py-2.5 px-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === "faculty"
+              ? "bg-white text-slate-900 shadow-xs font-black ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold"
+          }`}
+        >
+          <Users size={15} className={activeTab === "faculty" ? "text-purple-600" : "text-slate-400"} />
+          <span>{isFacultyView ? "Faculty Review" : "Faculty & Mentorship"}</span>
+          {(assessment?.facultyFeedback?.length > 0 || assessment?.facultyInterventions?.length > 0) && (
+            <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+          )}
+        </button>
       </div>
 
       {/* ── TAB 1: PASSIONS & VALUES ── */}
@@ -497,24 +498,36 @@ export default function AIThesisOverview({
         </div>
       )}
 
-      {/* ── TAB 4: FACULTY REVIEW ── */}
-      {activeTab === "faculty" && isFacultyView && (
+      {/* ── TAB 4: FACULTY REVIEW & MENTORSHIP GUIDANCE ── */}
+      {activeTab === "faculty" && (
         <div className="space-y-5 animate-in fade-in duration-150">
+          {/* Section 1: Faculty Observations & Mentoring Comments */}
           <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                  Intervention Management
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-slate-900">
-                  Faculty Actions & Mentorship
-                </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900">
+                      Mentor Observations & Guidance
+                    </h3>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60">
+                      {assessment?.facultyFeedback?.length || 0} Notes Recorded
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Constructive faculty notes, strengths noticed, and developmental direction
+                  </p>
+                </div>
               </div>
-              {onOpenMentorFeedbackModal && (
+
+              {isFacultyView && onOpenMentorFeedbackModal && (
                 <button
                   type="button"
                   onClick={onOpenMentorFeedbackModal}
-                  className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-auto"
                 >
                   <MessageSquare size={13} />
                   <span>+ Add Feedback</span>
@@ -522,51 +535,247 @@ export default function AIThesisOverview({
               )}
             </div>
 
-            <div className="space-y-3">
-              {(assessment?.facultyInterventions || [
-                {
-                  _id: "1",
-                  actionType: "Project Mentorship",
-                  actionTitle: "Assign Project Mentor for Applied Capstone",
-                  status: "Not Started",
-                },
-                {
-                  _id: "2",
-                  actionType: "Communication Practice",
-                  actionTitle: "Schedule Technical Presentation / Mock Interview",
-                  status: "In Progress",
-                },
-                {
-                  _id: "3",
-                  actionType: "Skill Development",
-                  actionTitle: "Track Weekly DSA / Logic Problem Practice",
-                  status: "Not Started",
-                },
-              ]).map((act) => (
-                <div
-                  key={act._id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <span className="font-bold text-slate-900 block">{act.actionTitle}</span>
-                    <span className="text-[11px] text-slate-400">{act.actionType}</span>
-                  </div>
+            {/* List of Feedback Notes */}
+            {assessment?.facultyFeedback?.length > 0 ? (
+              <div className="space-y-3">
+                {assessment.facultyFeedback.map((fb, idx) => (
+                  <div
+                    key={fb._id || idx}
+                    className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-50/40 via-white to-indigo-50/30 border border-purple-100 shadow-2xs space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-100/60 pb-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                          {(fb.facultyName || "F")[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-900">
+                              {fb.facultyName || "Faculty Mentor"}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 text-purple-800">
+                              {fb.facultyRole || "Faculty"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        {new Date(fb.createdAt || Date.now()).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Mentor Comment Quote */}
+                    <div className="bg-white/80 p-3.5 rounded-xl border border-purple-100/80 text-xs text-slate-800 font-medium leading-relaxed italic">
+                      "{fb.comment}"
+                    </div>
+
+                    {/* Recommended Actions */}
+                    {fb.recommendedActions?.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-purple-900 block">
+                          Recommended Actions:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {fb.recommendedActions.map((act, aIdx) => (
+                            <span
+                              key={aIdx}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-purple-100/80 text-purple-900 border border-purple-200/60 flex items-center gap-1.5"
+                            >
+                              <CheckCircle2 size={12} className="text-purple-600 shrink-0" />
+                              <span>{act}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto">
+                  <MessageSquare size={18} />
+                </div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-800">
+                  No Mentor Feedback Notes Recorded Yet
+                </h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                  {isFacultyView
+                    ? "As a mentor or faculty, you can click '+ Add Feedback' above to guide this student's learning and career roadmap."
+                    : "Your assigned mentor or faculty will provide personalized observations and recommendations here."}
+                </p>
+                {isFacultyView && onOpenMentorFeedbackModal && (
                   <button
                     type="button"
-                    onClick={() => handleToggleActionStatus(act._id, act.status)}
-                    className={`px-3 py-1 rounded-xl font-black text-xs transition cursor-pointer ${
-                      act.status === "Completed"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : act.status === "In Progress"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-slate-200 text-slate-700"
-                    }`}
+                    onClick={onOpenMentorFeedbackModal}
+                    className="mt-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition cursor-pointer"
                   >
-                    {act.status} ↻
+                    + Add First Observation
                   </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Faculty Intervention Actions & Milestones */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Target size={20} />
                 </div>
-              ))}
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Targeted Faculty Interventions & Actions
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Developmental milestones assigned to bridge key skill and career gaps
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl">
+                {(assessment?.facultyInterventions?.length || 4)} Milestones
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {(
+                (assessment?.facultyInterventions?.length > 0 && assessment.facultyInterventions) || [
+                  {
+                    actionId: "act-1",
+                    title: `Assign Domain Mentor for ${careerDirections[0]?.title || "Software Engineering"}`,
+                    category: "Mentorship",
+                    status: "Not Started",
+                    notes: "Connect student with senior faculty or industry mentor for career direction guidance.",
+                  },
+                  {
+                    actionId: "act-2",
+                    title: "Recommend Practical Capstone Project Mentorship",
+                    category: "Project",
+                    status: "Not Started",
+                    notes: "Assign end-to-end capstone project to bridge theoretical knowledge into demonstrable portfolio.",
+                  },
+                  {
+                    actionId: "act-3",
+                    title: "Weekly Technical Presentation & Communication Practice",
+                    category: "Communication",
+                    status: "In Progress",
+                    notes: "Encourage student to deliver 5-minute verbal summaries during seminar hours.",
+                  },
+                  {
+                    actionId: "act-4",
+                    title: "Mock Interview & Aptitude Readiness Review",
+                    category: "Interview",
+                    status: "Not Started",
+                    notes: "Conduct diagnostic mock technical and HR interview round.",
+                  },
+                ]
+              ).map((act, aIdx) => {
+                const actId = act.actionId || act._id || `act-${aIdx}`;
+                const title = act.title || act.actionTitle || "Developmental Action";
+                const category = act.category || act.actionType || "Mentorship";
+                const status = act.status || "Not Started";
+                const notes = act.notes || "";
+
+                const categoryColorMap = {
+                  Mentorship: "bg-indigo-50 text-indigo-700 border-indigo-200",
+                  Project: "bg-orange-50 text-orange-700 border-orange-200",
+                  Communication: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  Interview: "bg-purple-50 text-purple-700 border-purple-200",
+                  "Mentor Recommendation": "bg-amber-50 text-amber-800 border-amber-200",
+                };
+
+                const categoryClass = categoryColorMap[category] || "bg-slate-100 text-slate-700 border-slate-200";
+
+                return (
+                  <div
+                    key={actId}
+                    className="p-4 sm:p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 hover:border-indigo-300 transition shadow-2xs space-y-2.5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-start sm:items-center gap-3">
+                        <span className="w-7 h-7 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                          #{aIdx + 1}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900">{title}</h4>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${categoryClass}`}>
+                              {category}
+                            </span>
+                          </div>
+                          {notes && (
+                            <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                              {notes}
+                            </p>
+                          )}
+                          {act.facultyName && (
+                            <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">
+                              Assigned by: {act.facultyName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Toggle Button / Badge */}
+                      {isFacultyView ? (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActionStatus(actId, status)}
+                          className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer self-start sm:self-auto shadow-2xs active:scale-95 border flex items-center gap-1.5 shrink-0 ${
+                            status === "Completed"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                              : status === "In Progress"
+                              ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                          title="Click to cycle status (Not Started → In Progress → Completed)"
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              status === "Completed"
+                                ? "bg-emerald-500"
+                                : status === "In Progress"
+                                ? "bg-amber-500 animate-pulse"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          <span>{status}</span>
+                          <span className="text-[10px] opacity-60">↻</span>
+                        </button>
+                      ) : (
+                        <span
+                          className={`px-3 py-1 rounded-xl font-black text-xs border flex items-center gap-1.5 self-start sm:self-auto shrink-0 ${
+                            status === "Completed"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : status === "In Progress"
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              status === "Completed"
+                                ? "bg-emerald-500"
+                                : status === "In Progress"
+                                ? "bg-amber-500"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          <span>{status}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

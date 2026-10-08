@@ -1,5 +1,6 @@
 import AIThesisContainer from "../../modules/ai-thesis/AIThesisContainer";
 import SecurityHelmet from "../../shared/SecurityHelmet";
+import { Sparkles } from "lucide-react";
 
 export default function StudentAIThesis() {
   return (

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     MdSettings, MdPalette, MdTrendingUp, MdCalendarToday,
     MdLock, MdWarning, MdInfo, MdCheck, MdUpload, MdAdd,
     MdToggleOn, MdToggleOff, MdNotificationsNone, MdSearch,
-    MdEdit, MdDelete, MdClose, MdSchool, MdSecurity
+    MdEdit, MdDelete, MdClose, MdSchool, MdSecurity,
+    MdExpandMore, MdCheckCircle
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../utils/confirmToast";
@@ -29,6 +30,116 @@ const themes = [
     { id: "rose", label: "Rose", color: "#F43F5E", shade: "#FFE4E6" },
     { id: "indigo", label: "Indigo", color: "#6366F1", shade: "#E0E7FF" },
 ];
+
+// Interactive Status Badge Dropdown matching the rest of the application
+const SessionStatusBadge = ({ status = "upcoming", onStatusChange, isNearBottom = false }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const config = {
+        active: {
+            label: "ACTIVE",
+            buttonBg: "bg-emerald-50 hover:bg-emerald-100/90 text-emerald-700 border-emerald-200/90 hover:border-emerald-300 shadow-emerald-500/5",
+            dot: (
+                <span className="relative flex h-2 w-2 mr-1.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+            ),
+            dotColor: "bg-emerald-500",
+        },
+        upcoming: {
+            label: "UPCOMING",
+            buttonBg: "bg-blue-50 hover:bg-blue-100/90 text-blue-700 border-blue-200/90 hover:border-blue-300 shadow-blue-500/5",
+            dot: <span className="inline-flex rounded-full h-2 w-2 bg-blue-500 mr-1.5 shrink-0"></span>,
+            dotColor: "bg-blue-500",
+        },
+        completed: {
+            label: "COMPLETED",
+            buttonBg: "bg-amber-50 hover:bg-amber-100/90 text-amber-700 border-amber-200/90 hover:border-amber-300 shadow-amber-500/5",
+            dot: <span className="inline-flex rounded-full h-2 w-2 bg-amber-500 mr-1.5 shrink-0"></span>,
+            dotColor: "bg-amber-500",
+        },
+        archived: {
+            label: "ARCHIVED",
+            buttonBg: "bg-slate-100 hover:bg-slate-200/80 text-slate-600 border-slate-200/90 hover:border-slate-300",
+            dot: <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 mr-1.5 shrink-0"></span>,
+            dotColor: "bg-slate-400",
+        },
+    };
+
+    const current = config[status] || config.upcoming;
+
+    const options = [
+        { value: "active", label: "ACTIVE", dotColor: "bg-emerald-500" },
+        { value: "upcoming", label: "UPCOMING", dotColor: "bg-blue-500" },
+        { value: "completed", label: "COMPLETED", dotColor: "bg-amber-500" },
+        { value: "archived", label: "ARCHIVED", dotColor: "bg-slate-400" },
+    ];
+
+    return (
+        <div ref={ref} className="relative inline-block">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`h-7 sm:h-7.5 px-2.5 sm:px-3 rounded-full border text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider transition-all duration-150 flex items-center justify-between gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer select-none focus:outline-none ${current.buttonBg}`}
+                title="Click to change session status"
+            >
+                <div className="flex items-center">
+                    {current.dot}
+                    <span className="tracking-wide">{current.label}</span>
+                </div>
+                <MdExpandMore
+                    size={15}
+                    className={`transition-transform duration-200 shrink-0 opacity-75 ${isOpen ? "rotate-180" : ""}`}
+                />
+            </button>
+
+            {isOpen && (
+                <div
+                    className={`absolute right-0 ${
+                        isNearBottom ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                    } w-36 sm:w-40 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-50 animate-fadeIn`}
+                >
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1">Set Status</p>
+                    {options.map((opt) => {
+                        const isSelected = opt.value === status;
+                        return (
+                            <div
+                                key={opt.value}
+                                onClick={() => {
+                                    onStatusChange(opt.value);
+                                    setIsOpen(false);
+                                }}
+                                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                                    isSelected
+                                        ? "bg-slate-100 text-slate-900 font-extrabold"
+                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${opt.dotColor}`}></span>
+                                    <span>{opt.label}</span>
+                                </div>
+                                {isSelected && <MdCheckCircle size={14} className="text-emerald-500" />}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const SettingFIle = () => {
     const navigate = useNavigate();
@@ -415,7 +526,7 @@ const SettingFIle = () => {
                         </div>
 
                         {/* Cycles List */}
-                        <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+                        <div className="space-y-3">
                             {sessionsLoading ? (
                                 <p className="text-xs font-semibold text-slate-400">Loading sessions...</p>
                             ) : sessions.length === 0 ? (
@@ -426,8 +537,9 @@ const SettingFIle = () => {
                                     compact
                                 />
                             ) : (
-                                sessions.map((sess) => {
+                                sessions.map((sess, idx) => {
                                     const statusStr = (sess.isActive || sess.status === 'active') ? 'active' : (sess.status || 'upcoming').toLowerCase();
+                                    const isNearBottom = idx >= Math.max(1, sessions.length - 1);
                                     let statusBadgeCls = "bg-slate-100 text-slate-700 border-slate-200";
                                     if (statusStr === 'active') {
                                         statusBadgeCls = "bg-emerald-50 text-emerald-600 border-emerald-200";
@@ -442,7 +554,7 @@ const SettingFIle = () => {
                                     return (
                                         <div
                                             key={sess._id}
-                                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${statusStr === 'active'
+                                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${statusStr === 'active'
                                                     ? "border-orange-200/80 bg-orange-50/40"
                                                     : "border-slate-100 bg-slate-50/50"
                                                 }`}
@@ -459,17 +571,11 @@ const SettingFIle = () => {
                                             <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                                                 {/* Interactive Status Select Dropdown (Superadmin only) */}
                                                 {canManageGlobal ? (
-                                                    <select
-                                                        value={statusStr}
-                                                        onChange={(e) => handleStatusChange(sess._id, e.target.value)}
-                                                        className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-80 transition ${statusBadgeCls}`}
-                                                        title="Click to edit session status"
-                                                    >
-                                                        <option value="active">ACTIVE</option>
-                                                        <option value="upcoming">UPCOMING</option>
-                                                        <option value="archived">ARCHIVED</option>
-                                                        <option value="completed">COMPLETED</option>
-                                                    </select>
+                                                    <SessionStatusBadge
+                                                        status={statusStr}
+                                                        onStatusChange={(val) => handleStatusChange(sess._id, val)}
+                                                        isNearBottom={isNearBottom}
+                                                    />
                                                 ) : (
                                                     <span className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider ${statusBadgeCls}`}>
                                                         {statusStr.toUpperCase()}

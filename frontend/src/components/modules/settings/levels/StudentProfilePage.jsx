@@ -2287,28 +2287,31 @@ const StudentProfilePage = () => {
 
             {/* Passion & Vision Modal */}
             {isPassionVisionOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
-                    <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-6xl max-h-[92vh] overflow-y-auto p-4 sm:p-7 relative">
-                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 sticky top-0 bg-white z-20">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-sm">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-xs p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
+                    <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-6xl h-[95vh] sm:max-h-[90vh] flex flex-col p-4 sm:p-6 relative">
+                        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-xs">
                                     <Sparkles size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-base sm:text-lg font-black text-gray-900">
+                                    <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
                                         {raw.firstName} {raw.lastName} • Passion & Vision
                                     </h3>
-                                    <p className="text-xs text-gray-500">Student Purpose, Passion, Vision & Career Discovery</p>
+                                    <p className="text-xs text-slate-500">Student Purpose, Passion, Vision & Career Discovery</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setPassionVisionOpen(false)}
-                                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition"
+                                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer active:scale-95"
+                                title="Close Modal"
                             >
                                 <X size={18} />
                             </button>
                         </div>
-                        <AIThesisContainer studentId={studentId} isFacultyView={true} />
+                        <div className="flex-1 overflow-y-auto pr-1">
+                            <AIThesisContainer studentId={studentId} isFacultyView={true} />
+                        </div>
                     </div>
                 </div>
             )}

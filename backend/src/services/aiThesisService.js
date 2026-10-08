@@ -4,6 +4,11 @@ const Student = require("../models/student/Student");
 const StudentReportCard = require("../models/student/studentReportCard");
 const StudentTask = require("../models/syllabus/StudentTask");
 const StudentPlacement = require("../models/placement/StudentPlacement");
+require("../models/department/Department");
+require("../models/department/SubDepartment");
+require("../models/department/Level");
+require("../models/department/SubLevel");
+require("../models/Session");
 
 /**
  * Detects the academic stream if present, but never restricts the student's possibilities.
@@ -213,76 +218,115 @@ const determineArchetype = (topPassions = [], flowAnswers = {}) => {
 };
 
 /**
- * Universal Intelligent Heuristic Thesis Generator
+ * Universal Intelligent Dynamic AI Thesis Generator
  * Truly universal across all streams, degrees, and career interests.
+ * Generates all insights dynamically based on the student's authentic responses.
  */
 const generateHeuristicThesis = (context, assessment) => {
-  const topPassionsRaw = assessment.topPassions || [];
-  const coreValues = assessment.coreValues || [];
+  let topPassionsRaw = assessment.topPassions || [];
+  if ((!topPassionsRaw || topPassionsRaw.length === 0) && Array.isArray(assessment.passionStatements) && assessment.passionStatements.length > 0) {
+    topPassionsRaw = assessment.passionStatements.map((ps, idx) => ({
+      name: typeof ps === "string" ? ps : (ps.text || ps.name || `Passion ${idx + 1}`),
+      priority: idx + 1,
+      selfRatedImportance: 8,
+      currentScore: 5,
+    }));
+  }
+
+  if (!topPassionsRaw || topPassionsRaw.length === 0) {
+    throw new Error("Cannot generate thesis: Student has not selected any passions yet.");
+  }
+
+  const coreValues = Array.isArray(assessment.coreValues) && assessment.coreValues.length > 0
+    ? assessment.coreValues
+    : [
+        { name: "Growth", priority: 1, reason: "Continuous self-improvement" },
+        { name: "Excellence", priority: 2, reason: "Striving for high standards" },
+        { name: "Integrity", priority: 3, reason: "Principled and authentic action" },
+      ];
+
   const fiveWhys = assessment.fiveWhys || [];
   const flowAnswers = assessment.flowAnswers || {};
-  const visionAnswers = assessment.visionAnswers || {};
-  const fiveYearGoal = assessment.fiveYearGoal || `Master advanced competencies and build an impactful professional standing in my domain`;
-  const tenYearGoal = assessment.tenYearGoal || `Assume visionary leadership, driving innovation and mentoring the upcoming generation`;
-  const bhag = assessment.bhag || `Spearhead a transformative milestone in my field creating measurable positive impact`;
-
-  // Fallback passions if student has not selected yet
-  const topPassions = topPassionsRaw.length > 0 ? topPassionsRaw : [
-    { name: "Continuous Learning", originalStatement: "I am learning and acquiring new expertise continuously", priority: 1, selfRatedImportance: 9, currentScore: 7 },
-    { name: "Creative Problem Solving", originalStatement: "I am solving challenging real-world dilemmas", priority: 2, selfRatedImportance: 8, currentScore: 6 },
-    { name: "Building Useful Solutions", originalStatement: "I am creating tools and systems that make lives better", priority: 3, selfRatedImportance: 9, currentScore: 5 },
-    { name: "Team Collaboration & Leadership", originalStatement: "I am guiding teams towards meaningful shared outcomes", priority: 4, selfRatedImportance: 8, currentScore: 4 },
-    { name: "Financial & Personal Freedom", originalStatement: "I am building sustainable independence and capability", priority: 5, selfRatedImportance: 9, currentScore: 6 },
-  ];
 
   // Process passions: calculate Passion Gap (Importance - Current Score) and provide evidence
-  const processedPassions = topPassions.map((p, idx) => {
+  const processedPassions = topPassionsRaw.map((p, idx) => {
     const importance = typeof p.selfRatedImportance === "number" ? p.selfRatedImportance : 8;
     const currentScore = typeof p.currentScore === "number" ? p.currentScore : 5;
     const passionGap = Math.max(0, importance - currentScore);
 
     let gapExplanation = "";
     if (passionGap >= 4) {
-      gapExplanation = `Significant development gap (${passionGap} pts): This passion is deeply important to you (${importance}/10), yet your current daily expression is at ${currentScore}/10. Dedicating 3–5 hours weekly to deliberate real-world practice will rapidly bridge this.`;
+      gapExplanation = `Significant development gap (${passionGap} pts): "${p.name}" is deeply important to you (${importance}/10), but your current weekly time investment is at ${currentScore}/10. Dedicating 3–5 hours weekly to deliberate real-world practice will rapidly bridge this.`;
     } else if (passionGap >= 2) {
-      gapExplanation = `Moderate developmental gap (${passionGap} pts): You are actively engaging with this passion (${currentScore}/10), but seeking larger leadership or project opportunities will bring it closer to your ideal priority (${importance}/10).`;
+      gapExplanation = `Moderate developmental gap (${passionGap} pts): You are actively engaging with "${p.name}" (${currentScore}/10). Expanding independent projects will bring it closer to your ideal priority (${importance}/10).`;
     } else {
-      gapExplanation = `High alignment (${passionGap} pts): You are living this passion with strong consistency (${currentScore}/10) relative to its importance (${importance}/10). Keep sustaining this momentum.`;
+      gapExplanation = `High alignment (${passionGap} pts): You are actively living "${p.name}" with strong consistency (${currentScore}/10) relative to its importance (${importance}/10). Sustain this momentum.`;
     }
 
-    // Default markers if missing
     const markers = p.markers && p.markers.length > 0 ? p.markers : [
       `Dedicate at least 4 hours per week to practical exploration of ${p.name.toLowerCase()}.`,
-      `Complete 1 major demonstrable project or milestone every quarter reflecting ${p.name.toLowerCase()}.`,
-      `Regularly share learnings and mentor peers in topics related to ${p.name.toLowerCase()}.`,
+      `Complete 1 demonstrable project or milestone every quarter reflecting ${p.name.toLowerCase()}.`,
     ];
 
     return {
       name: p.name,
-      originalStatement: p.originalStatement || `When my life is ideal, I am engaged with ${(p.name || "").toLowerCase()}`,
+      originalStatement: p.originalStatement || `When my life is ideal, I am engaged with ${p.name.toLowerCase()}`,
       priority: p.priority || idx + 1,
       selfRatedImportance: importance,
       currentScore: currentScore,
       passionGap,
       gapExplanation,
       markers,
-      evidence: p.evidence || `Corroborated by ${context.taskMetrics.taskCompletionRate}% task completion and ${context.attendanceRate}% attendance consistency.`,
-      aiInterpretation: p.aiInterpretation || `Reflects authentic internal drive to express capability through ${(p.name || "").toLowerCase()} while anchoring into self-discipline.`,
+      evidence: p.evidence || `Supported by ${context.taskMetrics.taskCompletionRate}% task completion rate and ${context.attendanceRate}% attendance consistency.`,
+      aiInterpretation: p.aiInterpretation || `Reflects intrinsic drive for growth through ${p.name.toLowerCase()}, backed by institutional discipline.`,
     };
   });
 
   const primaryPassion = processedPassions[0]?.name || "Continuous Learning";
-  const secondaryPassion = processedPassions[1]?.name || "Problem Solving";
+  const secondaryPassion = processedPassions[1]?.name || processedPassions[0]?.name || "Creative Problem Solving";
   const primaryValue = coreValues[0]?.name || "Growth";
-  const secondaryValue = coreValues[1]?.name || "Integrity";
+  const secondaryValue = coreValues[1]?.name || "Excellence";
 
-  // Derive Archetype
+  // Derive Archetype dynamically from student's authentic chosen passions
   const archetype = determineArchetype(processedPassions, flowAnswers);
+
+  // Identify highest passion gap to formulate the Immediate Commitment dynamically
+  const sortedByGap = [...processedPassions].sort((a, b) => b.passionGap - a.passionGap);
+  const highestGapPassion = sortedByGap[0] || processedPassions[0];
+  const dynamicCommitment = highestGapPassion && highestGapPassion.passionGap > 0
+    ? `Dedicate 4 to 5 hours every week to practical portfolio project building in "${highestGapPassion.name}" to actively bridge my ${highestGapPassion.passionGap}-point development gap.`
+    : `Dedicate 5 hours every week to practical portfolio projects in "${primaryPassion}" and maintain high curriculum consistency.`;
+
+  // Dynamic 5-year, 10-year, BHAG, and Purpose
+  const studentAspiration = fiveWhys[0]?.answer || assessment.primaryGoal || "";
+  const studentWhy = fiveWhys[1]?.answer || "";
+
+  let dynamicPurpose = `My purpose is to apply ${primaryPassion.toLowerCase()} and ${secondaryPassion.toLowerCase()}, guided by ${primaryValue} and ${secondaryValue}, to excel as an impactful professional in ${context.course} and build solutions that elevate community well-being.`;
+  if (studentAspiration) {
+    dynamicPurpose = `My purpose is to leverage ${primaryPassion.toLowerCase()} and core values of ${primaryValue} and ${secondaryValue} to achieve excellence in "${studentAspiration}", creating tangible positive impact.`;
+  }
+
+  const purposeStatement = assessment.purposeStatement || dynamicPurpose;
+
+  const fiveYearGoal = assessment.fiveYearGoal ||
+    `Master advanced specialized capabilities in ${primaryPassion.toLowerCase()} and establish strong domain leadership in ${context.course}.`;
+
+  const tenYearGoal = assessment.tenYearGoal ||
+    `Assume visionary leadership in ${primaryPassion.toLowerCase()}, driving innovative solutions and mentoring the upcoming generation.`;
+
+  const bhag = assessment.bhag ||
+    `Empower 25,000+ individuals through transformative solutions and innovations built in ${primaryPassion.toLowerCase()}.`;
+
+  const vividFuture = assessment.vividFuture ||
+    `In your ideal envisioned future, you operate with high competence in ${primaryPassion.toLowerCase()} and ${secondaryPassion.toLowerCase()}, collaborating with passionate peers to solve high-impact challenges.`;
+
+  const visionStatement = assessment.visionStatement ||
+    `My vision is to emerge as a distinguished professional in ${context.course} over the next 5–10 years, mastering end-to-end execution, building innovative solutions, and inspiring others through purposeful contribution.`;
 
   // Clarity and Alignment Scores (0-100)
   const passionCount = processedPassions.length;
   const passionClarity = Math.min(96, Math.max(72, passionCount * 17 + (assessment.pairwiseComparisons?.length > 4 ? 12 : 0)));
-  const purposeClarity = Math.min(95, Math.max(68, (fiveWhys.length * 15) + (assessment.purposeStatement ? 15 : 0)));
+  const purposeClarity = Math.min(95, Math.max(68, (fiveWhys.length * 15) + (purposeStatement ? 15 : 0)));
   const visionClarity = Math.min(94, Math.max(70, (fiveYearGoal ? 25 : 0) + (tenYearGoal ? 25 : 0) + (bhag ? 25 : 0) + 15));
 
   const taskPct = context.taskMetrics.taskCompletionRate || 65;
@@ -292,30 +336,6 @@ const generateHeuristicThesis = (context, assessment) => {
   const executionReadiness = Math.min(95, Math.max(55, Math.round(taskPct * 0.75 + (context.attendanceRate * 0.25))));
   const executionAlignment = executionReadiness;
   const overall = Math.round((passionClarity + purposeClarity + visionClarity + careerAlignment + skillAlignment + executionReadiness) / 6);
-
-  // Stream/domain detection from student profile and institutional data
-  const deptStr = String(context.department || "").toLowerCase();
-  const courseStr = String(context.course || "").toLowerCase();
-  const techStr = Array.isArray(context.technologies) ? context.technologies.join(" ").toLowerCase() : "";
-  const combinedContext = `${deptStr} ${courseStr} ${techStr}`;
-
-  const isMgmt = /management|bba|commerce|mba|business|marketing|finance|accounting/i.test(combinedContext);
-  const isBio = /bio|biotech|biology|botany|zoology|clinical|life science|b\.sc bio/i.test(combinedContext);
-
-  // Purpose Statement Synthesis (derived from student 5 Whys & values)
-  let defaultPurpose = `My purpose is to leverage ${primaryPassion.toLowerCase()} and my core values of ${primaryValue} and ${secondaryValue} to solve complex challenges, create tangible value for others, and continuously evolve into an impactful leader.`;
-  if (isMgmt) {
-    defaultPurpose = `My purpose is to leverage ${primaryPassion.toLowerCase()} and strategic business management to build commercial value, optimize organizational performance, and empower teams to achieve excellence.`;
-  } else if (isBio) {
-    defaultPurpose = `My purpose is to apply ${primaryPassion.toLowerCase()} and scientific biotechnology research to advance healthcare, clinical innovations, and laboratory discoveries that improve human life.`;
-  }
-  const purposeStatement = assessment.purposeStatement || defaultPurpose;
-
-  const visionStatement = assessment.visionStatement ||
-    `My vision is to emerge as a distinguished, ethical professional in my field over the next 5–10 years, mastering end-to-end execution, building innovative solutions, and inspiring others through purposeful contribution.`;
-
-  const vividFuture = assessment.vividFuture ||
-    `In your ideal envisioned future, you wake up energized by meaningful problems. Operating with high autonomy, you collaborate with passionate peers, apply your strengths in ${primaryPassion}, and make measurable contributions that elevate your community and organization.`;
 
   // Evidence-based Strengths (Self-Identified vs Evidence-Backed)
   const evidenceBasedStrengths = {
@@ -362,6 +382,15 @@ const generateHeuristicThesis = (context, assessment) => {
     `Develop formal routines for tracking progress on measurable Passion Markers weekly.`,
     `Deepen specialized expertise in industry-standard tools and cross-functional collaboration.`,
   ];
+
+  // Stream/domain detection from student profile and institutional data
+  const deptStr = String(context.department || "").toLowerCase();
+  const courseStr = String(context.course || "").toLowerCase();
+  const techStr = Array.isArray(context.technologies) ? context.technologies.join(" ").toLowerCase() : "";
+  const combinedContext = `${deptStr} ${courseStr} ${techStr}`;
+
+  const isMgmt = /management|bba|commerce|mba|business|marketing|finance|accounting/i.test(combinedContext);
+  const isBio = /bio|biotech|biology|botany|zoology|clinical|life science|b\.sc bio/i.test(combinedContext);
 
   let skillGaps = [
     "Independent Capstone Project Architecture & Deployment",
@@ -610,6 +639,7 @@ const generateHeuristicThesis = (context, assessment) => {
     tenYearGoal,
     bhag,
     vividFuture,
+    studentCommitment: dynamicCommitment,
     flowAnswers,
     archetype,
     alignment: {

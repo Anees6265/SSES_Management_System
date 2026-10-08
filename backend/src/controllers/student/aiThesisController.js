@@ -118,12 +118,26 @@ exports.getStudentThesis = async (req, res) => {
     }
 
     const { version } = req.query;
-    const query = { studentId };
-    if (version) {
-      query.assessmentVersion = Number(version);
-    }
+    let assessment;
 
-    let assessment = await PurposeVisionAssessment.findOne(query).sort({ assessmentVersion: -1 });
+    if (version) {
+      assessment = await PurposeVisionAssessment.findOne({
+        studentId,
+        assessmentVersion: Number(version),
+      });
+    } else {
+      // Prefer latest analyzed thesis so generated thesis never disappears behind an in-progress draft
+      const latestAnalyzed = await PurposeVisionAssessment.findOne({
+        studentId,
+        status: { $in: ["analyzed", "finalized"] },
+      }).sort({ assessmentVersion: -1 });
+
+      if (latestAnalyzed) {
+        assessment = latestAnalyzed;
+      } else {
+        assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+      }
+    }
 
     if (!assessment) {
       assessment = new PurposeVisionAssessment({
@@ -165,7 +179,7 @@ exports.getThesisVersions = async (req, res) => {
     }
 
     const versions = await PurposeVisionAssessment.find({ studentId })
-      .select("assessmentVersion status alignmentScores.overall createdAt updatedAt isPassionTestCompleted isVisionTestCompleted")
+      .select("assessmentVersion status alignmentScores.overall createdAt updatedAt isPassionTestCompleted isVisionTestCompleted purposeStatement topPassions bhag fiveYearGoal")
       .sort({ assessmentVersion: -1 })
       .lean();
 
@@ -189,8 +203,14 @@ exports.saveDraftAssessment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Valid studentId is required" });
     }
 
-    // Find the latest assessment
-    let assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    const targetVersion = req.body?.version || req.query?.version;
+    let assessment;
+
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
 
     if (!assessment || assessment.status === "finalized") {
       const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
@@ -229,8 +249,15 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     // Load student context
     const studentContext = await aiThesisService.getStudentContext(studentId);
 
-    // Find or create current active assessment
-    let assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    const targetVersion = req.body?.version || req.query?.version;
+    let assessment;
+
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
     if (!assessment) {
       assessment = new PurposeVisionAssessment({
         studentId,
@@ -241,6 +268,17 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
 
     // Update with any answers submitted in body safely
     sanitizeAssessmentInputs(assessment, req.body);
+
+    // Validate that student has actually provided passions before AI analysis
+    const hasPassions = (assessment.topPassions && assessment.topPassions.length > 0) ||
+                        (assessment.passionStatements && assessment.passionStatements.length > 0);
+
+    if (!hasPassions) {
+      return res.status(400).json({
+        success: false,
+        message: "Please complete the Passion Discovery Test before running AI analysis.",
+      });
+    }
 
     // Run AI Engine
     const aiResult = await aiThesisService.generateThesisWithAI(studentContext, assessment);
@@ -258,6 +296,7 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
     assessment.bhag = aiResult.bhag || assessment.bhag;
     assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
+    if (aiResult.studentCommitment) assessment.studentCommitment = aiResult.studentCommitment;
     if (aiResult.archetype) assessment.archetype = aiResult.archetype;
 
     assessment.alignmentScores = {
@@ -330,12 +369,40 @@ exports.startNewVersion = async (req, res) => {
     }
 
     const latest = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+
+    // If the latest is ALREADY an un-started blank draft, reuse it rather than accumulating empty drafts
+    if (
+      latest &&
+      latest.status === "draft" &&
+      (!latest.topPassions || latest.topPassions.length === 0) &&
+      !latest.isPassionTestCompleted
+    ) {
+      return res.status(200).json({
+        success: true,
+        message: `Version ${latest.assessmentVersion} draft is ready`,
+        data: latest,
+      });
+    }
+
     const nextVersion = latest ? latest.assessmentVersion + 1 : 1;
 
+    // Carry forward previous baseline answers so the student can evolve them without starting from a blank slate
     const newAssessment = new PurposeVisionAssessment({
       studentId,
       assessmentVersion: nextVersion,
       status: "draft",
+      passionStatements: latest?.passionStatements || [],
+      pairwiseComparisons: latest?.pairwiseComparisons || [],
+      topPassions: latest?.topPassions || [],
+      coreValues: latest?.coreValues || [],
+      fiveWhys: latest?.fiveWhys || [],
+      fiveYearGoal: latest?.fiveYearGoal || "",
+      tenYearGoal: latest?.tenYearGoal || "",
+      bhag: latest?.bhag || "",
+      vividFuture: latest?.vividFuture || "",
+      studentCommitment: latest?.studentCommitment || "",
+      isPassionTestCompleted: Boolean(latest?.isPassionTestCompleted),
+      isVisionTestCompleted: Boolean(latest?.isVisionTestCompleted),
     });
 
     await newAssessment.save();
@@ -359,6 +426,14 @@ exports.updateStatements = async (req, res) => {
     const studentId = resolveStudentId(req);
     if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
       return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    // Students can only take tests; statements and goals are generated by AI
+    if (req.user?.role === "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Students cannot manually edit thesis statements. Your thesis is automatically synthesized by AI based on your test answers. Please retake the test to re-synthesize.",
+      });
     }
 
     const {

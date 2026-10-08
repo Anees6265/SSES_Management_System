@@ -4,21 +4,21 @@ export default function PurposeEvolutionModal({ isOpen, onClose, versions = [], 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative z-10 bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-orange-50 to-indigo-50/40">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative z-10 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh] sm:max-h-[85vh]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-gradient-to-r from-orange-50 to-indigo-50/40">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
               <Compass size={20} />
             </div>
             <div>
-              <h3 className="text-base font-black text-slate-900 tracking-tight">Purpose Evolution History</h3>
-              <p className="text-xs text-slate-500 font-medium">Track development trajectory and vision shifts across 6–12 month milestones</p>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">Purpose Evolution History</h3>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium line-clamp-1">Track development trajectory and vision shifts across 6–12 month milestones</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white/80 transition"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white/80 transition cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -34,6 +34,7 @@ export default function PurposeEvolutionModal({ isOpen, onClose, versions = [], 
           ) : (
             versions.map((ver) => {
               const isSelected = ver.assessmentVersion === currentVersion;
+              const isAnalyzed = ver.status === "analyzed" || ver.status === "finalized";
               return (
                 <div
                   key={ver._id || ver.assessmentVersion}
@@ -44,9 +45,16 @@ export default function PurposeEvolutionModal({ isOpen, onClose, versions = [], 
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 font-extrabold text-xs">
                         Version {ver.assessmentVersion}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                        isAnalyzed
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {isAnalyzed ? "✓ Analyzed" : "Draft In-Progress"}
                       </span>
                       <span className="text-[11px] font-semibold text-slate-400">
                         {new Date(ver.createdAt || Date.now()).toLocaleDateString("en-IN", {
@@ -58,17 +66,21 @@ export default function PurposeEvolutionModal({ isOpen, onClose, versions = [], 
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                        <Award size={15} className="text-orange-500" />
-                        <span>Alignment: {ver.alignmentScores?.overall || 78}%</span>
-                      </div>
+                      {isAnalyzed && ver.alignmentScores?.overall ? (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                          <Award size={15} className="text-orange-500" />
+                          <span>Alignment: {ver.alignmentScores.overall}%</span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 font-semibold italic">Un-synthesized Draft</span>
+                      )}
                       {!isSelected && onSelectVersion && (
                         <button
                           type="button"
                           onClick={() => onSelectVersion(ver.assessmentVersion)}
-                          className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+                          className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs"
                         >
-                          View Version
+                          {isAnalyzed ? "View Version" : "Open Draft"}
                         </button>
                       )}
                     </div>
@@ -90,7 +102,7 @@ export default function PurposeEvolutionModal({ isOpen, onClose, versions = [], 
                           key={i}
                           className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700"
                         >
-                          {p.name}
+                          {p.name || p}
                         </span>
                       ))}
                     </div>

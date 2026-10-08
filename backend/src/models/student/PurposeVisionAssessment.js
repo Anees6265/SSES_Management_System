@@ -149,8 +149,8 @@ const purposeVisionAssessmentSchema = new mongoose.Schema({
 
   // 9. AI Archetype
   archetype: {
-    primaryPattern: { type: String, default: "Problem Solver" },
-    secondaryPattern: { type: String, default: "Builder" },
+    primaryPattern: { type: String, default: "" },
+    secondaryPattern: { type: String, default: "" },
     description: { type: String, default: "" },
     disclaimer: {
       type: String,

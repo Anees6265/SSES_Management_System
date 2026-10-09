@@ -2081,6 +2081,33 @@ export const authApi = createApi({
       }),
       invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
     }),
+
+    submitStudentDiscoveryStep: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/discovery-step`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    resetStudentDiscovery: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/discovery-reset`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
+
+    confirmStudentThesis: builder.mutation({
+      query: ({ studentId, ...data }) => ({
+        url: `/ai-thesis/${studentId}/confirm`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
+    }),
   }),
 });
 
@@ -2277,4 +2304,7 @@ export const {
   useUpdateStudentThesisStatementsMutation,
   useAddThesisMentorFeedbackMutation,
   useUpdateThesisFacultyActionMutation,
+  useSubmitStudentDiscoveryStepMutation,
+  useResetStudentDiscoveryMutation,
+  useConfirmStudentThesisMutation,
 } = authApi;

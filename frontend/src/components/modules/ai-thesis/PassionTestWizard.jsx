@@ -16,9 +16,14 @@ import { toast } from "react-toastify";
 
 const CATEGORIES = [
   "All",
+  "Agriculture & Living Systems",
+  "Commerce & Finance",
+  "Teaching & Education",
+  "Science & Research",
   "Tech & Coding",
-  "Creative & Media",
   "Business & Leadership",
+  "Creative & Media",
+  "Social & Humanities",
   "Personal & Impact",
 ];
 
@@ -43,6 +48,69 @@ const PASSION_LIBRARY = [
     label: "Data Science & AI Technology",
     subtitle: "Data analyze karna, machine learning aur AI tools explore karna",
     icon: "📊",
+  },
+  {
+    id: "p13",
+    category: "Agriculture & Living Systems",
+    label: "Sustainable Agriculture & Farming Systems",
+    subtitle: "Crop management, soil health, organic practices aur farming techniques",
+    icon: "🌱",
+  },
+  {
+    id: "p14",
+    category: "Agriculture & Living Systems",
+    label: "Seed Technology & Plant Sciences",
+    subtitle: "Seed vigor, germination tests, plant breeding aur agricultural innovation",
+    icon: "🌾",
+  },
+  {
+    id: "p15",
+    category: "Agriculture & Living Systems",
+    label: "Agri-Business & Rural Supply Chains",
+    subtitle: "Farm-to-market logistics, rural entrepreneurship aur crop value addition",
+    icon: "🚜",
+  },
+  {
+    id: "p16",
+    category: "Commerce & Finance",
+    label: "Accounting, Audit & Taxation",
+    subtitle: "Balance sheets, tax regulations, enterprise auditing aur fiscal discipline",
+    icon: "📑",
+  },
+  {
+    id: "p17",
+    category: "Commerce & Finance",
+    label: "Financial Analysis & Corporate Strategy",
+    subtitle: "Financial ratios, company valuation, investment models aur budgeting",
+    icon: "📈",
+  },
+  {
+    id: "p18",
+    category: "Teaching & Education",
+    label: "Teaching, Mentoring & Pedagogical Design",
+    subtitle: "Concepts simplify karna, students ko mentor karna aur interactive teaching",
+    icon: "🎓",
+  },
+  {
+    id: "p19",
+    category: "Teaching & Education",
+    label: "Educational Content & Knowledge Synthesis",
+    subtitle: "Visual learning material, video lessons aur curriculum guides design karna",
+    icon: "📖",
+  },
+  {
+    id: "p20",
+    category: "Science & Research",
+    label: "Biological Sciences & Biotechnology",
+    subtitle: "Microbiology, biochemistry, genetics aur laboratory experimental protocols",
+    icon: "🧬",
+  },
+  {
+    id: "p21",
+    category: "Science & Research",
+    label: "Chemical & Physical Sciences",
+    subtitle: "Laboratory synthesis, diagnostic testing aur scientific empirical investigations",
+    icon: "🧪",
   },
   {
     id: "p3",
@@ -74,10 +142,24 @@ const PASSION_LIBRARY = [
   },
   {
     id: "p8",
-    category: "Business & Leadership",
+    category: "Commerce & Finance",
     label: "Finance, Money & Investing",
     subtitle: "Financial independence, investing, stock market aur business finance samajhna",
     icon: "💼",
+  },
+  {
+    id: "p22",
+    category: "Social & Humanities",
+    label: "Community Development & Social Welfare",
+    subtitle: "Social impact initiatives, public welfare programs aur grassroots organizing",
+    icon: "🌍",
+  },
+  {
+    id: "p23",
+    category: "Social & Humanities",
+    label: "Psychology & Human Well-being",
+    subtitle: "Human behavior, counseling, mental well-being aur relationship dynamics",
+    icon: "🧠",
   },
   {
     id: "p6",
@@ -85,13 +167,6 @@ const PASSION_LIBRARY = [
     label: "Helping & Mentoring Others",
     subtitle: "Dosto aur peers ko sikhana, guide karna aur social contribution",
     icon: "🤝",
-  },
-  {
-    id: "p10",
-    category: "Tech & Coding",
-    label: "Science, Lab & Research",
-    subtitle: "Scientific research, experiments aur new technology developments",
-    icon: "🔬",
   },
   {
     id: "p11",
@@ -111,9 +186,10 @@ const PASSION_LIBRARY = [
 
 const PRESET_MARKERS = [
   "⏱ 3–4 hrs / week practical focus",
-  "🚀 Build 1 project / month",
-  "📚 Daily 45 mins practice",
-  "🎯 Weekend deep work session",
+  "🚀 Build 1 project / case study / month",
+  "📚 Daily 30 mins reading & note-taking",
+  "🎯 Weekend deep work & field session",
+  "🗣 Monthly presentation or peer discussion",
 ];
 
 export default function PassionTestWizard({

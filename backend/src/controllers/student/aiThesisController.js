@@ -11,6 +11,38 @@ const resolveStudentId = (req) => {
   return req.params.studentId || req.body.studentId || req.params.id || req.user?.id || req.user?._id;
 };
 
+// Safe subdocument merging helpers to prevent Mongoose prototype/subdocument casting errors
+const safeMergeSubdoc = (target, source) => {
+  const current = typeof target?.toObject === "function" ? target.toObject() : (target || {});
+  const incoming = typeof source?.toObject === "function" ? source.toObject() : (source || {});
+  return { ...current, ...incoming };
+};
+
+const safeMergeVisionExercises = (target, source) => {
+  const current = typeof target?.toObject === "function" ? target.toObject() : (target || {});
+  const incoming = typeof source?.toObject === "function" ? source.toObject() : (source || {});
+
+  return {
+    idealDay: { ...(current.idealDay || {}), ...(incoming.idealDay || {}) },
+    futureHeadlines: { ...(current.futureHeadlines || {}), ...(incoming.futureHeadlines || {}) },
+    workLifePreferences: {
+      collaboration: incoming.workLifePreferences?.collaboration || current.workLifePreferences?.collaboration || "",
+      structure: incoming.workLifePreferences?.structure || current.workLifePreferences?.structure || "",
+      uncertainty: incoming.workLifePreferences?.uncertainty || current.workLifePreferences?.uncertainty || "",
+      practicalVsConceptual: incoming.workLifePreferences?.practicalVsConceptual || current.workLifePreferences?.practicalVsConceptual || "",
+      workFocus: incoming.workLifePreferences?.workFocus || current.workLifePreferences?.workFocus || "",
+      createVsImprove: incoming.workLifePreferences?.createVsImprove || current.workLifePreferences?.createVsImprove || "",
+      rolePreference: incoming.workLifePreferences?.rolePreference || current.workLifePreferences?.rolePreference || "",
+      workEnvironment: incoming.workLifePreferences?.workEnvironment || current.workLifePreferences?.workEnvironment || "",
+    },
+    futureContribution: { ...(current.futureContribution || {}), ...(incoming.futureContribution || {}) },
+    futureRegret: { ...(current.futureRegret || {}), ...(incoming.futureRegret || {}) },
+    possibleFutures: Array.isArray(incoming.possibleFutures)
+      ? incoming.possibleFutures
+      : (Array.isArray(current.possibleFutures) ? current.possibleFutures : []),
+  };
+};
+
 // Safe sanitizer for assessment draft/analysis inputs
 const sanitizeAssessmentInputs = (assessment, inputs = {}) => {
   const {
@@ -28,11 +60,21 @@ const sanitizeAssessmentInputs = (assessment, inputs = {}) => {
     vividFuture,
     purposeStatement,
     visionStatement,
+    confirmedPurpose,
+    confirmedVision,
+    confirmedCareerDirections,
     studentCommitment,
     studentReflection,
     privacyLevel,
     isPassionTestCompleted,
     isVisionTestCompleted,
+    discoveryState,
+    discoveryChat,
+    understandMyself,
+    recurringPatterns,
+    visionExercises,
+    practicalExperiments,
+    detailedRoadmap,
   } = inputs;
 
   if (Array.isArray(passionStatements)) {
@@ -100,11 +142,35 @@ const sanitizeAssessmentInputs = (assessment, inputs = {}) => {
   if (typeof vividFuture === "string") assessment.vividFuture = vividFuture;
   if (typeof purposeStatement === "string") assessment.purposeStatement = purposeStatement;
   if (typeof visionStatement === "string") assessment.visionStatement = visionStatement;
+  if (typeof confirmedPurpose === "string") assessment.confirmedPurpose = confirmedPurpose;
+  if (typeof confirmedVision === "string") assessment.confirmedVision = confirmedVision;
+  if (Array.isArray(confirmedCareerDirections)) assessment.confirmedCareerDirections = confirmedCareerDirections;
   if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
   if (typeof studentReflection === "string") assessment.studentReflection = studentReflection;
   if (privacyLevel) assessment.privacyLevel = privacyLevel;
   if (typeof isPassionTestCompleted === "boolean") assessment.isPassionTestCompleted = isPassionTestCompleted;
   if (typeof isVisionTestCompleted === "boolean") assessment.isVisionTestCompleted = isVisionTestCompleted;
+  if (discoveryState && typeof discoveryState === "object") {
+    assessment.discoveryState = safeMergeSubdoc(assessment.discoveryState, discoveryState);
+  }
+  if (Array.isArray(discoveryChat)) {
+    assessment.discoveryChat = discoveryChat;
+  }
+  if (understandMyself && typeof understandMyself === "object") {
+    assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, understandMyself);
+  }
+  if (Array.isArray(recurringPatterns)) {
+    assessment.recurringPatterns = recurringPatterns;
+  }
+  if (visionExercises && typeof visionExercises === "object") {
+    assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, visionExercises);
+  }
+  if (Array.isArray(practicalExperiments)) {
+    assessment.practicalExperiments = practicalExperiments;
+  }
+  if (detailedRoadmap && typeof detailedRoadmap === "object") {
+    assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, detailedRoadmap);
+  }
 };
 
 /**
@@ -139,20 +205,54 @@ exports.getStudentThesis = async (req, res) => {
       }
     }
 
+    let studentContext = {};
+    try {
+      studentContext = await aiThesisService.getStudentContext(studentId);
+    } catch (ctxErr) {
+      console.warn("Could not load full student context:", ctxErr.message);
+    }
+
     if (!assessment) {
       assessment = new PurposeVisionAssessment({
         studentId,
         assessmentVersion: 1,
         status: "draft",
       });
+      // Initialize starting discovery step
+      const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
+      assessment.discoveryChat = [{
+        sender: "ai",
+        phase: initialStep.phase,
+        stepKey: initialStep.stepKey,
+        message: initialStep.message,
+        contextHelp: initialStep.contextHelp,
+        quickOptions: initialStep.quickOptions,
+        allowCustom: initialStep.allowCustom,
+        timestamp: new Date(),
+      }];
+      assessment.discoveryState = {
+        currentPhase: "passion",
+        currentStepKey: "passion_intro",
+        explicitInsights: [],
+        inferredPatterns: [],
+        uncertainties: [],
+        isDiscoveryCompleted: false,
+        lastSavedAt: new Date(),
+      };
       await assessment.save();
-    }
-
-    let studentContext = {};
-    try {
-      studentContext = await aiThesisService.getStudentContext(studentId);
-    } catch (ctxErr) {
-      console.warn("Could not load full student context:", ctxErr.message);
+    } else if (!assessment.discoveryChat || assessment.discoveryChat.length === 0) {
+      const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
+      assessment.discoveryChat = [{
+        sender: "ai",
+        phase: initialStep.phase,
+        stepKey: initialStep.stepKey,
+        message: initialStep.message,
+        contextHelp: initialStep.contextHelp,
+        quickOptions: initialStep.quickOptions,
+        allowCustom: initialStep.allowCustom,
+        timestamp: new Date(),
+      }];
+      await assessment.save();
     }
 
     return res.status(200).json({
@@ -179,7 +279,7 @@ exports.getThesisVersions = async (req, res) => {
     }
 
     const versions = await PurposeVisionAssessment.find({ studentId })
-      .select("assessmentVersion status alignmentScores.overall createdAt updatedAt isPassionTestCompleted isVisionTestCompleted purposeStatement topPassions bhag fiveYearGoal")
+      .select("assessmentVersion status alignmentScores.overall createdAt updatedAt isPassionTestCompleted isVisionTestCompleted purposeStatement confirmedPurpose topPassions bhag fiveYearGoal")
       .sort({ assessmentVersion: -1 })
       .lean();
 
@@ -222,7 +322,6 @@ exports.saveDraftAssessment = async (req, res) => {
     }
 
     sanitizeAssessmentInputs(assessment, req.body);
-
     await assessment.save();
 
     return res.status(200).json({
@@ -232,6 +331,239 @@ exports.saveDraftAssessment = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in saveDraftAssessment:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Process one conversational turn in adaptive AI discovery
+ */
+exports.submitDiscoveryStep = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    const studentContext = await aiThesisService.getStudentContext(studentId);
+    const targetVersion = req.body?.version || req.query?.version;
+    let assessment;
+
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
+    if (!assessment || assessment.status === "finalized") {
+      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
+      assessment = new PurposeVisionAssessment({
+        studentId,
+        assessmentVersion: nextVersion,
+        status: "draft",
+      });
+    }
+
+    const result = await aiThesisService.processAdaptiveDiscoveryStep(assessment, req.body, studentContext);
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        assessment,
+        nextStep: result.nextStep,
+        discoveryState: result.discoveryState,
+      },
+    });
+  } catch (error) {
+    console.error("Error in submitDiscoveryStep:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Reset conversational discovery to Step 1
+ */
+exports.resetDiscovery = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    const studentContext = await aiThesisService.getStudentContext(studentId);
+    let assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+
+    if (!assessment || assessment.status === "finalized") {
+      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
+      assessment = new PurposeVisionAssessment({
+        studentId,
+        assessmentVersion: nextVersion,
+        status: "draft",
+      });
+    }
+
+    const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
+    assessment.discoveryChat = [{
+      sender: "ai",
+      phase: initialStep.phase,
+      stepKey: initialStep.stepKey,
+      message: initialStep.message,
+      contextHelp: initialStep.contextHelp,
+      quickOptions: initialStep.quickOptions,
+      allowCustom: initialStep.allowCustom,
+      timestamp: new Date(),
+    }];
+
+    assessment.discoveryState = {
+      currentPhase: "passion",
+      currentStepKey: "passion_intro",
+      explicitInsights: [],
+      inferredPatterns: [],
+      uncertainties: [],
+      isDiscoveryCompleted: false,
+      lastSavedAt: new Date(),
+    };
+
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Discovery conversation reset successfully",
+      data: {
+        assessment,
+        initialStep,
+      },
+    });
+  } catch (error) {
+    console.error("Error in resetDiscovery:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Student confirms, edits drafts, and finalizes AI Thesis synthesis
+ */
+exports.confirmThesis = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    const {
+      confirmedPurpose,
+      confirmedVision,
+      confirmedCareerDirections,
+      studentReflection,
+      studentCommitment,
+      version,
+    } = req.body;
+
+    let studentContext = {};
+    try {
+      studentContext = await aiThesisService.getStudentContext(studentId);
+    } catch (ctxErr) {
+      console.warn("Could not load full student context in confirmThesis:", ctxErr.message);
+      studentContext = { studentId };
+    }
+    let assessment;
+
+    if (version) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
+    if (!assessment) {
+      return res.status(404).json({ success: false, message: "Assessment not found" });
+    }
+
+    if (typeof confirmedPurpose === "string" && confirmedPurpose.trim()) {
+      assessment.confirmedPurpose = confirmedPurpose.trim();
+      assessment.purposeStatement = confirmedPurpose.trim();
+      assessment.isPurposeAccepted = true;
+    }
+    if (typeof confirmedVision === "string" && confirmedVision.trim()) {
+      assessment.confirmedVision = confirmedVision.trim();
+      assessment.visionStatement = confirmedVision.trim();
+      assessment.isVisionAccepted = true;
+    }
+    if (Array.isArray(confirmedCareerDirections)) {
+      assessment.confirmedCareerDirections = confirmedCareerDirections;
+    }
+    if (typeof studentReflection === "string") assessment.studentReflection = studentReflection;
+    if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
+
+    // Run AI Synthesis engine with confirmed inputs
+    const aiResult = await aiThesisService.generateThesisWithAI(studentContext, assessment);
+
+    assessment.topPassions = aiResult.topPassions || assessment.topPassions;
+    if (aiResult.coreValues?.length) assessment.coreValues = aiResult.coreValues;
+    assessment.fiveYearGoal = aiResult.fiveYearGoal || assessment.fiveYearGoal;
+    assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
+    assessment.bhag = aiResult.bhag || assessment.bhag;
+    assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
+    if (aiResult.archetype) assessment.archetype = aiResult.archetype;
+    if (aiResult.developmentIndicators) assessment.developmentIndicators = aiResult.developmentIndicators;
+    if (aiResult.evidenceValidation) assessment.evidenceValidation = aiResult.evidenceValidation;
+    assessment.alignmentScores = aiResult.alignment || assessment.alignmentScores;
+
+    assessment.aiAnalysis = {
+      summary: aiResult.aiSummary || "",
+      currentVsFuture: aiResult.currentVsFuture || {},
+      passionVsPerformance: aiResult.passionVsPerformance || {},
+      scoreRationales: aiResult.scoreRationales || {},
+    };
+
+    assessment.strengths = aiResult.strengths || [];
+    assessment.evidenceBasedStrengths = aiResult.evidenceBasedStrengths || { selfReported: [], evidenceBacked: [] };
+    assessment.developmentAreas = aiResult.developmentAreas || [];
+    assessment.skillGaps = aiResult.skillGaps || [];
+    assessment.structuredDevelopmentGaps = aiResult.structuredDevelopmentGaps || [];
+    assessment.careerDirections = aiResult.careerDirections || [];
+    assessment.recommendations = aiResult.recommendations || [];
+    assessment.roadmap = aiResult.roadmap || { threeMonths: [], sixMonths: [], twelveMonths: [] };
+
+    if (aiResult.understandMyself) {
+      assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, aiResult.understandMyself);
+    }
+    if (aiResult.recurringPatterns?.length) {
+      assessment.recurringPatterns = aiResult.recurringPatterns;
+    }
+    if (aiResult.visionExercises) {
+      assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, aiResult.visionExercises);
+    }
+    if (aiResult.practicalExperiments?.length) {
+      assessment.practicalExperiments = aiResult.practicalExperiments;
+    }
+    if (aiResult.detailedRoadmap) {
+      assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, aiResult.detailedRoadmap);
+    }
+
+    if (!assessment.facultyInterventions?.length && aiResult.facultyInterventions?.length) {
+      assessment.facultyInterventions = aiResult.facultyInterventions;
+    }
+
+    assessment.status = "analyzed";
+    assessment.isPassionTestCompleted = true;
+    assessment.isVisionTestCompleted = true;
+
+    if (assessment.discoveryState) {
+      assessment.discoveryState.isDiscoveryCompleted = true;
+      assessment.discoveryState.currentPhase = "confirmed";
+    }
+
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Confirmed and synthesized AI Thesis successfully",
+      data: assessment,
+      studentContext,
+    });
+  } catch (error) {
+    console.error("Error in confirmThesis:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -247,7 +579,13 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     }
 
     // Load student context
-    const studentContext = await aiThesisService.getStudentContext(studentId);
+    let studentContext = {};
+    try {
+      studentContext = await aiThesisService.getStudentContext(studentId);
+    } catch (ctxErr) {
+      console.warn("Could not load full student context in analyzeAndGenerateThesis:", ctxErr.message);
+      studentContext = { studentId };
+    }
 
     const targetVersion = req.body?.version || req.query?.version;
     let assessment;
@@ -292,12 +630,21 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     if (!assessment.isVisionAccepted || !assessment.visionStatement) {
       assessment.visionStatement = aiResult.visionStatement || assessment.visionStatement;
     }
+    if (!assessment.confirmedPurpose) {
+      assessment.confirmedPurpose = assessment.purposeStatement;
+    }
+    if (!assessment.confirmedVision) {
+      assessment.confirmedVision = assessment.visionStatement;
+    }
+
     assessment.fiveYearGoal = aiResult.fiveYearGoal || assessment.fiveYearGoal;
     assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
     assessment.bhag = aiResult.bhag || assessment.bhag;
     assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
     if (aiResult.studentCommitment) assessment.studentCommitment = aiResult.studentCommitment;
     if (aiResult.archetype) assessment.archetype = aiResult.archetype;
+    if (aiResult.developmentIndicators) assessment.developmentIndicators = aiResult.developmentIndicators;
+    if (aiResult.evidenceValidation) assessment.evidenceValidation = aiResult.evidenceValidation;
 
     assessment.alignmentScores = {
       passionClarity: aiResult.alignment?.passionClarity || 85,
@@ -326,6 +673,22 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     assessment.careerDirections = aiResult.careerDirections || [];
     assessment.recommendations = aiResult.recommendations || [];
     assessment.roadmap = aiResult.roadmap || { threeMonths: [], sixMonths: [], twelveMonths: [] };
+
+    if (aiResult.understandMyself) {
+      assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, aiResult.understandMyself);
+    }
+    if (aiResult.recurringPatterns?.length) {
+      assessment.recurringPatterns = aiResult.recurringPatterns;
+    }
+    if (aiResult.visionExercises) {
+      assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, aiResult.visionExercises);
+    }
+    if (aiResult.practicalExperiments?.length) {
+      assessment.practicalExperiments = aiResult.practicalExperiments;
+    }
+    if (aiResult.detailedRoadmap) {
+      assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, aiResult.detailedRoadmap);
+    }
 
     // Initialize faculty interventions if none exist
     if (!assessment.facultyInterventions?.length && aiResult.facultyInterventions?.length) {
@@ -370,7 +733,7 @@ exports.startNewVersion = async (req, res) => {
 
     const latest = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
 
-    // If the latest is ALREADY an un-started blank draft, reuse it rather than accumulating empty drafts
+    // If latest is an unstarted blank draft, reuse it
     if (
       latest &&
       latest.status === "draft" &&
@@ -386,7 +749,7 @@ exports.startNewVersion = async (req, res) => {
 
     const nextVersion = latest ? latest.assessmentVersion + 1 : 1;
 
-    // Carry forward previous baseline answers so the student can evolve them without starting from a blank slate
+    // Carry forward baseline answers
     const newAssessment = new PurposeVisionAssessment({
       studentId,
       assessmentVersion: nextVersion,
@@ -420,6 +783,7 @@ exports.startNewVersion = async (req, res) => {
 
 /**
  * Edit, accept, or finalize purpose/vision statements & reflections
+ * Students are fully authorized to personalize their purpose, vision, and reflections!
  */
 exports.updateStatements = async (req, res) => {
   try {
@@ -428,17 +792,11 @@ exports.updateStatements = async (req, res) => {
       return res.status(400).json({ success: false, message: "Valid studentId is required" });
     }
 
-    // Students can only take tests; statements and goals are generated by AI
-    if (req.user?.role === "student") {
-      return res.status(403).json({
-        success: false,
-        message: "Students cannot manually edit thesis statements. Your thesis is automatically synthesized by AI based on your test answers. Please retake the test to re-synthesize.",
-      });
-    }
-
     const {
       purposeStatement,
       visionStatement,
+      confirmedPurpose,
+      confirmedVision,
       isPurposeAccepted,
       isVisionAccepted,
       studentCommitment,
@@ -452,8 +810,22 @@ exports.updateStatements = async (req, res) => {
       return res.status(404).json({ success: false, message: "No active thesis found" });
     }
 
-    if (typeof purposeStatement === "string") assessment.purposeStatement = purposeStatement;
-    if (typeof visionStatement === "string") assessment.visionStatement = visionStatement;
+    if (typeof purposeStatement === "string") {
+      assessment.purposeStatement = purposeStatement.trim();
+      assessment.confirmedPurpose = purposeStatement.trim();
+    }
+    if (typeof confirmedPurpose === "string") {
+      assessment.confirmedPurpose = confirmedPurpose.trim();
+      assessment.purposeStatement = confirmedPurpose.trim();
+    }
+    if (typeof visionStatement === "string") {
+      assessment.visionStatement = visionStatement.trim();
+      assessment.confirmedVision = visionStatement.trim();
+    }
+    if (typeof confirmedVision === "string") {
+      assessment.confirmedVision = confirmedVision.trim();
+      assessment.visionStatement = confirmedVision.trim();
+    }
     if (typeof isPurposeAccepted === "boolean") assessment.isPurposeAccepted = isPurposeAccepted;
     if (typeof isVisionAccepted === "boolean") assessment.isVisionAccepted = isVisionAccepted;
     if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
@@ -544,7 +916,6 @@ exports.addMentorFeedback = async (req, res) => {
 
     assessment.facultyFeedback.push(feedbackEntry);
 
-    // If faculty recommended actions are provided, also add to facultyInterventions
     if (Array.isArray(recommendedActions)) {
       recommendedActions.forEach((act) => {
         assessment.facultyInterventions.push({
@@ -573,7 +944,7 @@ exports.addMentorFeedback = async (req, res) => {
 };
 
 /**
- * Update Faculty Intervention Action status (Completed / In Progress / Not Started)
+ * Update Faculty Intervention Action status
  */
 exports.updateFacultyActionStatus = async (req, res) => {
   try {

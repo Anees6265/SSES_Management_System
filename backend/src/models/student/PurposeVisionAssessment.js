@@ -134,6 +134,110 @@ const purposeVisionAssessmentSchema = new mongoose.Schema({
     energyGivingActivity: { type: String, default: "" },
   },
 
+  // 0. Stage 1: Understand Myself
+  understandMyself: {
+    experiences: { type: String, default: "" }, // Real meaningful experiences described
+    activitiesEnjoyed: [{ type: String }],
+    activitiesDisliked: [{ type: String }], // Draining activities
+    voluntarilyExplored: [{ type: String }],
+    preferredLearningStyle: { type: String, default: "" },
+    concernsAndUncertainties: [{ type: String }],
+    whatToUnderstand: { type: String, default: "" },
+  },
+
+  // Stage 3: Recurring Patterns (Explicit vs Inferred with Student Confirmation)
+  recurringPatterns: [{
+    pattern: { type: String, required: true },
+    supportingAnswers: [{ type: String }],
+    source: { type: String, enum: ["explicit", "inferred"], default: "inferred" },
+    counterExample: { type: String, default: "" },
+    studentConfirmation: { type: String, enum: ["confirmed", "edited", "rejected", "uncertain"], default: "confirmed" },
+    studentNote: { type: String, default: "" },
+  }],
+
+  // Stage 6: Structured Vision Discovery Exercises
+  visionExercises: {
+    idealDay: {
+      type: Object,
+      default: () => ({
+        where: "",
+        activities: "",
+        people: "",
+        problems: "",
+        responsibilities: "",
+        environment: "",
+        balance: "",
+        meaningfulParts: "",
+        narrative: "",
+      }),
+    },
+    futureHeadlines: {
+      type: Object,
+      default: () => ({
+        headline: "",
+        whyItMatters: "",
+      }),
+    },
+    workLifePreferences: {
+      type: Object,
+      default: () => ({
+        collaboration: "",
+        structure: "",
+        uncertainty: "",
+        practicalVsConceptual: "",
+        workFocus: "",
+        createVsImprove: "",
+        rolePreference: "",
+        workEnvironment: "",
+      }),
+    },
+    futureContribution: {
+      type: Object,
+      default: () => ({
+        contribution: "",
+        whyItMatters: "",
+      }),
+    },
+    futureRegret: {
+      type: Object,
+      default: () => ({
+        regretAvoided: "",
+      }),
+    },
+    possibleFutures: [{
+      title: { type: String, default: "" },
+      description: { type: String, default: "" },
+      supportingPreferences: [{ type: String }],
+      uncertainties: [{ type: String }],
+      thirtyDayTrial: { type: String, default: "" },
+      studentInterest: { type: String, enum: ["interested", "exploring", "unsuitable"], default: "exploring" },
+    }],
+  },
+
+  // Practical Experiments (Stage 8)
+  practicalExperiments: [{
+    title: { type: String, required: true },
+    domain: { type: String, default: "General" },
+    whatToDo: { type: String, default: "" },
+    timeRequired: { type: String, default: "2-4 hours" },
+    resourcesRequired: { type: String, default: "" },
+    expectedLearning: { type: String, default: "" },
+    reflectionPlan: { type: String, default: "" },
+    evidenceToCollect: { type: String, default: "" },
+    outcomeScope: { type: String, default: "" },
+    status: { type: String, enum: ["Planned", "In Progress", "Completed"], default: "Planned" },
+  }],
+
+  // Multi-horizon Roadmap
+  detailedRoadmap: {
+    thirtyDayActions: [{ type: String }],
+    ninetyDayRoadmap: [{ type: String }],
+    sixMonthGoals: [{ type: String }],
+    twelveMonthGoals: [{ type: String }],
+    reviewDate: { type: Date },
+    revisionPlan: { type: String, default: "" },
+  },
+
   // 7. Vision: Core Ideology & Envisioned Future
   visionAnswers: { type: mongoose.Schema.Types.Mixed, default: {} },
   fiveYearGoal: { type: String, default: "" },
@@ -141,11 +245,76 @@ const purposeVisionAssessmentSchema = new mongoose.Schema({
   bhag: { type: String, default: "" }, // Big Future Goal
   vividFuture: { type: String, default: "" }, // "My Ideal Future" narrative
 
-  // 8. Statements
-  purposeStatement: { type: String, default: "" },
-  visionStatement: { type: String, default: "" },
+  // 8. Statements (AI Draft vs Student Confirmed)
+  purposeStatement: { type: String, default: "" }, // AI Draft
+  visionStatement: { type: String, default: "" }, // AI Draft
+  confirmedPurpose: { type: String, default: "" }, // Student Confirmed & Edited
+  confirmedVision: { type: String, default: "" }, // Student Confirmed & Edited
   isPurposeAccepted: { type: Boolean, default: false },
   isVisionAccepted: { type: Boolean, default: false },
+
+  // Interactive AI Discovery Conversation State & History
+  discoveryChat: [{
+    sender: { type: String, enum: ["ai", "student"], required: true },
+    phase: { type: String, default: "passion" },
+    stepKey: { type: String, default: "" },
+    message: { type: String, required: true },
+    contextHelp: { type: String, default: "" }, // Hinglish & simple English explanations
+    quickOptions: [{ type: String }],
+    allowCustom: { type: Boolean, default: true },
+    timestamp: { type: Date, default: Date.now },
+  }],
+
+  discoveryState: {
+    currentPhase: { type: String, default: "passion" },
+    currentStepKey: { type: String, default: "myself_intro" },
+    explicitInsights: [{ type: String }],
+    inferredPatterns: [{ type: String }],
+    uncertainties: [{ type: String }],
+    isDiscoveryCompleted: { type: Boolean, default: false },
+    lastSavedAt: { type: Date, default: Date.now },
+  },
+
+  confirmedCareerDirections: [{
+    title: { type: String, required: true },
+    interestStatus: { type: String, enum: ["interested", "exploring", "not_interested"], default: "exploring" },
+    studentNote: { type: String, default: "" },
+  }],
+
+  // Evidence & Data Validation Layer
+  evidenceValidation: {
+    isValidated: { type: Boolean, default: false },
+    taskMetricsVerified: {
+      totalTasks: { type: Number, default: null },
+      completedTasks: { type: Number, default: null },
+      taskCompletionRate: { type: Number, default: null },
+      status: { type: String, default: "Verified" },
+    },
+    attendanceVerified: {
+      rate: { type: Number, default: null },
+      status: { type: String, default: "Verified" },
+    },
+    academicVerified: {
+      grade: { type: String, default: "" },
+      currentLevel: { type: String, default: "" },
+    },
+    dataGaps: [{ type: String }],
+    dataConfidenceNote: { type: String, default: "" },
+  },
+
+  // Transparent Mentoring Development Indicators (Documented formulas, ranges, inputs)
+  developmentIndicators: {
+    passionClarity: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    purposeClarity: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    visionClarity: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    skillAlignment: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    goalAlignment: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    overallIndex: { score: { type: Number, default: 0 }, rationale: { type: String, default: "" }, method: { type: String, default: "" }, confidence: { type: String, default: "" } },
+    disclaimer: {
+      type: String,
+      default: "These indicators are developmental mentoring guidance signals, not standardized psychological tests or job guarantees.",
+    },
+  },
 
   // 9. AI Archetype
   archetype: {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useGetStudentThesisQuery,
   useGetStudentThesisVersionsQuery,
@@ -8,6 +9,9 @@ import {
   useUpdateStudentThesisStatementsMutation,
   useAddThesisMentorFeedbackMutation,
   useUpdateThesisFacultyActionMutation,
+  useSubmitStudentDiscoveryStepMutation,
+  useResetStudentDiscoveryMutation,
+  useConfirmStudentThesisMutation,
 } from "../../../redux/api/authApi";
 import {
   useGetMyStudentThesisQuery,
@@ -16,22 +20,44 @@ import {
   useAnalyzeMyThesisMutation,
   useStartMyNewThesisVersionMutation,
   useUpdateMyThesisStatementsMutation,
+  useSubmitMyDiscoveryStepMutation,
+  useResetMyDiscoveryMutation,
+  useConfirmMyThesisMutation,
 } from "../../../redux/api/studentApi";
 import AIThesisOverview from "./AIThesisOverview";
+import AIDiscoveryWizard from "./AIDiscoveryWizard";
 import PassionTestWizard from "./PassionTestWizard";
 import VisionTestWizard from "./VisionTestWizard";
 import MentorFeedbackModal from "./MentorFeedbackModal";
 import PurposeEvolutionModal from "./PurposeEvolutionModal";
 import AIThesisReportPDF from "./AIThesisReportPDF";
 import Loader from "../../shared/loader/Loader";
-import { Flame, Compass, Sparkles, ArrowRight, Edit3, Clock, RefreshCw, Printer, MessageSquare, Award } from "lucide-react";
+import {
+  Flame,
+  Compass,
+  Sparkles,
+  ArrowRight,
+  Edit3,
+  Clock,
+  RefreshCw,
+  Printer,
+  MessageSquare,
+  Award,
+  BookOpen,
+  User,
+  LayoutDashboard,
+  Target,
+  CheckCircle2,
+  Lightbulb,
+} from "lucide-react";
 import { toast } from "react-toastify";
 
 export default function AIThesisContainer({
   studentId,
   isFacultyView = false,
 }) {
-  const [activeTestModal, setActiveTestModal] = useState(null); // "passion" | "vision" | null
+  const navigate = useNavigate();
+  const [activeTestModal, setActiveTestModal] = useState(null); // "discovery" | "passion" | "vision" | null
   const [viewMode, setViewMode] = useState("report"); // "report" | "tests"
   const [selectedVersion, setSelectedVersion] = useState(null);
   const [isMentorModalOpen, setIsMentorModalOpen] = useState(false);
@@ -76,11 +102,23 @@ export default function AIThesisContainer({
   const [updateStmtFaculty] = useUpdateStudentThesisStatementsMutation();
   const [updateStmtStudent] = useUpdateMyThesisStatementsMutation();
 
+  const [submitStepFaculty, { isLoading: isSubmittingStepFaculty }] = useSubmitStudentDiscoveryStepMutation();
+  const [submitStepStudent, { isLoading: isSubmittingStepStudent }] = useSubmitMyDiscoveryStepMutation();
+
+  const [resetDiscoveryFaculty] = useResetStudentDiscoveryMutation();
+  const [resetDiscoveryStudent] = useResetMyDiscoveryMutation();
+
+  const [confirmThesisFaculty, { isLoading: isConfirmingFaculty }] = useConfirmStudentThesisMutation();
+  const [confirmThesisStudent, { isLoading: isConfirmingStudent }] = useConfirmMyThesisMutation();
+
   const [addFeedback, { isLoading: isSubmittingFeedback }] = useAddThesisMentorFeedbackMutation();
   const [updateFacultyAction] = useUpdateThesisFacultyActionMutation();
 
   const isSaving = isFacultyView ? isSavingFaculty : isSavingStudent;
-  const isAnalyzing = isFacultyView ? isAnalyzingFaculty : isAnalyzingStudent;
+  const isAnalyzing = isFacultyView ? (isAnalyzingFaculty || isConfirmingFaculty) : (isAnalyzingStudent || isConfirmingStudent);
+  const isSubmittingDiscovery = isFacultyView
+    ? (isSubmittingStepFaculty || isConfirmingFaculty)
+    : (isSubmittingStepStudent || isConfirmingStudent);
 
   if (isLoading) {
     return (
@@ -106,6 +144,7 @@ export default function AIThesisContainer({
       alignmentScores: assessment.alignmentScores,
       createdAt: assessment.createdAt,
       purposeStatement: assessment.purposeStatement,
+      confirmedPurpose: assessment.confirmedPurpose,
       topPassions: assessment.topPassions,
     });
   }
@@ -120,7 +159,7 @@ export default function AIThesisContainer({
   // Evaluation of completion
   const isPassionTestCompleted = Boolean(
     assessment?.isPassionTestCompleted ||
-    (assessment?.topPassions && assessment.topPassions.length >= 3)
+    (assessment?.topPassions && assessment.topPassions.length >= 1)
   );
 
   const isVisionTestCompleted = Boolean(
@@ -130,7 +169,6 @@ export default function AIThesisContainer({
 
   const hasAIAnalysis = Boolean(
     (assessment?.status === "analyzed" || assessment?.status === "finalized") &&
-    assessment?.aiAnalysis?.summary &&
     assessment?.careerDirections &&
     assessment.careerDirections.length > 0 &&
     assessment?.topPassions &&
@@ -147,7 +185,7 @@ export default function AIThesisContainer({
     }
   };
 
-  // Save handler for either test
+  // Save handler for quick test wizards
   const handleSaveTest = async (testPayload) => {
     try {
       const ver = selectedVersion || currentVersionNumber;
@@ -164,7 +202,45 @@ export default function AIThesisContainer({
     }
   };
 
-  // Run AI Analysis on both tests
+  // Discovery turn handler
+  const handleSubmitDiscoveryStep = async (stepPayload) => {
+    const ver = selectedVersion || currentVersionNumber;
+    if (isFacultyView) {
+      await submitStepFaculty({ studentId, version: ver, ...stepPayload }).unwrap();
+    } else {
+      await submitStepStudent({ version: ver, ...stepPayload }).unwrap();
+    }
+    versionsQuery.refetch?.();
+    refetch();
+  };
+
+  // Reset discovery handler
+  const handleResetDiscovery = async () => {
+    const ver = selectedVersion || currentVersionNumber;
+    if (isFacultyView) {
+      await resetDiscoveryFaculty({ studentId, version: ver }).unwrap();
+    } else {
+      await resetDiscoveryStudent().unwrap();
+    }
+    versionsQuery.refetch?.();
+    refetch();
+  };
+
+  // Confirm thesis handler
+  const handleConfirmThesis = async (confirmPayload) => {
+    const ver = selectedVersion || currentVersionNumber;
+    if (isFacultyView) {
+      await confirmThesisFaculty({ studentId, version: ver, ...confirmPayload }).unwrap();
+    } else {
+      await confirmThesisStudent({ version: ver, ...confirmPayload }).unwrap();
+    }
+    versionsQuery.refetch?.();
+    refetch();
+    setViewMode("report");
+    setActiveTestModal(null);
+  };
+
+  // Run AI Analysis directly
   const handleAnalyzeBoth = async () => {
     try {
       const ver = selectedVersion || currentVersionNumber;
@@ -207,10 +283,17 @@ export default function AIThesisContainer({
   };
 
   const handleUpdateStatements = async (updateData) => {
-    if (isFacultyView) {
-      return updateStmtFaculty({ studentId, ...updateData }).unwrap();
+    try {
+      if (isFacultyView) {
+        await updateStmtFaculty({ studentId, ...updateData }).unwrap();
+      } else {
+        await updateStmtStudent(updateData).unwrap();
+      }
+      refetch();
+      toast.success("Statements updated successfully!");
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update statement");
     }
-    return updateStmtStudent(updateData).unwrap();
   };
 
   const handleAddMentorFeedback = async (feedbackData) => {
@@ -236,13 +319,25 @@ export default function AIThesisContainer({
     }
   };
 
-  // Render Test Modal (Passion or Vision)
+  // Render Test Modal (Discovery, Passion, or Vision)
   const renderActiveTestModal = () => {
     if (!activeTestModal) return null;
 
     return (
       <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-slate-950/70 backdrop-blur-xs sm:p-4 overflow-hidden animate-in fade-in duration-150">
         <div className="w-full sm:max-w-3xl h-[94vh] sm:h-[86vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100">
+          {activeTestModal === "discovery" && (
+            <AIDiscoveryWizard
+              assessment={assessment || {}}
+              studentContext={studentContext || {}}
+              onSubmitStep={handleSubmitDiscoveryStep}
+              onResetDiscovery={handleResetDiscovery}
+              onConfirmThesis={handleConfirmThesis}
+              onClose={() => setActiveTestModal(null)}
+              isSubmitting={isSubmittingDiscovery}
+            />
+          )}
+
           {activeTestModal === "passion" && (
             <PassionTestWizard
               initialData={assessment || {}}
@@ -265,7 +360,7 @@ export default function AIThesisContainer({
     );
   };
 
-  // ── Clean & Minimal Starting Test Hub (Mobile Responsive & High UX) ──
+  // ── Starting Test Hub & Interactive Discovery Portal ──
   const renderTestHub = () => (
     <div className="space-y-4 sm:space-y-5">
       {/* Notice when working on a draft while having previous analyzed version */}
@@ -294,28 +389,80 @@ export default function AIThesisContainer({
         </div>
       )}
 
-      {/* Friendly Hero Banner */}
-      <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 rounded-3xl p-4 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/90 bg-white/20 px-2.5 py-0.5 rounded-full inline-block">
-            Self-Discovery Portal
+      {/* ── FEATURED PRIMARY HERO: AI-Guided Discovery Conversation ── */}
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-sm border border-slate-800 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 bg-orange-400/10 px-3 py-1 rounded-full border border-orange-400/20">
+              ✨ Recommended Path • AI-Guided Discovery
+            </span>
+          </div>
+          <span className="text-xs text-slate-300 font-medium">
+            Personalized reflection in simple English & Hinglish
           </span>
-          <h2 className="text-base sm:text-xl font-black tracking-tight text-white">
-            Passion & Vision Discovery
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+            Discover What Energizes You & Where You Want to Go
           </h2>
-          <p className="text-xs text-white/90 font-medium">
-            Take these two short tests to discover your driving motivations, guiding values, and developmental archetype.
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal max-w-2xl">
+            Instead of a rigid static test, have a guided discovery conversation with our AI mentor. We break down concepts simply, ask adaptive follow-ups based on your genuine answers, and help you review and edit your own purpose and vision statements.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto bg-white/15 backdrop-blur-xs px-3.5 py-2 rounded-2xl border border-white/20 text-xs font-bold shrink-0">
-          <span>Status:</span>
-          <span className="font-black text-amber-100">
-            {(isPassionTestCompleted ? 1 : 0) + (isVisionTestCompleted ? 1 : 0)} of 2 Completed
-          </span>
+
+        {/* 3 Step Concept Badges */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10 space-y-1">
+            <div className="flex items-center gap-2 text-orange-400 font-black text-xs">
+              <Flame size={15} />
+              <span>1. Passion: What Energizes Me?</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-snug">
+              Curiosity, problems you like solving, and activities where you lose track of time.
+            </p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10 space-y-1">
+            <div className="flex items-center gap-2 text-amber-400 font-black text-xs">
+              <Target size={15} />
+              <span>2. Purpose: Why Does It Matter?</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-snug">
+              Simplified 5-Whys exploration to find what kind of contribution matters to you.
+            </p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10 space-y-1">
+            <div className="flex items-center gap-2 text-indigo-400 font-black text-xs">
+              <Compass size={15} />
+              <span>3. Vision: Where Am I Heading?</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-snug">
+              Your 3-5 year horizon, Big Dream milestone (BHAG), and practical career experiments.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800">
+          <div className="text-xs text-slate-400 font-medium flex items-center gap-2">
+            <CheckCircle2 size={15} className="text-emerald-400" />
+            <span>Takes ~5 minutes • You can pause, edit answers, and resume anytime</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTestModal("discovery")}
+            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black transition flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Sparkles size={16} />
+            <span>Start My Discovery Conversation ✨</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
       </div>
 
-      {/* 2 Clean & Focused Test Cards */}
+      {/* 2 Focused Direct Test Cards (For Fast Direct Updates) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Test 1: Passion Test */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between space-y-4 hover:border-orange-300 transition">
@@ -337,10 +484,10 @@ export default function AIThesisContainer({
 
             <div>
               <h3 className="text-base font-black text-slate-900">
-                1. Passion Discovery Test
+                Passion Discovery Test (Direct)
               </h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Discover what naturally energizes you, choose your top passions, and measure your current effort gap.
+                Choose top passions from library or custom text, and measure your self-rated importance vs current engagement gap.
               </p>
             </div>
 
@@ -394,7 +541,7 @@ export default function AIThesisContainer({
 
             <div>
               <h3 className="text-base font-black text-slate-900">
-                2. Vision & Purpose Test
+                Vision & Purpose Test (Direct)
               </h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Select your core guiding values, state your driving ambition, and define your bold 3-5 year goal.
@@ -444,8 +591,8 @@ export default function AIThesisContainer({
             </h4>
             <p className="text-xs text-slate-500 font-medium">
               {isPassionTestCompleted
-                ? "Your responses are ready! Click below to synthesize your personalized AI developmental thesis."
-                : "Complete the Passion Discovery Test above to unlock your AI thesis."}
+                ? "Your self-discovery answers are ready! Click below to synthesize your personalized AI developmental thesis."
+                : "Complete the guided discovery conversation above to unlock your personalized AI thesis."}
             </p>
           </div>
         </div>
@@ -470,10 +617,45 @@ export default function AIThesisContainer({
           )}
         </button>
       </div>
+
+      {/* Quick Links Back to Profile & Dashboard */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 text-xs text-slate-500">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/student-portal/profile")}
+            className="hover:text-orange-600 transition flex items-center gap-1 font-semibold cursor-pointer"
+          >
+            <User size={13} />
+            <span>Student Profile</span>
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => navigate("/student-portal/dashboard")}
+            className="hover:text-orange-600 transition flex items-center gap-1 font-semibold cursor-pointer"
+          >
+            <LayoutDashboard size={13} />
+            <span>Dashboard</span>
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => navigate("/student-portal/tasks")}
+            className="hover:text-orange-600 transition flex items-center gap-1 font-semibold cursor-pointer"
+          >
+            <BookOpen size={13} />
+            <span>My Tasks</span>
+          </button>
+        </div>
+        <span className="text-[11px] text-slate-400 font-medium">
+          Sant Singaji Educational Society (SSES)
+        </span>
+      </div>
     </div>
   );
 
-  // ── Faculty Pending View (When student has not taken the test yet) ──
+  // ── Faculty Pending View ──
   const renderFacultyPendingView = () => (
     <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs space-y-6 text-center max-w-2xl mx-auto my-6 animate-in fade-in duration-200">
       <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
@@ -488,7 +670,7 @@ export default function AIThesisContainer({
         </h3>
         <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
           {studentContext?.name || "This student"} has not yet completed their self-discovery test.
-          Once the student completes the Passion and Vision tests in their student portal, our AI will automatically synthesize their personalized development thesis, core purpose, and career roadmap.
+          Once the student completes the Passion and Vision discovery in their student portal, our AI will automatically synthesize their personalized development thesis, core purpose, and career roadmap.
         </p>
       </div>
 
@@ -515,7 +697,7 @@ export default function AIThesisContainer({
 
   return (
     <div className="space-y-5">
-      {/* ── Sleek Master Control & Version Navigation Toolbar ── */}
+      {/* ── Toolbar ── */}
       {displayVersions.length > 0 && (
         <div className="bg-slate-50/90 backdrop-blur-xs rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
           {/* Active Version Status Pill */}
@@ -540,7 +722,7 @@ export default function AIThesisContainer({
             {hasAIAnalysis && assessment?.alignmentScores?.overall && (
               <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 inline-flex items-center gap-1">
                 <Award size={13} className="text-indigo-600" />
-                <span>{assessment.alignmentScores.overall}% Alignment</span>
+                <span>{assessment.alignmentScores.overall}% Guidance Index</span>
               </span>
             )}
           </div>
@@ -650,7 +832,7 @@ export default function AIThesisContainer({
                       : "text-orange-700 hover:text-orange-900"
                   }`}
                 >
-                  📝 Edit Tests
+                  📝 Edit Discovery
                 </button>
               </div>
             )}
@@ -670,6 +852,8 @@ export default function AIThesisContainer({
           isFacultyView={isFacultyView}
           onOpenMentorFeedbackModal={() => setIsMentorModalOpen(true)}
           onUpdateFacultyAction={handleUpdateFacultyAction}
+          onUpdateStatements={handleUpdateStatements}
+          onStartDiscovery={() => setActiveTestModal("discovery")}
         />
       )}
 

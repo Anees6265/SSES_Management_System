@@ -27,31 +27,40 @@ const CORE_VALUES = [
 ];
 
 const CAREER_SUGGESTIONS = [
-  "Software Engineer",
-  "Full-Stack Developer",
-  "AI & Data Scientist",
-  "UI/UX Designer",
-  "Cloud & DevOps Engineer",
-  "Tech Startup Founder",
+  "Dedicated Educator & Academic Specialist",
+  "Sustainable Agriculture & AgTech Professional",
+  "Financial Analyst, Accountant & Advisory Associate",
+  "Business Founder & Management Consultant",
+  "Scientific Researcher & Laboratory Specialist",
+  "Digital Experience Designer & Creative Artist",
+  "Community Development & Social Impact Leader",
+  "Software Solutions Developer & Technology Innovator",
+  "Exploring multiple interdisciplinary directions",
 ];
 
 const WHY_SUGGESTIONS = [
-  "Family financial freedom & security",
-  "Love building software that solves real problems",
-  "Want to achieve technical excellence & leadership",
-  "Desire creative freedom & impact",
+  "Family financial independence, stability & security",
+  "Love teaching, mentoring and simplifying complex knowledge",
+  "Passionate about solving real-world farm & living system problems",
+  "Desire to build and scale an impactful commercial enterprise",
+  "Scientific curiosity to discover, test and contribute to research",
+  "Creative freedom, aesthetic craftsmanship & human impact",
 ];
 
 const FIVE_YEAR_SUGGESTIONS = [
-  "Senior developer leading high-impact software systems",
-  "Build and launch a scalable product with real users",
-  "Master full-stack & AI architecture in a top tech firm",
+  "Leading a successful professional practice or enterprise in my domain",
+  "Spearheading high-impact community or educational initiatives",
+  "Developing innovative solutions for sustainable agriculture or business",
+  "Managing advanced research or specialized corporate advisory projects",
+  "Achieving respected expertise and mentoring junior peers in my field",
 ];
 
 const BHAG_SUGGESTIONS = [
-  "Build a profitable tech company with 50,000+ users",
-  "Lead a world-class engineering team globally",
-  "Achieve total financial independence for my family",
+  "Build a thriving enterprise or initiative benefiting 25,000+ people",
+  "Empower thousands of learners or local farmers with practical solutions",
+  "Achieve total financial independence and support my family's dreams",
+  "Publish groundbreaking research or build celebrated creative products",
+  "Lead a recognized organization driving sustainable regional progress",
 ];
 
 export default function VisionTestWizard({

@@ -47,10 +47,23 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
   const prkey = studentContext?.prkey || studentContext?.studentId || "SSES-STU";
   const course = studentContext?.course || studentContext?.program || "Undergraduate Program";
   const level = `${studentContext?.currentLevel || "Level 1"}${studentContext?.currentSubLevel ? ` (${studentContext.currentSubLevel})` : ""}`;
-  const attendance = studentContext?.attendanceRate ? `${studentContext.attendanceRate}%` : "85%";
-  const taskRate = studentContext?.taskMetrics?.taskCompletionRate
-    ? `${studentContext.taskMetrics.taskCompletionRate}%`
-    : "80%";
+
+  // Evidence validation & reconciliation layer: do not fabricate placeholders
+  const evidenceValidation = assessment?.evidenceValidation || {};
+  const isEvidenceVerified = evidenceValidation?.validationStatus === "Verified";
+  const attendance =
+    evidenceValidation?.verifiedAttendanceRate !== undefined && evidenceValidation?.verifiedAttendanceRate !== null
+      ? `${evidenceValidation.verifiedAttendanceRate}%`
+      : studentContext?.attendanceRate
+      ? `${studentContext.attendanceRate}%`
+      : "Data unavailable";
+  const taskRate =
+    evidenceValidation?.verifiedTaskCompletionRate !== undefined && evidenceValidation?.verifiedTaskCompletionRate !== null
+      ? `${evidenceValidation.verifiedTaskCompletionRate}%`
+      : studentContext?.taskMetrics?.taskCompletionRate
+      ? `${studentContext.taskMetrics.taskCompletionRate}%`
+      : "Data unavailable";
+
   const version = assessment?.assessmentVersion || 1;
   const status = assessment?.status ? assessment.status.toUpperCase() : "ANALYZED";
   const assessmentDate = assessment?.updatedAt
@@ -58,6 +71,7 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
     : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
   const alignmentScores = assessment?.alignmentScores || {};
+  const indicators = assessment?.developmentIndicators || {};
   const archetype = assessment?.archetype || {};
   const topPassions = assessment?.topPassions || [];
   const coreValues = assessment?.coreValues || [];
@@ -67,6 +81,17 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
   const roadmap = assessment?.roadmap || {};
   const facultyFeedback = assessment?.facultyFeedback || [];
   const facultyInterventions = assessment?.facultyInterventions || [];
+  const understandMyself = assessment?.understandMyself || {};
+  const recurringPatterns = assessment?.recurringPatterns || [];
+  const visionExercises = assessment?.visionExercises || {};
+  const detailedRoadmap = assessment?.detailedRoadmap || {};
+  const practicalExperiments = assessment?.practicalExperiments || [];
+
+  // Discovery State (Tri-pillar distinction: explicit, inferred, uncertain)
+  const discoveryState = assessment?.discoveryState || {};
+  const explicitlyStated = discoveryState.explicitlyStated || [];
+  const inferredPatterns = discoveryState.inferredPatterns || [];
+  const openUncertainties = discoveryState.openUncertainties || [];
 
   // 1. Browser Native High-Resolution Vector Print / Save as PDF
   const handlePrint = () => {
@@ -334,14 +359,14 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
                       1. Core Purpose Statement
                     </span>
                   </div>
-                  {assessment?.isPurposeAccepted && (
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                      ✓ Accepted
+                  {(assessment?.confirmedPurpose || assessment?.isPurposeAccepted) && (
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-orange-200">
+                      ✓ Confirmed by Student
                     </span>
                   )}
                 </div>
                 <p className="text-xs sm:text-sm font-black text-slate-900 leading-relaxed">
-                  "{assessment?.purposeStatement || "Living a life centered on service, problem-solving, and continuous learning."}"
+                  "{assessment?.confirmedPurpose || assessment?.purposeStatement || "Living a life centered on service, problem-solving, and continuous learning."}"
                 </p>
               </div>
               <p className="text-[10px] text-orange-700/80 mt-3 font-medium">
@@ -359,14 +384,14 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
                       2. Long-Term Vision Statement
                     </span>
                   </div>
-                  {assessment?.isVisionAccepted && (
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-                      ✓ Accepted
+                  {(assessment?.confirmedVision || assessment?.isVisionAccepted) && (
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
+                      ✓ Confirmed by Student
                     </span>
                   )}
                 </div>
                 <p className="text-xs sm:text-sm font-black text-slate-900 leading-relaxed">
-                  "{assessment?.visionStatement || "To build industry-standard competencies and spearhead transformative technology initiatives."}"
+                  "{assessment?.confirmedVision || assessment?.visionStatement || "To build industry-standard competencies and spearhead transformative technology initiatives."}"
                 </p>
               </div>
               <p className="text-[10px] text-indigo-700/80 mt-3 font-medium">
@@ -376,18 +401,69 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              4. MULTI-DIMENSIONAL AI ALIGNMENT INDICATORS (0-100%)
+              3B. PERSONAL DISCOVERY & EVIDENCE BREAKDOWN (IF PRESENT)
+          ───────────────────────────────────────────────────────────── */}
+          {(explicitlyStated.length > 0 || inferredPatterns.length > 0 || openUncertainties.length > 0) && (
+            <div className="thesis-print-card border border-slate-200 rounded-2xl p-4 bg-slate-50/30">
+              <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-200/60">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-indigo-600" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                    Personal Discovery Breakdown: Explicit vs Inferred vs Uncertainties
+                  </span>
+                </div>
+                <span className="text-[9px] text-slate-400 font-semibold uppercase">
+                  Transparent AI Insights
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="p-2.5 rounded-xl bg-white border border-emerald-100 space-y-1">
+                  <strong className="text-[10px] uppercase font-black tracking-wider text-emerald-800 block">
+                    ✓ Explicitly Stated:
+                  </strong>
+                  <ul className="text-[11px] text-slate-700 space-y-0.5 list-disc pl-3">
+                    {explicitlyStated.map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white border border-indigo-100 space-y-1">
+                  <strong className="text-[10px] uppercase font-black tracking-wider text-indigo-800 block">
+                    ⚡ Inferred AI Patterns:
+                  </strong>
+                  <ul className="text-[11px] text-slate-700 space-y-0.5 list-disc pl-3">
+                    {inferredPatterns.map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white border border-amber-100 space-y-1">
+                  <strong className="text-[10px] uppercase font-black tracking-wider text-amber-800 block">
+                    ? Open Uncertainties:
+                  </strong>
+                  <ul className="text-[11px] text-slate-700 space-y-0.5 list-disc pl-3">
+                    {openUncertainties.map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─────────────────────────────────────────────────────────────
+              4. MULTI-DIMENSIONAL DEVELOPMENT INDICATORS (0-100 SCALE)
           ───────────────────────────────────────────────────────────── */}
           <div className="thesis-print-card border border-slate-200 rounded-2xl p-4.5 bg-slate-50/50">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Target size={15} className="text-slate-700" />
                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-                  AI Alignment & Clarity Indices (0–100 Scale)
+                  Transparent Development Indicators (0–100 Scale)
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-500">
-                Comprehensive Diagnostic Metrics
+                Mentoring Guidance Indicators
               </span>
             </div>
 
@@ -395,63 +471,67 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                 <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Passion Clarity</span>
                 <span className="font-black text-orange-600 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.passionClarity || 85}%
+                  {indicators.passionClarity?.score ?? alignmentScores.passionClarity ?? 85}%
                 </span>
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${alignmentScores.passionClarity || 85}%` }} />
+                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${indicators.passionClarity?.score ?? alignmentScores.passionClarity ?? 85}%` }} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                 <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Purpose Clarity</span>
                 <span className="font-black text-indigo-600 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.purposeClarity || 80}%
+                  {indicators.purposeClarity?.score ?? alignmentScores.purposeClarity ?? 80}%
                 </span>
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${alignmentScores.purposeClarity || 80}%` }} />
+                  <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${indicators.purposeClarity?.score ?? alignmentScores.purposeClarity ?? 80}%` }} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                 <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Vision Clarity</span>
                 <span className="font-black text-blue-600 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.visionClarity || 82}%
+                  {indicators.visionClarity?.score ?? alignmentScores.visionClarity ?? 82}%
                 </span>
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-full" style={{ width: `${alignmentScores.visionClarity || 82}%` }} />
+                  <div className="bg-blue-500 h-full rounded-full" style={{ width: `${indicators.visionClarity?.score ?? alignmentScores.visionClarity ?? 82}%` }} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                 <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Skill Alignment</span>
                 <span className="font-black text-emerald-600 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.skillAlignment || 75}%
+                  {indicators.skillAlignment?.score ?? alignmentScores.skillAlignment ?? 75}%
                 </span>
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${alignmentScores.skillAlignment || 75}%` }} />
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${indicators.skillAlignment?.score ?? alignmentScores.skillAlignment ?? 75}%` }} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                 <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Goal Alignment</span>
                 <span className="font-black text-purple-600 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.goalAlignment || 84}%
+                  {indicators.goalAlignment?.score ?? alignmentScores.goalAlignment ?? 84}%
                 </span>
                 <div className="w-full bg-slate-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${alignmentScores.goalAlignment || 84}%` }} />
+                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${indicators.goalAlignment?.score ?? alignmentScores.goalAlignment ?? 84}%` }} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-orange-50/80 rounded-xl border border-orange-200 shadow-2xs">
-                <span className="block text-orange-800 text-[10px] font-black uppercase tracking-wider">Overall Index</span>
+                <span className="block text-orange-800 text-[10px] font-black uppercase tracking-wider">Guidance Index</span>
                 <span className="font-black text-orange-700 text-sm sm:text-base mt-0.5 block">
-                  {alignmentScores.overall || 78}%
+                  {indicators.overallIndex?.score ?? alignmentScores.overall ?? 78}%
                 </span>
                 <div className="w-full bg-orange-200 h-1 rounded-full mt-1.5 overflow-hidden">
-                  <div className="bg-orange-600 h-full rounded-full" style={{ width: `${alignmentScores.overall || 78}%` }} />
+                  <div className="bg-orange-600 h-full rounded-full" style={{ width: `${indicators.overallIndex?.score ?? alignmentScores.overall ?? 78}%` }} />
                 </div>
               </div>
             </div>
+
+            <p className="text-[10px] text-slate-400 text-center mt-2.5 italic">
+              {indicators.disclaimer || "Scores are transparent developmental guidance indicators for student mentoring, not validated psychometric or psychological assessments."}
+            </p>
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
@@ -513,6 +593,50 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
               )}
             </div>
           </div>
+
+          {/* Understand Myself & Recurring Patterns */}
+          {(understandMyself?.experiences || recurringPatterns?.length > 0) && (
+            <div className="thesis-print-card border border-slate-200 rounded-2xl p-4.5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <UserCheck size={15} className="text-cyan-600" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                    Understand Myself & Recurring Behavioral Drivers
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-400">
+                  Student-Reported Reflections & Inferred Patterns
+                </span>
+              </div>
+
+              {understandMyself.experiences && (
+                <div className="p-3 rounded-xl bg-cyan-50/40 border border-cyan-100 text-xs space-y-1">
+                  <strong className="text-[10px] uppercase font-bold text-cyan-900 block">Meaningful Real Experience:</strong>
+                  <p className="text-slate-700 italic">"{understandMyself.experiences}"</p>
+                </div>
+              )}
+
+              {recurringPatterns.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                  {recurringPatterns.map((pat, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-purple-50/40 border border-purple-100 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-purple-950 font-black">{idx + 1}. {pat.pattern}</strong>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase">
+                          {pat.source}
+                        </span>
+                      </div>
+                      {pat.supportingAnswers?.length > 0 && (
+                        <p className="text-[10px] text-slate-600">
+                          <strong>Evidence:</strong> {pat.supportingAnswers.join(" • ")}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ─────────────────────────────────────────────────────────────
               6. CORE GUIDING VALUES, BHAG & ENVISIONED FUTURE
@@ -759,6 +883,54 @@ export default function AIThesisReportPDF({ isOpen, onClose, assessment, student
               </div>
             </div>
           </div>
+
+          {/* Structured Practical Experiments & 30-Day Discovery Actions */}
+          {(practicalExperiments.length > 0 || detailedRoadmap?.thirtyDayActions?.length > 0) && (
+            <div className="thesis-print-card border border-emerald-200 bg-emerald-50/20 rounded-2xl p-4.5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60">
+                <div className="flex items-center gap-2">
+                  <Target size={15} className="text-emerald-700" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-950">
+                    Low-Cost Practical Experiments & 30-Day Discovery Actions
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-800">
+                  Empirical Interest Validation
+                </span>
+              </div>
+
+              {practicalExperiments.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+                  {practicalExperiments.map((exp, idx) => (
+                    <div key={idx} className="p-3 bg-white rounded-xl border border-emerald-100 space-y-1.5">
+                      <strong className="text-emerald-900 block font-black text-xs">{exp.title}</strong>
+                      <p className="text-[11px] text-slate-700">{exp.whatToDo}</p>
+                      <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex justify-between">
+                        <span><strong>Time:</strong> {exp.timeRequired}</span>
+                        <span><strong>Status:</strong> {exp.status || "Planned"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {detailedRoadmap?.thirtyDayActions?.length > 0 && (
+                <div className="pt-2 border-t border-emerald-200/60 text-xs">
+                  <strong className="text-[10px] uppercase font-bold text-emerald-900 block mb-1">
+                    First 30 Days Immediate Action Sprint:
+                  </strong>
+                  <ul className="space-y-1 text-[11px] text-slate-700">
+                    {detailedRoadmap.thirtyDayActions.map((act, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5">
+                        <span className="text-emerald-600 font-bold">✓</span>
+                        <span>{act}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ─────────────────────────────────────────────────────────────
               9. STUDENT COMMITMENT & REFLECTION (IF PRESENT)

@@ -145,6 +145,21 @@ export const studentApi = createApi({
       query: (data) => ({ url: "/ai-thesis/reflect", method: "POST", body: data }),
       invalidatesTags: ["StudentThesis"],
     }),
+
+    submitMyDiscoveryStep: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/discovery-step", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    resetMyDiscovery: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/discovery-reset", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    confirmMyThesis: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/confirm", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
   }),
 });
 
@@ -172,4 +187,7 @@ export const {
   useStartMyNewThesisVersionMutation,
   useUpdateMyThesisStatementsMutation,
   useSubmitMyReflectionMutation,
+  useSubmitMyDiscoveryStepMutation,
+  useResetMyDiscoveryMutation,
+  useConfirmMyThesisMutation,
 } = studentApi;

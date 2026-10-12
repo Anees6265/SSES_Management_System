@@ -15,10 +15,10 @@ export default function StudentAIThesis() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              My Passion & Vision Thesis
+              Handwritten Visionary Exercise & AI Thesis
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Discover your core purpose, driving passions, and personalized AI career roadmap.
+              Write your authentic visionary exercise on paper, upload your sheets, and let AI synthesize your developmental roadmap.
             </p>
           </div>
         </div>

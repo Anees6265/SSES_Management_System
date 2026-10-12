@@ -40,11 +40,13 @@ export default function AIThesisOverview({
   onOpenMentorFeedbackModal,
   onUpdateFacultyAction,
   onUpdateStatements,
-  onStartDiscovery,
+  onSwitchToUpload,
 }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("passions"); // "passions" | "vision" | "evidence" | "careers" | "faculty"
   const [expandedExperiment, setExpandedExperiment] = useState(0);
+  const [selectedHandwrittenImage, setSelectedHandwrittenImage] = useState(null);
+  const [showFullTranscription, setShowFullTranscription] = useState(false);
 
   // Editable purpose & vision state
   const [isEditingStatements, setIsEditingStatements] = useState(false);
@@ -195,14 +197,14 @@ export default function AIThesisOverview({
                 </span>
               </span>
 
-              {onStartDiscovery && !isFacultyView && (
+              {onSwitchToUpload && (
                 <button
                   type="button"
-                  onClick={onStartDiscovery}
+                  onClick={onSwitchToUpload}
                   className="px-3 py-1 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                 >
-                  <Sparkles size={12} />
-                  <span>Resume Discovery Chat</span>
+                  <span>✍️ View / Update Handwritten Sheets</span>
+                  <ArrowRight size={12} />
                 </button>
               )}
             </div>
@@ -293,6 +295,138 @@ export default function AIThesisOverview({
           </span>
         </div>
       </div>
+
+      {/* ── Handwritten Visionary Exercise Showcase Card ── */}
+      {(assessment?.handwrittenSubmission?.images?.length > 0 || assessment?.handwrittenSubmission?.extractedText) && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 shadow-2xs font-bold text-base">
+                ✍️
+              </div>
+              <div>
+                <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>Handwritten Visionary Exercise</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    ✓ Transcribed & Analyzed by AI
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Student wrote their visionary exercise by hand • Analyzed by Multimodal AI
+                </p>
+              </div>
+            </div>
+
+            {onSwitchToUpload && (
+              <button
+                type="button"
+                onClick={onSwitchToUpload}
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <span>Upload New / Manage Pages</span>
+                <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Left: Handwritten Sheet Thumbnails */}
+            {assessment?.handwrittenSubmission?.images?.length > 0 && (
+              <div className="lg:col-span-5 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Original Handwritten Sheets ({assessment.handwrittenSubmission.images.length})
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {assessment.handwrittenSubmission.images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedHandwrittenImage(img)}
+                      className="group relative rounded-xl border border-slate-200 overflow-hidden cursor-pointer h-28 bg-slate-100 shadow-2xs hover:border-orange-400 transition"
+                      title="Click to preview full size"
+                    >
+                      <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-black">
+                        Page {img.pageNumber || idx + 1}
+                      </div>
+                      <img
+                        src={img.url}
+                        alt={`Page ${img.pageNumber || idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                      />
+                      <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                        🔍 Zoom
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Right: AI Extracted Highlights */}
+            <div className={`${assessment?.handwrittenSubmission?.images?.length > 0 ? "lg:col-span-7" : "lg:col-span-12"} space-y-3`}>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                Extracted Insights from Student Handwriting
+              </span>
+
+              {/* Passions & Values Chips */}
+              <div className="space-y-2">
+                {assessment.handwrittenSubmission.extractedPassions?.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-500">Passions:</span>
+                    {assessment.handwrittenSubmission.extractedPassions.map((p, i) => (
+                      <span key={i} className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-orange-50 text-orange-800 border border-orange-200/60">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {assessment.handwrittenSubmission.extractedValues?.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-500">Core Values:</span>
+                    {assessment.handwrittenSubmission.extractedValues.map((v, i) => (
+                      <span key={i} className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200/60">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Extracted BHAG */}
+              {assessment.handwrittenSubmission.extractedBhag && (
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+                  <span className="font-bold block text-[10px] uppercase tracking-wider text-indigo-600">
+                    Handwritten BHAG (Dream Future Goal):
+                  </span>
+                  <p className="text-slate-800 font-medium mt-0.5 italic">
+                    "{assessment.handwrittenSubmission.extractedBhag}"
+                  </p>
+                </div>
+              )}
+
+              {/* Expandable full transcription */}
+              {assessment.handwrittenSubmission.extractedText && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowFullTranscription(!showFullTranscription)}
+                    className="text-xs text-orange-600 hover:text-orange-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{showFullTranscription ? "Hide Full AI Transcription" : "View Full AI Transcription & Notes"}</span>
+                    {showFullTranscription ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+
+                  {showFullTranscription && (
+                    <div className="mt-2 p-3.5 rounded-2xl bg-slate-900 text-slate-200 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto border border-slate-800">
+                      {assessment.handwrittenSubmission.extractedText}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Segmented Navigation Tabs ── */}
       <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs font-bold">
@@ -1817,6 +1951,38 @@ export default function AIThesisOverview({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Handwritten Sheet Lightbox Modal ── */}
+      {selectedHandwrittenImage && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+          <div className="relative max-w-4xl max-h-[92vh] w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-800">
+            <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg bg-orange-500 text-white text-xs font-black">
+                  Page {selectedHandwrittenImage.pageNumber || 1}
+                </span>
+                <span className="text-xs text-slate-300 font-semibold truncate max-w-md">
+                  {selectedHandwrittenImage.fileName || "Student Handwritten Sheet"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedHandwrittenImage(null)}
+                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-3 sm:p-4 overflow-auto max-h-[78vh] flex items-center justify-center bg-slate-950">
+              <img
+                src={selectedHandwrittenImage.url}
+                alt={`Handwritten Sheet Page ${selectedHandwrittenImage.pageNumber || 1}`}
+                className="max-h-[74vh] max-w-full object-contain rounded-xl shadow-lg"
+              />
             </div>
           </div>
         </div>

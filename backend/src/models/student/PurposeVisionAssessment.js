@@ -1,5 +1,33 @@
 const mongoose = require("mongoose");
 
+const handwrittenImageSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  publicId: { type: String, default: "" },
+  pageNumber: { type: Number, default: 1 },
+  fileName: { type: String, default: "" },
+  fileSize: { type: Number, default: 0 },
+  uploadedAt: { type: Date, default: Date.now },
+}, { _id: false });
+
+const handwrittenSubmissionSchema = new mongoose.Schema({
+  images: [handwrittenImageSchema],
+  studentNotes: { type: String, default: "" },
+  extractedText: { type: String, default: "" },
+  extractedPassions: [{ type: String }],
+  extractedValues: [{ type: String }],
+  extractedPurpose: { type: String, default: "" },
+  extractedVision: { type: String, default: "" },
+  extractedBhag: { type: String, default: "" },
+  extractedStrengths: [{ type: String }],
+  extractedDevelopmentAreas: [{ type: String }],
+  status: {
+    type: String,
+    enum: ["pending_upload", "uploaded", "analyzed"],
+    default: "pending_upload",
+  },
+  analyzedAt: { type: Date },
+}, { _id: false });
+
 const pairwiseComparisonSchema = new mongoose.Schema({
   statementA: { type: String, required: true },
   statementB: { type: String, required: true },
@@ -102,6 +130,24 @@ const purposeVisionAssessmentSchema = new mongoose.Schema({
     type: String,
     enum: ["Student Only", "Student + Assigned Mentor", "Student + Faculty", "Admin"],
     default: "Student + Faculty",
+  },
+
+  // Handwritten Visionary Exercise Submission
+  handwrittenSubmission: {
+    type: handwrittenSubmissionSchema,
+    default: () => ({
+      images: [],
+      studentNotes: "",
+      extractedText: "",
+      extractedPassions: [],
+      extractedValues: [],
+      extractedPurpose: "",
+      extractedVision: "",
+      extractedBhag: "",
+      extractedStrengths: [],
+      extractedDevelopmentAreas: [],
+      status: "pending_upload",
+    }),
   },
 
   // 1. Passion Statements (10-15 statements starting with "When my life is ideal, I am...")

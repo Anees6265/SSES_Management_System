@@ -156,6 +156,24 @@ export const studentApi = createApi({
       invalidatesTags: ["StudentThesis"],
     }),
 
+    uploadMyHandwrittenExercise: builder.mutation({
+      query: (data) => ({
+        url: "/ai-thesis/upload-handwritten",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    deleteMyHandwrittenPage: builder.mutation({
+      query: (data) => ({
+        url: "/ai-thesis/delete-handwritten-page",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
     confirmMyThesis: builder.mutation({
       query: (data) => ({ url: "/ai-thesis/confirm", method: "POST", body: data }),
       invalidatesTags: ["StudentThesis"],
@@ -183,6 +201,8 @@ export const {
   useGetMyStudentThesisQuery,
   useGetMyThesisVersionsQuery,
   useSaveMyDraftThesisMutation,
+  useUploadMyHandwrittenExerciseMutation,
+  useDeleteMyHandwrittenPageMutation,
   useAnalyzeMyThesisMutation,
   useStartMyNewThesisVersionMutation,
   useUpdateMyThesisStatementsMutation,

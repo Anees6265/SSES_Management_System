@@ -1,4 +1,6 @@
 const aiThesisService = require("../src/services/aiThesisService");
+const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
+const aiThesisController = require("../src/controllers/student/aiThesisController");
 
 describe("AI Thesis Service Test Suite", () => {
   const mockContext = {
@@ -479,6 +481,72 @@ describe("AI Thesis Service Test Suite", () => {
     expect(typeof responseBody.data.visionExercises.workLifePreferences).toBe("object");
 
     // Clean up
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
+  });
+
+  it("uploadHandwrittenExercise uploads multiple pages and sets status to uploaded", async () => {
+    const testStudentId = "60c72b2f9b1d8b2badbee099";
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
+
+    const req = {
+      user: { id: testStudentId, role: "student" },
+      body: {
+        images: [
+          { url: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", fileName: "page1.jpg" },
+          { url: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", fileName: "page2.jpg" },
+        ],
+        studentNotes: "Focused on programming and startups",
+      },
+    };
+
+    let statusCode = null;
+    let responseBody = null;
+    const res = {
+      status: (code) => {
+        statusCode = code;
+        return {
+          json: (data) => {
+            responseBody = data;
+          },
+        };
+      },
+    };
+
+    await aiThesisController.uploadHandwrittenExercise(req, res);
+    expect(statusCode).toBe(200);
+    expect(responseBody.success).toBe(true);
+    expect(responseBody.data.handwrittenSubmission.status).toBe("uploaded");
+    expect(responseBody.data.handwrittenSubmission.images.length).toBe(2);
+    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
+    expect(responseBody.data.handwrittenSubmission.images[1].pageNumber).toBe(2);
+    expect(responseBody.data.handwrittenSubmission.studentNotes).toBe("Focused on programming and startups");
+
+    // Test delete a page
+    const delReq = {
+      user: { id: testStudentId, role: "student" },
+      body: {
+        pageNumber: 1,
+      },
+    };
+    await aiThesisController.deleteHandwrittenPage(delReq, res);
+    expect(statusCode).toBe(200);
+    expect(responseBody.data.handwrittenSubmission.images.length).toBe(1);
+    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
+
+    // Test analyze with handwritten exercise
+    const analyzeReq = {
+      user: { id: testStudentId, role: "student" },
+      body: {},
+    };
+    await aiThesisController.analyzeAndGenerateThesis(analyzeReq, res);
+    expect(statusCode).toBe(200);
+    expect(responseBody.success).toBe(true);
+    expect(responseBody.data.status).toBe("analyzed");
+    expect(responseBody.data.handwrittenSubmission.status).toBe("analyzed");
+    expect(responseBody.data.handwrittenSubmission.extractedPassions.length).toBeGreaterThan(0);
+    expect(responseBody.data.purposeStatement).toBeDefined();
+    expect(responseBody.data.visionStatement).toBeDefined();
+
     await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
   });
 });

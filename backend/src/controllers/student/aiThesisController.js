@@ -1,6 +1,7 @@
 const PurposeVisionAssessment = require("../../models/student/PurposeVisionAssessment");
 const Student = require("../../models/student/Student");
 const aiThesisService = require("../../services/aiThesisService");
+const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
 
 // Helper to determine the target student ID from request
@@ -170,6 +171,45 @@ const sanitizeAssessmentInputs = (assessment, inputs = {}) => {
   }
   if (detailedRoadmap && typeof detailedRoadmap === "object") {
     assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, detailedRoadmap);
+  }
+  if (inputs.handwrittenSubmission && typeof inputs.handwrittenSubmission === "object") {
+    if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
+    if (Array.isArray(inputs.handwrittenSubmission.images)) {
+      assessment.handwrittenSubmission.images = inputs.handwrittenSubmission.images;
+    }
+    if (typeof inputs.handwrittenSubmission.studentNotes === "string") {
+      assessment.handwrittenSubmission.studentNotes = inputs.handwrittenSubmission.studentNotes;
+    }
+    if (typeof inputs.handwrittenSubmission.extractedText === "string") {
+      assessment.handwrittenSubmission.extractedText = inputs.handwrittenSubmission.extractedText;
+    }
+    if (Array.isArray(inputs.handwrittenSubmission.extractedPassions)) {
+      assessment.handwrittenSubmission.extractedPassions = inputs.handwrittenSubmission.extractedPassions;
+    }
+    if (Array.isArray(inputs.handwrittenSubmission.extractedValues)) {
+      assessment.handwrittenSubmission.extractedValues = inputs.handwrittenSubmission.extractedValues;
+    }
+    if (typeof inputs.handwrittenSubmission.extractedPurpose === "string") {
+      assessment.handwrittenSubmission.extractedPurpose = inputs.handwrittenSubmission.extractedPurpose;
+    }
+    if (typeof inputs.handwrittenSubmission.extractedVision === "string") {
+      assessment.handwrittenSubmission.extractedVision = inputs.handwrittenSubmission.extractedVision;
+    }
+    if (typeof inputs.handwrittenSubmission.extractedBhag === "string") {
+      assessment.handwrittenSubmission.extractedBhag = inputs.handwrittenSubmission.extractedBhag;
+    }
+    if (Array.isArray(inputs.handwrittenSubmission.extractedStrengths)) {
+      assessment.handwrittenSubmission.extractedStrengths = inputs.handwrittenSubmission.extractedStrengths;
+    }
+    if (Array.isArray(inputs.handwrittenSubmission.extractedDevelopmentAreas)) {
+      assessment.handwrittenSubmission.extractedDevelopmentAreas = inputs.handwrittenSubmission.extractedDevelopmentAreas;
+    }
+    if (inputs.handwrittenSubmission.status) {
+      assessment.handwrittenSubmission.status = inputs.handwrittenSubmission.status;
+    }
+    if (inputs.handwrittenSubmission.analyzedAt) {
+      assessment.handwrittenSubmission.analyzedAt = inputs.handwrittenSubmission.analyzedAt;
+    }
   }
 };
 
@@ -607,19 +647,36 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
     // Update with any answers submitted in body safely
     sanitizeAssessmentInputs(assessment, req.body);
 
-    // Validate that student has actually provided passions before AI analysis
+    // Validate that student has provided either handwritten visionary sheets or passions
+    const hasHandwritten = (assessment.handwrittenSubmission?.images && assessment.handwrittenSubmission.images.length > 0) ||
+                           Boolean(assessment.handwrittenSubmission?.studentNotes);
     const hasPassions = (assessment.topPassions && assessment.topPassions.length > 0) ||
                         (assessment.passionStatements && assessment.passionStatements.length > 0);
 
-    if (!hasPassions) {
+    if (!hasHandwritten && !hasPassions) {
       return res.status(400).json({
         success: false,
-        message: "Please complete the Passion Discovery Test before running AI analysis.",
+        message: "Please upload your handwritten visionary exercise sheets before running AI analysis.",
       });
     }
 
     // Run AI Engine
     const aiResult = await aiThesisService.generateThesisWithAI(studentContext, assessment);
+
+    // Apply extracted handwritten insights if present
+    if (aiResult.extractedText || aiResult.extractedPassions) {
+      if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
+      if (aiResult.extractedText) assessment.handwrittenSubmission.extractedText = aiResult.extractedText;
+      if (aiResult.extractedPassions) assessment.handwrittenSubmission.extractedPassions = aiResult.extractedPassions;
+      if (aiResult.extractedValues) assessment.handwrittenSubmission.extractedValues = aiResult.extractedValues;
+      if (aiResult.extractedPurpose) assessment.handwrittenSubmission.extractedPurpose = aiResult.extractedPurpose;
+      if (aiResult.extractedVision) assessment.handwrittenSubmission.extractedVision = aiResult.extractedVision;
+      if (aiResult.extractedBhag) assessment.handwrittenSubmission.extractedBhag = aiResult.extractedBhag;
+      if (aiResult.extractedStrengths) assessment.handwrittenSubmission.extractedStrengths = aiResult.extractedStrengths;
+      if (aiResult.extractedDevelopmentAreas) assessment.handwrittenSubmission.extractedDevelopmentAreas = aiResult.extractedDevelopmentAreas;
+      assessment.handwrittenSubmission.status = "analyzed";
+      assessment.handwrittenSubmission.analyzedAt = new Date();
+    }
 
     // Apply generated insights
     assessment.topPassions = aiResult.topPassions || assessment.topPassions;
@@ -722,6 +779,193 @@ exports.analyzeAndGenerateThesis = async (req, res) => {
 };
 
 /**
+ * Upload handwritten visionary exercise sheets (multi-page)
+ */
+exports.uploadHandwrittenExercise = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    const targetVersion = req.body?.version || req.query?.version;
+    let assessment;
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
+    if (!assessment || assessment.status === "finalized") {
+      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
+      assessment = new PurposeVisionAssessment({
+        studentId,
+        assessmentVersion: nextVersion,
+        status: "draft",
+      });
+    }
+
+    if (!assessment.handwrittenSubmission) {
+      assessment.handwrittenSubmission = { images: [], status: "pending_upload" };
+    }
+
+    const existingImages = Array.isArray(assessment.handwrittenSubmission.images)
+      ? [...assessment.handwrittenSubmission.images]
+      : [];
+
+    let newImages = [];
+
+    // 1. If files sent via multer (req.files)
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const pageNumber = existingImages.length + i + 1;
+        let fileUrl = "";
+        let publicId = "";
+
+        if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+          try {
+            const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+            const cloudRes = await cloudinary.uploader.upload(dataUri, {
+              folder: "sses/handwritten_visionary",
+              resource_type: "auto",
+            });
+            fileUrl = cloudRes.secure_url || cloudRes.url;
+            publicId = cloudRes.public_id || "";
+          } catch (cloudErr) {
+            console.warn("Cloudinary upload failed, falling back to base64 Data URI:", cloudErr.message);
+          }
+        }
+
+        if (!fileUrl) {
+          fileUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        }
+
+        newImages.push({
+          url: fileUrl,
+          publicId,
+          pageNumber,
+          fileName: file.originalname || `page-${pageNumber}`,
+          fileSize: file.size || 0,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+    // 2. If images sent in body (base64 or URLs array)
+    else if (req.body?.images && Array.isArray(req.body.images)) {
+      for (let i = 0; i < req.body.images.length; i++) {
+        const img = req.body.images[i];
+        const pageNumber = existingImages.length + i + 1;
+        const urlStr = typeof img === "string" ? img : (img.url || "");
+        if (!urlStr) continue;
+
+        let finalUrl = urlStr;
+        let publicId = img.publicId || "";
+
+        if (urlStr.startsWith("data:") && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+          try {
+            const cloudRes = await cloudinary.uploader.upload(urlStr, {
+              folder: "sses/handwritten_visionary",
+              resource_type: "auto",
+            });
+            finalUrl = cloudRes.secure_url || cloudRes.url;
+            publicId = cloudRes.public_id || "";
+          } catch (cErr) {
+            console.warn("Cloudinary upload failed for payload image:", cErr.message);
+          }
+        }
+
+        newImages.push({
+          url: finalUrl,
+          publicId,
+          pageNumber,
+          fileName: img.fileName || `page-${pageNumber}`,
+          fileSize: img.fileSize || 0,
+          uploadedAt: new Date(),
+        });
+      }
+    }
+
+    const replaceAll = req.body?.replaceAll === true || req.body?.replaceAll === "true";
+    assessment.handwrittenSubmission.images = replaceAll
+      ? newImages
+      : [...existingImages, ...newImages];
+
+    assessment.handwrittenSubmission.images = assessment.handwrittenSubmission.images.map((img, idx) => ({
+      ...img,
+      pageNumber: idx + 1,
+    }));
+
+    if (typeof req.body?.studentNotes === "string") {
+      assessment.handwrittenSubmission.studentNotes = req.body.studentNotes.trim();
+    }
+
+    if (assessment.handwrittenSubmission.images.length > 0) {
+      assessment.handwrittenSubmission.status = "uploaded";
+    }
+
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `${newImages.length} page(s) uploaded successfully`,
+      data: assessment,
+    });
+  } catch (error) {
+    console.error("Error in uploadHandwrittenExercise:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Delete a single page from handwritten submission
+ */
+exports.deleteHandwrittenPage = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    const { pageNumber, url, version } = req.body;
+
+    let assessment;
+    if (version) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
+    if (!assessment || !assessment.handwrittenSubmission?.images) {
+      return res.status(404).json({ success: false, message: "Handwritten submission not found" });
+    }
+
+    let images = assessment.handwrittenSubmission.images;
+    if (typeof pageNumber === "number") {
+      images = images.filter((img, idx) => idx + 1 !== pageNumber && img.pageNumber !== pageNumber);
+    } else if (url) {
+      images = images.filter((img) => img.url !== url);
+    }
+
+    assessment.handwrittenSubmission.images = images.map((img, idx) => ({
+      ...img,
+      pageNumber: idx + 1,
+    }));
+
+    if (assessment.handwrittenSubmission.images.length === 0) {
+      assessment.handwrittenSubmission.status = "pending_upload";
+    }
+
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Page removed successfully",
+      data: assessment,
+    });
+  } catch (error) {
+    console.error("Error in deleteHandwrittenPage:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * Start a new assessment version for student purpose evolution
  */
 exports.startNewVersion = async (req, res) => {
@@ -738,6 +982,7 @@ exports.startNewVersion = async (req, res) => {
       latest &&
       latest.status === "draft" &&
       (!latest.topPassions || latest.topPassions.length === 0) &&
+      (!latest.handwrittenSubmission?.images || latest.handwrittenSubmission.images.length === 0) &&
       !latest.isPassionTestCompleted
     ) {
       return res.status(200).json({
@@ -749,23 +994,36 @@ exports.startNewVersion = async (req, res) => {
 
     const nextVersion = latest ? latest.assessmentVersion + 1 : 1;
 
-    // Carry forward baseline answers
+    // Create fresh version draft with empty handwritten submission
     const newAssessment = new PurposeVisionAssessment({
       studentId,
       assessmentVersion: nextVersion,
       status: "draft",
-      passionStatements: latest?.passionStatements || [],
-      pairwiseComparisons: latest?.pairwiseComparisons || [],
-      topPassions: latest?.topPassions || [],
-      coreValues: latest?.coreValues || [],
-      fiveWhys: latest?.fiveWhys || [],
-      fiveYearGoal: latest?.fiveYearGoal || "",
-      tenYearGoal: latest?.tenYearGoal || "",
-      bhag: latest?.bhag || "",
-      vividFuture: latest?.vividFuture || "",
-      studentCommitment: latest?.studentCommitment || "",
-      isPassionTestCompleted: Boolean(latest?.isPassionTestCompleted),
-      isVisionTestCompleted: Boolean(latest?.isVisionTestCompleted),
+      handwrittenSubmission: {
+        images: [],
+        studentNotes: "",
+        extractedText: "",
+        extractedPassions: [],
+        extractedValues: [],
+        extractedPurpose: "",
+        extractedVision: "",
+        extractedBhag: "",
+        extractedStrengths: [],
+        extractedDevelopmentAreas: [],
+        status: "pending_upload",
+      },
+      passionStatements: [],
+      pairwiseComparisons: [],
+      topPassions: [],
+      coreValues: [],
+      fiveWhys: [],
+      fiveYearGoal: "",
+      tenYearGoal: "",
+      bhag: "",
+      vividFuture: "",
+      studentCommitment: "",
+      isPassionTestCompleted: false,
+      isVisionTestCompleted: false,
     });
 
     await newAssessment.save();

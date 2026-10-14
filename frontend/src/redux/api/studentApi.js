@@ -110,7 +110,7 @@ export const studentApi = createApi({
       providesTags: ["StudentProfile"],
     }),
 
-    // AI Thesis Endpoints
+    // Handwritten Visionary Exercise & AI Thesis Endpoints
     getMyStudentThesis: builder.query({
       query: (version) => ({ url: `/ai-thesis/my-thesis${version ? `?version=${version}` : ""}`, method: "GET" }),
       providesTags: ["StudentThesis"],
@@ -119,41 +119,6 @@ export const studentApi = createApi({
     getMyThesisVersions: builder.query({
       query: () => ({ url: "/ai-thesis/my-versions", method: "GET" }),
       providesTags: ["StudentThesis"],
-    }),
-
-    saveMyDraftThesis: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/draft", method: "POST", body: data }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    analyzeMyThesis: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/analyze", method: "POST", body: data }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    startMyNewThesisVersion: builder.mutation({
-      query: () => ({ url: "/ai-thesis/new-version", method: "POST" }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    updateMyThesisStatements: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/statements", method: "PUT", body: data }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    submitMyReflection: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/reflect", method: "POST", body: data }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    submitMyDiscoveryStep: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/discovery-step", method: "POST", body: data }),
-      invalidatesTags: ["StudentThesis"],
-    }),
-
-    resetMyDiscovery: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/discovery-reset", method: "POST", body: data }),
-      invalidatesTags: ["StudentThesis"],
     }),
 
     uploadMyHandwrittenExercise: builder.mutation({
@@ -174,8 +139,18 @@ export const studentApi = createApi({
       invalidatesTags: ["StudentThesis"],
     }),
 
-    confirmMyThesis: builder.mutation({
-      query: (data) => ({ url: "/ai-thesis/confirm", method: "POST", body: data }),
+    analyzeMyThesis: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/analyze", method: "POST", body: data }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    startMyNewThesisVersion: builder.mutation({
+      query: () => ({ url: "/ai-thesis/new-version", method: "POST" }),
+      invalidatesTags: ["StudentThesis"],
+    }),
+
+    updateMyThesisStatements: builder.mutation({
+      query: (data) => ({ url: "/ai-thesis/statements", method: "PUT", body: data }),
       invalidatesTags: ["StudentThesis"],
     }),
   }),
@@ -200,14 +175,9 @@ export const {
   useGetMyReportCardQuery,
   useGetMyStudentThesisQuery,
   useGetMyThesisVersionsQuery,
-  useSaveMyDraftThesisMutation,
   useUploadMyHandwrittenExerciseMutation,
   useDeleteMyHandwrittenPageMutation,
   useAnalyzeMyThesisMutation,
   useStartMyNewThesisVersionMutation,
   useUpdateMyThesisStatementsMutation,
-  useSubmitMyReflectionMutation,
-  useSubmitMyDiscoveryStepMutation,
-  useResetMyDiscoveryMutation,
-  useConfirmMyThesisMutation,
 } = studentApi;

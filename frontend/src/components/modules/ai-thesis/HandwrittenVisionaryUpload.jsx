@@ -507,13 +507,43 @@ export default function HandwrittenVisionaryUpload({
               </button>
             </div>
 
-            {/* Modal Image View */}
+            {/* Modal Content View */}
             <div className="p-3 sm:p-4 overflow-auto max-h-[78vh] flex items-center justify-center bg-slate-950">
-              <img
-                src={selectedPreviewImage.url}
-                alt={`Handwritten Sheet Page ${selectedPreviewImage.pageNumber || 1}`}
-                className="max-h-[74vh] max-w-full object-contain rounded-xl shadow-lg"
-              />
+              {(() => {
+                const isPdf =
+                  selectedPreviewImage.url?.toLowerCase().includes(".pdf") ||
+                  selectedPreviewImage.fileName?.toLowerCase().endsWith(".pdf") ||
+                  selectedPreviewImage.url?.startsWith("data:application/pdf");
+
+                if (isPdf) {
+                  return (
+                    <div className="w-full h-[72vh] flex flex-col items-center justify-center gap-3">
+                      <iframe
+                        src={selectedPreviewImage.url}
+                        title={selectedPreviewImage.fileName || "PDF Sheet"}
+                        className="w-full h-full rounded-2xl bg-white border border-slate-800 shadow-xl"
+                      />
+                      <a
+                        href={selectedPreviewImage.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm"
+                      >
+                        <ExternalLink size={14} />
+                        <span>Open PDF in New Window / Download</span>
+                      </a>
+                    </div>
+                  );
+                }
+
+                return (
+                  <img
+                    src={selectedPreviewImage.url}
+                    alt={`Handwritten Sheet Page ${selectedPreviewImage.pageNumber || 1}`}
+                    className="max-h-[74vh] max-w-full object-contain rounded-xl shadow-lg"
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>

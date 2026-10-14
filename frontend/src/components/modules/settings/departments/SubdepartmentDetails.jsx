@@ -193,7 +193,8 @@ const SubdepartmentDetails = () => {
   const departmentObj  = typeof subdepartment?.departmentId === "object" ? subdepartment?.departmentId : null;
   const departmentId   = location.state?.departmentId || departmentObj?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "");
 
-  const { data: levelsData, isLoading: isLevelsLoading, refetch } = useGetLevelsBySubdepartmentQuery(subdepartmentId, { skip: !subdepartmentId });
+  const isValidSubdeptId = typeof subdepartmentId === "string" && /^[0-9a-fA-F]{24}$/.test(subdepartmentId);
+  const { data: levelsData, isLoading: isLevelsLoading, refetch } = useGetLevelsBySubdepartmentQuery(subdepartmentId, { skip: !isValidSubdeptId });
   const [addLevel] = useAddLevelMutation();
   const [updateLevel] = useUpdateLevelMutation();
   const [deleteLevel, { isLoading: isDeletingLevel }] = useDeleteLevelMutation();

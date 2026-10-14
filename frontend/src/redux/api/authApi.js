@@ -2029,15 +2029,6 @@ export const authApi = createApi({
       providesTags: (result, error, studentId) => [{ type: "Student", id: studentId }],
     }),
 
-    saveStudentDraftThesis: builder.mutation({
-      query: ({ studentId, ...data }) => ({
-        url: `/ai-thesis/${studentId}/draft`,
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
-    }),
-
     uploadStudentHandwrittenExercise: builder.mutation({
       query: ({ studentId, ...data }) => ({
         url: `/ai-thesis/${studentId}/upload-handwritten`,
@@ -2095,33 +2086,6 @@ export const authApi = createApi({
       query: ({ studentId, ...data }) => ({
         url: `/ai-thesis/${studentId}/faculty-actions`,
         method: "PUT",
-        body: data,
-      }),
-      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
-    }),
-
-    submitStudentDiscoveryStep: builder.mutation({
-      query: ({ studentId, ...data }) => ({
-        url: `/ai-thesis/${studentId}/discovery-step`,
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
-    }),
-
-    resetStudentDiscovery: builder.mutation({
-      query: ({ studentId, ...data }) => ({
-        url: `/ai-thesis/${studentId}/discovery-reset`,
-        method: "POST",
-        body: data,
-      }),
-      invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
-    }),
-
-    confirmStudentThesis: builder.mutation({
-      query: ({ studentId, ...data }) => ({
-        url: `/ai-thesis/${studentId}/confirm`,
-        method: "POST",
         body: data,
       }),
       invalidatesTags: (result, error, { studentId }) => [{ type: "Student", id: studentId }],
@@ -2316,7 +2280,6 @@ export const {
   useImportStudentsExcelMutation,
   useGetStudentThesisQuery,
   useGetStudentThesisVersionsQuery,
-  useSaveStudentDraftThesisMutation,
   useUploadStudentHandwrittenExerciseMutation,
   useDeleteStudentHandwrittenPageMutation,
   useAnalyzeStudentThesisMutation,
@@ -2324,7 +2287,4 @@ export const {
   useUpdateStudentThesisStatementsMutation,
   useAddThesisMentorFeedbackMutation,
   useUpdateThesisFacultyActionMutation,
-  useSubmitStudentDiscoveryStepMutation,
-  useResetStudentDiscoveryMutation,
-  useConfirmStudentThesisMutation,
 } = authApi;

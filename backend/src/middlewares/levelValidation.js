@@ -78,9 +78,10 @@ const validateSubDepartmentIdParam = (req, res, next) => {
   const { subDepartmentId } = req.params;
 
   if (!isValidObjectId(subDepartmentId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid subDepartment ID format"
+    return res.status(200).json({
+      success: true,
+      message: "No levels found for invalid subDepartment ID format",
+      data: []
     });
   }
 

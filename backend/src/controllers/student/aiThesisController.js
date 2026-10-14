@@ -12,237 +12,21 @@ const resolveStudentId = (req) => {
   return req.params.studentId || req.body.studentId || req.params.id || req.user?.id || req.user?._id;
 };
 
-// Safe subdocument merging helpers to prevent Mongoose prototype/subdocument casting errors
+// Safe subdocument merging helper
 const safeMergeSubdoc = (target, source) => {
   const current = typeof target?.toObject === "function" ? target.toObject() : (target || {});
   const incoming = typeof source?.toObject === "function" ? source.toObject() : (source || {});
   return { ...current, ...incoming };
 };
 
-const safeMergeVisionExercises = (target, source) => {
-  const current = typeof target?.toObject === "function" ? target.toObject() : (target || {});
-  const incoming = typeof source?.toObject === "function" ? source.toObject() : (source || {});
-
-  return {
-    idealDay: { ...(current.idealDay || {}), ...(incoming.idealDay || {}) },
-    futureHeadlines: { ...(current.futureHeadlines || {}), ...(incoming.futureHeadlines || {}) },
-    workLifePreferences: {
-      collaboration: incoming.workLifePreferences?.collaboration || current.workLifePreferences?.collaboration || "",
-      structure: incoming.workLifePreferences?.structure || current.workLifePreferences?.structure || "",
-      uncertainty: incoming.workLifePreferences?.uncertainty || current.workLifePreferences?.uncertainty || "",
-      practicalVsConceptual: incoming.workLifePreferences?.practicalVsConceptual || current.workLifePreferences?.practicalVsConceptual || "",
-      workFocus: incoming.workLifePreferences?.workFocus || current.workLifePreferences?.workFocus || "",
-      createVsImprove: incoming.workLifePreferences?.createVsImprove || current.workLifePreferences?.createVsImprove || "",
-      rolePreference: incoming.workLifePreferences?.rolePreference || current.workLifePreferences?.rolePreference || "",
-      workEnvironment: incoming.workLifePreferences?.workEnvironment || current.workLifePreferences?.workEnvironment || "",
-    },
-    futureContribution: { ...(current.futureContribution || {}), ...(incoming.futureContribution || {}) },
-    futureRegret: { ...(current.futureRegret || {}), ...(incoming.futureRegret || {}) },
-    possibleFutures: Array.isArray(incoming.possibleFutures)
-      ? incoming.possibleFutures
-      : (Array.isArray(current.possibleFutures) ? current.possibleFutures : []),
-  };
-};
-
-// Safe sanitizer for assessment draft/analysis inputs
-const sanitizeAssessmentInputs = (assessment, inputs = {}) => {
-  const {
-    passionStatements,
-    pairwiseComparisons,
-    topPassions,
-    coreValues,
-    purposeAnswers,
-    fiveWhys,
-    flowAnswers,
-    visionAnswers,
-    fiveYearGoal,
-    tenYearGoal,
-    bhag,
-    vividFuture,
-    purposeStatement,
-    visionStatement,
-    confirmedPurpose,
-    confirmedVision,
-    confirmedCareerDirections,
-    studentCommitment,
-    studentReflection,
-    privacyLevel,
-    isPassionTestCompleted,
-    isVisionTestCompleted,
-    discoveryState,
-    discoveryChat,
-    understandMyself,
-    recurringPatterns,
-    visionExercises,
-    practicalExperiments,
-    detailedRoadmap,
-  } = inputs;
-
-  if (Array.isArray(passionStatements)) {
-    assessment.passionStatements = passionStatements.map((item) => {
-      if (typeof item === "string") {
-        return { text: item, category: "General" };
-      }
-      if (item && typeof item === "object") {
-        return {
-          text: item.text || item.name || item.label || "",
-          category: item.category || "General",
-          createdAt: item.createdAt || new Date(),
-        };
-      }
-      return { text: String(item || ""), category: "General" };
-    });
-  }
-
-  if (Array.isArray(pairwiseComparisons)) {
-    assessment.pairwiseComparisons = pairwiseComparisons;
-  }
-
-  if (Array.isArray(topPassions)) {
-    assessment.topPassions = topPassions.map((p, idx) => ({
-      name: p.name || `Passion ${idx + 1}`,
-      originalStatement: p.originalStatement || `When my life is ideal, I am engaged with ${(p.name || "").toLowerCase()}`,
-      priority: typeof p.priority === "number" ? p.priority : idx + 1,
-      selfRatedImportance: typeof p.selfRatedImportance === "number" ? p.selfRatedImportance : 8,
-      currentScore: typeof p.currentScore === "number" ? p.currentScore : 5,
-      passionGap: typeof p.passionGap === "number" ? p.passionGap : Math.max(0, (Number(p.selfRatedImportance) || 8) - (Number(p.currentScore) || 5)),
-      markers: Array.isArray(p.markers) ? p.markers : (p.marker ? [p.marker] : []),
-      gapExplanation: p.gapExplanation || "",
-      explanation: p.explanation || "",
-      evidence: p.evidence || "",
-      aiInterpretation: p.aiInterpretation || "",
-    }));
-  }
-
-  if (Array.isArray(coreValues)) {
-    assessment.coreValues = coreValues.map((v, idx) => {
-      if (typeof v === "string") {
-        return { name: v, priority: idx + 1, reason: "Guiding value" };
-      }
-      return {
-        name: v.name || `Value ${idx + 1}`,
-        priority: typeof v.priority === "number" ? v.priority : idx + 1,
-        reason: v.reason || "",
-      };
-    });
-  }
-
-  if (Array.isArray(purposeAnswers)) assessment.purposeAnswers = purposeAnswers;
-  if (Array.isArray(fiveWhys)) {
-    assessment.fiveWhys = fiveWhys.map((w, idx) => ({
-      level: typeof w.level === "number" ? w.level : idx + 1,
-      question: w.question || `Why #${idx + 1}`,
-      answer: w.answer || "",
-    }));
-  }
-  if (flowAnswers) assessment.flowAnswers = flowAnswers;
-  if (visionAnswers) assessment.visionAnswers = visionAnswers;
-  if (typeof fiveYearGoal === "string") assessment.fiveYearGoal = fiveYearGoal;
-  if (typeof tenYearGoal === "string") assessment.tenYearGoal = tenYearGoal;
-  if (typeof bhag === "string") assessment.bhag = bhag;
-  if (typeof vividFuture === "string") assessment.vividFuture = vividFuture;
-  if (typeof purposeStatement === "string") assessment.purposeStatement = purposeStatement;
-  if (typeof visionStatement === "string") assessment.visionStatement = visionStatement;
-  if (typeof confirmedPurpose === "string") assessment.confirmedPurpose = confirmedPurpose;
-  if (typeof confirmedVision === "string") assessment.confirmedVision = confirmedVision;
-  if (Array.isArray(confirmedCareerDirections)) assessment.confirmedCareerDirections = confirmedCareerDirections;
-  if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
-  if (typeof studentReflection === "string") assessment.studentReflection = studentReflection;
-  if (privacyLevel) assessment.privacyLevel = privacyLevel;
-  if (typeof isPassionTestCompleted === "boolean") assessment.isPassionTestCompleted = isPassionTestCompleted;
-  if (typeof isVisionTestCompleted === "boolean") assessment.isVisionTestCompleted = isVisionTestCompleted;
-  if (discoveryState && typeof discoveryState === "object") {
-    assessment.discoveryState = safeMergeSubdoc(assessment.discoveryState, discoveryState);
-  }
-  if (Array.isArray(discoveryChat)) {
-    assessment.discoveryChat = discoveryChat;
-  }
-  if (understandMyself && typeof understandMyself === "object") {
-    assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, understandMyself);
-  }
-  if (Array.isArray(recurringPatterns)) {
-    assessment.recurringPatterns = recurringPatterns;
-  }
-  if (visionExercises && typeof visionExercises === "object") {
-    assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, visionExercises);
-  }
-  if (Array.isArray(practicalExperiments)) {
-    assessment.practicalExperiments = practicalExperiments;
-  }
-  if (detailedRoadmap && typeof detailedRoadmap === "object") {
-    assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, detailedRoadmap);
-  }
-  if (inputs.handwrittenSubmission && typeof inputs.handwrittenSubmission === "object") {
-    if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
-    if (Array.isArray(inputs.handwrittenSubmission.images)) {
-      assessment.handwrittenSubmission.images = inputs.handwrittenSubmission.images;
-    }
-    if (typeof inputs.handwrittenSubmission.studentNotes === "string") {
-      assessment.handwrittenSubmission.studentNotes = inputs.handwrittenSubmission.studentNotes;
-    }
-    if (typeof inputs.handwrittenSubmission.extractedText === "string") {
-      assessment.handwrittenSubmission.extractedText = inputs.handwrittenSubmission.extractedText;
-    }
-    if (Array.isArray(inputs.handwrittenSubmission.extractedPassions)) {
-      assessment.handwrittenSubmission.extractedPassions = inputs.handwrittenSubmission.extractedPassions;
-    }
-    if (Array.isArray(inputs.handwrittenSubmission.extractedValues)) {
-      assessment.handwrittenSubmission.extractedValues = inputs.handwrittenSubmission.extractedValues;
-    }
-    if (typeof inputs.handwrittenSubmission.extractedPurpose === "string") {
-      assessment.handwrittenSubmission.extractedPurpose = inputs.handwrittenSubmission.extractedPurpose;
-    }
-    if (typeof inputs.handwrittenSubmission.extractedVision === "string") {
-      assessment.handwrittenSubmission.extractedVision = inputs.handwrittenSubmission.extractedVision;
-    }
-    if (typeof inputs.handwrittenSubmission.extractedBhag === "string") {
-      assessment.handwrittenSubmission.extractedBhag = inputs.handwrittenSubmission.extractedBhag;
-    }
-    if (Array.isArray(inputs.handwrittenSubmission.extractedStrengths)) {
-      assessment.handwrittenSubmission.extractedStrengths = inputs.handwrittenSubmission.extractedStrengths;
-    }
-    if (Array.isArray(inputs.handwrittenSubmission.extractedDevelopmentAreas)) {
-      assessment.handwrittenSubmission.extractedDevelopmentAreas = inputs.handwrittenSubmission.extractedDevelopmentAreas;
-    }
-    if (inputs.handwrittenSubmission.status) {
-      assessment.handwrittenSubmission.status = inputs.handwrittenSubmission.status;
-    }
-    if (inputs.handwrittenSubmission.analyzedAt) {
-      assessment.handwrittenSubmission.analyzedAt = inputs.handwrittenSubmission.analyzedAt;
-    }
-  }
-};
-
 /**
- * Retrieve active thesis & assessment along with student context
+ * Get student thesis assessment & student profile context
  */
 exports.getStudentThesis = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
     if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
       return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    const { version } = req.query;
-    let assessment;
-
-    if (version) {
-      assessment = await PurposeVisionAssessment.findOne({
-        studentId,
-        assessmentVersion: Number(version),
-      });
-    } else {
-      // Prefer latest analyzed thesis so generated thesis never disappears behind an in-progress draft
-      const latestAnalyzed = await PurposeVisionAssessment.findOne({
-        studentId,
-        status: { $in: ["analyzed", "finalized"] },
-      }).sort({ assessmentVersion: -1 });
-
-      if (latestAnalyzed) {
-        assessment = latestAnalyzed;
-      } else {
-        assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-      }
     }
 
     let studentContext = {};
@@ -252,46 +36,26 @@ exports.getStudentThesis = async (req, res) => {
       console.warn("Could not load full student context:", ctxErr.message);
     }
 
+    const targetVersion = req.query?.version || req.body?.version;
+    let assessment;
+
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
     if (!assessment) {
       assessment = new PurposeVisionAssessment({
         studentId,
         assessmentVersion: 1,
         status: "draft",
+        handwrittenSubmission: {
+          images: [],
+          studentNotes: "",
+          status: "pending_upload",
+        },
       });
-      // Initialize starting discovery step
-      const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
-      assessment.discoveryChat = [{
-        sender: "ai",
-        phase: initialStep.phase,
-        stepKey: initialStep.stepKey,
-        message: initialStep.message,
-        contextHelp: initialStep.contextHelp,
-        quickOptions: initialStep.quickOptions,
-        allowCustom: initialStep.allowCustom,
-        timestamp: new Date(),
-      }];
-      assessment.discoveryState = {
-        currentPhase: "passion",
-        currentStepKey: "passion_intro",
-        explicitInsights: [],
-        inferredPatterns: [],
-        uncertainties: [],
-        isDiscoveryCompleted: false,
-        lastSavedAt: new Date(),
-      };
-      await assessment.save();
-    } else if (!assessment.discoveryChat || assessment.discoveryChat.length === 0) {
-      const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
-      assessment.discoveryChat = [{
-        sender: "ai",
-        phase: initialStep.phase,
-        stepKey: initialStep.stepKey,
-        message: initialStep.message,
-        contextHelp: initialStep.contextHelp,
-        quickOptions: initialStep.quickOptions,
-        allowCustom: initialStep.allowCustom,
-        timestamp: new Date(),
-      }];
       await assessment.save();
     }
 
@@ -300,6 +64,8 @@ exports.getStudentThesis = async (req, res) => {
       data: {
         assessment,
         studentContext,
+        evidenceValidation: assessment.evidenceValidation || {},
+        developmentIndicators: assessment.developmentIndicators || {},
       },
     });
   } catch (error) {
@@ -309,7 +75,7 @@ exports.getStudentThesis = async (req, res) => {
 };
 
 /**
- * Retrieve all thesis assessment versions for student
+ * Get all versions history for a student
  */
 exports.getThesisVersions = async (req, res) => {
   try {
@@ -319,8 +85,8 @@ exports.getThesisVersions = async (req, res) => {
     }
 
     const versions = await PurposeVisionAssessment.find({ studentId })
-      .select("assessmentVersion status alignmentScores.overall createdAt updatedAt isPassionTestCompleted isVisionTestCompleted purposeStatement confirmedPurpose topPassions bhag fiveYearGoal")
-      .sort({ assessmentVersion: -1 })
+      .select("assessmentVersion status alignmentScores createdAt confirmedPurpose purposeStatement topPassions handwrittenSubmission")
+      .sort({ assessmentVersion: 1 })
       .lean();
 
     return res.status(200).json({
@@ -334,452 +100,7 @@ exports.getThesisVersions = async (req, res) => {
 };
 
 /**
- * Save in-progress draft assessment answers
- */
-exports.saveDraftAssessment = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    const targetVersion = req.body?.version || req.query?.version;
-    let assessment;
-
-    if (targetVersion) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
-    } else {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-    }
-
-    if (!assessment || assessment.status === "finalized") {
-      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
-      assessment = new PurposeVisionAssessment({
-        studentId,
-        assessmentVersion: nextVersion,
-        status: "draft",
-      });
-    }
-
-    sanitizeAssessmentInputs(assessment, req.body);
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Draft saved successfully",
-      data: assessment,
-    });
-  } catch (error) {
-    console.error("Error in saveDraftAssessment:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Process one conversational turn in adaptive AI discovery
- */
-exports.submitDiscoveryStep = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    const studentContext = await aiThesisService.getStudentContext(studentId);
-    const targetVersion = req.body?.version || req.query?.version;
-    let assessment;
-
-    if (targetVersion) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
-    } else {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-    }
-
-    if (!assessment || assessment.status === "finalized") {
-      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
-      assessment = new PurposeVisionAssessment({
-        studentId,
-        assessmentVersion: nextVersion,
-        status: "draft",
-      });
-    }
-
-    const result = await aiThesisService.processAdaptiveDiscoveryStep(assessment, req.body, studentContext);
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        assessment,
-        nextStep: result.nextStep,
-        discoveryState: result.discoveryState,
-      },
-    });
-  } catch (error) {
-    console.error("Error in submitDiscoveryStep:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Reset conversational discovery to Step 1
- */
-exports.resetDiscovery = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    const studentContext = await aiThesisService.getStudentContext(studentId);
-    let assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-
-    if (!assessment || assessment.status === "finalized") {
-      const nextVersion = assessment ? assessment.assessmentVersion + 1 : 1;
-      assessment = new PurposeVisionAssessment({
-        studentId,
-        assessmentVersion: nextVersion,
-        status: "draft",
-      });
-    }
-
-    const initialStep = aiThesisService.getInitialDiscoveryStep(studentContext);
-    assessment.discoveryChat = [{
-      sender: "ai",
-      phase: initialStep.phase,
-      stepKey: initialStep.stepKey,
-      message: initialStep.message,
-      contextHelp: initialStep.contextHelp,
-      quickOptions: initialStep.quickOptions,
-      allowCustom: initialStep.allowCustom,
-      timestamp: new Date(),
-    }];
-
-    assessment.discoveryState = {
-      currentPhase: "passion",
-      currentStepKey: "passion_intro",
-      explicitInsights: [],
-      inferredPatterns: [],
-      uncertainties: [],
-      isDiscoveryCompleted: false,
-      lastSavedAt: new Date(),
-    };
-
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Discovery conversation reset successfully",
-      data: {
-        assessment,
-        initialStep,
-      },
-    });
-  } catch (error) {
-    console.error("Error in resetDiscovery:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Student confirms, edits drafts, and finalizes AI Thesis synthesis
- */
-exports.confirmThesis = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    const {
-      confirmedPurpose,
-      confirmedVision,
-      confirmedCareerDirections,
-      studentReflection,
-      studentCommitment,
-      version,
-    } = req.body;
-
-    let studentContext = {};
-    try {
-      studentContext = await aiThesisService.getStudentContext(studentId);
-    } catch (ctxErr) {
-      console.warn("Could not load full student context in confirmThesis:", ctxErr.message);
-      studentContext = { studentId };
-    }
-    let assessment;
-
-    if (version) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
-    } else {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-    }
-
-    if (!assessment) {
-      return res.status(404).json({ success: false, message: "Assessment not found" });
-    }
-
-    if (typeof confirmedPurpose === "string" && confirmedPurpose.trim()) {
-      assessment.confirmedPurpose = confirmedPurpose.trim();
-      assessment.purposeStatement = confirmedPurpose.trim();
-      assessment.isPurposeAccepted = true;
-    }
-    if (typeof confirmedVision === "string" && confirmedVision.trim()) {
-      assessment.confirmedVision = confirmedVision.trim();
-      assessment.visionStatement = confirmedVision.trim();
-      assessment.isVisionAccepted = true;
-    }
-    if (Array.isArray(confirmedCareerDirections)) {
-      assessment.confirmedCareerDirections = confirmedCareerDirections;
-    }
-    if (typeof studentReflection === "string") assessment.studentReflection = studentReflection;
-    if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
-
-    // Run AI Synthesis engine with confirmed inputs
-    const aiResult = await aiThesisService.generateThesisWithAI(studentContext, assessment);
-
-    assessment.topPassions = aiResult.topPassions || assessment.topPassions;
-    if (aiResult.coreValues?.length) assessment.coreValues = aiResult.coreValues;
-    assessment.fiveYearGoal = aiResult.fiveYearGoal || assessment.fiveYearGoal;
-    assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
-    assessment.bhag = aiResult.bhag || assessment.bhag;
-    assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
-    if (aiResult.archetype) assessment.archetype = aiResult.archetype;
-    if (aiResult.developmentIndicators) assessment.developmentIndicators = aiResult.developmentIndicators;
-    if (aiResult.evidenceValidation) assessment.evidenceValidation = aiResult.evidenceValidation;
-    assessment.alignmentScores = aiResult.alignment || assessment.alignmentScores;
-
-    assessment.aiAnalysis = {
-      summary: aiResult.aiSummary || "",
-      currentVsFuture: aiResult.currentVsFuture || {},
-      passionVsPerformance: aiResult.passionVsPerformance || {},
-      scoreRationales: aiResult.scoreRationales || {},
-    };
-
-    assessment.strengths = aiResult.strengths || [];
-    assessment.evidenceBasedStrengths = aiResult.evidenceBasedStrengths || { selfReported: [], evidenceBacked: [] };
-    assessment.developmentAreas = aiResult.developmentAreas || [];
-    assessment.skillGaps = aiResult.skillGaps || [];
-    assessment.structuredDevelopmentGaps = aiResult.structuredDevelopmentGaps || [];
-    assessment.careerDirections = aiResult.careerDirections || [];
-    assessment.recommendations = aiResult.recommendations || [];
-    assessment.roadmap = aiResult.roadmap || { threeMonths: [], sixMonths: [], twelveMonths: [] };
-
-    if (aiResult.understandMyself) {
-      assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, aiResult.understandMyself);
-    }
-    if (aiResult.recurringPatterns?.length) {
-      assessment.recurringPatterns = aiResult.recurringPatterns;
-    }
-    if (aiResult.visionExercises) {
-      assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, aiResult.visionExercises);
-    }
-    if (aiResult.practicalExperiments?.length) {
-      assessment.practicalExperiments = aiResult.practicalExperiments;
-    }
-    if (aiResult.detailedRoadmap) {
-      assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, aiResult.detailedRoadmap);
-    }
-
-    if (!assessment.facultyInterventions?.length && aiResult.facultyInterventions?.length) {
-      assessment.facultyInterventions = aiResult.facultyInterventions;
-    }
-
-    assessment.status = "analyzed";
-    assessment.isPassionTestCompleted = true;
-    assessment.isVisionTestCompleted = true;
-
-    if (assessment.discoveryState) {
-      assessment.discoveryState.isDiscoveryCompleted = true;
-      assessment.discoveryState.currentPhase = "confirmed";
-    }
-
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Confirmed and synthesized AI Thesis successfully",
-      data: assessment,
-      studentContext,
-    });
-  } catch (error) {
-    console.error("Error in confirmThesis:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Execute AI Analysis on the student's profile & assessment data
- */
-exports.analyzeAndGenerateThesis = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      return res.status(400).json({ success: false, message: "Valid studentId is required" });
-    }
-
-    // Load student context
-    let studentContext = {};
-    try {
-      studentContext = await aiThesisService.getStudentContext(studentId);
-    } catch (ctxErr) {
-      console.warn("Could not load full student context in analyzeAndGenerateThesis:", ctxErr.message);
-      studentContext = { studentId };
-    }
-
-    const targetVersion = req.body?.version || req.query?.version;
-    let assessment;
-
-    if (targetVersion) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
-    } else {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-    }
-
-    if (!assessment) {
-      assessment = new PurposeVisionAssessment({
-        studentId,
-        assessmentVersion: 1,
-        status: "draft",
-      });
-    }
-
-    // Update with any answers submitted in body safely
-    sanitizeAssessmentInputs(assessment, req.body);
-
-    // Validate that student has provided either handwritten visionary sheets or passions
-    const hasHandwritten = (assessment.handwrittenSubmission?.images && assessment.handwrittenSubmission.images.length > 0) ||
-                           Boolean(assessment.handwrittenSubmission?.studentNotes);
-    const hasPassions = (assessment.topPassions && assessment.topPassions.length > 0) ||
-                        (assessment.passionStatements && assessment.passionStatements.length > 0);
-
-    if (!hasHandwritten && !hasPassions) {
-      return res.status(400).json({
-        success: false,
-        message: "Please upload your handwritten visionary exercise sheets before running AI analysis.",
-      });
-    }
-
-    // Run AI Engine
-    const aiResult = await aiThesisService.generateThesisWithAI(studentContext, assessment);
-
-    // Apply extracted handwritten insights if present
-    if (aiResult.extractedText || aiResult.extractedPassions) {
-      if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
-      if (aiResult.extractedText) assessment.handwrittenSubmission.extractedText = aiResult.extractedText;
-      if (aiResult.extractedPassions) assessment.handwrittenSubmission.extractedPassions = aiResult.extractedPassions;
-      if (aiResult.extractedValues) assessment.handwrittenSubmission.extractedValues = aiResult.extractedValues;
-      if (aiResult.extractedPurpose) assessment.handwrittenSubmission.extractedPurpose = aiResult.extractedPurpose;
-      if (aiResult.extractedVision) assessment.handwrittenSubmission.extractedVision = aiResult.extractedVision;
-      if (aiResult.extractedBhag) assessment.handwrittenSubmission.extractedBhag = aiResult.extractedBhag;
-      if (aiResult.extractedStrengths) assessment.handwrittenSubmission.extractedStrengths = aiResult.extractedStrengths;
-      if (aiResult.extractedDevelopmentAreas) assessment.handwrittenSubmission.extractedDevelopmentAreas = aiResult.extractedDevelopmentAreas;
-      assessment.handwrittenSubmission.status = "analyzed";
-      assessment.handwrittenSubmission.analyzedAt = new Date();
-    }
-
-    // Apply generated insights
-    assessment.topPassions = aiResult.topPassions || assessment.topPassions;
-    if (aiResult.coreValues?.length) assessment.coreValues = aiResult.coreValues;
-    if (!assessment.isPurposeAccepted || !assessment.purposeStatement) {
-      assessment.purposeStatement = aiResult.purposeStatement || assessment.purposeStatement;
-    }
-    if (!assessment.isVisionAccepted || !assessment.visionStatement) {
-      assessment.visionStatement = aiResult.visionStatement || assessment.visionStatement;
-    }
-    if (!assessment.confirmedPurpose) {
-      assessment.confirmedPurpose = assessment.purposeStatement;
-    }
-    if (!assessment.confirmedVision) {
-      assessment.confirmedVision = assessment.visionStatement;
-    }
-
-    assessment.fiveYearGoal = aiResult.fiveYearGoal || assessment.fiveYearGoal;
-    assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
-    assessment.bhag = aiResult.bhag || assessment.bhag;
-    assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
-    if (aiResult.studentCommitment) assessment.studentCommitment = aiResult.studentCommitment;
-    if (aiResult.archetype) assessment.archetype = aiResult.archetype;
-    if (aiResult.developmentIndicators) assessment.developmentIndicators = aiResult.developmentIndicators;
-    if (aiResult.evidenceValidation) assessment.evidenceValidation = aiResult.evidenceValidation;
-
-    assessment.alignmentScores = {
-      passionClarity: aiResult.alignment?.passionClarity || 85,
-      purposeClarity: aiResult.alignment?.purposeClarity || 80,
-      visionClarity: aiResult.alignment?.visionClarity || 82,
-      careerAlignment: aiResult.alignment?.careerAlignment || 78,
-      skillAlignment: aiResult.alignment?.skillAlignment || 75,
-      goalAlignment: aiResult.alignment?.goalAlignment || 82,
-      executionReadiness: aiResult.alignment?.executionReadiness || 78,
-      executionAlignment: aiResult.alignment?.executionAlignment || 78,
-      overall: aiResult.alignment?.overall || 80,
-    };
-
-    assessment.aiAnalysis = {
-      summary: aiResult.aiSummary || "",
-      currentVsFuture: aiResult.currentVsFuture || {},
-      passionVsPerformance: aiResult.passionVsPerformance || {},
-      scoreRationales: aiResult.scoreRationales || {},
-    };
-
-    assessment.strengths = aiResult.strengths || [];
-    assessment.evidenceBasedStrengths = aiResult.evidenceBasedStrengths || { selfReported: [], evidenceBacked: [] };
-    assessment.developmentAreas = aiResult.developmentAreas || [];
-    assessment.skillGaps = aiResult.skillGaps || [];
-    assessment.structuredDevelopmentGaps = aiResult.structuredDevelopmentGaps || [];
-    assessment.careerDirections = aiResult.careerDirections || [];
-    assessment.recommendations = aiResult.recommendations || [];
-    assessment.roadmap = aiResult.roadmap || { threeMonths: [], sixMonths: [], twelveMonths: [] };
-
-    if (aiResult.understandMyself) {
-      assessment.understandMyself = safeMergeSubdoc(assessment.understandMyself, aiResult.understandMyself);
-    }
-    if (aiResult.recurringPatterns?.length) {
-      assessment.recurringPatterns = aiResult.recurringPatterns;
-    }
-    if (aiResult.visionExercises) {
-      assessment.visionExercises = safeMergeVisionExercises(assessment.visionExercises, aiResult.visionExercises);
-    }
-    if (aiResult.practicalExperiments?.length) {
-      assessment.practicalExperiments = aiResult.practicalExperiments;
-    }
-    if (aiResult.detailedRoadmap) {
-      assessment.detailedRoadmap = safeMergeSubdoc(assessment.detailedRoadmap, aiResult.detailedRoadmap);
-    }
-
-    // Initialize faculty interventions if none exist
-    if (!assessment.facultyInterventions?.length && aiResult.facultyInterventions?.length) {
-      assessment.facultyInterventions = aiResult.facultyInterventions;
-    }
-
-    // Compare with prior version if available
-    if (assessment.assessmentVersion > 1) {
-      const prevVersion = await PurposeVisionAssessment.findOne({
-        studentId,
-        assessmentVersion: assessment.assessmentVersion - 1,
-      }).lean();
-      if (prevVersion) {
-        assessment.evolutionNotes = aiThesisService.compareAssessmentVersions(prevVersion, assessment);
-      }
-    }
-
-    assessment.status = "analyzed";
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "AI Thesis generated successfully",
-      data: assessment,
-      studentContext,
-    });
-  } catch (error) {
-    console.error("Error in analyzeAndGenerateThesis:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Upload handwritten visionary exercise sheets (multi-page)
+ * Upload handwritten visionary exercise sheet(s)
  */
 exports.uploadHandwrittenExercise = async (req, res) => {
   try {
@@ -859,56 +180,31 @@ exports.uploadHandwrittenExercise = async (req, res) => {
         const urlStr = typeof img === "string" ? img : (img.url || "");
         if (!urlStr) continue;
 
-        let finalUrl = urlStr;
-        let publicId = img.publicId || "";
-
-        if (urlStr.startsWith("data:") && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-          try {
-            const cloudRes = await cloudinary.uploader.upload(urlStr, {
-              folder: "sses/handwritten_visionary",
-              resource_type: "auto",
-            });
-            finalUrl = cloudRes.secure_url || cloudRes.url;
-            publicId = cloudRes.public_id || "";
-          } catch (cErr) {
-            console.warn("Cloudinary upload failed for payload image:", cErr.message);
-          }
-        }
-
         newImages.push({
-          url: finalUrl,
-          publicId,
-          pageNumber,
-          fileName: img.fileName || `page-${pageNumber}`,
-          fileSize: img.fileSize || 0,
+          url: urlStr,
+          publicId: typeof img === "object" ? (img.publicId || "") : "",
+          pageNumber: typeof img === "object" && img.pageNumber ? img.pageNumber : pageNumber,
+          fileName: typeof img === "object" ? (img.fileName || `page-${pageNumber}`) : `page-${pageNumber}`,
+          fileSize: typeof img === "object" ? (img.fileSize || 0) : 0,
           uploadedAt: new Date(),
         });
       }
     }
 
-    const replaceAll = req.body?.replaceAll === true || req.body?.replaceAll === "true";
-    assessment.handwrittenSubmission.images = replaceAll
-      ? newImages
-      : [...existingImages, ...newImages];
-
-    assessment.handwrittenSubmission.images = assessment.handwrittenSubmission.images.map((img, idx) => ({
-      ...img,
-      pageNumber: idx + 1,
-    }));
+    if (newImages.length > 0) {
+      assessment.handwrittenSubmission.images = [...existingImages, ...newImages];
+      assessment.handwrittenSubmission.status = "uploaded";
+    }
 
     if (typeof req.body?.studentNotes === "string") {
       assessment.handwrittenSubmission.studentNotes = req.body.studentNotes.trim();
-    }
-
-    if (assessment.handwrittenSubmission.images.length > 0) {
-      assessment.handwrittenSubmission.status = "uploaded";
     }
 
     await assessment.save();
 
     return res.status(200).json({
       success: true,
-      message: `${newImages.length} page(s) uploaded successfully`,
+      message: `${newImages.length} handwritten sheet page(s) uploaded successfully`,
       data: assessment,
     });
   } catch (error) {
@@ -918,37 +214,43 @@ exports.uploadHandwrittenExercise = async (req, res) => {
 };
 
 /**
- * Delete a single page from handwritten submission
+ * Delete a single page from handwritten exercise submission
  */
 exports.deleteHandwrittenPage = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
-    const { pageNumber, url, version } = req.body;
+    const { pageNumber, url } = req.body;
+    const targetVersion = req.body?.version;
 
     let assessment;
-    if (version) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
     } else {
       assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
     }
 
     if (!assessment || !assessment.handwrittenSubmission?.images) {
-      return res.status(404).json({ success: false, message: "Handwritten submission not found" });
+      return res.status(404).json({ success: false, message: "No handwritten submission found" });
     }
 
-    let images = assessment.handwrittenSubmission.images;
-    if (typeof pageNumber === "number") {
-      images = images.filter((img, idx) => idx + 1 !== pageNumber && img.pageNumber !== pageNumber);
-    } else if (url) {
-      images = images.filter((img) => img.url !== url);
-    }
+    let filtered = assessment.handwrittenSubmission.images.filter((img) => {
+      if (typeof pageNumber === "number" && img.pageNumber === pageNumber) return false;
+      if (url && img.url === url) return false;
+      return true;
+    });
 
-    assessment.handwrittenSubmission.images = images.map((img, idx) => ({
-      ...img,
-      pageNumber: idx + 1,
-    }));
+    // Re-index remaining pages
+    filtered = filtered.map((img, idx) => {
+      if (typeof img.toObject === "function") {
+        const obj = img.toObject();
+        obj.pageNumber = idx + 1;
+        return obj;
+      }
+      return { ...img, pageNumber: idx + 1 };
+    });
 
-    if (assessment.handwrittenSubmission.images.length === 0) {
+    assessment.handwrittenSubmission.images = filtered;
+    if (filtered.length === 0) {
       assessment.handwrittenSubmission.status = "pending_upload";
     }
 
@@ -956,7 +258,7 @@ exports.deleteHandwrittenPage = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Page removed successfully",
+      message: "Handwritten sheet page removed",
       data: assessment,
     });
   } catch (error) {
@@ -966,7 +268,156 @@ exports.deleteHandwrittenPage = async (req, res) => {
 };
 
 /**
- * Start a new assessment version for student purpose evolution
+ * Execute Multimodal AI Analysis on uploaded handwritten exercise
+ */
+exports.analyzeAndGenerateThesis = async (req, res) => {
+  try {
+    const studentId = resolveStudentId(req);
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Valid studentId is required" });
+    }
+
+    let studentContext = {};
+    try {
+      studentContext = await aiThesisService.getStudentContext(studentId);
+    } catch (ctxErr) {
+      console.warn("Could not load full student context in analyzeAndGenerateThesis:", ctxErr.message);
+      studentContext = { studentId };
+    }
+
+    const targetVersion = req.body?.version || req.query?.version;
+    let assessment;
+
+    if (targetVersion) {
+      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(targetVersion) });
+    } else {
+      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    }
+
+    if (!assessment) {
+      assessment = new PurposeVisionAssessment({
+        studentId,
+        assessmentVersion: 1,
+        status: "draft",
+      });
+    }
+
+    if (typeof req.body?.studentNotes === "string" && req.body.studentNotes.trim()) {
+      if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
+      assessment.handwrittenSubmission.studentNotes = req.body.studentNotes.trim();
+    }
+
+    const hasImages = Array.isArray(assessment.handwrittenSubmission?.images) && assessment.handwrittenSubmission.images.length > 0;
+    const hasNotes = Boolean(assessment.handwrittenSubmission?.studentNotes);
+
+    if (!hasImages && !hasNotes) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload at least one handwritten visionary exercise sheet before running AI analysis.",
+      });
+    }
+
+    // Run Multimodal AI Vision Engine
+    const aiResult = await aiThesisService.analyzeHandwrittenVisionaryExercise(studentContext, assessment);
+
+    // Apply extracted handwritten transcriptions and insights
+    if (!assessment.handwrittenSubmission) assessment.handwrittenSubmission = {};
+    if (aiResult.extractedText) assessment.handwrittenSubmission.extractedText = aiResult.extractedText;
+    if (aiResult.extractedPassions) assessment.handwrittenSubmission.extractedPassions = aiResult.extractedPassions;
+    if (aiResult.extractedValues) assessment.handwrittenSubmission.extractedValues = aiResult.extractedValues;
+    if (aiResult.extractedPurpose) assessment.handwrittenSubmission.extractedPurpose = aiResult.extractedPurpose;
+    if (aiResult.extractedVision) assessment.handwrittenSubmission.extractedVision = aiResult.extractedVision;
+    if (aiResult.extractedBhag) assessment.handwrittenSubmission.extractedBhag = aiResult.extractedBhag;
+    if (aiResult.extractedStrengths) assessment.handwrittenSubmission.extractedStrengths = aiResult.extractedStrengths;
+    if (aiResult.extractedDevelopmentAreas) assessment.handwrittenSubmission.extractedDevelopmentAreas = aiResult.extractedDevelopmentAreas;
+    assessment.handwrittenSubmission.status = "analyzed";
+    assessment.handwrittenSubmission.analyzedAt = new Date();
+
+    // Populate structured fields directly from AI extraction
+    assessment.topPassions = aiResult.topPassions || assessment.topPassions;
+    if (aiResult.coreValues?.length) assessment.coreValues = aiResult.coreValues;
+    if (!assessment.isPurposeAccepted || !assessment.purposeStatement) {
+      assessment.purposeStatement = aiResult.purposeStatement || assessment.purposeStatement;
+    }
+    if (!assessment.isVisionAccepted || !assessment.visionStatement) {
+      assessment.visionStatement = aiResult.visionStatement || assessment.visionStatement;
+    }
+    if (!assessment.confirmedPurpose) {
+      assessment.confirmedPurpose = assessment.purposeStatement;
+    }
+    if (!assessment.confirmedVision) {
+      assessment.confirmedVision = assessment.visionStatement;
+    }
+
+    assessment.fiveYearGoal = aiResult.fiveYearGoal || assessment.fiveYearGoal;
+    assessment.tenYearGoal = aiResult.tenYearGoal || assessment.tenYearGoal;
+    assessment.bhag = aiResult.bhag || assessment.bhag;
+    assessment.vividFuture = aiResult.vividFuture || assessment.vividFuture;
+    if (aiResult.studentCommitment) assessment.studentCommitment = aiResult.studentCommitment;
+    if (aiResult.archetype) assessment.archetype = aiResult.archetype;
+    if (aiResult.developmentIndicators) assessment.developmentIndicators = aiResult.developmentIndicators;
+    if (aiResult.evidenceValidation) assessment.evidenceValidation = aiResult.evidenceValidation;
+
+    assessment.alignmentScores = {
+      passionClarity: aiResult.alignment?.passionClarity || 85,
+      purposeClarity: aiResult.alignment?.purposeClarity || 80,
+      visionClarity: aiResult.alignment?.visionClarity || 82,
+      careerAlignment: aiResult.alignment?.careerAlignment || 78,
+      skillAlignment: aiResult.alignment?.skillAlignment || 75,
+      goalAlignment: aiResult.alignment?.goalAlignment || 82,
+      executionReadiness: aiResult.alignment?.executionReadiness || 78,
+      executionAlignment: aiResult.alignment?.executionAlignment || 78,
+      overall: aiResult.alignment?.overall || 80,
+    };
+
+    assessment.aiAnalysis = {
+      summary: aiResult.aiSummary || "",
+      currentVsFuture: aiResult.currentVsFuture || {},
+      passionVsPerformance: aiResult.passionVsPerformance || {},
+      scoreRationales: aiResult.scoreRationales || {},
+    };
+
+    assessment.strengths = aiResult.strengths || [];
+    assessment.evidenceBasedStrengths = aiResult.evidenceBasedStrengths || { selfReported: [], evidenceBacked: [] };
+    assessment.developmentAreas = aiResult.developmentAreas || [];
+    assessment.skillGaps = aiResult.skillGaps || [];
+    assessment.structuredDevelopmentGaps = aiResult.structuredDevelopmentGaps || [];
+    assessment.careerDirections = aiResult.careerDirections || [];
+    assessment.recommendations = aiResult.recommendations || [];
+    assessment.roadmap = aiResult.roadmap || { threeMonths: [], sixMonths: [], twelveMonths: [] };
+
+    if (aiResult.facultyInterventions?.length) {
+      assessment.facultyInterventions = aiResult.facultyInterventions;
+    }
+
+    // Compare with prior version if available
+    if (assessment.assessmentVersion > 1) {
+      const prevVersion = await PurposeVisionAssessment.findOne({
+        studentId,
+        assessmentVersion: assessment.assessmentVersion - 1,
+      }).lean();
+      if (prevVersion) {
+        assessment.evolutionNotes = aiThesisService.compareAssessmentVersions(prevVersion, assessment);
+      }
+    }
+
+    assessment.status = "analyzed";
+    await assessment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "AI Multimodal Analysis completed and thesis synthesized successfully",
+      data: assessment,
+      studentContext,
+    });
+  } catch (error) {
+    console.error("Error in analyzeAndGenerateThesis:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Start a new assessment version
  */
 exports.startNewVersion = async (req, res) => {
   try {
@@ -982,8 +433,7 @@ exports.startNewVersion = async (req, res) => {
       latest &&
       latest.status === "draft" &&
       (!latest.topPassions || latest.topPassions.length === 0) &&
-      (!latest.handwrittenSubmission?.images || latest.handwrittenSubmission.images.length === 0) &&
-      !latest.isPassionTestCompleted
+      (!latest.handwrittenSubmission?.images || latest.handwrittenSubmission.images.length === 0)
     ) {
       return res.status(200).json({
         success: true,
@@ -994,7 +444,6 @@ exports.startNewVersion = async (req, res) => {
 
     const nextVersion = latest ? latest.assessmentVersion + 1 : 1;
 
-    // Create fresh version draft with empty handwritten submission
     const newAssessment = new PurposeVisionAssessment({
       studentId,
       assessmentVersion: nextVersion,
@@ -1012,18 +461,6 @@ exports.startNewVersion = async (req, res) => {
         extractedDevelopmentAreas: [],
         status: "pending_upload",
       },
-      passionStatements: [],
-      pairwiseComparisons: [],
-      topPassions: [],
-      coreValues: [],
-      fiveWhys: [],
-      fiveYearGoal: "",
-      tenYearGoal: "",
-      bhag: "",
-      vividFuture: "",
-      studentCommitment: "",
-      isPassionTestCompleted: false,
-      isVisionTestCompleted: false,
     });
 
     await newAssessment.save();
@@ -1041,7 +478,6 @@ exports.startNewVersion = async (req, res) => {
 
 /**
  * Edit, accept, or finalize purpose/vision statements & reflections
- * Students are fully authorized to personalize their purpose, vision, and reflections!
  */
 exports.updateStatements = async (req, res) => {
   try {
@@ -1055,6 +491,8 @@ exports.updateStatements = async (req, res) => {
       visionStatement,
       confirmedPurpose,
       confirmedVision,
+      fiveYearGoal,
+      bhag,
       isPurposeAccepted,
       isVisionAccepted,
       studentCommitment,
@@ -1084,6 +522,8 @@ exports.updateStatements = async (req, res) => {
       assessment.confirmedVision = confirmedVision.trim();
       assessment.visionStatement = confirmedVision.trim();
     }
+    if (typeof fiveYearGoal === "string") assessment.fiveYearGoal = fiveYearGoal.trim();
+    if (typeof bhag === "string") assessment.bhag = bhag.trim();
     if (typeof isPurposeAccepted === "boolean") assessment.isPurposeAccepted = isPurposeAccepted;
     if (typeof isVisionAccepted === "boolean") assessment.isVisionAccepted = isVisionAccepted;
     if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
@@ -1108,85 +548,35 @@ exports.updateStatements = async (req, res) => {
 };
 
 /**
- * Submit or update student reflection & commitment
- */
-exports.submitReflection = async (req, res) => {
-  try {
-    const studentId = resolveStudentId(req);
-    const { studentReflection, studentCommitment } = req.body;
-
-    const assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
-    if (!assessment) {
-      return res.status(404).json({ success: false, message: "No active thesis found" });
-    }
-
-    if (typeof studentReflection === "string") assessment.studentReflection = studentReflection;
-    if (typeof studentCommitment === "string") assessment.studentCommitment = studentCommitment;
-
-    await assessment.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Reflection and commitment saved successfully",
-      data: assessment,
-    });
-  } catch (error) {
-    console.error("Error in submitReflection:", error);
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
  * Add Mentor Feedback from Faculty / Admin
  */
 exports.addMentorFeedback = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
-    const { comment, recommendedActions, version } = req.body;
+    const { comment, recommendedActions } = req.body;
 
     if (!comment || !comment.trim()) {
       return res.status(400).json({ success: false, message: "Mentor feedback comment is required" });
     }
 
-    let assessment;
-    if (version) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
-    }
+    const assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
     if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, status: { $in: ["analyzed", "finalized"] } }).sort({ assessmentVersion: -1 });
-    }
-    if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+      return res.status(404).json({ success: false, message: "Assessment not found" });
     }
 
-    if (!assessment) {
-      return res.status(404).json({ success: false, message: "No AI Thesis found for this student" });
+    if (!Array.isArray(assessment.mentorFeedback)) {
+      assessment.mentorFeedback = [];
     }
 
-    const feedbackEntry = {
-      facultyId: req.user?.id || null,
-      facultyName: req.user?.name || "Faculty Mentor",
-      facultyRole: req.user?.role || "faculty",
+    const facultyUser = req.user || {};
+    assessment.mentorFeedback.push({
+      facultyId: facultyUser.id || facultyUser._id || null,
+      facultyName: facultyUser.name || `${facultyUser.firstName || ""} ${facultyUser.lastName || ""}`.trim() || "Faculty Mentor",
+      facultyRole: facultyUser.role || "Mentor",
       comment: comment.trim(),
       recommendedActions: Array.isArray(recommendedActions) ? recommendedActions : [],
       createdAt: new Date(),
-    };
-
-    assessment.facultyFeedback.push(feedbackEntry);
-
-    if (Array.isArray(recommendedActions)) {
-      recommendedActions.forEach((act) => {
-        assessment.facultyInterventions.push({
-          actionId: new mongoose.Types.ObjectId().toString(),
-          title: act,
-          category: "Mentor Recommendation",
-          status: "Not Started",
-          facultyName: req.user?.name || "Faculty Mentor",
-          notes: comment.trim(),
-          updatedAt: new Date(),
-        });
-      });
-    }
+    });
 
     await assessment.save();
 
@@ -1202,59 +592,36 @@ exports.addMentorFeedback = async (req, res) => {
 };
 
 /**
- * Update Faculty Intervention Action status
+ * Update Faculty Intervention status
  */
 exports.updateFacultyActionStatus = async (req, res) => {
   try {
     const studentId = resolveStudentId(req);
-    const { actionId, status, notes, version } = req.body;
+    const { actionId, status, notes } = req.body;
 
     if (!actionId || !status) {
       return res.status(400).json({ success: false, message: "actionId and status are required" });
     }
 
-    let assessment;
-    if (version) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, assessmentVersion: Number(version) });
-    }
-    if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({
-        studentId,
-        "facultyInterventions.actionId": actionId,
-      });
-    }
-    if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({
-        studentId,
-        "facultyInterventions._id": actionId,
-      });
-    }
-    if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId, status: { $in: ["analyzed", "finalized"] } }).sort({ assessmentVersion: -1 });
-    }
-    if (!assessment) {
-      assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    const assessment = await PurposeVisionAssessment.findOne({ studentId }).sort({ assessmentVersion: -1 });
+    if (!assessment || !Array.isArray(assessment.facultyInterventions)) {
+      return res.status(404).json({ success: false, message: "Assessment or faculty interventions not found" });
     }
 
-    if (!assessment) {
-      return res.status(404).json({ success: false, message: "No AI Thesis found for this student" });
+    const targetAction = assessment.facultyInterventions.find((a) => a.actionId === actionId);
+    if (!targetAction) {
+      return res.status(404).json({ success: false, message: "Faculty action item not found" });
     }
 
-    const action = assessment.facultyInterventions.find((a) => a.actionId === actionId || a._id?.toString() === actionId);
-    if (!action) {
-      return res.status(404).json({ success: false, message: "Intervention action not found" });
-    }
-
-    action.status = status;
-    if (notes) action.notes = notes;
-    action.updatedAt = new Date();
-    if (req.user?.name) action.facultyName = req.user.name;
+    targetAction.status = status;
+    if (notes) targetAction.notes = notes;
+    targetAction.updatedAt = new Date();
 
     await assessment.save();
 
     return res.status(200).json({
       success: true,
-      message: `Action updated to ${status}`,
+      message: "Faculty action status updated",
       data: assessment,
     });
   } catch (error) {
@@ -1262,3 +629,4 @@ exports.updateFacultyActionStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   useGetStudentThesisQuery,
   useGetStudentThesisVersionsQuery,
-  useSaveStudentDraftThesisMutation,
   useUploadStudentHandwrittenExerciseMutation,
   useDeleteStudentHandwrittenPageMutation,
   useAnalyzeStudentThesisMutation,
@@ -15,7 +14,6 @@ import {
 import {
   useGetMyStudentThesisQuery,
   useGetMyThesisVersionsQuery,
-  useSaveMyDraftThesisMutation,
   useUploadMyHandwrittenExerciseMutation,
   useDeleteMyHandwrittenPageMutation,
   useAnalyzeMyThesisMutation,

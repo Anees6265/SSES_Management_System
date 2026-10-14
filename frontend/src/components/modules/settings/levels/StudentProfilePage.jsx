@@ -1179,13 +1179,15 @@ const StudentProfilePage = () => {
         { skip: !studentId }
     );
 
+    const isValidSubDeptId = typeof subDepartmentId === "string" && /^[0-9a-fA-F]{24}$/.test(subDepartmentId);
+
     const { data: levelsResponse } = useGetLevelsBySubdepartmentQuery(
         subDepartmentId,
-        { skip: !subDepartmentId }
+        { skip: !isValidSubDeptId }
     );
 
     const { data: subLevelsResponse } = useGetAllSubLevelsQuery(undefined, {
-        skip: !subDepartmentId,
+        skip: !isValidSubDeptId,
     });
 
     const raw = baseStudent || {};

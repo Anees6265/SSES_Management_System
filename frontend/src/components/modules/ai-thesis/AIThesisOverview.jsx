@@ -30,6 +30,7 @@ import {
   ArrowRight,
   Info,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -337,26 +338,42 @@ export default function AIThesisOverview({
                   Original Handwritten Sheets ({assessment.handwrittenSubmission.images.length})
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {assessment.handwrittenSubmission.images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setSelectedHandwrittenImage(img)}
-                      className="group relative rounded-xl border border-slate-200 overflow-hidden cursor-pointer h-28 bg-slate-100 shadow-2xs hover:border-orange-400 transition"
-                      title="Click to preview full size"
-                    >
-                      <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-black">
-                        Page {img.pageNumber || idx + 1}
+                  {assessment.handwrittenSubmission.images.map((img, idx) => {
+                    const isPdf =
+                      img.url?.toLowerCase().includes(".pdf") ||
+                      img.fileName?.toLowerCase().endsWith(".pdf") ||
+                      img.url?.startsWith("data:application/pdf");
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedHandwrittenImage(img)}
+                        className="group relative rounded-xl border border-slate-200 overflow-hidden cursor-pointer h-28 bg-slate-100 shadow-2xs hover:border-orange-400 transition"
+                        title="Click to preview full size"
+                      >
+                        <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-black">
+                          Page {img.pageNumber || idx + 1}
+                        </div>
+                        {isPdf ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-2 text-rose-500 bg-rose-50/50">
+                            <FileText size={28} />
+                            <span className="text-[10px] font-bold text-slate-700 truncate max-w-[90px] mt-1">
+                              {img.fileName || "PDF File"}
+                            </span>
+                          </div>
+                        ) : (
+                          <img
+                            src={img.url}
+                            alt={`Page ${img.pageNumber || idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
+                          🔍 Zoom
+                        </div>
                       </div>
-                      <img
-                        src={img.url}
-                        alt={`Page ${img.pageNumber || idx + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                      />
-                      <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">
-                        🔍 Zoom
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1978,11 +1995,41 @@ export default function AIThesisOverview({
               </button>
             </div>
             <div className="p-3 sm:p-4 overflow-auto max-h-[78vh] flex items-center justify-center bg-slate-950">
-              <img
-                src={selectedHandwrittenImage.url}
-                alt={`Handwritten Sheet Page ${selectedHandwrittenImage.pageNumber || 1}`}
-                className="max-h-[74vh] max-w-full object-contain rounded-xl shadow-lg"
-              />
+              {(() => {
+                const isPdf =
+                  selectedHandwrittenImage.url?.toLowerCase().includes(".pdf") ||
+                  selectedHandwrittenImage.fileName?.toLowerCase().endsWith(".pdf") ||
+                  selectedHandwrittenImage.url?.startsWith("data:application/pdf");
+
+                if (isPdf) {
+                  return (
+                    <div className="w-full h-[72vh] flex flex-col items-center justify-center gap-3">
+                      <iframe
+                        src={selectedHandwrittenImage.url}
+                        title={selectedHandwrittenImage.fileName || "PDF Sheet"}
+                        className="w-full h-full rounded-2xl bg-white border border-slate-800 shadow-xl"
+                      />
+                      <a
+                        href={selectedHandwrittenImage.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm"
+                      >
+                        <ExternalLink size={14} />
+                        <span>Open PDF in New Window / Download</span>
+                      </a>
+                    </div>
+                  );
+                }
+
+                return (
+                  <img
+                    src={selectedHandwrittenImage.url}
+                    alt={`Handwritten Sheet Page ${selectedHandwrittenImage.pageNumber || 1}`}
+                    className="max-h-[74vh] max-w-full object-contain rounded-xl shadow-lg"
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>

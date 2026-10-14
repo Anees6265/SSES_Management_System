@@ -2,7 +2,7 @@ const aiThesisService = require("../src/services/aiThesisService");
 const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
 const aiThesisController = require("../src/controllers/student/aiThesisController");
 
-describe("AI Thesis Service Test Suite", () => {
+describe("Handwritten Visionary Exercise & AI Thesis Engine", () => {
   const mockContext = {
     studentId: "60c72b2f9b1d8b2badbee001",
     name: "Aman Sharma",
@@ -29,58 +29,81 @@ describe("AI Thesis Service Test Suite", () => {
   };
 
   const mockAssessment = {
+    studentId: "60c72b2f9b1d8b2badbee001",
+    assessmentVersion: 1,
+    status: "draft",
+    handwrittenSubmission: {
+      images: [
+        {
+          pageNumber: 1,
+          url: "https://res.cloudinary.com/demo/image/upload/sample_sheet.jpg",
+          fileName: "sheet_p1.jpg",
+          uploadedAt: new Date(),
+        },
+      ],
+      studentNotes: "Completed visionary blueprint sheet",
+      status: "uploaded",
+    },
     topPassions: [
       {
-        name: "Building Useful Technology",
-        originalStatement: "When my life is ideal, I am building technology that solves real-world human problems.",
+        name: "Software Architecture",
+        originalStatement: "Designing scalable real-time systems",
         priority: 1,
-        currentScore: 8,
-        markers: ["Ship 3 full-stack projects", "Code 5 days a week"],
-      },
-      {
-        name: "Financial Independence",
-        originalStatement: "When my life is ideal, I am financially independent.",
-        priority: 2,
-        currentScore: 6,
-        markers: ["Secure engineering placement"],
+        currentScore: 9,
       },
     ],
     coreValues: [
-      { name: "Innovation", priority: 1, reason: "Drives new solutions" },
-      { name: "Discipline", priority: 2, reason: "Ensures consistency" },
-      { name: "Learning", priority: 3, reason: "Expands knowledge" },
-    ],
-    fiveWhys: [
-      { level: 1, question: "Why technology?", answer: "Because I like building solutions" },
-      { level: 2, question: "Why building solutions?", answer: "To solve real problems" },
+      { name: "Craftsmanship", priority: 1, definition: "Striving for clean, elegant code" },
+      { name: "Integrity", priority: 2, definition: "Honest in communication" },
     ],
     fiveYearGoal: "Lead a high-performing backend engineering team",
-    tenYearGoal: "Architect distributed enterprise systems and mentor youth",
-    bhag: "Empower 100,000 learners with smart educational software",
-    vividFuture: "Working with inspiring builders to create global digital public goods.",
+    bhag: "Build an open educational platform serving 1,000,000 learners",
   };
 
-  test("generateHeuristicThesis returns complete structured JSON matching schema", () => {
-    const result = aiThesisService.generateHeuristicThesis(mockContext, mockAssessment);
+  test("validateAndReconcileEvidence handles missing tasks and attendance without fabricating data", () => {
+    const emptyContext = {
+      name: "Rohan Verma",
+      course: "B.Tech CSE",
+      taskMetrics: { totalTasks: 0, completedTasks: 0 },
+      attendanceRate: null,
+      technologies: [],
+    };
 
-    expect(result).toHaveProperty("purposeStatement");
-    expect(result.purposeStatement).toMatch(/My purpose is to/i);
+    const evidence = aiThesisService.validateAndReconcileEvidence(emptyContext);
+    expect(evidence.isValidated).toBe(true);
+    expect(evidence.taskMetricsVerified.taskCompletionRate).toBeNull();
+    expect(evidence.taskMetricsVerified.status).toBe("Data unavailable");
+    expect(evidence.attendanceVerified.rate).toBeNull();
+    expect(evidence.attendanceVerified.status).toBe("Data unavailable");
+    expect(evidence.dataGaps.length).toBeGreaterThanOrEqual(2);
+  });
 
-    expect(result).toHaveProperty("visionStatement");
-    expect(result.visionStatement).toMatch(/My vision is to/i);
+  test("calculateDevelopmentIndicators computes authentic index scores", () => {
+    const verifiedEvidence = aiThesisService.validateAndReconcileEvidence(mockContext);
+    const indicators = aiThesisService.calculateDevelopmentIndicators(mockContext, mockAssessment, verifiedEvidence);
 
-    expect(result).toHaveProperty("alignment");
-    expect(result.alignment.overall).toBeGreaterThanOrEqual(60);
-    expect(result.alignment.overall).toBeLessThanOrEqual(100);
+    expect(indicators).toHaveProperty("purposeClarity");
+    expect(indicators).toHaveProperty("passionClarity");
+    expect(indicators).toHaveProperty("overallIndex");
+    expect(indicators.purposeClarity.score).toBeGreaterThanOrEqual(0);
+    expect(indicators.purposeClarity.score).toBeLessThanOrEqual(100);
+    expect(indicators.overallIndex.score).toBeGreaterThanOrEqual(0);
+  });
 
-    expect(result.strengths.length).toBeGreaterThanOrEqual(3);
-    expect(result.developmentAreas.length).toBeGreaterThanOrEqual(2);
-    expect(result.careerDirections.length).toBeGreaterThanOrEqual(2);
+  test("determineArchetype maps passions and skills accurately", () => {
+    const techArchetype = aiThesisService.determineArchetype(
+      [{ name: "Full-Stack Development" }],
+      [{ name: "Innovation" }],
+      mockContext
+    );
+    expect(techArchetype.primaryPattern).toBe("Builder, Architect & Practical Maker");
 
-    expect(result.roadmap).toHaveProperty("threeMonths");
-    expect(result.roadmap).toHaveProperty("sixMonths");
-    expect(result.roadmap).toHaveProperty("twelveMonths");
-    expect(result.roadmap.threeMonths.length).toBeGreaterThan(0);
+    const researchArchetype = aiThesisService.determineArchetype(
+      [{ name: "Biochemistry & Genetics Research" }],
+      [{ name: "Scientific Rigor" }],
+      { ...mockContext, course: "B.Sc Biotechnology" }
+    );
+    expect(researchArchetype.primaryPattern).toBe("Scientific Investigator & Systems Thinker");
   });
 
   test("compareAssessmentVersions generates coherent evolution summary", () => {
@@ -105,255 +128,83 @@ describe("AI Thesis Service Test Suite", () => {
     expect(diff).toContain("+15 points");
   });
 
-  test("generateHeuristicThesis generates management-specific thesis for MEG students", () => {
-    const mgmtContext = {
-      ...mockContext,
-      course: "BBA",
-      department: "Management Studies",
-      technologies: ["Business Analytics", "Marketing", "Financial Accounting"],
-    };
-
-    const result = aiThesisService.generateHeuristicThesis(mgmtContext, mockAssessment);
-    expect(result.careerDirections[0].title).toMatch(/Business|Management|Consultant|Strategy/i);
-    expect(result.purposeStatement).toMatch(/business|commercial/i);
-    expect(result.skillGaps.some(g => g.includes("Financial") || g.includes("Market"))).toBe(true);
+  test("detectDepartmentType detects stream hints without restricting possibilities", () => {
+    expect(aiThesisService.detectDepartmentType({ course: "B.Tech CSE" })).toBe("BTECH");
+    expect(aiThesisService.detectDepartmentType({ course: "B.Sc Microbiology" })).toBe("BEG");
+    expect(aiThesisService.detectDepartmentType({ course: "BBA" })).toBe("MEG");
+    expect(aiThesisService.detectDepartmentType({ course: "BCA" })).toBe("ITEG");
+    expect(aiThesisService.detectDepartmentType({ course: "BA History" })).toBe("GENERAL");
   });
 
-  test("generateHeuristicThesis generates bio-sciences-specific thesis for BEG students", () => {
-    const bioContext = {
-      ...mockContext,
-      course: "B.Sc Biotechnology",
-      department: "Bio-Sciences",
-      technologies: ["Microbiology", "Biochemistry", "Genetics"],
-    };
+  test("uploadHandwrittenExercise uploads pages and deletes pages cleanly", async () => {
+    const testStudentId = "60c72b2f9b1d8b2badbee099";
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
 
-    const result = aiThesisService.generateHeuristicThesis(bioContext, mockAssessment);
-    expect(result.careerDirections[0].title).toMatch(/Clinical|Laboratory|Scientist|Bio/i);
-    expect(result.purposeStatement).toMatch(/scientific|healthcare|biotechnology/i);
-    expect(result.skillGaps.some(g => g.includes("Laboratory") || g.includes("Molecular"))).toBe(true);
-  });
-
-  test("generateHeuristicThesis generates agriculture-specific thesis for Agriculture / Seed Tech students", () => {
-    const agriContext = {
-      ...mockContext,
-      course: "B.Sc Agriculture",
-      department: "Agricultural Sciences",
-      technologies: ["Soil Science", "Crop Physiology", "Seed Production"],
-    };
-    const agriAssessment = {
-      ...mockAssessment,
-      topPassions: [
-        { name: "Sustainable Agriculture & Living Systems", originalStatement: "Working with crops, soil health and farming communities" },
-        { name: "Organic Farm Solutions", originalStatement: "Improving farmer yield" },
-      ],
-    };
-
-    const result = aiThesisService.generateHeuristicThesis(agriContext, agriAssessment);
-    expect(result.careerDirections[0].title).toMatch(/Agriculture|AgTech|Crop|Seed|Farming/i);
-    expect(result.purposeStatement).toMatch(/crop|agricultural|farmer/i);
-    expect(result.skillGaps.some(g => g.includes("Soil") || g.includes("Crop") || g.includes("Agri"))).toBe(true);
-    expect(result.practicalExperiments.length).toBeGreaterThan(0);
-    expect(result.detailedRoadmap).toHaveProperty("thirtyDayActions");
-  });
-
-  test("generateHeuristicThesis supports stream-neutrality (e.g. B.Com student whose primary passion is Teaching)", () => {
-    const bcomContext = {
-      ...mockContext,
-      course: "B.Com Honors",
-      department: "Commerce",
-      technologies: ["Financial Accounting", "Corporate Law", "Taxation"],
-    };
-    const teachingAssessment = {
-      ...mockAssessment,
-      topPassions: [
-        { name: "Teaching, Mentoring and Explaining Concepts", originalStatement: "I love simplifying difficult topics and tutoring junior students" },
-        { name: "Educational Content Creation", originalStatement: "Creating visual notes for learners" },
-      ],
-    };
-
-    const result = aiThesisService.generateHeuristicThesis(bcomContext, teachingAssessment);
-    // Student's stated passion (Teaching) overrides enrolled academic course (Commerce)!
-    expect(result.careerDirections[0].title).toMatch(/Educat|Teacher|Mentor|Learning Facilitator/i);
-    expect(result.purposeStatement).toMatch(/learners|knowledge|intellectual growth|pedagogy/i);
-    expect(result.skillGaps.some(g => g.includes("Instructional") || g.includes("Speaking") || g.includes("Curriculum"))).toBe(true);
-  });
-
-  test("generateHeuristicThesis provides gentle guided exploration for undecided students", () => {
-    const undecidedContext = {
-      ...mockContext,
-      course: "BA General",
-      department: "Humanities",
-      technologies: [],
-    };
-    const undecidedAssessment = {
-      ...mockAssessment,
-      topPassions: [
-        { name: "Exploring Multiple Fields (Not Sure Yet)", originalStatement: "I have not decided on a single career path yet" },
-      ],
-      flowAnswers: {
-        loseTrackOfTime: "Reading books and discussing ideas with friends",
-      },
-    };
-
-    const result = aiThesisService.generateHeuristicThesis(undecidedContext, undecidedAssessment);
-    expect(result.careerDirections.some(c => c.title.includes("Explor") || c.title.includes("Synthesizer") || c.title.includes("Specialist") || c.title.includes("Consultant"))).toBe(true);
-    expect(result.practicalExperiments.length).toBeGreaterThan(0);
-    expect(result.roadmap.threeMonths.length).toBeGreaterThan(0);
-  });
-
-  test("saveDraftAssessment handles raw string arrays in passionStatements without 500 error", async () => {
-    const aiThesisController = require("../src/controllers/student/aiThesisController");
-    const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
-
-    const dummyStudentId = "60c72b2f9b1d8b2badbee001";
-    const req = {
-      user: { id: dummyStudentId, role: "student" },
+    // 1. Upload 2 pages
+    const uploadReq = {
+      user: { id: testStudentId, role: "student" },
       body: {
-        passionStatements: ["Solving complex algorithms", "Building UI components"],
-        topPassions: [
-          { name: "Building UI components", selfRatedImportance: 9, currentScore: 7 }
+        images: [
+          { url: "https://res.cloudinary.com/demo/image/upload/sample1.jpg", fileName: "page1.jpg" },
+          { url: "https://res.cloudinary.com/demo/image/upload/sample2.jpg", fileName: "page2.jpg" },
         ],
-        isPassionTestCompleted: true,
+        studentNotes: "Handwritten visionary worksheet 2026",
       },
     };
 
-    let responseStatus = null;
-    let responseData = null;
+    let statusCode = null;
+    let responseBody = null;
     const res = {
       status: (code) => {
-        responseStatus = code;
+        statusCode = code;
         return {
           json: (data) => {
-            responseData = data;
+            responseBody = data;
           },
         };
       },
     };
 
-    // Save mock in DB
-    await aiThesisController.saveDraftAssessment(req, res);
-    expect(responseStatus).toBe(200);
-    expect(responseData.success).toBe(true);
-    expect(responseData.data.passionStatements[0].text).toBe("Solving complex algorithms");
-    expect(responseData.data.isPassionTestCompleted).toBe(true);
+    await aiThesisController.uploadHandwrittenExercise(uploadReq, res);
+    expect(statusCode).toBe(200);
+    expect(responseBody.success).toBe(true);
+    expect(responseBody.data.handwrittenSubmission.status).toBe("uploaded");
+    expect(responseBody.data.handwrittenSubmission.images.length).toBe(2);
+    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
+    expect(responseBody.data.handwrittenSubmission.images[1].pageNumber).toBe(2);
 
-    // Retrieve via getStudentThesis
-    const getReq = {
-      user: { id: dummyStudentId, role: "student" },
-      query: {},
+    // 2. Delete page 1
+    const delReq = {
+      user: { id: testStudentId, role: "student" },
+      body: { pageNumber: 1 },
     };
-    let getStatus = null;
-    let getData = null;
-    const getRes = {
-      status: (code) => {
-        getStatus = code;
-        return {
-          json: (data) => {
-            getData = data;
-          },
-        };
-      },
-    };
-    await aiThesisController.getStudentThesis(getReq, getRes);
-    expect(getStatus).toBe(200);
-    expect(getData.success).toBe(true);
-    expect(getData.data.assessment).toBeDefined();
+    await aiThesisController.deleteHandwrittenPage(delReq, res);
+    expect(statusCode).toBe(200);
+    expect(responseBody.data.handwrittenSubmission.images.length).toBe(1);
+    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
 
-    // Clean up
-    await PurposeVisionAssessment.deleteMany({ studentId: dummyStudentId });
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
   });
 
-  test("validateAndReconcileEvidence handles missing tasks and attendance without fabricating data", () => {
-    const emptyContext = {
-      name: "Rohan Verma",
-      course: "B.Tech CSE",
-      taskMetrics: { totalTasks: 0, completedTasks: 0 },
-      attendanceRate: null,
-      technologies: [],
-    };
+  test("updateStatements allows editing confirmed purpose, vision, and goals", async () => {
+    const testStudentId = "60c72b2f9b1d8b2badbee098";
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
 
-    const evidence = aiThesisService.validateAndReconcileEvidence(emptyContext);
-    expect(evidence.isValidated).toBe(true);
-    expect(evidence.taskMetricsVerified.taskCompletionRate).toBeNull();
-    expect(evidence.taskMetricsVerified.status).toBe("Data unavailable");
-    expect(evidence.attendanceVerified.rate).toBeNull();
-    expect(evidence.attendanceVerified.status).toBe("Data unavailable");
-    expect(evidence.dataGaps.length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("processAdaptiveDiscoveryStep generates adaptive follow-up and tracks explicit vs inferred insights", async () => {
-    const assessment = {
-      discoveryChat: [],
-      discoveryState: {
-        currentPhase: "passion",
-        currentStepKey: "passion_intro",
-        explicitInsights: [],
-        inferredPatterns: [],
-        uncertainties: [],
-      },
-    };
-
-    // Turn 1: Student mentions business
-    const res1 = await aiThesisService.processAdaptiveDiscoveryStep(
-      assessment,
-      { stepKey: "passion_intro", studentAnswer: "Business, Startups & Entrepreneurship" },
-      mockContext
-    );
-
-    expect(res1.nextStep.stepKey).toBe("passion_followup");
-    expect(res1.nextStep.message).toContain("Which part of business interests you most");
-    expect(res1.discoveryState.explicitInsights.some(i => i.includes("Business"))).toBe(true);
-    expect(res1.discoveryState.inferredPatterns.length).toBeGreaterThan(0);
-
-    // Turn 2: Student clarifies
-    const res2 = await aiThesisService.processAdaptiveDiscoveryStep(
-      assessment,
-      { stepKey: "passion_followup", studentAnswer: "Building a startup from scratch" },
-      mockContext
-    );
-    expect(res2.nextStep.stepKey).toBe("passion_energy_flow");
-  });
-
-  test("processAdaptiveDiscoveryStep supports unsure students with gentle exploration options", async () => {
-    const assessment = {
-      discoveryChat: [],
-      discoveryState: {
-        currentPhase: "passion",
-        currentStepKey: "passion_intro",
-        explicitInsights: [],
-        inferredPatterns: [],
-        uncertainties: [],
-      },
-    };
-
-    const res = await aiThesisService.processAdaptiveDiscoveryStep(
-      assessment,
-      { stepKey: "passion_intro", studentAnswer: "I am not sure yet (Help me explore)" },
-      mockContext
-    );
-
-    expect(res.nextStep.stepKey).toBe("passion_followup");
-    expect(res.nextStep.message).toMatch(/normal in college|explore together/i);
-    expect(res.discoveryState.uncertainties.length).toBeGreaterThan(0);
-  });
-
-  test("students are allowed to edit and confirm their purpose & vision statements without 403 Forbidden", async () => {
-    const aiThesisController = require("../src/controllers/student/aiThesisController");
-    const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
-
-    const testStudentId = "60c72b2f9b1d8b2badbee002";
     await PurposeVisionAssessment.create({
       studentId: testStudentId,
       assessmentVersion: 1,
       status: "draft",
-      purposeStatement: "Old draft statement",
+      purposeStatement: "Initial draft purpose",
     });
 
     const updateReq = {
       user: { id: testStudentId, role: "student" },
       body: {
-        confirmedPurpose: "My personalized and confirmed student purpose statement",
-        isPurposeAccepted: true,
+        purposeStatement: "My authentic confirmed life purpose statement",
+        visionStatement: "My 10-year vivid vision statement",
+        fiveYearGoal: "Establish independent AI consultancy",
+        bhag: "Positively influence 50,000 engineers",
+        studentCommitment: "Daily execution for 2 hours",
       },
     };
 
@@ -373,36 +224,30 @@ describe("AI Thesis Service Test Suite", () => {
     await aiThesisController.updateStatements(updateReq, res);
     expect(statusCode).toBe(200);
     expect(responseBody.success).toBe(true);
-    expect(responseBody.data.confirmedPurpose).toBe("My personalized and confirmed student purpose statement");
+    expect(responseBody.data.purposeStatement).toBe("My authentic confirmed life purpose statement");
+    expect(responseBody.data.visionStatement).toBe("My 10-year vivid vision statement");
+    expect(responseBody.data.fiveYearGoal).toBe("Establish independent AI consultancy");
+    expect(responseBody.data.bhag).toBe("Positively influence 50,000 engineers");
 
-    // Clean up
     await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
   });
 
-  test("saveDraftAssessment saves visionExercises without casting error on workLifePreferences", async () => {
-    const aiThesisController = require("../src/controllers/student/aiThesisController");
-    const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
+  test("addMentorFeedback allows faculty mentors to record guidance comments", async () => {
+    const testStudentId = "60c72b2f9b1d8b2badbee097";
+    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
 
-    const testStudentId = "60c72b2f9b1d8b2badbee003";
     await PurposeVisionAssessment.create({
       studentId: testStudentId,
       assessmentVersion: 1,
-      status: "draft",
-      visionExercises: {
-        idealDay: { where: "Lab" },
-      },
+      status: "analyzed",
     });
 
-    const updateReq = {
-      user: { id: testStudentId, role: "student" },
+    const feedbackReq = {
+      user: { id: "60c72b2f9b1d8b2badbee888", role: "faculty", name: "Dr. Sharma" },
+      params: { studentId: testStudentId },
       body: {
-        isVisionTestCompleted: true,
-        fiveYearGoal: "Lead sustainable research",
-        visionExercises: {
-          workLifePreferences: {
-            collaboration: "Balanced team collaboration",
-          },
-        },
+        comment: "Excellent alignment between stated passions and academic project performance.",
+        recommendedActions: ["Publish paper", "Attend national hackathon"],
       },
     };
 
@@ -419,134 +264,82 @@ describe("AI Thesis Service Test Suite", () => {
       },
     };
 
-    await aiThesisController.saveDraftAssessment(updateReq, res);
+    await aiThesisController.addMentorFeedback(feedbackReq, res);
     expect(statusCode).toBe(200);
     expect(responseBody.success).toBe(true);
-    expect(responseBody.data.visionExercises.workLifePreferences.collaboration).toBe("Balanced team collaboration");
+    expect(responseBody.data.mentorFeedback.length).toBe(1);
+    expect(responseBody.data.mentorFeedback[0].facultyName).toBe("Dr. Sharma");
+    expect(responseBody.data.mentorFeedback[0].comment).toContain("Excellent alignment");
 
-    // Clean up
     await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
   });
 
-  test("confirmThesis merges aiResult.visionExercises cleanly without Mongoose subdoc casting error", async () => {
-    const aiThesisController = require("../src/controllers/student/aiThesisController");
-    const PurposeVisionAssessment = require("../src/models/student/PurposeVisionAssessment");
+  test("analyzeHandwrittenVisionaryExercise throws explicit error when no API key is provided and NO hardcoded fallback is used", async () => {
+    const assessmentWithoutSheets = {
+      handwrittenSubmission: { images: [] },
+    };
 
-    const testStudentId = "60c72b2f9b1d8b2badbee004";
-    await PurposeVisionAssessment.create({
-      studentId: testStudentId,
-      assessmentVersion: 1,
-      status: "draft",
-      topPassions: [
-        {
-          name: "Sustainable Agriculture",
-          originalStatement: "When my life is ideal, I am developing sustainable agriculture solutions",
-          priority: 1,
-          currentScore: 8,
-          markers: ["Farmer advisory"],
-        },
-      ],
-      coreValues: [{ name: "Sustainability", priority: 1 }],
-      fiveWhys: [{ level: 1, question: "Why?", answer: "To help community" }],
-      fiveYearGoal: "Regional manager",
-      bhag: "Empower 1000 farming families",
-    });
+    await expect(
+      aiThesisService.analyzeHandwrittenVisionaryExercise(mockContext, assessmentWithoutSheets)
+    ).rejects.toThrow(/Please upload at least one page/i);
 
-    const confirmReq = {
-      user: { id: testStudentId, role: "student" },
-      body: {
-        confirmedPurpose: "My validated agriculture purpose",
-        confirmedVision: "My vision for local agriculture",
+    const assessmentWithSheets = {
+      handwrittenSubmission: {
+        images: [{ url: "https://example.com/sheet.png", pageNumber: 1 }],
       },
     };
 
-    let statusCode = null;
-    let responseBody = null;
-    const res = {
-      status: (code) => {
-        statusCode = code;
-        return {
-          json: (data) => {
-            responseBody = data;
-          },
-        };
-      },
-    };
+    // With invalid or dummy API keys, it MUST throw an informative error rather than silently fabricating hardcoded templates
+    const originalGeminiKey = process.env.GEMINI_API_KEY;
+    const originalOpenAiKey = process.env.OPENAI_API_KEY;
+    process.env.GEMINI_API_KEY = "dummy_invalid_key";
+    delete process.env.OPENAI_API_KEY;
 
-    await aiThesisController.confirmThesis(confirmReq, res);
-    expect(statusCode).toBe(200);
-    expect(responseBody.success).toBe(true);
-    expect(responseBody.data.status).toBe("analyzed");
-    expect(responseBody.data.visionExercises.workLifePreferences).toBeDefined();
-    expect(typeof responseBody.data.visionExercises.workLifePreferences).toBe("object");
-
-    // Clean up
-    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
+    try {
+      await expect(
+        aiThesisService.analyzeHandwrittenVisionaryExercise(mockContext, assessmentWithSheets)
+      ).rejects.toThrow(/AI Vision Analysis Error/i);
+    } finally {
+      process.env.GEMINI_API_KEY = originalGeminiKey;
+      if (originalOpenAiKey) process.env.OPENAI_API_KEY = originalOpenAiKey;
+    }
   });
 
-  it("uploadHandwrittenExercise uploads multiple pages and sets status to uploaded", async () => {
-    const testStudentId = "60c72b2f9b1d8b2badbee099";
-    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
+  it("analyzeHandwrittenVisionaryExercise synthesizes structured thesis when ENABLE_AI_HEURISTIC_FALLBACK=true and AI is unavailable", async () => {
+    const mockContext = {
+      name: "Aman Sharma",
+      course: "BCA",
+      department: "IT Education Group",
+      currentLevel: "Level 1",
+      taskMetrics: { taskCompletionRate: 85 },
+    };
 
-    const req = {
-      user: { id: testStudentId, role: "student" },
-      body: {
-        images: [
-          { url: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", fileName: "page1.jpg" },
-          { url: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", fileName: "page2.jpg" },
-        ],
-        studentNotes: "Focused on programming and startups",
+    const assessmentWithSheets = {
+      handwrittenSubmission: {
+        images: [{ url: "https://example.com/sheet.png", pageNumber: 1 }],
+        studentNotes: "Interest in Full Stack Development and AI algorithms",
       },
     };
 
-    let statusCode = null;
-    let responseBody = null;
-    const res = {
-      status: (code) => {
-        statusCode = code;
-        return {
-          json: (data) => {
-            responseBody = data;
-          },
-        };
-      },
-    };
+    const originalGeminiKey = process.env.GEMINI_API_KEY;
+    const originalFallback = process.env.ENABLE_AI_HEURISTIC_FALLBACK;
+    process.env.GEMINI_API_KEY = "dummy_invalid_key";
+    process.env.ENABLE_AI_HEURISTIC_FALLBACK = "true";
 
-    await aiThesisController.uploadHandwrittenExercise(req, res);
-    expect(statusCode).toBe(200);
-    expect(responseBody.success).toBe(true);
-    expect(responseBody.data.handwrittenSubmission.status).toBe("uploaded");
-    expect(responseBody.data.handwrittenSubmission.images.length).toBe(2);
-    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
-    expect(responseBody.data.handwrittenSubmission.images[1].pageNumber).toBe(2);
-    expect(responseBody.data.handwrittenSubmission.studentNotes).toBe("Focused on programming and startups");
-
-    // Test delete a page
-    const delReq = {
-      user: { id: testStudentId, role: "student" },
-      body: {
-        pageNumber: 1,
-      },
-    };
-    await aiThesisController.deleteHandwrittenPage(delReq, res);
-    expect(statusCode).toBe(200);
-    expect(responseBody.data.handwrittenSubmission.images.length).toBe(1);
-    expect(responseBody.data.handwrittenSubmission.images[0].pageNumber).toBe(1);
-
-    // Test analyze with handwritten exercise
-    const analyzeReq = {
-      user: { id: testStudentId, role: "student" },
-      body: {},
-    };
-    await aiThesisController.analyzeAndGenerateThesis(analyzeReq, res);
-    expect(statusCode).toBe(200);
-    expect(responseBody.success).toBe(true);
-    expect(responseBody.data.status).toBe("analyzed");
-    expect(responseBody.data.handwrittenSubmission.status).toBe("analyzed");
-    expect(responseBody.data.handwrittenSubmission.extractedPassions.length).toBeGreaterThan(0);
-    expect(responseBody.data.purposeStatement).toBeDefined();
-    expect(responseBody.data.visionStatement).toBeDefined();
-
-    await PurposeVisionAssessment.deleteMany({ studentId: testStudentId });
+    try {
+      const result = await aiThesisService.analyzeHandwrittenVisionaryExercise(mockContext, assessmentWithSheets);
+      expect(result).toBeDefined();
+      expect(result.topPassions.length).toBeGreaterThan(0);
+      expect(result.careerDirections.length).toBe(3);
+      expect(result.roadmap.threeMonths.length).toBeGreaterThan(0);
+      expect(result.isHeuristicFallback).toBe(true);
+    } finally {
+      process.env.GEMINI_API_KEY = originalGeminiKey;
+      if (originalFallback !== undefined) {
+        process.env.ENABLE_AI_HEURISTIC_FALLBACK = originalFallback;
+      } else {
+        delete process.env.ENABLE_AI_HEURISTIC_FALLBACK;
+      }
+    }
   });
 });

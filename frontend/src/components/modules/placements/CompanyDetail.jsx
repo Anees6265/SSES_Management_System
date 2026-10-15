@@ -23,7 +23,7 @@ const CompanyDetail = () => {
   const { user } = useSelector((state) => state.auth || {});
 
   // Roles authorized to manage companies
-  const isAuthorizedToManage = ["superadmin", "admin", "placement_officer"].includes(user?.role);
+  const isAuthorizedToManage = ["superadmin", "admin", "placement_officer", "hod"].includes(user?.role);
 
   const { data, isLoading, error, refetch } = useGetAllCompaniesQuery();
   const [toggleStatus] = useToggleCompanyStatusMutation();

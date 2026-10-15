@@ -93,13 +93,26 @@ const departmentFilter = async (req, res, next) => {
     let resolvedDeptId = jwtDeptId || null;
     let resolvedDeptName = department || "";
 
+    if (!resolvedDeptId && !resolvedDeptName && (req.user?.id || req.user?._id)) {
+      try {
+        const User = require("../models/user/user");
+        const dbUser = await User.findById(req.user.id || req.user._id).select("department departmentId");
+        if (dbUser) {
+          if (dbUser.departmentId) resolvedDeptId = dbUser.departmentId.toString();
+          if (dbUser.department) resolvedDeptName = dbUser.department;
+          req.user.department = resolvedDeptName;
+          req.user.departmentId = resolvedDeptId;
+        }
+      } catch (_) {}
+    }
+
     if (!resolvedDeptId) {
-      if (!department) {
+      if (!resolvedDeptName) {
         return res.status(403).json({ message: "Department not assigned to your account." });
       }
-      const dept = await Department.findOne({ name: department, isActive: true }).select("_id name");
+      const dept = await Department.findOne({ name: resolvedDeptName, isActive: true }).select("_id name");
       if (!dept) {
-        return res.status(403).json({ message: `Department '${department}' not found or inactive.` });
+        return res.status(403).json({ message: `Department '${resolvedDeptName}' not found or inactive.` });
       }
       resolvedDeptId = dept._id.toString();
       resolvedDeptName = dept.name;

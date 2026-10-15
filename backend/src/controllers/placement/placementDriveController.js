@@ -81,7 +81,28 @@ exports.createDrive = async (req, res) => {
 // 2. GET ALL DRIVES (Department-Filtered)
 exports.getAllDrives = async (req, res) => {
   try {
-    const filter = req.subDeptFilter || {};
+    let filter = {};
+
+    const role = (req.user?.role || "").toLowerCase();
+    if (!["superadmin", "admin", "placement_officer"].includes(role)) {
+      const allowedIds = (req.allowedSubDeptIds || []).map(id => id.toString());
+      const userId = req.user?.id || req.user?._id;
+
+      filter = {
+        $or: [
+          { subDepartmentId: null },
+          { subDepartmentId: { $exists: false } },
+          { eligibleSubDepartments: { $size: 0 } },
+          { eligibleSubDepartments: { $exists: false } },
+          ...(allowedIds.length > 0 ? [
+            { subDepartmentId: { $in: allowedIds } },
+            { eligibleSubDepartments: { $in: allowedIds } }
+          ] : []),
+          ...(userId ? [{ createdBy: userId }] : [])
+        ]
+      };
+    }
+
     const drives = await PlacementDrive.find(filter)
       .populate("shortlistedStudents", "firstName lastName prkey email studentMobile techno technology technologies track course")
       .sort({ driveDate: -1 })

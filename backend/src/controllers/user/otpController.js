@@ -100,7 +100,11 @@ const verifyEmailOtp = async (req, res) => {
         const token = jwt.sign(
             { 
                 id: user._id, 
-                role: user.role 
+                role: user.role,
+                name: user.name,
+                department: user.department,
+                departmentId: user.departmentId || null,
+                permissions: user.permissions || [],
             }, process.env.JWT_SECRET, { expiresIn: '1h' });
         // Generate refresh token
         const refreshToken = jwt.sign(

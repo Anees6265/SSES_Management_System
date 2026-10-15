@@ -165,7 +165,11 @@ class FaceAuthController {
         { 
           id: matchedUser._id, 
           email: matchedUser.email,
-          role: matchedUser.role 
+          role: matchedUser.role,
+          name: matchedUser.name,
+          department: matchedUser.department,
+          departmentId: matchedUser.departmentId || null,
+          permissions: matchedUser.permissions || [],
         },
         process.env.JWT_SECRET,
         { expiresIn: '2h' }

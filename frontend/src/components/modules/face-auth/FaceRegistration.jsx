@@ -2,7 +2,8 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import * as faceapi from 'face-api.js';
+import * as faceapiModule from 'face-api.js';
+const faceapi = faceapiModule.default || faceapiModule;
 import { toast } from 'react-toastify';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import { getDecryptedToken } from '../../../helpers/authUtils';

@@ -7,10 +7,10 @@ class FaceAuthController {
     try {
       const { email, faceDescriptor } = req.body;
 
-      if (!email || !faceDescriptor) {
+      if (!email || !faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length < 100) {
         return res.status(400).json({
           success: false,
-          message: 'Email and face descriptor are required'
+          message: 'Valid email and face descriptor (at least 100 dimensions) are required'
         });
       }
 
@@ -78,11 +78,11 @@ class FaceAuthController {
         });
       }
       
-      // Optimized query for mobile performance
+      // Query users with valid face descriptors (at least 100 features)
       const users = await User.find(
-        { faceDescriptor: { $exists: true, $ne: null } },
-        { email: 1, faceDescriptor: 1, role: 1, name: 1, position: 1, department: 1, _id: 1 }
-      ).limit(50); // Limit for mobile performance
+        { faceDescriptor: { $exists: true, $ne: null }, 'faceDescriptor.99': { $exists: true } },
+        { email: 1, faceDescriptor: 1, role: 1, name: 1, position: 1, department: 1, departmentId: 1, permissions: 1, _id: 1 }
+      ).limit(500);
 
       if (users.length === 0) {
         return res.status(404).json({
@@ -92,62 +92,36 @@ class FaceAuthController {
       }
 
       let matchedUser = null;
-      // Adaptive threshold based on device
-      let minDistance = isMobile ? 0.32 : 0.35; // Stricter for mobile
+      // Standard Euclidean distance threshold for FaceNet/face-api 128-d descriptors:
+      // Same individual typically scores 0.30 - 0.50 across various webcams/lighting.
+      // Unrelated individuals score 0.80 - 1.50+.
+      const matchThreshold = 0.52;
       let bestDistance = Infinity;
       
-      // Production logging (reduced for performance)
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('🔍 Starting face matching with', users.length, 'registered users');
-      }
+      console.log(`🔍 Starting face matching against ${users.length} registered user(s)...`);
 
-      // Strict face matching with multiple validations
+      // Find nearest neighbor (best match) among all registered users
       for (const user of users) {
         try {
           if (user.faceDescriptor && Array.isArray(user.faceDescriptor) && user.faceDescriptor.length === faceDescriptor.length) {
-            // Ensure descriptor has expected length (usually 128 for face-api.js)
-            if (user.faceDescriptor.length < 100) {
-              console.log(`⚠️ Skipping ${user.email}: Invalid descriptor length ${user.faceDescriptor.length}`);
-              continue;
-            }
-            
             const distance = FaceAuthController.calculateDistanceFast(faceDescriptor, user.faceDescriptor);
             
-            // Development logging only
-            if (process.env.NODE_ENV !== 'production') {
-              console.log(`📏 Distance for ${user.email}: ${distance.toFixed(4)} (threshold: ${minDistance})`);
-            }
-            
-            // Mobile-specific validation
-            const maxDistance = isMobile ? 3 : 5;
-            if (distance > maxDistance) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.log(`⚠️ Skipping ${user.email}: Distance ${distance.toFixed(4)} > ${maxDistance} (mobile: ${isMobile})`);
-              }
-              continue;
-            }
+            console.log(`📏 Distance for ${user.email}: ${distance.toFixed(4)} (threshold: ${matchThreshold})`);
             
             if (distance < bestDistance) {
               bestDistance = distance;
-              if (distance < minDistance) {
+              if (distance <= matchThreshold) {
                 matchedUser = user;
-                if (process.env.NODE_ENV !== 'production') {
-                  console.log(`✅ Match found: ${user.email} with distance ${distance.toFixed(4)}`);
-                }
-                break; // Early exit on first good match
               }
             }
           }
         } catch (distanceError) {
           console.error('Distance calculation error for user:', user.email, distanceError);
-          continue; // Skip this user and continue with next
+          continue;
         }
       }
 
-      // Production logging
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`🎯 Best match distance: ${bestDistance.toFixed(4)}, Required: < ${minDistance}`);
-      }
+      console.log(`🎯 Best match distance: ${bestDistance.toFixed(4)}, Required: <= ${matchThreshold}`);
       
       if (!matchedUser) {
         return res.status(401).json({
@@ -191,10 +165,12 @@ class FaceAuthController {
         refreshToken,
         user: {
           id: matchedUser._id,
+          _id: matchedUser._id,
           email: matchedUser.email,
           role: matchedUser.role,
           name: matchedUser.name,
           position: matchedUser.position,
+          positionRole: matchedUser.position || matchedUser.role,
           department: matchedUser.department
         }
       });
@@ -288,7 +264,7 @@ class FaceAuthController {
 
       res.status(200).json({
         success: true,
-        hasFaceRegistered: !!user.faceDescriptor
+        hasFaceRegistered: Boolean(user.faceDescriptor && Array.isArray(user.faceDescriptor) && user.faceDescriptor.length >= 100)
       });
 
     } catch (error) {

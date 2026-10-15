@@ -167,14 +167,15 @@ const AddCompanyModal = ({
       }
 
       if (isEditMode) {
-        await updateCompany({ id: companyToEdit._id, ...payload }).unwrap();
+        const res = await updateCompany({ id: companyToEdit._id, ...payload }).unwrap();
         toast.success("Company updated successfully!");
+        onSuccess?.(res?.data || payload);
       } else {
         const res = await createCompany(payload).unwrap();
         toast.success(res?.message || "Company added successfully.");
+        onSuccess?.(res?.data || payload);
       }
 
-      onSuccess?.();
       onClose();
     } catch (err) {
       if (err?.data?.duplicate && err?.data?.existingCompany) {

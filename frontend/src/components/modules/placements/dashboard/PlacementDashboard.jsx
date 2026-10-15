@@ -11,6 +11,7 @@ import DepartmentTable from "./DepartmentTable";
 import PlacementFunnel from "./PlacementFunnel";
 import TopCompanies from "./TopCompanies";
 import AlertBox from "./AlertBox";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import { 
   useGetAllSessionsQuery,
   useGetAllSubdepartmentsQuery,
@@ -155,6 +156,7 @@ const PlacementDashboard = () => {
     <div className="bg-slate-50 min-h-screen pb-12">
       <Header
         title="Placement Dashboard"
+        showBack={false}
         breadcrumbs={[
           { label: "Placements" },
           { label: "Dashboard" },
@@ -192,38 +194,40 @@ const PlacementDashboard = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5">
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               {/* Academic Year Select */}
-              <select
+              <SelectDropdown
                 value={selectedSessionId}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
-              >
-                <option value="">All Academic Years</option>
-                {sessionsList.map((s) => {
-                  const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
-                  const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
-                  return (
-                    <option key={s._id} value={s._id}>
-                      {label} ({statusText})
-                    </option>
-                  );
-                })}
-              </select>
+                onChange={(val) => setSelectedSessionId(val)}
+                options={[
+                  { value: "", label: "All Academic Years" },
+                  ...sessionsList.map((s) => {
+                    const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
+                    const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
+                    return {
+                      value: s._id,
+                      label: `${label} (${statusText})`
+                    };
+                  })
+                ]}
+                className="w-full sm:w-auto sm:min-w-[175px]"
+                buttonClassName="w-full bg-white border border-gray-200 hover:border-orange-400 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
 
               {/* Department Select */}
-              <select
+              <SelectDropdown
                 value={selectedDeptFilter}
-                onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                className="w-full sm:w-auto bg-gray-50 border border-gray-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition cursor-pointer"
-              >
-                <option value="All">All Departments</option>
-                {subDeptsList.map((dept) => (
-                  <option key={dept._id} value={dept._id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedDeptFilter(val)}
+                options={[
+                  { value: "All", label: "All Departments" },
+                  ...subDeptsList.map((dept) => ({
+                    value: dept._id,
+                    label: dept.name
+                  }))
+                ]}
+                className="w-full sm:w-auto sm:min-w-[155px]"
+                buttonClassName="w-full bg-white border border-gray-200 hover:border-orange-400 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
             </div>
 
             <div className="flex items-center gap-2 justify-end">

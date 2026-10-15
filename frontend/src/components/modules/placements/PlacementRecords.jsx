@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import Avatar from "../../shared/Avatar";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const PlacementRecords = () => {
   const { data = {}, refetch, isLoading } = useGetReadyStudentsForPlacementQuery(undefined, {
@@ -175,15 +176,17 @@ const PlacementRecords = () => {
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">Result</label>
-              <select
+              <SelectDropdown
                 value={result}
-                onChange={(e) => setResult(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
-              >
-                <option value="Pending">Pending</option>
-                <option value="Selected">Selected</option>
-                <option value="Rejected">Rejected</option>
-              </select>
+                onChange={(val) => setResult(val)}
+                options={[
+                  { value: "Pending", label: "Pending" },
+                  { value: "Selected", label: "Selected" },
+                  { value: "Rejected", label: "Rejected" },
+                ]}
+                className="w-full"
+                buttonClassName="w-full bg-white border border-gray-300 hover:border-orange-400 rounded-lg px-3 py-2 text-sm text-gray-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
             </div>
           </div>
         }

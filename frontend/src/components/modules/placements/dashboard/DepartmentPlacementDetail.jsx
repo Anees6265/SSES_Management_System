@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   MdPeople, MdCheckCircle, MdWork, MdTrendingUp, MdPercent, 
-  MdWarningAmber, MdBlock, MdArrowBack, MdFilterList,
+  MdWarningAmber, MdBlock, MdFilterList,
   MdRefresh, MdFileDownload, MdSearch, MdCheckCircleOutline, MdClose
 } from "react-icons/md";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -12,6 +12,7 @@ import PlacementFunnel from "./PlacementFunnel";
 import StatusBreakdown from "./StatusBreakdown";
 import TopCompanies from "./TopCompanies";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import { 
   useGetAllSessionsQuery,
   useGetDeptPlacementDashboardQuery 
@@ -172,6 +173,7 @@ const DepartmentPlacementDetail = () => {
     <div className="bg-slate-50 min-h-screen pb-12">
       <Header
         title={`${deptMeta.name} — Placement Dashboard`}
+        showBack={false}
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Dashboard",  path: "/placements/dashboard" },
@@ -186,13 +188,6 @@ const DepartmentPlacementDetail = () => {
           {/* Top Banner Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-gray-100 pb-3.5 sm:pb-4">
             <div className="flex items-start sm:items-center gap-3">
-              <button
-                onClick={() => navigate("/placements/dashboard")}
-                className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0 mt-0.5 sm:mt-0"
-                title="Back to Overall Placement Dashboard"
-              >
-                <MdArrowBack className="text-lg sm:text-xl" />
-              </button>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg sm:text-xl font-extrabold text-gray-800 tracking-tight">{deptMeta.name}</h1>
@@ -246,35 +241,38 @@ const DepartmentPlacementDetail = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
-              <select
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+              <SelectDropdown
                 value={selectedSessionId}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white transition cursor-pointer"
-              >
-                <option value="">All Academic Years</option>
-                {sessionsList.map((s) => {
-                  const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
-                  const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
-                  return (
-                    <option key={s._id} value={s._id}>
-                      {label} ({statusText})
-                    </option>
-                  );
-                })}
-              </select>
+                onChange={(val) => setSelectedSessionId(val)}
+                options={[
+                  { value: "", label: "All Academic Years" },
+                  ...sessionsList.map((s) => {
+                    const label = s.name.startsWith("AY") ? s.name : `AY ${s.name}`;
+                    const statusText = s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : (s.isActive ? 'Active' : 'Inactive');
+                    return {
+                      value: s._id,
+                      label: `${label} (${statusText})`
+                    };
+                  })
+                ]}
+                className="w-full sm:w-auto sm:min-w-[175px]"
+                buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
 
-              <select
+              <SelectDropdown
                 value={selectedLevel}
-                onChange={(e) => setSelectedLevel(e.target.value)}
-                className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white transition cursor-pointer"
-              >
-                <option value="All">All Levels</option>
-                <option value="Level 1">Level 1</option>
-                <option value="Level 2">Level 2</option>
-                <option value="Level 3">Level 3</option>
-                <option value="Level 4">Level 4</option>
-              </select>
+                onChange={(val) => setSelectedLevel(val)}
+                options={[
+                  { value: "All", label: "All Levels" },
+                  { value: "Level 1", label: "Level 1" },
+                  { value: "Level 2", label: "Level 2" },
+                  { value: "Level 3", label: "Level 3" },
+                  { value: "Level 4", label: "Level 4" },
+                ]}
+                className="w-full sm:w-auto sm:min-w-[130px]"
+                buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
             </div>
           </div>
         </div>

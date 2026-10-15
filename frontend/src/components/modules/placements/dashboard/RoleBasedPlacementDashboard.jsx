@@ -53,6 +53,7 @@ const RoleBasedPlacementDashboard = () => {
       <Header
         title="Placement Dashboard"
         subtitle="Select a department to view placement flow"
+        showBack={false}
         breadcrumbs={[{ label: "Placements" }, { label: "Dashboard" }]}
       />
 

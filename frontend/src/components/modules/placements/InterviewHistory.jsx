@@ -17,6 +17,7 @@ import PageNavbar from "../../shared/navbar/PageNavbar";
 import { buttonStyles } from "../../../styles/buttonStyles";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const InterviewHistory = () => {
   const { id } = useParams();
@@ -981,33 +982,31 @@ const DatePickerComponent = ({ selectedDate, selectedTime, onDateTimeSelect, onC
           </div>
           
           <div className="flex justify-center items-center space-x-2 mb-4">
-            <select
+            <SelectDropdown
               value={selectedHour}
-              onChange={(e) => setSelectedHour(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-[#FDA92D]"
-            >
-              {hours.map(hour => (
-                <option key={hour} value={hour}>{hour}</option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedHour(val)}
+              options={hours.map(hour => ({ value: hour, label: hour }))}
+              className="w-20"
+              buttonClassName="w-full bg-white border border-gray-300 hover:border-orange-400 rounded-lg px-2.5 py-1 text-sm font-medium text-gray-700 flex items-center justify-between"
+            />
             <span className="font-bold text-gray-600">:</span>
-            <select
+            <SelectDropdown
               value={selectedMinute}
-              onChange={(e) => setSelectedMinute(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-[#FDA92D]"
-            >
-              {minutes.map(minute => (
-                <option key={minute} value={minute}>{minute}</option>
-              ))}
-            </select>
-            <select
+              onChange={(val) => setSelectedMinute(val)}
+              options={minutes.map(minute => ({ value: minute, label: minute }))}
+              className="w-20"
+              buttonClassName="w-full bg-white border border-gray-300 hover:border-orange-400 rounded-lg px-2.5 py-1 text-sm font-medium text-gray-700 flex items-center justify-between"
+            />
+            <SelectDropdown
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-[#FDA92D]"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
+              onChange={(val) => setSelectedPeriod(val)}
+              options={[
+                { value: "AM", label: "AM" },
+                { value: "PM", label: "PM" }
+              ]}
+              className="w-20"
+              buttonClassName="w-full bg-white border border-gray-300 hover:border-orange-400 rounded-lg px-2.5 py-1 text-sm font-medium text-gray-700 flex items-center justify-between"
+            />
           </div>
         </div>
       )}

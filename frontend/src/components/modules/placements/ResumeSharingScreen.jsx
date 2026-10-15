@@ -312,21 +312,23 @@ const ResumeSharingScreen = () => {
                             )}
                           </div>
 
-                          <select
+                          <SelectDropdown
                             value={status}
-                            onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border outline-none cursor-pointer ${
-                              status === "Shortlisted for Interview" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                              status === "Company Reviewed" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                              status === "Shared" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                              "bg-slate-100 text-slate-600 border-slate-200"
+                            onChange={(val) => handleStatusChange(candidate._id, val)}
+                            options={[
+                              { value: "Not Shared", label: "Not Shared" },
+                              { value: "Shared", label: "Shared" },
+                              { value: "Company Reviewed", label: "Company Reviewed" },
+                              { value: "Shortlisted for Interview", label: "Shortlisted for Interview" },
+                            ]}
+                            className="w-auto min-w-[135px]"
+                            buttonClassName={`px-2.5 py-1 rounded-full text-[10px] font-bold border outline-none flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer ${
+                              status === "Shortlisted for Interview" ? "bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400" :
+                              status === "Company Reviewed" ? "bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400" :
+                              status === "Shared" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400" :
+                              "bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-400"
                             }`}
-                          >
-                            <option value="Not Shared">Not Shared</option>
-                            <option value="Shared">Shared</option>
-                            <option value="Company Reviewed">Company Reviewed</option>
-                            <option value="Shortlisted for Interview">Shortlisted for Interview</option>
-                          </select>
+                          />
                         </div>
 
                         {sharedDate !== "—" && (
@@ -437,20 +439,23 @@ const ResumeSharingScreen = () => {
                             </td>
 
                             <td className="p-4">
-                              <select
+                              <SelectDropdown
                                 value={status}
-                                onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
-                                className={`px-3 py-1 rounded-full text-[11px] font-extrabold border outline-none cursor-pointer ${status === "Shortlisted for Interview" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                                    status === "Company Reviewed" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                                      status === "Shared" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                                        "bg-slate-100 text-slate-600 border-slate-200"
-                                  }`}
-                              >
-                                <option value="Not Shared">Not Shared</option>
-                                <option value="Shared">Shared</option>
-                                <option value="Company Reviewed">Company Reviewed</option>
-                                <option value="Shortlisted for Interview">Shortlisted for Interview</option>
-                              </select>
+                                onChange={(val) => handleStatusChange(candidate._id, val)}
+                                options={[
+                                  { value: "Not Shared", label: "Not Shared" },
+                                  { value: "Shared", label: "Shared" },
+                                  { value: "Company Reviewed", label: "Company Reviewed" },
+                                  { value: "Shortlisted for Interview", label: "Shortlisted for Interview" },
+                                ]}
+                                className="w-auto min-w-[145px]"
+                                buttonClassName={`px-3 py-1 rounded-full text-[11px] font-bold border outline-none flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer ${
+                                  status === "Shortlisted for Interview" ? "bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400" :
+                                  status === "Company Reviewed" ? "bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400" :
+                                  status === "Shared" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400" :
+                                  "bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-400"
+                                }`}
+                              />
                             </td>
                             <td className="p-4 text-slate-500 text-[11px]">
                               {sharedDate}

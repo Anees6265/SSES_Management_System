@@ -156,17 +156,17 @@ const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
 };
 
 const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
-    const [title, setTitle] = useState(task?.taskTitle || "");
-    const [description, setDescription] = useState(task?.description || "");
+    const [title, setTitle] = useState(task?.taskTitle || task?.title || "");
+    const [description, setDescription] = useState(task?.description || task?.raw?.description || "");
     const [priority, setPriority] = useState(task?.priority || "medium");
-    const [status, setStatus] = useState(task?.status || "active");
+    const [status, setStatus] = useState(task?.status || (task?.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
 
     useEffect(() => {
         if (task) {
-            setTitle(task.taskTitle || "");
-            setDescription(task.description || "");
+            setTitle(task.taskTitle || task.title || "");
+            setDescription(task.description || task.raw?.description || "");
             setPriority(task.priority || "medium");
-            setStatus(task.status || "active");
+            setStatus(task.status || (task.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
         }
     }, [task]);
 
@@ -180,10 +180,12 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
         }
         onSave({
             taskId: task.id || task._id,
+            title: title.trim(),
             taskTitle: title.trim(),
             description: description.trim(),
             priority,
             status,
+            isActive: status === "active",
         });
     };
 
@@ -364,6 +366,18 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                         </div>
                     )}
 
+                    {/* Description if present */}
+                    {(task.description || task.raw?.description) && (
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Description
+                            </p>
+                            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                {task.description || task.raw?.description}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Academic Parameters Grid */}
                     <div className="grid grid-cols-2 gap-2.5">
                         <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">
@@ -489,10 +503,12 @@ const TaskManagement = () => {
                 level: context.level?.name || "-",
                 subLevel: context.subLevel?.name || "-",
                 taskTitle: task.title || "-",
+                description: task.description || "",
                 subject: task.subjectName || "General",
                 topic: task.topicName || "",
                 priority: task.priority || "medium",
                 status: task.isActive ? "active" : "inactive",
+                isActive: task.isActive !== undefined ? task.isActive : true,
                 type: task.type || "assignment",
                 createdAt: task.createdAt,
                 raw: task,
@@ -607,10 +623,18 @@ const TaskManagement = () => {
             toast.success("Task updated successfully");
             setEditingTask(null);
             if (selectedTask && (selectedTask.id === updatedData.taskId || selectedTask._id === updatedData.taskId)) {
-                setSelectedTask((prev) => ({ ...prev, ...updatedData }));
+                setSelectedTask((prev) => ({
+                    ...prev,
+                    taskTitle: updatedData.title || updatedData.taskTitle,
+                    description: updatedData.description,
+                    priority: updatedData.priority,
+                    status: updatedData.status,
+                    isActive: updatedData.isActive,
+                }));
             }
             refetch();
         } catch (error) {
+            console.error("Task update error:", error);
             toast.error(error?.data?.message || "Failed to update task");
         }
     };

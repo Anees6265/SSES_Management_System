@@ -4,7 +4,7 @@ const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const dashboard = require("../controllers/placement/superAdminDashboardController");
 
 
-const allowedRoles = ["superadmin", "admin"];
+const allowedRoles = ["superadmin", "admin", "placement_officer"];
 
 
 // ── Super Admin Placement Dashboard ─────────────────────────

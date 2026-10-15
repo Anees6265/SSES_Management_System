@@ -13,7 +13,7 @@ const RoleBasedPlacementDashboard = () => {
   const navigate = useNavigate();
   const role = (localStorage.getItem("role") || "").toLowerCase();
   
-  const isGlobalAdmin = ["superadmin", "admin"].includes(role);
+  const isGlobalAdmin = ["superadmin", "admin", "placement_officer"].includes(role);
   
   const { data: res = {}, isLoading } = useGetAllSubdepartmentsQuery(undefined, {
     skip: isGlobalAdmin

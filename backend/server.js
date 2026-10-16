@@ -23,6 +23,8 @@ const defaultAllowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5000",
   "http://localhost:5001",
+  "https://sp-central.ssism.org",
+  "http://sp-central.ssism.org",
   "https://iteg.ssism.org",
   "https://iteg-management-system.vercel.app",
   "https://iteg-management-system-nth9.vercel.app",

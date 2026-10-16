@@ -126,15 +126,29 @@ Browser me open karein:
 
 ---
 
-## 🔒 Step 6: Free SSL (HTTPS) Setup with Certbot (Optional Domain)
+## 🔒 Step 6: Free SSL (HTTPS) Setup for `sp-central.ssism.org`
 
-Agar aapke paas domain hai (jaise `iteg.ssism.org`):
-1. Domain ke DNS me **A Record** add karein: `yourdomain.com -> <EC2-PUBLIC-IP>`.
-2. Server par Certbot install karein:
-```bash
-sudo apt update
-sudo apt install -y certbot python3-certbot-nginx
-```
+Aapke domain `sp-central.ssism.org` ke liye:
+1. **DNS Mapping**:
+   - Apne DNS Provider (Cloudflare / GoDaddy / Route 53) me **A Record** add karein:
+     - **Name**: `sp-central`
+     - **Type**: `A`
+     - **Value / Target**: `<Aapka-EC2-Public-IP>`
+     - **TTL**: Auto / 300s
+
+2. **Certbot se SSL Certificate prapt karein**:
+   Server par Certbot run karein:
+   ```bash
+   sudo apt update
+   sudo apt install -y certbot
+   # Stop container momentarily to bind port 80 for SSL issuance
+   docker compose -f docker-compose.prod.yml stop frontend
+   sudo certbot certonly --standalone -d sp-central.ssism.org --non-interactive --agree-tos -m admin@ssism.org
+   docker compose -f docker-compose.prod.yml start frontend
+   ```
+
+3. **Verify HTTPS**:
+   Browser me `https://sp-central.ssism.org` open karein. All routes and API calls will work securely over SSL!
 
 ---
 

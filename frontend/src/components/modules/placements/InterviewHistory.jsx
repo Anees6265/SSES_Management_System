@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { confirmToast } from "../../../utils/confirmToast";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import { FaCalendarAlt } from "react-icons/fa";
-import PageNavbar from "../../shared/navbar/PageNavbar";
+import Header from "../../shared/sidebar/Header";
 import { buttonStyles } from "../../../styles/buttonStyles";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
 import EmptyState from "../../shared/empty-state/EmptyState";
@@ -263,10 +263,15 @@ const InterviewHistory = () => {
 
   return (
     <>
-      <PageNavbar 
+      <Header 
         title="Interview History" 
         subtitle="View and manage student interview records"
-        onBack={() => {
+        breadcrumbs={[
+          { label: "Placements", path: "/placements/dashboard" },
+          { label: "Readiness Status", path: "/readiness-status" },
+          { label: "Interview History" },
+        ]}
+        onBackClick={() => {
           // Get the active tab from localStorage or default to 'Ongoing Interviews'
           const activeTab = localStorage.getItem('placementActiveTab') || 'Ongoing Interviews';
           localStorage.setItem('placementActiveTab', activeTab);

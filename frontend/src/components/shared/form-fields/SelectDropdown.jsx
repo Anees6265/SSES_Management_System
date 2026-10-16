@@ -15,7 +15,11 @@ const SelectDropdown = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const selectedOption = options.find((opt) => String(opt.value) === String(value));
+  const normalizedValue = value === undefined || value === null ? "" : String(value);
+  const selectedOption = options.find((opt) => {
+    const optVal = opt.value === undefined || opt.value === null ? "" : String(opt.value);
+    return optVal === normalizedValue;
+  });
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
 
   useEffect(() => {
@@ -53,7 +57,7 @@ const SelectDropdown = ({
       {isOpen && (
         <div className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1.5 min-w-full w-max max-w-[calc(100vw-2rem)] max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar`}>
           {options.map((opt) => {
-            const isSelected = String(opt.value) === String(value);
+            const isSelected = (opt.value === undefined || opt.value === null ? "" : String(opt.value)) === normalizedValue;
             return (
               <div
                 key={String(opt.value)}

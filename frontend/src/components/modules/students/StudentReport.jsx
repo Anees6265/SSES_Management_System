@@ -334,72 +334,71 @@ export default function StudentReport() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-16 print:min-h-0 print:bg-white print:p-0 print:m-0 print:pb-0">
+    <>
       {/* ── Top App Header (Hidden during Print / PDF Export) ── */}
-      <div className="print:hidden">
-        <Header
-          title="Student Performance Report"
-          showBack={true}
-          onBack={() => {
-            if (window.history.state && window.history.state.idx > 0) {
-              navigate(-1);
-            } else {
-              navigate(`/student-profile/${id}`, { replace: true });
+      <Header
+        title="Student Performance Report"
+        showBack={true}
+        onBack={() => {
+          if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
+          } else {
+            navigate(`/student-profile/${id}`, { replace: true });
+          }
+        }}
+        breadcrumbs={[
+          { label: 'Academics', path: '/student-detail-table' },
+          { label: 'Student Progress', path: '/student-detail-table' },
+          { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
+          { label: 'Report Card' }
+        ]}
+      >
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Print Button */}
+          <button
+            onClick={() => window.print()}
+            title="Print Report"
+            className="p-2 sm:p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-xs"
+          >
+            <FaPrint size={14} />
+          </button>
+
+          {/* Download PDF Button */}
+          <PDFDownloadLink
+            document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
+            fileName={`${studentData.firstName || 'Student'}_${studentData.lastName || 'Report'}_Report_Card.pdf`}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-emerald-200"
+          >
+            {({ loading }) =>
+              loading ? (
+                <span className="flex items-center gap-1">
+                  <span className="animate-spin text-xs">⏳</span> <span className="hidden sm:inline">Preparing...</span>
+                </span>
+              ) : (
+                <>
+                  <FaDownload size={12} />
+                  <span className="hidden sm:inline">Download</span> PDF
+                </>
+              )
             }
-          }}
-          breadcrumbs={[
-            { label: 'Academics', path: '/student-detail-table' },
-            { label: 'Student Progress', path: '/student-detail-table' },
-            { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
-            { label: 'Report Card' }
-          ]}
-        >
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Print Button */}
-            <button
-              onClick={() => window.print()}
-              title="Print Report"
-              className="p-2 sm:p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-xs"
-            >
-              <FaPrint size={14} />
-            </button>
+          </PDFDownloadLink>
 
-            {/* Download PDF Button */}
-            <PDFDownloadLink
-              document={<StudentReportPDF studentData={studentData} reportCardData={reportCardData} />}
-              fileName={`${studentData.firstName || 'Student'}_${studentData.lastName || 'Report'}_Report_Card.pdf`}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-emerald-200"
-            >
-              {({ loading }) =>
-                loading ? (
-                  <span className="flex items-center gap-1">
-                    <span className="animate-spin text-xs">⏳</span> <span className="hidden sm:inline">Preparing...</span>
-                  </span>
-                ) : (
-                  <>
-                    <FaDownload size={12} />
-                    <span className="hidden sm:inline">Download</span> PDF
-                  </>
-                )
-              }
-            </PDFDownloadLink>
+          {/* Edit Button */}
+          <button
+            onClick={() => navigate(`/student/${id}/report/edit`)}
+            title="Edit Report Card"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-orange-200"
+          >
+            <RiEdit2Fill size={14} />
+            <span className="hidden sm:inline">Edit Report</span>
+            <span className="sm:hidden">Edit</span>
+          </button>
+        </div>
+      </Header>
 
-            {/* Edit Button */}
-            <button
-              onClick={() => navigate(`/student/${id}/report/edit`)}
-              title="Edit Report Card"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-orange-200"
-            >
-              <RiEdit2Fill size={14} />
-              <span className="hidden sm:inline">Edit Report</span>
-              <span className="sm:hidden">Edit</span>
-            </button>
-          </div>
-        </Header>
-      </div>
-
-      {/* ── Report Card Body Container ── */}
-      <div className="w-full px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4 space-y-3.5 sm:space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4 max-w-[1600px] mx-auto">
+      <div className="min-h-screen bg-slate-50/50 pb-16 print:min-h-0 print:bg-white print:p-0 print:m-0 print:pb-0">
+        {/* ── Report Card Body Container ── */}
+        <div className="w-full px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4 space-y-3.5 sm:space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-4 max-w-[1600px] mx-auto">
 
         {/* ── Hero Dossier Card ── */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -1235,7 +1234,8 @@ export default function StudentReport() {
           </div>
         </div>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }

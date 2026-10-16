@@ -156,24 +156,27 @@ const PlacementPost = () => {
 
   if (error) {
     return (
-      <div className="bg-slate-50 min-h-screen p-3.5 sm:p-6">
+      <>
         <Header title="Placement Stories" />
-        <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-8 sm:mt-12">
-          <h3 className="text-base font-bold text-gray-800">Error Loading Stories</h3>
-          <p className="text-xs text-red-500 mt-1">Failed to fetch placed student posts</p>
+        <div className="bg-slate-50 min-h-screen p-3.5 sm:p-6">
+          <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-8 sm:mt-12">
+            <h3 className="text-base font-bold text-gray-800">Error Loading Stories</h3>
+            <p className="text-xs text-red-500 mt-1">Failed to fetch placed student posts</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header 
         title="Placement Posts & Stories" 
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Placement Stories" }]}
       />
 
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Top Stat Cards (2x2 on mobile) ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -462,7 +465,8 @@ const PlacementPost = () => {
         isUpdateMode={true}
         onSuccess={refetch}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

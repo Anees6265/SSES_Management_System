@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { 
-  useGetSubdepartmentByIdQuery, 
-  useGetLevelsBySubdepartmentQuery, 
-  useGetSubLevelsByLevelQuery, 
-  useAddLevelMutation, 
+import {
+  useGetSubdepartmentByIdQuery,
+  useGetLevelsBySubdepartmentQuery,
+  useGetSubLevelsByLevelQuery,
+  useAddLevelMutation,
   useUpdateLevelMutation,
   useDeleteLevelMutation
 } from "../../../../redux/api/authApi";
@@ -44,11 +44,10 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDele
           </div>
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-gray-800 uppercase tracking-wide truncate">{level.name}</h3>
-            <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 mt-1 rounded-full ${
-              level.isActive 
-                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                : 'bg-slate-100 text-slate-400 border border-slate-200'
-            }`}>
+            <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 mt-1 rounded-full ${level.isActive
+              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+              : 'bg-slate-100 text-slate-400 border border-slate-200'
+              }`}>
               {level.isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
@@ -175,10 +174,10 @@ const SubdepartmentDetails = () => {
   const [levelToDelete, setLevelToDelete] = useState(null);
 
   const querySubdeptId = searchParams.get("id");
-  const subdepartmentId = 
-    paramSubdeptId || 
-    querySubdeptId || 
-    location.state?.subdepartment?._id || 
+  const subdepartmentId =
+    paramSubdeptId ||
+    querySubdeptId ||
+    location.state?.subdepartment?._id ||
     sessionStorage.getItem("lastVisitedSubdepartmentId");
 
   useEffect(() => {
@@ -189,9 +188,9 @@ const SubdepartmentDetails = () => {
 
   const { data: subdepartmentData, isLoading: isSubdeptLoading } = useGetSubdepartmentByIdQuery(subdepartmentId, { skip: !subdepartmentId });
 
-  const subdepartment  = subdepartmentData?.data || location.state?.subdepartment;
-  const departmentObj  = typeof subdepartment?.departmentId === "object" ? subdepartment?.departmentId : null;
-  const departmentId   = location.state?.departmentId || departmentObj?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "");
+  const subdepartment = subdepartmentData?.data || location.state?.subdepartment;
+  const departmentObj = typeof subdepartment?.departmentId === "object" ? subdepartment?.departmentId : null;
+  const departmentId = location.state?.departmentId || departmentObj?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "");
 
   const { data: levelsData, isLoading: isLevelsLoading, refetch } = useGetLevelsBySubdepartmentQuery(subdepartmentId, { skip: !subdepartmentId });
   const [addLevel] = useAddLevelMutation();
@@ -199,7 +198,7 @@ const SubdepartmentDetails = () => {
   const [deleteLevel, { isLoading: isDeletingLevel }] = useDeleteLevelMutation();
 
   const departmentName = location.state?.departmentName || departmentObj?.name || "Department";
-  
+
   // Sort levels: Active levels first, then by ascending numeric order (e.g. Level 1, Level 2)
   const levels = [...(levelsData?.data || [])].sort((a, b) => {
     if (b.isActive !== a.isActive) {
@@ -243,16 +242,16 @@ const SubdepartmentDetails = () => {
 
   const breadcrumbs = hasPermission('Page_Department')
     ? [
-        { label: "Departments", path: "/department-management" },
-        ...(departmentId
-          ? [{ label: departmentName || "Department", path: `/department-details/${departmentId}`, state: { department: departmentObj } }]
-          : []),
-        { label: subdepartment.name },
-      ]
+      { label: "Departments", path: "/department-management" },
+      ...(departmentId
+        ? [{ label: departmentName || "Department", path: `/department-details/${departmentId}`, state: { department: departmentObj } }]
+        : []),
+      { label: subdepartment.name },
+    ]
     : [
-        { label: "Sub-Departments", path: "/subdepartments" },
-        { label: subdepartment.name },
-      ];
+      { label: "Sub-Departments", path: "/subdepartments" },
+      { label: subdepartment.name },
+    ];
 
   return (
     <>
@@ -381,8 +380,8 @@ const SubdepartmentDetails = () => {
                       });
                     }}
                     onDelete={
-                      hasPermission('Page_Level', 'delete') 
-                        ? () => setLevelToDelete(level) 
+                      hasPermission('Page_Level', 'delete')
+                        ? () => setLevelToDelete(level)
                         : null
                     }
                     onEdit={
@@ -408,7 +407,7 @@ const SubdepartmentDetails = () => {
                             <OrangeButton
                               buttonTitle="Edit"
                               panelTitle="Edit Level"
-                              customButtonClass="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white rounded-xl py-2.5 sm:py-2 text-xs font-bold transition duration-150 cursor-pointer shadow-2xs"
+                              customButtonClass="w-full bg-orange-400 hover:bg-orange-600 active:scale-[0.98] text-white rounded-xl py-2.5 sm:py-2 text-xs font-bold transition duration-150 cursor-pointer shadow-2xs"
                               drawerContent={
                                 <Form className="space-y-4">
                                   <InputField label="Level Name" name="name" placeholder="Enter level name" />

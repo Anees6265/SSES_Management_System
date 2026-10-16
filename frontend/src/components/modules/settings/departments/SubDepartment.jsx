@@ -10,6 +10,7 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import InputField from '../../../shared/form-fields/InputField';
 import RadioGroup from '../../../shared/form-fields/RadioGroup';
+import SelectDropdown from '../../../shared/form-fields/SelectDropdown';
 import SubDepartmentCard from './SubDepartmentCard';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import EmptyState from '../../../shared/empty-state/EmptyState';
@@ -117,19 +118,20 @@ const SubDepartment = () => {
 
                                             <div>
                                                 <label className="block text-sm font-medium mb-1.5">Department <span className="text-red-400">*</span></label>
-                                                <select
+                                                <SelectDropdown
                                                     value={values.departmentId}
-                                                    onChange={(e) => {
-                                                        setFieldValue('departmentId', e.target.value);
+                                                    onChange={(val) => {
+                                                        setFieldValue('departmentId', val);
                                                         setFieldValue('allowedCourses', []);
                                                     }}
-                                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400"
-                                                >
-                                                    <option value="">Select department</option>
-                                                    {departments.map(d => (
-                                                        <option key={d._id} value={d._id}>{d.name}</option>
-                                                    ))}
-                                                </select>
+                                                    options={[
+                                                        { value: "", label: "Select department" },
+                                                        ...departments.map(d => ({ value: d._id, label: d.name }))
+                                                    ]}
+                                                    placeholder="Select department"
+                                                    className="w-full"
+                                                    buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
+                                                />
                                             </div>
 
                                             <div>
@@ -220,19 +222,20 @@ const SubDepartment = () => {
 
                                                             <div>
                                                                 <label className="block text-sm font-medium mb-1.5">Department</label>
-                                                                <select
+                                                                <SelectDropdown
                                                                     value={values.departmentId}
-                                                                    onChange={(e) => {
-                                                                        setFieldValue('departmentId', e.target.value);
+                                                                    onChange={(val) => {
+                                                                        setFieldValue('departmentId', val);
                                                                         setFieldValue('allowedCourses', []);
                                                                     }}
-                                                                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400"
-                                                                >
-                                                                    <option value="">Select department</option>
-                                                                    {departments.map(d => (
-                                                                        <option key={d._id} value={d._id}>{d.name}</option>
-                                                                    ))}
-                                                                </select>
+                                                                    options={[
+                                                                        { value: "", label: "Select department" },
+                                                                        ...departments.map(d => ({ value: d._id, label: d.name }))
+                                                                    ]}
+                                                                    placeholder="Select department"
+                                                                    className="w-full"
+                                                                    buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
+                                                                />
                                                             </div>
 
                                                             <div>

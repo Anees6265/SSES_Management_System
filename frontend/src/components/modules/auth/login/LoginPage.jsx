@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { useLoginMutation, useStudentLoginMutation } from "../../../../redux/api/authApi";
 import Loader from "../../../shared/loader/Loader";
-import CompactFaceLogin from "../../face-auth/CompactFaceLogin";
+// import CompactFaceLogin from "../../face-auth/CompactFaceLogin"; // Face recognition login disabled
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 import SecurityHelmet from "../../../shared/SecurityHelmet";
@@ -28,7 +28,8 @@ const LoginPage = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
-  const [showFaceLogin, setShowFaceLogin] = useState(false);
+  // Face recognition login disabled
+  // const [showFaceLogin, setShowFaceLogin] = useState(false);
 
   const [login, { isLoading: isAdminLoading }] = useLoginMutation();
   const [studentLogin, { isLoading: isStudentLoading }] = useStudentLoginMutation();
@@ -102,42 +103,48 @@ const LoginPage = () => {
   };
 
   const handleOtpLogin = () => navigate("/otp-verification");
-  const handleFaceLogin = () => setShowFaceLogin(true);
-  const handleFaceLoginSuccess = () => {
-    setShowFaceLogin(false);
-    navigate("/", { replace: true });
-  };
-  const handleFaceLoginClose = () => setShowFaceLogin(false);
+  // Face recognition login disabled
+  // const handleFaceLogin = () => setShowFaceLogin(true);
+  // const handleFaceLoginSuccess = () => {
+  //   setShowFaceLogin(false);
+  //   navigate("/", { replace: true });
+  // };
+  // const handleFaceLoginClose = () => setShowFaceLogin(false);
 
   return (
     <div className="min-h-[100dvh] w-full relative flex flex-col justify-between overflow-x-hidden font-sans bg-white selection:bg-orange-500 selection:text-white">
       <SecurityHelmet title="Login" />
       {isLoading && <Loader />}
 
-      {/* College Building Background Image */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover opacity-90"
-        style={{
-          backgroundImage: `url(${singajiBg})`,
-          backgroundPosition: "bottom center",
-          backgroundSize: "cover",
-        }}
-      />
-      {/* Soft gradient overlay: crisp white shade at the top fading smoothly towards the building at the bottom */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.90) 18%, rgba(255, 255, 255, 0.58) 42%, rgba(255, 255, 255, 0.18) 72%, rgba(255, 255, 255, 0.04) 100%)",
-        }}
-      />
+      {/* ── Background: Singaji Campus Building visible across bottom with smooth white top fade ── */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Campus Building & Buses Image: positioned on the building facade */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-[75%] sm:h-[80%] lg:h-[82%] bg-no-repeat bg-cover"
+          style={{
+            backgroundImage: `url(${singajiBg})`,
+            backgroundPosition: "center 38%",
+            backgroundSize: "cover",
+            opacity: 0.88,
+          }}
+        />
+
+        {/* Seamless White Fade Overlay: Crisp pure white at header, fading completely to transparent at bottom */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 26%, rgba(255, 255, 255, 0.86) 42%, rgba(255, 255, 255, 0.40) 58%, rgba(255, 255, 255, 0.10) 76%, transparent 100%)",
+          }}
+        />
+      </div>
 
       {/* ── Top Header ────────────────────────────────────────── */}
-      <header className="relative z-10 w-full px-4 sm:px-12 lg:px-16 py-3 sm:py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <img src={logo} alt="Sant Singaji Logo" className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
+      <header className="relative z-10 w-full px-6 sm:px-12 lg:px-16 py-4 sm:py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Sant Singaji Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" />
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-extrabold text-slate-800 tracking-wider uppercase leading-tight">
+            <span className="text-xs sm:text-[13px] font-black text-slate-800 tracking-wider uppercase leading-tight">
               SANT SINGAJI
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest uppercase leading-tight">
@@ -145,6 +152,7 @@ const LoginPage = () => {
             </span>
           </div>
         </div>
+        {/* Right side intentionally left empty (no Pay Fee button, as requested) */}
       </header>
 
       {/* ── Main Hero Section ─────────────────────────────────── */}
@@ -339,16 +347,17 @@ const LoginPage = () => {
             <hr className="flex-grow border-gray-200" />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="flex items-center justify-center gap-1.5 py-2 px-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs font-medium text-gray-700 transition shadow-2xs"
+              className="flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs font-medium text-gray-700 transition shadow-2xs"
               title="Google SSO"
             >
               <img src={googleLogo} alt="Google" className="h-4 w-4" />
-              <span className="text-[11px]">Google</span>
+              <span className="text-xs">Google</span>
             </button>
+            {/* Face ID Authentication (Disabled)
             <button
               type="button"
               onClick={handleFaceLogin}
@@ -358,25 +367,21 @@ const LoginPage = () => {
               <span className="text-xs">👤</span>
               <span className="text-[11px]">Face ID</span>
             </button>
+            */}
             <button
               type="button"
               onClick={handleOtpLogin}
-              className="flex items-center justify-center gap-1.5 py-2 px-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs font-medium text-gray-700 transition shadow-2xs"
+              className="flex items-center justify-center gap-2 py-2 px-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs font-medium text-gray-700 transition shadow-2xs"
               title="Email OTP Login"
             >
               <img src={mail} alt="OTP" className="h-4 w-4" />
-              <span className="text-[11px]">OTP</span>
+              <span className="text-xs">OTP</span>
             </button>
           </div>
         </div>
       </main>
 
-      {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="relative z-10 w-full px-4 py-2 sm:py-3 text-center text-slate-500 text-[11px] sm:text-xs font-medium bg-white/40 backdrop-blur-xs">
-        © {new Date().getFullYear()} Sant Singaji Educational Society. All rights reserved.
-      </footer>
-
-      {/* Face Login Modal */}
+      {/* Face Login Modal (Disabled)
       {showFaceLogin && (
         <CompactFaceLogin
           onLoginSuccess={handleFaceLoginSuccess}
@@ -387,6 +392,7 @@ const LoginPage = () => {
           }}
         />
       )}
+      */}
     </div>
   );
 };

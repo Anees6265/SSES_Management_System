@@ -141,7 +141,7 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                     <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
-                    <div className="flex-1 sm:flex-initial min-w-[130px]">
+                    <div className="flex-1 sm:flex-initial min-w-[135px] sm:min-w-[145px]">
                         <SessionSelector
                             selectedSessionId={selectedSessionId}
                             onSessionChange={setSelectedSessionId}

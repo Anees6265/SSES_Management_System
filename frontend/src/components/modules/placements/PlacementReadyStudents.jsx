@@ -416,14 +416,15 @@ const PlacementReadyStudents = () => {
   const paginatedMobileData = activeData.slice((mobilePage - 1) * 10, mobilePage * 10);
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header
         title="Placement Candidates"
         subtitle="Manage ready pool, interview schedules, and confirmed placements"
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Candidates" }]}
       />
 
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Summary Stats Row (2x2 on mobile, 5th card spans full width) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -777,7 +778,8 @@ const PlacementReadyStudents = () => {
         student={selectedForPost}
         onSuccess={refetchAll}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

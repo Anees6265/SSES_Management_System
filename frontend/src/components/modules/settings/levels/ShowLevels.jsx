@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import PageNavbar from '../../../shared/navbar/PageNavbar';
+import Header from '../../../shared/sidebar/Header';
 import { useGetAllLevelsQuery } from '../../../../redux/api/authApi';
 import Loader from '../../../shared/loader/Loader';
 import { Layers } from 'lucide-react';
@@ -54,10 +54,10 @@ const ShowLevels = () => {
 
   return (
     <>
-      <PageNavbar
+      <Header
         title="All Levels"
         subtitle="View all levels across departments and subdepartments"
-        showBackButton={false}
+        showBack={false}
       />
       <div className="mt-1 border border-slate-200/80 bg-white shadow-xs rounded-xl sm:rounded-2xl">
         {/* Search & Stats Bar */}

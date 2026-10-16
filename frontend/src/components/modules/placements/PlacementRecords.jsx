@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import Avatar from "../../shared/Avatar";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
+import Header from "../../shared/sidebar/Header";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const PlacementRecords = () => {
@@ -81,6 +82,14 @@ const PlacementRecords = () => {
 
   return (
     <>
+      <Header
+        title="Placement Interview Records"
+        subtitle="Manage and track student interview records and placement status"
+        breadcrumbs={[
+          { label: "Placements", path: "/placements/dashboard" },
+          { label: "Interview Records" },
+        ]}
+      />
       <div className="space-y-6 p-4">
         {students.map((student) => {
           const interviews = student.PlacementinterviewRecord || student.interviewRecord || [];

@@ -170,7 +170,7 @@ const DepartmentPlacementDetail = () => {
   ];
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header
         title={`${deptMeta.name} — Placement Dashboard`}
         showBack={false}
@@ -181,7 +181,8 @@ const DepartmentPlacementDetail = () => {
         ]}
       />
 
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* Header Title Banner & Filter Bar */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm space-y-3.5 sm:space-y-4">
@@ -688,8 +689,9 @@ const DepartmentPlacementDetail = () => {
           </div>
         </div>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

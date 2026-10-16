@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useUpdateUserMutation } from "../../../redux/api/authApi";
 import { toast } from "react-toastify";
 import profileImg from "../../../assets/images/profile-img.png";
-import FaceRegistration from "../../modules/face-auth/FaceRegistration";
+// import FaceRegistration from "../../modules/face-auth/FaceRegistration"; // Face recognition disabled
 import { FiCamera, FiCheck } from "react-icons/fi";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
@@ -17,29 +17,31 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
         department: isGlobalAdmin ? "SSISM" : (user?.department || ""),
         isActive: user?.isActive ?? true,
     });
-    const [showFaceRegistration, setShowFaceRegistration] = useState(false);
-    const [hasFaceRegistered, setHasFaceRegistered] = useState(false);
+    // Face recognition disabled
+    // const [showFaceRegistration, setShowFaceRegistration] = useState(false);
+    // const [hasFaceRegistered, setHasFaceRegistered] = useState(false);
     const [previewUrl, setPreviewUrl] = useState("");
     const [profileImageBase64, setProfileImageBase64] = useState("");
     const fileInputRef = useRef(null);
 
     const [updateUser, { isLoading }] = useUpdateUserMutation();
 
-    useEffect(() => {
-        checkFaceRegistration();
-    }, []);
+    // Face recognition disabled
+    // useEffect(() => {
+    //     checkFaceRegistration();
+    // }, []);
 
-    const checkFaceRegistration = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/face-auth/check-face/${user?.email}`);
-            const data = await response.json();
-            if (data.success) {
-                setHasFaceRegistered(data.hasFaceRegistered);
-            }
-        } catch (error) {
-            console.error('Error checking face registration:', error);
-        }
-    };
+    // const checkFaceRegistration = async () => {
+    //     try {
+    //         const response = await fetch(`${import.meta.env.VITE_API_URL.replace('/api', '')}/api/face-auth/check-face/${user?.email}`);
+    //         const data = await response.json();
+    //         if (data.success) {
+    //             setHasFaceRegistered(data.hasFaceRegistered);
+    //         }
+    //     } catch (error) {
+    //         console.error('Error checking face registration:', error);
+    //     }
+    // };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -242,6 +244,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                     <span className="text-sm">Active</span>
                 </label>
 
+                {/* Face Recognition (Disabled)
                 <div className="border-t pt-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-3">Face Recognition</h3>
                     <div className="flex items-center justify-between">
@@ -257,8 +260,10 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                         </button>
                     </div>
                 </div>
+                */}
             </form>
 
+            {/* Face Registration Modal (Disabled)
             {showFaceRegistration && (
                 <FaceRegistration
                     email={user?.email}
@@ -270,6 +275,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                     onClose={() => setShowFaceRegistration(false)}
                 />
             )}
+            */}
         </>
     );
 };

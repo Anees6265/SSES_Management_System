@@ -126,7 +126,7 @@ export default function StudentPortalLayout() {
       </div>
 
       {/* Nav Links */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overscroll-contain" style={{ overscrollBehavior: 'contain' }}>
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -206,7 +206,7 @@ export default function StudentPortalLayout() {
       <SecurityHelmet title={pageTitle} />
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 shrink-0 print:hidden">
+      <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-100 shrink-0 print:hidden overscroll-contain" style={{ overscrollBehavior: 'contain' }}>
         <SidebarContent onClose={null} />
       </aside>
 
@@ -226,9 +226,10 @@ export default function StudentPortalLayout() {
 
         {/* Drawer with smooth slide from left */}
         <aside
-          className={`relative z-50 w-64 max-w-[80vw] h-full bg-white shadow-2xl transition-transform duration-300 ease-out transform ${
+          className={`relative z-50 w-64 max-w-[80vw] h-full bg-white shadow-2xl transition-transform duration-300 ease-out transform overscroll-contain ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
+          style={{ overscrollBehavior: 'contain' }}
         >
           <SidebarContent onClose={() => setSidebarOpen(false)} />
         </aside>

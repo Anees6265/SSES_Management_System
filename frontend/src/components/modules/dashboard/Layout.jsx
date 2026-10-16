@@ -96,12 +96,13 @@ const Layout = () => {
     };
 
     return (
-        <div className="min-h-screen">
+        <div className="h-screen overflow-hidden">
             <SecurityHelmet title={getPageTitle()} />
             <SidebarProvider>
                 <Sidebar>
                 <Routes>
                     <Route path="/" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><AdminDashboard /></ProtectedRoute>} />
+                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
                     <Route path="/attendance-details" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><AttendanceDetails /></ProtectedRoute>} />
                     <Route path="/user-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><UsersManagement /></ProtectedRoute>} />
                     <Route path="/user-profile/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><UserProfile /></ProtectedRoute>} />

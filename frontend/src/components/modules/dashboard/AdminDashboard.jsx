@@ -36,6 +36,7 @@ import Header from "../../shared/sidebar/Header";
 import api from "../../../utils/axiosInstance";
 import { useGetAllSessionsQuery } from "../../../redux/api/authApi";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import NotificationDrawer from "../../shared/notifications/NotificationDrawer";
 
 // ── Clean, Calm Stat Card Component ──────────────────────────
 const CleanStatCard = ({
@@ -373,6 +374,7 @@ const AdminDashboard = () => {
   const userObj = JSON.parse(localStorage.getItem("user") || "{}");
 
   const isDepartmentUser = ["hod", "faculty", "placement_officer"].includes(role);
+  const isSuperAdminOrAdmin = ["superadmin", "admin"].includes(role);
   const departmentName = userObj.department || "ITEG";
   const departmentSubtext =
     departmentName === "ITEG" ? "IT & ENGINEERING" : `${departmentName} DEPARTMENT`;
@@ -380,6 +382,7 @@ const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const depts = data?.departments || [];
 
   // Department Table Search
   const [deptSearch, setDeptSearch] = useState("");
@@ -393,6 +396,40 @@ const AdminDashboard = () => {
   const [academicYearLabel, setAcademicYearLabel] = useState("All Sessions");
   const [selectedLevel, setSelectedLevel] = useState("All");
   const [showNotification, setShowNotification] = useState(false);
+  const [userNotifications, setUserNotifications] = useState(null);
+
+  const defaultNotifications = useMemo(() => {
+    const list = [];
+    if (isSuperAdminOrAdmin) {
+      list.push({
+        id: "role-welcome",
+        title: "Administrator Privileges Active",
+        message: `Welcome back, ${userObj.name || "Administrator"}! Institutional governance active across all ${depts.length} departments. Current cycle: ${academicYearLabel}.`,
+        time: "Active",
+        type: "success",
+      });
+    } else {
+      list.push({
+        id: "faculty-welcome",
+        title: `${departmentName || "Department"} Faculty Access`,
+        message: `Logged in as ${userObj.name || "Faculty"} (${role.toUpperCase()}) for the ${departmentName || "Assigned"} department. Current cycle: ${academicYearLabel}.`,
+        time: "Active",
+        type: "success",
+      });
+    }
+
+    list.push({
+      id: "system-sync",
+      title: "System Synchronization Live",
+      message: `Academic Session ${academicYearLabel} is synchronized. Attendance, syllabus tracking, and student performance metrics are up to date.`,
+      time: "Live",
+      type: "info",
+    });
+
+    return list;
+  }, [isSuperAdminOrAdmin, userObj.name, role, depts.length, departmentName, academicYearLabel]);
+
+  const activeNotifications = userNotifications ?? defaultNotifications;
 
   // Clear legacy localStorage cache on mount so dashboard always opens with All Sessions by default
   useEffect(() => {
@@ -452,7 +489,6 @@ const AdminDashboard = () => {
   const s = data?.studentStats || {};
   const g = data?.genderBreakdown || {};
   const p = data?.placementSummary || {};
-  const depts = data?.departments || [];
 
   const totalGender = (g.male || 0) + (g.female || 0);
   const malePct = totalGender > 0 ? Math.round((g.male / totalGender) * 100) : 0;
@@ -483,7 +519,7 @@ const AdminDashboard = () => {
   // ─────────────────────────────────────────────────────────────
   if (isDepartmentUser) {
     return (
-      <div className="bg-slate-50 min-h-screen">
+      <>
         {/* Header Bar */}
         <Header
           title="Department Dashboard"
@@ -501,11 +537,14 @@ const AdminDashboard = () => {
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-orange-500" : ""}`} />
               </button>
               <button
-                onClick={() => setShowNotification(!showNotification)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs"
-                title="Information"
+                onClick={() => setShowNotification(true)}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs relative"
+                title="Notifications"
               >
                 <Bell className="w-4 h-4" />
+                {activeNotifications.length > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                )}
               </button>
             </div>
           }
@@ -548,24 +587,7 @@ const AdminDashboard = () => {
           </div>
         </Header>
 
-        {/* Info Notification Toast */}
-        {showNotification && (
-          <div className="mx-3 sm:mx-6 mt-4 p-3.5 bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl text-xs sm:text-sm flex justify-between items-center shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
-              <span>
-                Logged in as <strong>{userObj.name || "Faculty"}</strong> ({role.toUpperCase()}) for the{" "}
-                <strong>{departmentName}</strong> department. Selected session: <strong>{academicYearLabel}</strong>.
-              </span>
-            </div>
-            <button
-              onClick={() => setShowNotification(false)}
-              className="text-orange-400 hover:text-orange-900 cursor-pointer p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="bg-slate-50 min-h-screen">
 
         <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
           {error && (
@@ -930,14 +952,23 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-    );
-  }
+
+      <NotificationDrawer
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        notifications={activeNotifications}
+        onClearAll={() => setUserNotifications([])}
+        onDismiss={(id) => setUserNotifications((prev) => (prev ?? defaultNotifications).filter((n) => n.id !== id))}
+      />
+    </>
+  );
+}
 
   // ─────────────────────────────────────────────────────────────
   // ── 2. RENDER SUPER ADMIN / ADMIN GLOBAL DASHBOARD ───────────
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <>
       {/* Header Section */}
       <Header
         title={role === "superadmin" ? "Super Admin Dashboard" : "Admin Dashboard"}
@@ -955,11 +986,14 @@ const AdminDashboard = () => {
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-orange-500" : ""}`} />
             </button>
             <button
-              onClick={() => setShowNotification(!showNotification)}
-              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs"
-              title="System Information"
+              onClick={() => setShowNotification(true)}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs relative"
+              title="Notifications"
             >
               <Bell className="w-4 h-4" />
+              {activeNotifications.length > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+              )}
             </button>
           </div>
         }
@@ -1002,24 +1036,7 @@ const AdminDashboard = () => {
         </div>
       </Header>
 
-      {/* Welcome Notification Panel */}
-      {showNotification && (
-        <div className="mx-3 sm:mx-6 mt-4 p-3.5 bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl text-xs sm:text-sm flex justify-between items-center shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
-            <span>
-              Welcome back, <strong>{userObj.name || "Administrator"}</strong>! Institutional privileges active across all{" "}
-              <strong>{depts.length} departments</strong>. Selected session: <strong>{academicYearLabel}</strong>.
-            </span>
-          </div>
-          <button
-            onClick={() => setShowNotification(false)}
-            className="text-orange-400 hover:text-orange-900 cursor-pointer p-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <div className="bg-slate-50 min-h-screen">
 
       <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
         {error && (
@@ -1448,6 +1465,15 @@ const AdminDashboard = () => {
         <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
       </div>
     </div>
+
+    <NotificationDrawer
+      isOpen={showNotification}
+      onClose={() => setShowNotification(false)}
+      notifications={activeNotifications}
+      onClearAll={() => setUserNotifications([])}
+      onDismiss={(id) => setUserNotifications((prev) => (prev ?? defaultNotifications).filter((n) => n.id !== id))}
+    />
+    </>
   );
 };
 

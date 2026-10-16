@@ -5,8 +5,8 @@ import { HiArrowNarrowLeft } from "react-icons/hi";
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
-import { taskAPI, studentAPI } from '../../../services/taskService';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
+import Header from '../../shared/sidebar/Header';
 
 export default function TaskList() {
   const { id } = useParams();
@@ -282,45 +282,38 @@ export default function TaskList() {
   const completedTasks = tasks.filter(task => task.status === 'completed');
 
   return (
-    <div className="min-h-screen bg-white p-4">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(`/student-profile/${id}`)}
-              className="group flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 text-gray-700 hover:text-gray-900"
-            >
-              <HiArrowNarrowLeft className="text-lg group-hover:-translate-x-1 transition-transform" />
-              <span className="text-sm font-medium">Back to Profile</span>
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-black">Task List</h1>
-              <p className="text-sm text-gray-600">
-                {studentInfo ? 
-                  `Manage tasks for ${studentInfo.firstName} ${studentInfo.lastName} (Level ${studentInfo.currentLevel})` : 
-                  'Manage student tasks and assignments'
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+    <>
+      <Header
+        title="Task List"
+        subtitle={studentInfo ? 
+          `Manage tasks for ${studentInfo.firstName} ${studentInfo.lastName} (Level ${studentInfo.currentLevel})` : 
+          'Manage student tasks and assignments'
+        }
+        breadcrumbs={[
+          { label: "Students", path: "/student-detail-table" },
+          ...(studentInfo ? [{ label: `${studentInfo.firstName} ${studentInfo.lastName}`, path: `/student-profile/${id}` }] : []),
+          { label: "Task List" },
+        ]}
+        onBackClick={() => navigate(`/student-profile/${id}`)}
+        actions={
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setBulkUploadModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors text-sm cursor-pointer"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors text-xs sm:text-sm cursor-pointer"
             >
               <span>Bulk Upload</span>
             </button>
             <button
               onClick={() => setAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FDA92D] hover:bg-[#E6941A] text-white rounded-lg font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors text-xs sm:text-sm cursor-pointer"
             >
-              <FaPlus className="text-sm" />
+              <FaPlus className="text-xs sm:text-sm" />
               <span>Add Task</span>
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
+      <div className="min-h-screen bg-white p-4">
 
       {/* Task Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -442,7 +435,8 @@ export default function TaskList() {
           fileInputRef={fileInputRef}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

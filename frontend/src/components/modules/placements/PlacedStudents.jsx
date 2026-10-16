@@ -141,8 +141,9 @@ const PlacedStudents = () => {
     
     if (isNoStudentsError) {
       return (
-        <div className="bg-slate-50 min-h-screen pb-12">
+        <>
           <Header title={`Placed Students — ${apiCompanyName}`} />
+          <div className="bg-slate-50 min-h-screen pb-12">
           <div className="p-3.5 sm:p-5 lg:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -167,28 +168,31 @@ const PlacedStudents = () => {
             />
           </div>
         </div>
+        </>
       );
     }
 
     return (
-      <div className="bg-slate-50 min-h-screen p-3.5 sm:p-6">
+      <>
         <Header title="Placed Students Error" />
-        <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-8 sm:mt-12">
-          <h3 className="text-base font-bold text-gray-800">Error Loading Students</h3>
-          <p className="text-xs text-red-500 mt-1">{error?.data?.message || 'Something went wrong'}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold"
-          >
-            Try Again
-          </button>
+        <div className="bg-slate-50 min-h-screen p-3.5 sm:p-6">
+          <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-8 sm:mt-12">
+            <h3 className="text-base font-bold text-gray-800">Error Loading Students</h3>
+            <p className="text-xs text-red-500 mt-1">{error?.data?.message || 'Something went wrong'}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header
         title={`Placed Students — ${apiCompanyName}`}
         breadcrumbs={[
@@ -198,6 +202,7 @@ const PlacedStudents = () => {
         ]}
       />
 
+      <div className="bg-slate-50 min-h-screen pb-12">
       <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Company Header Banner Card ── */}
@@ -386,6 +391,7 @@ const PlacedStudents = () => {
 
       </div>
     </div>
+    </>
   );
 };
 

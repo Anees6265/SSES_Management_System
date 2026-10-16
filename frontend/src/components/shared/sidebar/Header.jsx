@@ -41,6 +41,7 @@ const Header = ({
   onBack,
   onBackClick,
   backPath,
+  className = "",
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,7 +76,7 @@ const Header = ({
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-white shadow-xs">
+    <header className={`sticky top-0 z-20 bg-white shadow-xs w-full print:hidden ${className}`}>
 
       {/* Mobile top bar */}
       <div className="lg:hidden border-b border-gray-200">

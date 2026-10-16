@@ -255,7 +255,10 @@ const PlacementDriveManagement = () => {
                 <label className="text-xs font-bold text-slate-700 block">Company Name *</label>
                 <button
                   type="button"
-                  onClick={() => setAddCompanyModalOpen(true)}
+                  onClick={() => {
+                    setCreateModalOpen(false);
+                    setAddCompanyModalOpen(true);
+                  }}
                   className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-0.5 cursor-pointer"
                 >
                   <MdAdd size={14} /> Add Company
@@ -265,6 +268,7 @@ const PlacementDriveManagement = () => {
                 value={form.companyName}
                 onChange={(val) => {
                   if (val === "__add_new__") {
+                    setCreateModalOpen(false);
                     setAddCompanyModalOpen(true);
                   } else {
                     const matched = activeCompanies.find(c => c.companyName === val);
@@ -391,8 +395,16 @@ const PlacementDriveManagement = () => {
       <AddCompanyModal
         isOpen={isAddCompanyModalOpen}
         onClose={() => setAddCompanyModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(addedCompany) => {
           refetchCompanies();
+          setAddCompanyModalOpen(false);
+          if (addedCompany?.companyName) {
+            setForm((prev) => ({
+              ...prev,
+              companyName: addedCompany.companyName,
+              jobLocation: prev.jobLocation || addedCompany.location || addedCompany.city || ""
+            }));
+          }
         }}
       />
     </>

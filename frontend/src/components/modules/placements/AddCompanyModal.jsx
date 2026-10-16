@@ -6,6 +6,7 @@ import {
   useUpdateCompanyMutation,
   useCheckCompanyDuplicateQuery
 } from "../../../redux/api/authApi";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const INDUSTRY_OPTIONS = [
   "IT Services",
@@ -167,14 +168,15 @@ const AddCompanyModal = ({
       }
 
       if (isEditMode) {
-        await updateCompany({ id: companyToEdit._id, ...payload }).unwrap();
+        const res = await updateCompany({ id: companyToEdit._id, ...payload }).unwrap();
         toast.success("Company updated successfully!");
+        onSuccess?.(res?.data || payload);
       } else {
         const res = await createCompany(payload).unwrap();
         toast.success(res?.message || "Company added successfully.");
+        onSuccess?.(res?.data || payload);
       }
 
-      onSuccess?.();
       onClose();
     } catch (err) {
       if (err?.data?.duplicate && err?.data?.existingCompany) {
@@ -397,30 +399,24 @@ const AddCompanyModal = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Industry Sector</label>
-                <select
-                  name="industry"
+                <SelectDropdown
                   value={formData.industry}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none transition focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                >
-                  {INDUSTRY_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData(prev => ({ ...prev, industry: val }))}
+                  options={INDUSTRY_OPTIONS.map((opt) => ({ value: opt, label: opt }))}
+                  className="w-full"
+                  buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl font-medium outline-none transition flex items-center justify-between text-slate-800 shadow-2xs cursor-pointer"
+                />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Company Type</label>
-                <select
-                  name="companyType"
+                <SelectDropdown
                   value={formData.companyType}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none transition focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                >
-                  {COMPANY_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData(prev => ({ ...prev, companyType: val }))}
+                  options={COMPANY_TYPES.map((type) => ({ value: type, label: type }))}
+                  className="w-full"
+                  buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl font-medium outline-none transition flex items-center justify-between text-slate-800 shadow-2xs cursor-pointer"
+                />
               </div>
 
               <div className="sm:col-span-2">

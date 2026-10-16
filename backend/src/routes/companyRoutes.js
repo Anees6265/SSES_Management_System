@@ -6,7 +6,7 @@ const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const auth = [verifyToken];
 const canManageCompanies = [
   verifyToken,
-  checkRole(["superadmin", "placement_officer", "admin"])
+  checkRole(["superadmin", "placement_officer", "admin", "hod", "faculty"])
 ];
 
 // Public / Authenticated Read Routes

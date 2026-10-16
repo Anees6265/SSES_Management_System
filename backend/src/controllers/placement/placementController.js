@@ -52,6 +52,7 @@ exports.getReadyStudents = async (req, res) => {
           { path: "sessionId", select: "name" }
         ]
       })
+      .populate("PlacementinterviewRecord.companyRef", "companyName location hrDetails hrEmail hrContact")
       .lean();
 
     let data = placements
@@ -93,7 +94,28 @@ exports.getReadyStudents = async (req, res) => {
           rawReadinessStatus: p.readinessStatus,
           resumeURL: p.resumeURL || p.studentId.documents?.find((d) => (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf")?.fileURL || "",
           hasResume: Boolean(p.resumeURL || p.studentId.documents?.some((d) => (d.title || "").toLowerCase().includes("resume"))),
-          PlacementinterviewRecord: p.PlacementinterviewRecord,
+          PlacementinterviewRecord: (p.PlacementinterviewRecord || []).map((r) => ({
+            ...r,
+            companyName: r.companyRef?.companyName || r.companyName || "—",
+            location: r.companyRef?.location || r.location || "—",
+            interviewDate: r.scheduleDate || r.interviewDate,
+            scheduleDate: r.scheduleDate || r.interviewDate,
+            result: r.status || r.result || "Pending",
+            status: r.status || r.result || "Pending",
+            remark: r.statusRemark || r.remark || "",
+            statusRemark: r.statusRemark || r.remark || "",
+          })),
+          interviewRecord: (p.PlacementinterviewRecord || []).map((r) => ({
+            ...r,
+            companyName: r.companyRef?.companyName || r.companyName || "—",
+            location: r.companyRef?.location || r.location || "—",
+            interviewDate: r.scheduleDate || r.interviewDate,
+            scheduleDate: r.scheduleDate || r.interviewDate,
+            result: r.status || r.result || "Pending",
+            status: r.status || r.result || "Pending",
+            remark: r.statusRemark || r.remark || "",
+            statusRemark: r.statusRemark || r.remark || "",
+          })),
           placedInfo: p.placedInfo,
         };
       });
@@ -176,7 +198,7 @@ exports.createInterview = async (req, res) => {
 exports.updateInterviewStatus = async (req, res) => {
   try {
     const { studentId, interviewId } = req.params;
-    const { status, rescheduleDate } = req.body;
+    const { status, result, remark, statusRemark, rescheduleDate } = req.body;
 
     const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
@@ -184,8 +206,15 @@ exports.updateInterviewStatus = async (req, res) => {
     const interview = placement.PlacementinterviewRecord.id(interviewId);
     if (!interview) return res.status(404).json({ message: "Interview not found" });
 
-    interview.status = status;
-    if (status === "Rescheduled" && rescheduleDate) {
+    const newStatus = status || result;
+    if (newStatus) {
+      interview.status = newStatus;
+    }
+    const newRemark = remark !== undefined ? remark : statusRemark;
+    if (newRemark !== undefined) {
+      interview.statusRemark = newRemark;
+    }
+    if (newStatus === "Rescheduled" && rescheduleDate) {
       interview.rescheduleDate = new Date(rescheduleDate);
     }
 

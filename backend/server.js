@@ -76,6 +76,7 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+
 // Import Routes
 const routes = require("./src/routes");
 const departmentRoutes = require("./src/routes/departmentRoutes");

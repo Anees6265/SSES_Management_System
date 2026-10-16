@@ -154,12 +154,29 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
   }
 });
 
-// Update task
-router.patch("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) => {
+// Update task handler
+const handleUpdateTaskRoute = async (req, res) => {
   try {
+    const { taskId } = req.params;
+    const updateData = { ...req.body, updatedAt: new Date() };
+
+    // Support both title and taskTitle from frontend
+    if (req.body.taskTitle && !req.body.title) {
+      updateData.title = req.body.taskTitle;
+    }
+    // Support status ('active'/'inactive' or boolean) mapping to isActive boolean
+    if (req.body.status !== undefined) {
+      updateData.isActive = req.body.status === "active" || req.body.status === true;
+    }
+
+    // Clean up non-schema fields so Mongoose validators don't complain
+    delete updateData.taskTitle;
+    delete updateData.status;
+    delete updateData.taskId;
+
     const task = await Task.findByIdAndUpdate(
-      req.params.taskId,
-      { ...req.body, updatedAt: new Date() },
+      taskId,
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -167,11 +184,15 @@ router.patch("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =>
       return res.status(404).json({ success: false, message: "Task not found" });
     }
 
-    // Sync changes to students
+    // Sync changes to students asynchronously in background (do NOT block HTTP response)
     if (task.syllabusVersionId) {
-      await syncTasksToSubLevelStudents(task.syllabusVersionId).catch(() => {});
+      setImmediate(() => syncTasksToSubLevelStudents(task.syllabusVersionId).catch((err) => {
+        console.error("Async syncTasksToSubLevelStudents error:", err);
+      }));
     } else if (task.subLevelId) {
-      await syncTasksToSubLevelStudents(null, task.subLevelId).catch(() => {});
+      setImmediate(() => syncTasksToSubLevelStudents(null, task.subLevelId).catch((err) => {
+        console.error("Async syncTasksToSubLevelStudents error:", err);
+      }));
     }
 
     res.status(200).json({
@@ -180,9 +201,13 @@ router.patch("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =>
       data: task
     });
   } catch (error) {
+    console.error("Task update error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
-});
+};
+
+router.patch("/:taskId", verifyToken, checkRole(writeRoles), handleUpdateTaskRoute);
+router.put("/:taskId", verifyToken, checkRole(writeRoles), handleUpdateTaskRoute);
 
 // Delete task (soft delete)
 router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) => {

@@ -31,8 +31,10 @@ const authenticateToken = verifyToken;
 
 // Middleware to check required role
 const checkRole = (roles) => {
+    const allowed = roles.map(r => String(r).toLowerCase().trim());
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
+        const userRole = String(req.user?.role || "").toLowerCase().trim();
+        if (!req.user || !allowed.includes(userRole)) {
             return res.status(403).json({ message: "Access Denied. Unauthorized Role." });
         }
         next();

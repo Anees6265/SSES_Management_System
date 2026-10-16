@@ -13,7 +13,7 @@ const RoleBasedPlacementDashboard = () => {
   const navigate = useNavigate();
   const role = (localStorage.getItem("role") || "").toLowerCase();
   
-  const isGlobalAdmin = ["superadmin", "admin"].includes(role);
+  const isGlobalAdmin = ["superadmin", "admin", "placement_officer"].includes(role);
   
   const { data: res = {}, isLoading } = useGetAllSubdepartmentsQuery(undefined, {
     skip: isGlobalAdmin
@@ -53,6 +53,7 @@ const RoleBasedPlacementDashboard = () => {
       <Header
         title="Placement Dashboard"
         subtitle="Select a department to view placement flow"
+        showBack={false}
         breadcrumbs={[{ label: "Placements" }, { label: "Dashboard" }]}
       />
 

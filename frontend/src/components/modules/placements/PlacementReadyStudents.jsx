@@ -13,6 +13,7 @@ import TabsCommon from "../../shared/table/TabsCommon";
 import Avatar from "../../shared/Avatar";
 import StatsCard from "./dashboard/StatsCard";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
@@ -492,23 +493,16 @@ const PlacementReadyStudents = () => {
             {/* Filter Toolbar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0">
               {/* Technology Filter */}
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 sm:py-1.5 text-xs font-medium text-slate-700">
-                <div className="flex items-center gap-1.5 text-slate-500">
-                  <MdFilterList className="text-slate-400 text-sm" />
-                  <span>Technology:</span>
-                </div>
-                <select
-                  value={selectedTech}
-                  onChange={(e) => setSelectedTech(e.target.value)}
-                  className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer max-w-[150px] truncate text-right sm:text-left"
-                >
-                  {availableTechnologies.map((tech) => (
-                    <option key={tech} value={tech}>
-                      {tech}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectDropdown
+                value={selectedTech}
+                onChange={(val) => setSelectedTech(val)}
+                options={availableTechnologies.map((tech) => ({
+                  value: tech,
+                  label: tech === "All" ? "All Technologies" : tech
+                }))}
+                className="w-full sm:w-auto sm:min-w-[165px]"
+                buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
 
               {/* Search Input */}
               <div className="relative w-full sm:w-64">

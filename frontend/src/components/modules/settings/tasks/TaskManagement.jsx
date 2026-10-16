@@ -1,8 +1,9 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
     MdMoreVert, MdSearch, MdAdd, MdFilterList,
     MdExpandMore, MdClose, MdViewList, MdGridView,
-    MdChevronLeft, MdChevronRight
+    MdChevronLeft, MdChevronRight, MdVisibility, MdEdit, MdDeleteOutline
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -33,77 +34,139 @@ const PRIORITY_STYLES = {
 
 const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
     const [open, setOpen] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const buttonRef = useRef(null);
+
+    const handleToggle = (e) => {
+        e.stopPropagation();
+        if (open) {
+            setOpen(false);
+            return;
+        }
+
+        if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            const menuWidth = 150;
+            const menuHeight = 135;
+
+            // Determine vertical position: open upward if too close to viewport bottom
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
+            const top = openUpward ? rect.top - menuHeight - 4 : rect.bottom + 4;
+
+            // Determine horizontal position: align to right edge of button, ensure it stays within screen
+            let left = rect.right - menuWidth;
+            if (left < 10) left = 10;
+            if (left + menuWidth > window.innerWidth - 10) {
+                left = window.innerWidth - menuWidth - 10;
+            }
+
+            setMenuPosition({ top, left });
+            setOpen(true);
+        }
+    };
+
+    useEffect(() => {
+        if (!open) return;
+
+        const handleScrollOrResize = () => setOpen(false);
+        window.addEventListener("scroll", handleScrollOrResize, true);
+        window.addEventListener("resize", handleScrollOrResize);
+
+        return () => {
+            window.removeEventListener("scroll", handleScrollOrResize, true);
+            window.removeEventListener("resize", handleScrollOrResize);
+        };
+    }, [open]);
 
     return (
         <div className="relative flex justify-end">
             <button
+                ref={buttonRef}
                 type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setOpen((p) => !p);
-                }}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                onClick={handleToggle}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
                 aria-label="Actions"
+                title="Task Actions"
             >
                 <MdMoreVert size={18} />
             </button>
-            {open && (
-                <>
-                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 top-8 z-40 bg-white border border-slate-200 rounded-xl shadow-xl w-38 py-1.5 overflow-hidden text-xs font-semibold text-slate-700">
-                        {onViewDetails && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setOpen(false);
-                                    onViewDetails(task);
-                                }}
-                                className="w-full px-4 py-2 text-left transition text-slate-700 hover:bg-slate-50 font-bold cursor-pointer"
-                            >
-                                View Details
-                            </button>
-                        )}
-                        {onEdit && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setOpen(false);
-                                    onEdit(task);
-                                }}
-                                className="w-full px-4 py-2 text-left transition text-slate-700 hover:bg-slate-50 font-bold cursor-pointer"
-                            >
-                                Edit Task
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => {
+            {open &&
+                createPortal(
+                    <>
+                        <div
+                            className="fixed inset-0 z-[99998]"
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 setOpen(false);
-                                onDelete(task);
                             }}
-                            className="w-full px-4 py-2 text-left transition text-rose-600 hover:bg-rose-50 font-bold cursor-pointer"
+                        />
+                        <div
+                            style={{
+                                position: "fixed",
+                                top: `${menuPosition.top}px`,
+                                left: `${menuPosition.left}px`,
+                            }}
+                            className="z-[99999] bg-white border border-slate-200 rounded-xl shadow-2xl w-38 py-1.5 overflow-hidden text-xs font-semibold text-slate-700 animate-in fade-in zoom-in-95 duration-100"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            Delete Task
-                        </button>
-                    </div>
-                </>
-            )}
+                            {onViewDetails && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        onViewDetails(task);
+                                    }}
+                                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition text-slate-700 hover:bg-orange-50 hover:text-orange-600 font-bold cursor-pointer"
+                                >
+                                    <MdVisibility size={15} className="text-slate-400" />
+                                    <span>View Details</span>
+                                </button>
+                            )}
+                            {onEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        onEdit(task);
+                                    }}
+                                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition text-slate-700 hover:bg-orange-50 hover:text-orange-600 font-bold cursor-pointer"
+                                >
+                                    <MdEdit size={15} className="text-slate-400" />
+                                    <span>Edit Task</span>
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setOpen(false);
+                                    onDelete(task);
+                                }}
+                                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition text-rose-600 hover:bg-rose-50 font-bold cursor-pointer border-t border-slate-100"
+                            >
+                                <MdDeleteOutline size={15} className="text-rose-400" />
+                                <span>Delete Task</span>
+                            </button>
+                        </div>
+                    </>,
+                    document.body
+                )}
         </div>
     );
 };
 
 const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
-    const [title, setTitle] = useState(task?.taskTitle || "");
-    const [description, setDescription] = useState(task?.description || "");
+    const [title, setTitle] = useState(task?.taskTitle || task?.title || "");
+    const [description, setDescription] = useState(task?.description || task?.raw?.description || "");
     const [priority, setPriority] = useState(task?.priority || "medium");
-    const [status, setStatus] = useState(task?.status || "active");
+    const [status, setStatus] = useState(task?.status || (task?.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
 
     useEffect(() => {
         if (task) {
-            setTitle(task.taskTitle || "");
-            setDescription(task.description || "");
+            setTitle(task.taskTitle || task.title || "");
+            setDescription(task.description || task.raw?.description || "");
             setPriority(task.priority || "medium");
-            setStatus(task.status || "active");
+            setStatus(task.status || (task.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
         }
     }, [task]);
 
@@ -117,10 +180,12 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
         }
         onSave({
             taskId: task.id || task._id,
+            title: title.trim(),
             taskTitle: title.trim(),
             description: description.trim(),
             priority,
             status,
+            isActive: status === "active",
         });
     };
 
@@ -144,7 +209,7 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                 </div>
 
                 {/* Form Body */}
-                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto pb-10">
                     <div>
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Task Title <span className="text-rose-500">*</span>
@@ -177,28 +242,32 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                 Priority
                             </label>
-                            <select
+                            <SelectDropdown
                                 value={priority}
-                                onChange={(e) => setPriority(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-                            >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
+                                onChange={(val) => setPriority(val)}
+                                options={[
+                                    { value: "low", label: "Low Priority" },
+                                    { value: "medium", label: "Medium Priority" },
+                                    { value: "high", label: "High Priority" },
+                                ]}
+                                className="w-full"
+                                buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                 Status
                             </label>
-                            <select
+                            <SelectDropdown
                                 value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-                            >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
+                                onChange={(val) => setStatus(val)}
+                                options={[
+                                    { value: "active", label: "Active" },
+                                    { value: "inactive", label: "Inactive" },
+                                ]}
+                                className="w-full"
+                                buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+                            />
                         </div>
                     </div>
 
@@ -294,6 +363,18 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                                     </>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Description if present */}
+                    {(task.description || task.raw?.description) && (
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Description
+                            </p>
+                            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                {task.description || task.raw?.description}
+                            </p>
                         </div>
                     )}
 
@@ -422,10 +503,12 @@ const TaskManagement = () => {
                 level: context.level?.name || "-",
                 subLevel: context.subLevel?.name || "-",
                 taskTitle: task.title || "-",
+                description: task.description || "",
                 subject: task.subjectName || "General",
                 topic: task.topicName || "",
                 priority: task.priority || "medium",
                 status: task.isActive ? "active" : "inactive",
+                isActive: task.isActive !== undefined ? task.isActive : true,
                 type: task.type || "assignment",
                 createdAt: task.createdAt,
                 raw: task,
@@ -540,10 +623,18 @@ const TaskManagement = () => {
             toast.success("Task updated successfully");
             setEditingTask(null);
             if (selectedTask && (selectedTask.id === updatedData.taskId || selectedTask._id === updatedData.taskId)) {
-                setSelectedTask((prev) => ({ ...prev, ...updatedData }));
+                setSelectedTask((prev) => ({
+                    ...prev,
+                    taskTitle: updatedData.title || updatedData.taskTitle,
+                    description: updatedData.description,
+                    priority: updatedData.priority,
+                    status: updatedData.status,
+                    isActive: updatedData.isActive,
+                }));
             }
             refetch();
         } catch (error) {
+            console.error("Task update error:", error);
             toast.error(error?.data?.message || "Failed to update task");
         }
     };
@@ -1048,19 +1139,21 @@ const TaskManagement = () => {
                                     {/* Rows Per Page Selector */}
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-[11px] font-semibold text-slate-500">Show:</span>
-                                        <select
+                                        <SelectDropdown
                                             value={rowsPerPage}
-                                            onChange={(e) => {
-                                                setRowsPerPage(Number(e.target.value));
+                                            onChange={(val) => {
+                                                setRowsPerPage(Number(val));
                                                 setCurrentPage(1);
                                             }}
-                                            className="h-7 sm:h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:border-orange-500 cursor-pointer shadow-2xs"
-                                        >
-                                            <option value={10}>10</option>
-                                            <option value={25}>25</option>
-                                            <option value={50}>50</option>
-                                            <option value={100}>100</option>
-                                        </select>
+                                            options={[
+                                                { value: 10, label: "10" },
+                                                { value: 25, label: "25" },
+                                                { value: 50, label: "50" },
+                                                { value: 100, label: "100" },
+                                            ]}
+                                            className="w-20"
+                                            buttonClassName="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-orange-400 flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer"
+                                        />
                                     </div>
 
                                     <div className="text-[11px] sm:text-xs text-slate-500">

@@ -170,10 +170,8 @@ const Sidebar = ({ children }) => {
   const isSubMenuActive = (subPath) => {
     const path = location.pathname;
 
-
     if (subPath === "/") return path === "/";
-    if (subPath === "/attendance-details") return path === "/attendance-details";
-
+    if (subPath === "/attendance-details") return path === "/attendance-details" || path.startsWith("/attendance-");
 
     if (subPath === "/admission-process") {
       return (
@@ -184,16 +182,18 @@ const Sidebar = ({ children }) => {
       );
     }
 
-
     if (subPath === "/student-detail-table") {
       return (
         path === "/student-detail-table" ||
+        path.startsWith("/student-detail-table/") ||
         path.startsWith("/student-profile/") ||
         path.startsWith("/student-level-interviews/") ||
-        path.startsWith("/student/")
+        path.startsWith("/student/leveldata/") ||
+        path.startsWith("/student/edit/") ||
+        (path.startsWith("/student/") && !path.startsWith("/student/task-board")) ||
+        path === "/setting/student-profile"
       );
     }
-
 
     if (subPath === "/department-management") {
       return (
@@ -201,37 +201,67 @@ const Sidebar = ({ children }) => {
         path.startsWith("/department-details/") ||
         path === "/subdepartment-details" ||
         path.startsWith("/subdepartment/") ||
-        path.startsWith("/show-sublevel-tables")
+        path.startsWith("/show-sublevel-tables") ||
+        path === "/subdepartments" ||
+        path.startsWith("/levels")
       );
     }
 
+    if (subPath === "/task-management") {
+      return path === "/task-management" || path.startsWith("/student/task-board");
+    }
 
-    if (subPath === "/task-management") return path === "/task-management";
-
-
-    if (subPath === "/curriculum-management") return path === "/curriculum-management";
-
+    if (subPath === "/curriculum-management") return path === "/curriculum-management" || path.startsWith("/curriculum-");
 
     if (subPath === "/student-permission") return path === "/student-permission";
-    if (subPath === "/leave-requests") return path === "/leave-requests";
+    if (subPath === "/leave-requests") return path === "/leave-requests" || path.startsWith("/leave-requests");
 
+    // Placements
+    if (subPath === "/placements/dashboard") {
+      return (
+        path === "/placements/dashboard" ||
+        path.startsWith("/placements/department")
+      );
+    }
+
+    if (subPath === "/placements/drives") {
+      return path === "/placements/drives" || path.startsWith("/placements/drives");
+    }
+
+    if (subPath === "/placements/resume-sharing") {
+      return path === "/placements/resume-sharing" || path.startsWith("/placements/resume-sharing");
+    }
 
     if (subPath === "/readiness-status") {
       return (
         path === "/readiness-status" ||
         path.startsWith("/interview-history/") ||
-        path.startsWith("/interview-rounds-history/")
+        path.startsWith("/interview-rounds-history/") ||
+        path === "/placement-interview-record"
       );
     }
 
-
     if (subPath === "/company-details") {
-      return path === "/company-details" || path.startsWith("/placement/");
+      return (
+        path === "/company-details" ||
+        path.startsWith("/company-details/") ||
+        path.startsWith("/placement/company/")
+      );
     }
 
+    if (subPath === "/placement-post") {
+      return path === "/placement-post" || path.startsWith("/placement-post/");
+    }
 
-    if (subPath === "/placement-post") return path === "/placement-post";
-
+    // User Management
+    if (subPath === "/user-management") {
+      return (
+        path === "/user-management" ||
+        path.startsWith("/user-management/") ||
+        path.startsWith("/user-profile/") ||
+        path === "/user-permission"
+      );
+    }
 
     return path === subPath || path.startsWith(subPath + "/");
   };
@@ -312,25 +342,30 @@ const Sidebar = ({ children }) => {
 
           if (filteredSubMenu.length === 0) return null;
 
-          const isActive = openMenus.includes(item.name);
+          const isOpen = openMenus.includes(item.name);
+          const isSectionActive = filteredSubMenu.some(sub => isSubMenuActive(sub.path));
 
           return (
             <div key={idx} className="mb-1">
               <div
                 onClick={() => toggleMenu(item.name)}
-                className={`flex items-center justify-between px-2 py-2.5 rounded-lg cursor-pointer transition ${
-                  isActive ? "bg-orange-100 text-orange-400 font-semibold" : "text-gray-700 hover:bg-gray-100"
+                className={`flex items-center justify-between px-2.5 py-2.5 rounded-lg cursor-pointer transition ${
+                  isSectionActive
+                    ? "bg-orange-50 text-orange-600 font-semibold"
+                    : isOpen
+                    ? "bg-gray-100 text-gray-800 font-medium"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 <div className="flex items-center gap-3 text-[15px]">
                   {item.icon}
                   {item.name}
                 </div>
-                {isActive ? <HiChevronUp size={16} /> : <HiChevronDown size={16} />}
+                {isOpen ? <HiChevronUp size={16} /> : <HiChevronDown size={16} />}
               </div>
 
-              {isActive && (
-                <div className="mt-1">
+              {isOpen && (
+                <div className="mt-1 space-y-0.5">
                   {filteredSubMenu.map((sub, i) => {
                     const active = isSubMenuActive(sub.path);
                     return (
@@ -338,10 +373,10 @@ const Sidebar = ({ children }) => {
                         key={i}
                         to={sub.path}
                         onClick={onClose}
-                        className={`block ml-6 px-2 py-2 text-sm transition border-l-2 ${
+                        className={`block ml-6 px-3 py-2 text-sm rounded-r-md transition border-l-2 ${
                           active
-                            ? "bg-orange-50 text-orange-400 font-medium border-orange-500"
-                            : "text-gray-600 hover:bg-gray-100 border-gray-300"
+                            ? "bg-orange-50 text-orange-600 font-bold border-orange-500 shadow-2xs"
+                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-gray-300"
                         }`}
                       >
                         {sub.name}
@@ -358,14 +393,16 @@ const Sidebar = ({ children }) => {
         {systemDirectLinks
           .filter(item => showAll || hasPermission(item.permission, 'read'))
           .map((item, idx) => {
-            const active = location.pathname === item.path;
+            const active = location.pathname === item.path ||
+              location.pathname.startsWith(item.path + "/") ||
+              (item.path === "/session-management" && location.pathname.startsWith("/session"));
             return (
               <Link
                 key={idx}
                 to={item.path}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-2 py-2.5 rounded-lg text-[15px] transition mb-1 ${
-                  active ? "bg-orange-100 text-orange-400 font-semibold" : "text-gray-700 hover:bg-gray-100"
+                className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[15px] transition mb-1 ${
+                  active ? "bg-orange-100 text-orange-600 font-bold shadow-2xs" : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 {item.icon}

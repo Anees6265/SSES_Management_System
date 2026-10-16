@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useUpdateFinalResultMutation, useConfirmPlacementMutation } from "../../../redux/api/authApi";
 import { MdClose, MdFileUpload, MdBadge, MdWork, MdCheckCircle } from "react-icons/md";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const NOT_JOINING_REASONS = [
   "Higher Studies",
@@ -137,15 +138,17 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
           <form onSubmit={handleOfferSubmit} className="p-6 space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Offer Status *</label>
-              <select
+              <SelectDropdown
                 value={offerStatus}
-                onChange={(e) => setOfferStatus(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-400"
-              >
-                <option value="Received">Offer Received</option>
-                <option value="Accepted">Offer Accepted</option>
-                <option value="Declined">Offer Declined</option>
-              </select>
+                onChange={(val) => setOfferStatus(val)}
+                options={[
+                  { value: "Received", label: "Offer Received" },
+                  { value: "Accepted", label: "Offer Accepted" },
+                  { value: "Declined", label: "Offer Declined" },
+                ]}
+                className="w-full"
+                buttonClassName="w-full px-3 py-2 text-xs border border-slate-200 hover:border-orange-400 bg-white rounded-xl outline-none font-medium text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
             </div>
 
             <div>
@@ -211,15 +214,17 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
           <form onSubmit={handleJoiningSubmit} className="p-6 space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Joining Decision *</label>
-              <select
+              <SelectDropdown
                 value={joiningStatus}
-                onChange={(e) => setJoiningStatus(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-400 font-bold text-slate-800"
-              >
-                <option value="Joining Pending">Joining Pending</option>
-                <option value="Joined">Joined (Mark PLACED)</option>
-                <option value="Did Not Join">Did Not Join</option>
-              </select>
+                onChange={(val) => setJoiningStatus(val)}
+                options={[
+                  { value: "Joining Pending", label: "Joining Pending" },
+                  { value: "Joined", label: "Joined (Mark PLACED)" },
+                  { value: "Did Not Join", label: "Did Not Join" },
+                ]}
+                className="w-full"
+                buttonClassName="w-full px-3 py-2 text-xs border border-slate-200 hover:border-orange-400 bg-white rounded-xl outline-none font-bold text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+              />
             </div>
 
             {joiningStatus === "Joined" && (
@@ -238,15 +243,13 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
             {joiningStatus === "Did Not Join" && (
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">Reason for Not Joining *</label>
-                <select
+                <SelectDropdown
                   value={notJoiningReason}
-                  onChange={(e) => setNotJoiningReason(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-400"
-                >
-                  {NOT_JOINING_REASONS.map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setNotJoiningReason(val)}
+                  options={NOT_JOINING_REASONS.map((r) => ({ value: r, label: r }))}
+                  className="w-full"
+                  buttonClassName="w-full px-3 py-2 text-xs border border-slate-200 hover:border-orange-400 bg-white rounded-xl outline-none font-medium text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+                />
               </div>
             )}
 

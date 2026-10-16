@@ -14,6 +14,9 @@ const SIDEBAR_ROOT_PATHS = [
   "/task-management",
   "/curriculum-management",
   "/placements/dashboard",
+  "/placements/drives",
+  "/placements/resume-sharing",
+  "/placement-interview-record",
   "/readiness-status",
   "/company-details",
   "/placement-post",
@@ -45,7 +48,9 @@ const Header = ({
   const sidebarContext = useSidebar();
   const openMobileSidebar = sidebarContext?.openMobileSidebar;
 
-  const isSidebarRoot = SIDEBAR_ROOT_PATHS.includes(location.pathname);
+  const isSidebarRoot =
+    SIDEBAR_ROOT_PATHS.includes(location.pathname) ||
+    location.pathname.startsWith("/placements/department");
   const hasBackProp = showBack !== undefined ? showBack : showBackButton;
   const shouldShowBack = hasBackProp !== undefined
     ? Boolean(hasBackProp)

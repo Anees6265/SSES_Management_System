@@ -81,7 +81,28 @@ exports.createDrive = async (req, res) => {
 // 2. GET ALL DRIVES (Department-Filtered)
 exports.getAllDrives = async (req, res) => {
   try {
-    const filter = req.subDeptFilter || {};
+    let filter = {};
+
+    const role = (req.user?.role || "").toLowerCase();
+    if (!["superadmin", "admin", "placement_officer"].includes(role)) {
+      const allowedIds = (req.allowedSubDeptIds || []).map(id => id.toString());
+      const userId = req.user?.id || req.user?._id;
+
+      filter = {
+        $or: [
+          { subDepartmentId: null },
+          { subDepartmentId: { $exists: false } },
+          { eligibleSubDepartments: { $size: 0 } },
+          { eligibleSubDepartments: { $exists: false } },
+          ...(allowedIds.length > 0 ? [
+            { subDepartmentId: { $in: allowedIds } },
+            { eligibleSubDepartments: { $in: allowedIds } }
+          ] : []),
+          ...(userId ? [{ createdBy: userId }] : [])
+        ]
+      };
+    }
+
     const drives = await PlacementDrive.find(filter)
       .populate("shortlistedStudents", "firstName lastName prkey email studentMobile techno technology technologies track course")
       .sort({ driveDate: -1 })
@@ -191,11 +212,19 @@ exports.shareResumes = async (req, res) => {
     if (!drive) return res.status(404).json({ success: false, message: "Drive not found" });
 
     const sharedBy = req.user?.name || req.user?.email || "Placement Officer";
-    const placements = await StudentPlacement.find({ studentId: { $in: studentIds } });
+    const [placements, students] = await Promise.all([
+      StudentPlacement.find({ studentId: { $in: studentIds } }),
+      Student.find({ _id: { $in: studentIds } }).select("documents")
+    ]);
 
     const placementMap = {};
     placements.forEach(p => {
       placementMap[p.studentId.toString()] = p.resumeURL;
+    });
+
+    const studentDocMap = {};
+    students.forEach(s => {
+      studentDocMap[s._id.toString()] = s.documents?.find((d) => (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf")?.fileURL || "";
     });
 
     const sharedResults = [];
@@ -204,7 +233,7 @@ exports.shareResumes = async (req, res) => {
         item => item.studentId.toString() === sId.toString()
       );
 
-      const resumeURL = placementMap[sId.toString()] || "";
+      const resumeURL = placementMap[sId.toString()] || studentDocMap[sId.toString()] || "";
 
       if (existingShareIndex > -1) {
         drive.resumeSharedStudents[existingShareIndex].sharedAt = new Date();

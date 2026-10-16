@@ -13,6 +13,7 @@ import StatsCard from './dashboard/StatsCard';
 import AddCompanyModal from './AddCompanyModal';
 import CompanyProfileModal from './CompanyProfileModal';
 import EmptyState from '../../shared/empty-state/EmptyState';
+import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import {
   MdBusiness, MdPeople, MdLocationOn, MdEmail, MdPhone,
   MdSearch, MdAdd, MdEdit, MdVisibility, MdToggleOn, MdToggleOff, MdFilterList, MdClose
@@ -23,7 +24,7 @@ const CompanyDetail = () => {
   const { user } = useSelector((state) => state.auth || {});
 
   // Roles authorized to manage companies
-  const isAuthorizedToManage = ["superadmin", "admin", "placement_officer"].includes(user?.role);
+  const isAuthorizedToManage = ["superadmin", "admin", "placement_officer", "hod"].includes(user?.role);
 
   const { data, isLoading, error, refetch } = useGetAllCompaniesQuery();
   const [toggleStatus] = useToggleCompanyStatusMutation();
@@ -347,48 +348,41 @@ const CompanyDetail = () => {
             </div>
 
             {/* Industry Filter */}
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
-              <MdFilterList className="text-slate-400 shrink-0" />
-              <span className="text-[11px] font-medium text-slate-500 shrink-0">Industry:</span>
-              <select
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
-              >
-                {industryOptions.map((ind) => (
-                  <option key={ind} value={ind}>{ind}</option>
-                ))}
-              </select>
-            </div>
+            <SelectDropdown
+              value={industryFilter}
+              onChange={(val) => setIndustryFilter(val)}
+              options={industryOptions.map((ind) => ({
+                value: ind,
+                label: ind === "All" ? "All Industries" : ind
+              }))}
+              className="w-full sm:w-auto sm:min-w-[155px]"
+              buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+            />
 
             {/* Location Filter */}
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
-              <MdLocationOn className="text-slate-400 shrink-0" />
-              <span className="text-[11px] font-medium text-slate-500 shrink-0">Location:</span>
-              <select
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
-              >
-                {locationOptions.map((loc) => (
-                  <option key={loc} value={loc}>{loc}</option>
-                ))}
-              </select>
-            </div>
+            <SelectDropdown
+              value={locationFilter}
+              onChange={(val) => setLocationFilter(val)}
+              options={locationOptions.map((loc) => ({
+                value: loc,
+                label: loc === "All" ? "All Locations" : loc
+              }))}
+              className="w-full sm:w-auto sm:min-w-[150px]"
+              buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+            />
 
             {/* Status Filter */}
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 border border-slate-200 rounded-xl">
-              <span className="text-[11px] font-medium text-slate-500 shrink-0">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-xs font-medium text-slate-800 outline-none w-full cursor-pointer truncate"
-              >
-                <option value="All">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
+            <SelectDropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val)}
+              options={[
+                { value: "All", label: "All Status" },
+                { value: "Active", label: "Active" },
+                { value: "Inactive", label: "Inactive" },
+              ]}
+              className="w-full sm:w-auto sm:min-w-[125px]"
+              buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
+            />
           </div>
         </div>
 

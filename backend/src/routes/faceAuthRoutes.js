@@ -6,7 +6,7 @@ const router = express.Router();
 
 const faceLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 100,
   message: { success: false, message: 'Too many face recognition attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,

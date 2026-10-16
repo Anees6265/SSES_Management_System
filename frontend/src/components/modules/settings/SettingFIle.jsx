@@ -20,6 +20,7 @@ import {
 } from "./../../../redux/api/authApi";
 import Header from "../../shared/sidebar/Header";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const themes = [
     { id: "orange", label: "Orange", color: "#F97316", shade: "#FFEDD5" },
@@ -459,17 +460,19 @@ const SettingFIle = () => {
                                             <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                                                 {/* Interactive Status Select Dropdown (Superadmin only) */}
                                                 {canManageGlobal ? (
-                                                    <select
+                                                    <SelectDropdown
                                                         value={statusStr}
-                                                        onChange={(e) => handleStatusChange(sess._id, e.target.value)}
-                                                        className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-80 transition ${statusBadgeCls}`}
-                                                        title="Click to edit session status"
-                                                    >
-                                                        <option value="active">ACTIVE</option>
-                                                        <option value="upcoming">UPCOMING</option>
-                                                        <option value="archived">ARCHIVED</option>
-                                                        <option value="completed">COMPLETED</option>
-                                                    </select>
+                                                        onChange={(val) => handleStatusChange(sess._id, val)}
+                                                        align="right"
+                                                        options={[
+                                                            { value: "active", label: "ACTIVE" },
+                                                            { value: "upcoming", label: "UPCOMING" },
+                                                            { value: "archived", label: "ARCHIVED" },
+                                                            { value: "completed", label: "COMPLETED" },
+                                                        ]}
+                                                        className="w-auto min-w-[110px]"
+                                                        buttonClassName={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-90 transition flex items-center justify-between gap-1 shadow-2xs ${statusBadgeCls}`}
+                                                    />
                                                 ) : (
                                                     <span className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider ${statusBadgeCls}`}>
                                                         {statusStr.toUpperCase()}
@@ -539,17 +542,17 @@ const SettingFIle = () => {
                                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                                     SELECT DEPARTMENT TO CONFIGURE
                                 </label>
-                                <select
+                                <SelectDropdown
                                     value={selectedDeptId}
-                                    onChange={(e) => setSelectedDeptId(e.target.value)}
-                                    className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs cursor-pointer"
-                                >
-                                    {departments.map(d => (
-                                        <option key={d._id} value={d._id}>
-                                            {d.name} {d.code ? `(${d.code})` : ""}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setSelectedDeptId(val)}
+                                    options={departments.map(d => ({
+                                        value: d._id,
+                                        label: `${d.name}${d.code ? ` (${d.code})` : ""}`
+                                    }))}
+                                    placeholder="Select Department..."
+                                    className="w-full"
+                                    buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
+                                />
                             </div>
                         ) : isHOD ? (
                             <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-2xl flex items-center justify-between gap-3">
@@ -621,21 +624,24 @@ const SettingFIle = () => {
                                     <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
                                         BACKLOG LIMIT
                                     </label>
-                                    <select
+                                    <SelectDropdown
                                         value={backlogLimit}
                                         disabled={!canUpdateCriteria}
-                                        onChange={(e) => { setBacklogLimit(e.target.value); handleCriteriaChange(); }}
-                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        onChange={(val) => { setBacklogLimit(val); handleCriteriaChange(); }}
+                                        options={[
+                                            { value: "Maximum 1 subject", label: "Maximum 1 subject" },
+                                            { value: "Maximum 2 subjects", label: "Maximum 2 subjects" },
+                                            { value: "Maximum 3 subjects", label: "Maximum 3 subjects" },
+                                            { value: "No Backlog Allowed", label: "No Backlog Allowed" },
+                                        ]}
+                                        placeholder="Select Backlog Limit"
+                                        className="w-full"
+                                        buttonClassName={`w-full border rounded-xl px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-1.5 shadow-2xs transition ${
                                             canUpdateCriteria
-                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs cursor-pointer"
-                                                : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
+                                                ? "bg-white border-gray-200 text-gray-700 hover:border-orange-400 cursor-pointer"
+                                                : "bg-slate-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60"
                                         }`}
-                                    >
-                                        <option value="Maximum 1 subject">Maximum 1 subject</option>
-                                        <option value="Maximum 2 subjects">Maximum 2 subjects</option>
-                                        <option value="Maximum 3 subjects">Maximum 3 subjects</option>
-                                        <option value="No Backlog Allowed">No Backlog Allowed</option>
-                                    </select>
+                                    />
                                 </div>
 
                                 <div>

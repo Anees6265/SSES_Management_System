@@ -241,16 +241,18 @@ const CompanyDetail = () => {
 
   if (error) {
     return (
-      <div className="bg-slate-50 min-h-screen p-6">
+      <>
         <Header title="Company Details" />
-        <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-12">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl mb-3">
-            ⚠️
+        <div className="bg-slate-50 min-h-screen p-6">
+          <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-red-200 text-center shadow-sm mt-12">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl mb-3">
+              ⚠️
+            </div>
+            <h3 className="text-base font-bold text-gray-800">Error Loading Companies</h3>
+            <p className="text-xs text-red-500 mt-1">{error?.data?.message || 'Something went wrong while fetching companies'}</p>
           </div>
-          <h3 className="text-base font-bold text-gray-800">Error Loading Companies</h3>
-          <p className="text-xs text-red-500 mt-1">{error?.data?.message || 'Something went wrong while fetching companies'}</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -258,13 +260,14 @@ const CompanyDetail = () => {
   const paginatedMobileCompanies = filteredCompanies.slice((mobilePage - 1) * 10, mobilePage * 10);
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header 
         title="Company Details" 
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Companies" }]}
       />
 
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Top Summary Stats Cards (2x2 on mobile) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -575,7 +578,8 @@ const CompanyDetail = () => {
         companyId={profileCompanyId}
         onEdit={(comp) => handleOpenEditModal(comp)}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdLayers, MdSearch, MdClose } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
-import PageNavbar from "../../../shared/navbar/PageNavbar";
 import Header from "../../../shared/sidebar/Header";
 import CommonCard from "../CommonCard";
 import Loader from "../../../shared/loader/Loader";
@@ -34,11 +33,10 @@ const LevelsManagement = () => {
       <Header title="Levels Management" />
       <div className="px-3.5 sm:px-6 pb-8">
         <div className="py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <PageNavbar
-            title="All Levels"
-            subtitle="View all levels across all subdepartments"
-            showBackButton={false}
-          />
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">All Levels</h2>
+            <p className="text-xs sm:text-sm text-gray-500">View all levels across all subdepartments</p>
+          </div>
           {levels.length > 0 && (
             <div className="relative w-full sm:w-64">
               <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none" />

@@ -180,28 +180,15 @@ const StudentDetailTable = () => {
       key: "level",
       label: "Year & Level",
       align: "center",
-      render: (row) => (
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full shadow-2xs">
-              {row.year || "1st Year"}
-            </span>
-            <span className="text-xs font-medium text-gray-600">
-              ({row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"})
-            </span>
-          </div>
-          <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
-            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded">
-              {row.sessionId?.name || "Session N/A"}
-            </span>
-            {row.batchYear && (
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
-                Batch: {row.batchYear}
-              </span>
-            )}
-          </div>
-        </div>
-      ),
+      render: (row) => {
+        const year = row.year || "1st Year";
+        const level = row.currentSubLevelId?.name || row.currentLevelId?.name || "—";
+        return (
+          <span className="inline-flex items-center text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
+            {year} / {level}
+          </span>
+        );
+      },
     },
     {
       key: "status",
@@ -509,31 +496,10 @@ const StudentDetailTable = () => {
                   {/* Middle Details Grid */}
                   <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-150 text-xs space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-gray-400 font-medium">Academic Year:</span>
-                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full">
-                        {row.year || "1st Year"}
+                      <span className="text-gray-400 font-medium">Year & Level:</span>
+                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
+                        {(row.year || "1st Year")} / {(row.currentSubLevelId?.name || row.currentLevelId?.name || "—")}
                       </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-gray-400 font-medium">Level / Sub-Level:</span>
-                      <span className="font-bold text-gray-700 truncate">
-                        {row.currentLevelId?.name || "—"} / {row.currentSubLevelId?.name || "—"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-gray-400 font-medium">Session / Batch:</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10.5px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 truncate">
-                          {row.sessionId?.name || "Session N/A"}
-                        </span>
-                        {row.batchYear && (
-                          <span className="text-[10.5px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 truncate">
-                            {row.batchYear}
-                          </span>
-                        )}
-                      </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-2">

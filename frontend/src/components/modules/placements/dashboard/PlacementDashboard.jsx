@@ -152,7 +152,7 @@ const PlacementDashboard = () => {
   ];
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header
         title="Placement Dashboard"
         breadcrumbs={[
@@ -161,8 +161,9 @@ const PlacementDashboard = () => {
         ]}
       />
 
-      {/* Main Container */}
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        {/* Main Container */}
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
         
         {/* Top Control & Filter Bar */}
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
@@ -384,8 +385,9 @@ const PlacementDashboard = () => {
           </div>
         </div>
 
-      </div>
-    </div>
+          </div>
+        </div>
+    </>
   );
 };
 

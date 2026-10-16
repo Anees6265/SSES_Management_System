@@ -503,8 +503,7 @@ const StudentTaskBoard = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
-
+        <>
             {/* Modals */}
             {showExtraModal && (
                 <ExtraTaskModal
@@ -516,7 +515,7 @@ const StudentTaskBoard = () => {
             )}
 
             {/* TOP NAVIGATION & SEARCH BAR */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky top-0 z-20 bg-[#F8F9FA] py-2 sm:py-3 px-3 sm:px-6 lg:px-8 border-b border-slate-200/80 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shadow-xs">
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         {/* Back Button */}
@@ -598,6 +597,7 @@ const StudentTaskBoard = () => {
                 </div>
             </div>
 
+            <div className="min-h-screen bg-[#F8F9FA] px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
             {/* BREADCRUMB & HEADER CONTAINER */}
             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xs p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
                 {/* Breadcrumb Row */}
@@ -852,7 +852,8 @@ const StudentTaskBoard = () => {
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </>
     );
 };
 

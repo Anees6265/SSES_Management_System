@@ -55,7 +55,7 @@ const DepartmentPlacementOverview = () => {
     : 0;
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <>
       <Header 
         title="Department Placement Overview" 
         breadcrumbs={[
@@ -64,7 +64,8 @@ const DepartmentPlacementOverview = () => {
         ]}
       />
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="bg-slate-50 min-h-screen pb-12">
+        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
 
         {/* ── Overall Top Stat Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -437,8 +438,9 @@ const DepartmentPlacementOverview = () => {
             </>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

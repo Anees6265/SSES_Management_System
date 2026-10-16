@@ -1080,7 +1080,7 @@ export default function StudentReportForm() {
   }
 
   return (
-    <div className="min-h-screen py-2 sm:py-4 bg-slate-50/50">
+    <>
       <Header
         title={existingReportData?.data ? 'Edit Student Report' : 'Create Student Report'}
         showBack={true}
@@ -1093,8 +1093,9 @@ export default function StudentReportForm() {
         ]}
       />
 
-      <div className="w-full px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4 max-w-[1600px] mx-auto">
-        <form onSubmit={handleSubmit} className="w-full space-y-4 sm:space-y-6">
+      <div className="min-h-screen py-2 sm:py-4 bg-slate-50/50">
+        <div className="w-full px-3 sm:px-6 lg:px-8 pt-2 sm:pt-4 max-w-[1600px] mx-auto">
+          <form onSubmit={handleSubmit} className="w-full space-y-4 sm:space-y-6">
           {/* Basic Info */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
@@ -2065,7 +2066,8 @@ export default function StudentReportForm() {
             )}
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

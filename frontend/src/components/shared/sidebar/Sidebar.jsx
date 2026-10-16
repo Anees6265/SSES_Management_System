@@ -25,6 +25,14 @@ const Sidebar = ({ children }) => {
   const desktopNavRef = useRef(null);
   const mobileAsideRef = useRef(null);
   const mobileNavRef = useRef(null);
+  const mainRef = useRef(null);
+
+  // Reset scroll to top of main content when navigating between pages
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
+  }, [location.pathname]);
 
   // Prevent page scroll when mouse is hovering or scrolling over the sidebar
   useEffect(() => {
@@ -418,7 +426,7 @@ const Sidebar = ({ children }) => {
       <div className="hidden lg:flex">
         <aside
           ref={desktopAsideRef}
-          className={`fixed top-0 left-0 z-20 h-screen transition-all duration-300 bg-white border-r border-gray-200 overscroll-contain ${
+          className={`fixed top-0 left-0 z-30 h-screen transition-all duration-300 bg-white border-r border-gray-200 overscroll-contain ${
             isOpen ? "w-64" : "w-16"
           }`}
           style={{ overscrollBehavior: 'contain' }}
@@ -447,9 +455,11 @@ const Sidebar = ({ children }) => {
 
       {/* ── MAIN CONTENT ── */}
       <main
-        className={`bg-[#F8F7F5] min-h-screen min-w-0 overflow-x-hidden transition-all duration-300 ${
+        ref={mainRef}
+        className={`bg-[#F8F7F5] h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 overscroll-contain ${
           isOpen ? "lg:ml-64" : "lg:ml-16"
         }`}
+        style={{ overscrollBehavior: 'contain' }}
       >
         {children}
       </main>

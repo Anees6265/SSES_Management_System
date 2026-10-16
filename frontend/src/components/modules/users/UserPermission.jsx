@@ -1,12 +1,12 @@
-import PageNavbar from "../../shared/navbar/PageNavbar";
+import Header from "../../shared/sidebar/Header";
 
 const UserPermission = () => {
   return (
     <>
-      <PageNavbar
+      <Header
         title="Permission Management"
         subtitle="User Permission Management Content"
-        showBackButton={false}
+        showBack={false}
       />
       <div className="p-6">
         <div className="bg-white rounded-lg shadow p-6">

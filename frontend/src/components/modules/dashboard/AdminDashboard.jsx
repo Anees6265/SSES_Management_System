@@ -483,7 +483,7 @@ const AdminDashboard = () => {
   // ─────────────────────────────────────────────────────────────
   if (isDepartmentUser) {
     return (
-      <div className="bg-slate-50 min-h-screen">
+      <>
         {/* Header Bar */}
         <Header
           title="Department Dashboard"
@@ -548,6 +548,7 @@ const AdminDashboard = () => {
           </div>
         </Header>
 
+        <div className="bg-slate-50 min-h-screen">
         {/* Info Notification Toast */}
         {showNotification && (
           <div className="mx-3 sm:mx-6 mt-4 p-3.5 bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl text-xs sm:text-sm flex justify-between items-center shadow-2xs">
@@ -930,14 +931,15 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-    );
-  }
+    </>
+  );
+}
 
   // ─────────────────────────────────────────────────────────────
   // ── 2. RENDER SUPER ADMIN / ADMIN GLOBAL DASHBOARD ───────────
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <>
       {/* Header Section */}
       <Header
         title={role === "superadmin" ? "Super Admin Dashboard" : "Admin Dashboard"}
@@ -1002,6 +1004,7 @@ const AdminDashboard = () => {
         </div>
       </Header>
 
+      <div className="bg-slate-50 min-h-screen">
       {/* Welcome Notification Panel */}
       {showNotification && (
         <div className="mx-3 sm:mx-6 mt-4 p-3.5 bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl text-xs sm:text-sm flex justify-between items-center shadow-2xs">
@@ -1448,6 +1451,7 @@ const AdminDashboard = () => {
         <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
       </div>
     </div>
+    </>
   );
 };
 

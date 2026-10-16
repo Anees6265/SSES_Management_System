@@ -42,8 +42,8 @@ const PageNavbar = ({
     : !isSidebarRoot;
 
   return (
-    <div className="sticky top-0 z-10">
-      <div className="px-1 py-4">
+    <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-xs w-full">
+      <div className="px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {shouldShowBack && (

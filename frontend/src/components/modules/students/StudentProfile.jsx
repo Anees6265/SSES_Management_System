@@ -335,7 +335,7 @@ export default function StudentProfile() {
   const placementStatus = hasPlacement ? "Placed" : "Not Placed";
 
   return (
-    <div className="min-h-screen bg-white">
+    <>
       <Header
         title="Student Profile"
         showBack={true}
@@ -355,7 +355,7 @@ export default function StudentProfile() {
         ]}
       />
 
-      <div className="py-2 sm:py-4">
+      <div className="min-h-screen bg-white py-2 sm:py-4">
         {/* Hero Section with Student Info */}
         <div className="bg-white rounded-2xl overflow-hidden mb-8" style={{ boxShadow: '0 0 25px 8px rgba(0, 0, 0, 0.10)' }}>
           <div className="relative">
@@ -974,7 +974,8 @@ export default function StudentProfile() {
         currentLevel={currentLevel}
         daysInSubLevel={daysInSubLevel}
       />
-    </div>
+      </div>
+    </>
   );
 }
 

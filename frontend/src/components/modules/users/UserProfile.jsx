@@ -279,7 +279,7 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="w-full">
+    <>
       {/* Full-width sticky Top Header */}
       <Header 
         title="Professional Profile" 
@@ -808,7 +808,7 @@ const UserProfile = () => {
         />
       )}
 
-    </div>
+    </>
   );
 };
 

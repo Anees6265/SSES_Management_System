@@ -88,6 +88,8 @@ const AttendanceDetails = () => {
 
   const filteredSubLevels = useMemo(() => {
     const allSubLevels = subLevelsResponse?.data || [];
+    let relevantSubLevels = allSubLevels;
+
     if (!filters.subDepartmentId || filters.subDepartmentId === 'All') {
       if (!isGlobalAdmin) {
         const allowedSubDeptIds = subDepts.map(sd => sd._id.toString());
@@ -95,31 +97,33 @@ const AttendanceDetails = () => {
         const allowedLevelIds = levels
           .filter(l => allowedSubDeptIds.includes((l.subDepartmentId?._id || l.subDepartmentId)?.toString()))
           .map(l => l._id.toString());
-        const matchingSubLevels = allSubLevels.filter(sl => allowedLevelIds.includes((sl.levelId?._id || sl.levelId)?.toString()));
-        return [{ _id: 'All', name: 'All Sub-Levels' }, ...matchingSubLevels];
+        relevantSubLevels = allSubLevels.filter(sl => allowedLevelIds.includes((sl.levelId?._id || sl.levelId)?.toString()));
       }
-      return [{ _id: 'All', name: 'All Sub-Levels' }, ...allSubLevels];
+    } else {
+      const levels = levelsResponse?.data || [];
+      const deptLevelIds = levels
+        .filter(l => (l.subDepartmentId?._id || l.subDepartmentId)?.toString() === filters.subDepartmentId.toString())
+        .map(l => l._id.toString());
+      relevantSubLevels = allSubLevels.filter(sl => deptLevelIds.includes((sl.levelId?._id || sl.levelId)?.toString()));
     }
 
-    const levels = levelsResponse?.data || [];
-    const deptLevelIds = levels
-      .filter(l => (l.subDepartmentId?._id || l.subDepartmentId)?.toString() === filters.subDepartmentId.toString())
-      .map(l => l._id.toString());
+    // Deduplicate by sublevel name across departments (e.g. 1A, 1B, 1C...)
+    const uniqueNames = [...new Set(relevantSubLevels.map(sl => sl.name).filter(Boolean))];
+    uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-    const matchingSubLevels = allSubLevels.filter(sl => deptLevelIds.includes((sl.levelId?._id || sl.levelId)?.toString()));
-    return [{ _id: 'All', name: 'All Sub-Levels' }, ...matchingSubLevels];
+    return [
+      { value: 'All', label: 'All Sub-Levels' },
+      ...uniqueNames.map(name => ({ value: name, label: name }))
+    ];
   }, [subLevelsResponse, levelsResponse, filters.subDepartmentId, isGlobalAdmin, subDepts]);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (filters.subLevelId && filters.subLevelId !== 'All') {
-      params.append('currentSubLevelId', filters.subLevelId);
-    }
     if (filters.subDepartmentId && filters.subDepartmentId !== 'All') {
       params.append('subDepartmentId', filters.subDepartmentId);
     }
     return params.toString();
-  }, [filters.subLevelId, filters.subDepartmentId]);
+  }, [filters.subDepartmentId]);
 
   const { data: studentsData, isLoading, error } = useGetNewStudentsQuery(queryParams);
 
@@ -236,6 +240,15 @@ const AttendanceDetails = () => {
       filtered = filtered.filter(student => getStudentYear(student) === filters.year);
     }
 
+    // Apply Sub-Level filter locally (matches unique sub-level name across departments)
+    if (filters.subLevelId && filters.subLevelId !== 'All') {
+      filtered = filtered.filter(student => {
+        const studentSubLevelName = student.currentSubLevelId?.name || '';
+        const studentSubLevelId = (student.currentSubLevelId?._id || student.currentSubLevelId)?.toString();
+        return studentSubLevelName === filters.subLevelId || studentSubLevelId === filters.subLevelId;
+      });
+    }
+
     // Apply Gender filter locally
     if (filters.gender) {
       filtered = filtered.filter(student =>
@@ -244,7 +257,7 @@ const AttendanceDetails = () => {
     }
 
     return filtered;
-  }, [processedStudents, searchTerm, filters.year, filters.gender]);
+  }, [processedStudents, searchTerm, filters.year, filters.subLevelId, filters.gender]);
 
   // Reset to page 1 on filter or search change
   useEffect(() => {
@@ -463,7 +476,7 @@ const AttendanceDetails = () => {
                 <SelectDropdown
                   value={filters.subLevelId}
                   onChange={(val) => handleFilterChange('subLevelId', val)}
-                  options={filteredSubLevels.map((sl) => ({ value: sl._id, label: sl.name }))}
+                  options={filteredSubLevels}
                   placeholder="Select Sub-Level"
                   className="w-full"
                   buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-2xs cursor-pointer"

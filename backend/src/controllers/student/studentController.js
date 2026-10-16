@@ -715,8 +715,20 @@ exports.getAllStudents = async (req, res) => {
     const andConditions = [];
     if (subDeptFilter) andConditions.push(subDeptFilter);
     if (sessionId) andConditions.push({ sessionId });
-    if (currentLevelId) andConditions.push({ currentLevelId });
-    if (currentSubLevelId) andConditions.push({ currentSubLevelId });
+    if (currentLevelId && mongoose.Types.ObjectId.isValid(currentLevelId)) {
+      andConditions.push({ currentLevelId });
+    }
+    if (currentSubLevelId) {
+      if (Array.isArray(currentSubLevelId)) {
+        const validIds = currentSubLevelId.filter(id => mongoose.Types.ObjectId.isValid(id));
+        if (validIds.length > 0) andConditions.push({ currentSubLevelId: { $in: validIds } });
+      } else if (typeof currentSubLevelId === "string" && currentSubLevelId.includes(",")) {
+        const validIds = currentSubLevelId.split(",").filter(id => mongoose.Types.ObjectId.isValid(id.trim()));
+        if (validIds.length > 0) andConditions.push({ currentSubLevelId: { $in: validIds } });
+      } else if (mongoose.Types.ObjectId.isValid(currentSubLevelId)) {
+        andConditions.push({ currentSubLevelId });
+      }
+    }
     if (year) andConditions.push({ year });
     if (status) {
       andConditions.push({ status });

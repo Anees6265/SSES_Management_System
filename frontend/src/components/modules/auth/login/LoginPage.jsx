@@ -115,30 +115,35 @@ const LoginPage = () => {
       <SecurityHelmet title="Login" />
       {isLoading && <Loader />}
 
-      {/* College Building Background Image */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none bg-bottom bg-no-repeat bg-cover opacity-90"
-        style={{
-          backgroundImage: `url(${singajiBg})`,
-          backgroundPosition: "bottom center",
-          backgroundSize: "cover",
-        }}
-      />
-      {/* Soft gradient overlay: crisp white shade at the top fading smoothly towards the building at the bottom */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.90) 18%, rgba(255, 255, 255, 0.58) 42%, rgba(255, 255, 255, 0.18) 72%, rgba(255, 255, 255, 0.04) 100%)",
-        }}
-      />
+      {/* ── Background: Singaji Campus Building visible across bottom with smooth white top fade ── */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Campus Building & Buses Image: positioned on the building facade */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-[75%] sm:h-[80%] lg:h-[82%] bg-no-repeat bg-cover"
+          style={{
+            backgroundImage: `url(${singajiBg})`,
+            backgroundPosition: "center 38%",
+            backgroundSize: "cover",
+            opacity: 0.88,
+          }}
+        />
+
+        {/* Seamless White Fade Overlay: Crisp pure white at header, fading completely to transparent at bottom */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 26%, rgba(255, 255, 255, 0.86) 42%, rgba(255, 255, 255, 0.40) 58%, rgba(255, 255, 255, 0.10) 76%, transparent 100%)",
+          }}
+        />
+      </div>
 
       {/* ── Top Header ────────────────────────────────────────── */}
-      <header className="relative z-10 w-full px-4 sm:px-12 lg:px-16 py-3 sm:py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <img src={logo} alt="Sant Singaji Logo" className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
+      <header className="relative z-10 w-full px-6 sm:px-12 lg:px-16 py-4 sm:py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Sant Singaji Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" />
           <div className="flex flex-col">
-            <span className="text-xs sm:text-sm font-extrabold text-slate-800 tracking-wider uppercase leading-tight">
+            <span className="text-xs sm:text-[13px] font-black text-slate-800 tracking-wider uppercase leading-tight">
               SANT SINGAJI
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-widest uppercase leading-tight">
@@ -146,6 +151,7 @@ const LoginPage = () => {
             </span>
           </div>
         </div>
+        {/* Right side intentionally left empty (no Pay Fee button, as requested) */}
       </header>
 
       {/* ── Main Hero Section ─────────────────────────────────── */}
@@ -373,11 +379,6 @@ const LoginPage = () => {
           </div>
         </div>
       </main>
-
-      {/* ── Footer ─────────────────────────────────────────────── */}
-      <footer className="relative z-10 w-full px-4 py-2 sm:py-3 text-center text-slate-500 text-[11px] sm:text-xs font-medium bg-white/40 backdrop-blur-xs">
-        © {new Date().getFullYear()} Sant Singaji Educational Society. All rights reserved.
-      </footer>
 
       {/* Face Login Modal (Disabled)
       {showFaceLogin && (

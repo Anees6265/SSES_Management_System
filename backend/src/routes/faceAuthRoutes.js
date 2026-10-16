@@ -12,13 +12,17 @@ const faceLoginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Register face for a user (Requires authentication)
-router.post('/register-face', verifyToken, FaceAuthController.registerFace);
+// ==========================================
+// Face recognition authentication (DISABLED)
+// ==========================================
 
-// Login with face recognition (Protected by rate limiter)
-router.post('/login-face', faceLoginLimiter, FaceAuthController.loginWithFace);
+// // Register face for a user (Requires authentication)
+// router.post('/register-face', verifyToken, FaceAuthController.registerFace);
 
-// Check if user has registered face
-router.get('/check-face/:email', FaceAuthController.checkFaceRegistration);
+// // Login with face recognition (Protected by rate limiter)
+// router.post('/login-face', faceLoginLimiter, FaceAuthController.loginWithFace);
+
+// // Check if user has registered face
+// router.get('/check-face/:email', FaceAuthController.checkFaceRegistration);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { IoSettingsSharp } from "react-icons/io5";
 import { MdSupportAgent } from "react-icons/md";
@@ -21,6 +21,86 @@ const Sidebar = ({ children }) => {
   const [isOpen, setIsOpen] = useState(() => !isMobile());
   const { isMobileOpen, closeMobileSidebar } = useSidebar();
 
+  const desktopAsideRef = useRef(null);
+  const desktopNavRef = useRef(null);
+  const mobileAsideRef = useRef(null);
+  const mobileNavRef = useRef(null);
+
+  // Prevent page scroll when mouse is hovering or scrolling over the sidebar
+  useEffect(() => {
+    const attachWheelTrap = (asideEl, getNavEl) => {
+      if (!asideEl) return () => {};
+
+      const handleWheel = (e) => {
+        const nav = getNavEl();
+
+        // If nav is not rendered (e.g. collapsed sidebar or closed drawer)
+        if (!nav) {
+          e.preventDefault();
+          return;
+        }
+
+        // Check if cursor is over nav
+        const isInsideNav = nav.contains(e.target);
+        if (!isInsideNav) {
+          // Over logo, profile, or other non-nav area of sidebar:
+          // Prevent page from scrolling
+          e.preventDefault();
+          return;
+        }
+
+        // Inside nav: check if nav has room to scroll in this direction
+        const { scrollTop, scrollHeight, clientHeight } = nav;
+        const maxScroll = scrollHeight - clientHeight;
+
+        if (maxScroll <= 0) {
+          // Nav content doesn't need to scroll; prevent page from scrolling
+          e.preventDefault();
+          return;
+        }
+
+        // If scrolling down and already at bottom
+        if (e.deltaY > 0 && scrollTop >= maxScroll - 1) {
+          e.preventDefault();
+          return;
+        }
+
+        // If scrolling up and already at top
+        if (e.deltaY < 0 && scrollTop <= 0) {
+          e.preventDefault();
+          return;
+        }
+
+        // Otherwise, nav can scroll in this direction; stop propagation to page
+        e.stopPropagation();
+      };
+
+      asideEl.addEventListener("wheel", handleWheel, { passive: false });
+      return () => {
+        asideEl.removeEventListener("wheel", handleWheel);
+      };
+    };
+
+    const cleanupDesktop = attachWheelTrap(desktopAsideRef.current, () => desktopNavRef.current);
+    const cleanupMobile = attachWheelTrap(mobileAsideRef.current, () => mobileNavRef.current);
+
+    return () => {
+      cleanupDesktop();
+      cleanupMobile();
+    };
+  }, [isOpen, isMobileOpen]);
+
+  // Lock body scroll when mobile sidebar drawer is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileOpen]);
 
   const role = (localStorage.getItem("role") || "").toLowerCase();
 
@@ -210,9 +290,13 @@ const Sidebar = ({ children }) => {
   const showAll = role === "superadmin" || role === "admin";
   const displayedMenuItems = showAll ? menuItems : menuItems.filter(item => hasPermission(item.permission, 'read'));
 
-  const NavContent = ({ onClose }) => (
+  const NavContent = ({ onClose, navRef }) => (
     <>
-      <nav className="flex flex-col gap-1 px-2 py-2 overflow-y-auto h-[calc(100vh-180px)]">
+      <nav 
+        ref={navRef}
+        className="flex flex-col gap-1 px-2 py-2 overflow-y-auto h-[calc(100vh-180px)] overscroll-contain custom-scrollbar"
+        style={{ overscrollBehavior: 'contain' }}
+      >
         {displayedMenuItems.map((item, idx) => {
           const filteredSubMenu = showAll
             ? item.subMenu
@@ -309,9 +393,11 @@ const Sidebar = ({ children }) => {
 
         {/* Drawer with smooth slide from left */}
         <aside
-          className={`relative z-50 w-64 max-w-[85vw] h-full bg-white shadow-2xl border-r border-gray-200 flex flex-col transition-transform duration-300 ease-out transform ${
+          ref={mobileAsideRef}
+          className={`relative z-50 w-64 max-w-[85vw] h-full bg-white shadow-2xl border-r border-gray-200 flex flex-col transition-transform duration-300 ease-out transform overscroll-contain ${
             isMobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
+          style={{ overscrollBehavior: 'contain' }}
         >
           <div className="flex items-center justify-between px-4 py-5">
             <img src={logo} alt="Logo" className="h-16 w-auto" />
@@ -323,7 +409,7 @@ const Sidebar = ({ children }) => {
               <HiChevronLeft size={22} />
             </button>
           </div>
-          <NavContent onClose={closeMobileSidebar} />
+          <NavContent onClose={closeMobileSidebar} navRef={mobileNavRef} />
         </aside>
       </div>
 
@@ -331,9 +417,11 @@ const Sidebar = ({ children }) => {
       {/* ── DESKTOP SIDEBAR ── */}
       <div className="hidden lg:flex">
         <aside
-          className={`fixed top-0 left-0 z-20 h-screen transition-all duration-300 bg-white border-r border-gray-200 ${
+          ref={desktopAsideRef}
+          className={`fixed top-0 left-0 z-20 h-screen transition-all duration-300 bg-white border-r border-gray-200 overscroll-contain ${
             isOpen ? "w-64" : "w-16"
           }`}
+          style={{ overscrollBehavior: 'contain' }}
         >
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -352,7 +440,7 @@ const Sidebar = ({ children }) => {
           </div>
 
 
-          {isOpen && <NavContent onClose={null} />}
+          {isOpen && <NavContent onClose={null} navRef={desktopNavRef} />}
         </aside>
       </div>
 

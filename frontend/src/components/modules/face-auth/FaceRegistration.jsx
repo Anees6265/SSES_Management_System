@@ -7,6 +7,7 @@ const faceapi = faceapiModule.default || faceapiModule;
 import { toast } from 'react-toastify';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import { getDecryptedToken } from '../../../helpers/authUtils';
+import { API_BASE_URL } from '../../../config/apiConfig';
 
 const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
   
@@ -202,9 +203,7 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
       };
       
       // Registering face for user
-
-      const rawApi = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-      const API_URL = rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`;
+      const API_URL = API_BASE_URL;
       const token = getDecryptedToken() || "";
 
       const response = await fetch(`${API_URL}/face-auth/register-face`, {

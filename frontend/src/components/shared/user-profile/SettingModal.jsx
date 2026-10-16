@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import profileImg from "../../../assets/images/profile-img.png";
 import FaceRegistration from "../../modules/face-auth/FaceRegistration";
 import { X } from "lucide-react";
+import { API_BASE_URL } from "../../../config/apiConfig";
 
 const SettingsModal = ({ user, isOpen, onClose }) => {
     const isGlobalAdmin = ['superadmin', 'admin'].includes(user?.role?.toLowerCase());
@@ -36,7 +37,7 @@ const SettingsModal = ({ user, isOpen, onClose }) => {
 
     const checkFaceRegistration = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL.replace('/api', '')}/api/face-auth/check-face/${user?.email}`);
+            const response = await fetch(`${API_BASE_URL}/face-auth/check-face/${user?.email}`);
             const data = await response.json();
             if (data.success) {
                 setHasFaceRegistered(data.hasFaceRegistered);

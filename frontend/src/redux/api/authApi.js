@@ -3,6 +3,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import CryptoJS from "crypto-js";
 import { logout, setCredentials } from "../auth/authSlice";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 const secretKey = "ITEG@123";
 
@@ -39,7 +40,7 @@ const jwtDecode = (token) => {
 
 //  Base query with token in headers
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: import.meta.env.VITE_API_URL,
+  baseUrl: API_BASE_URL,
   credentials: "include",
   prepareHeaders: (headers, { endpoint }) => {
     // Student portal endpoints use studentToken

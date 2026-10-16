@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import CryptoJS from 'crypto-js';
 import { ScanFace, Camera, CheckCircle2, AlertCircle, RefreshCw, Loader2, Sparkles, UserX } from 'lucide-react';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
+import { API_BASE_URL } from '../../../config/apiConfig';
 
 const CompactFaceLogin = ({ onLoginSuccess, onClose, onNoFaceRegistered }) => {
   // Status: 'loading_models' | 'ready' | 'starting_camera' | 'scanning' | 'authenticating' | 'success' | 'failed' | 'not_detected'
@@ -152,8 +153,7 @@ const CompactFaceLogin = ({ onLoginSuccess, onClose, onNoFaceRegistered }) => {
     setStatusMessage('Recognizing face in SSES database...');
 
     try {
-      const rawApi = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-      const API_URL = rawApi.endsWith('/api') ? rawApi : `${rawApi}/api`;
+      const API_URL = API_BASE_URL;
 
       const response = await fetch(`${API_URL}/face-auth/login-face`, {
         method: 'POST',

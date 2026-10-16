@@ -12,6 +12,7 @@ import { useGetNewStudentTasksQuery, useAssignExtraTaskMutation, useGetSyllabusV
 import { useSidebar } from "../../../../contexts/SidebarContext";
 import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
+import { API_BASE_URL } from "../../../../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
 const getToken = () => {
@@ -446,8 +447,7 @@ const StudentTaskBoard = () => {
         setSaving(true);
         try {
             const body = { status: newStatus, ...extra };
-            const baseUrl = import.meta.env.VITE_API_URL;
-            const url = `${baseUrl}/syllabus/versions/students/${studentId}/tasks/${taskId}`;
+            const url = `${API_BASE_URL}/syllabus/versions/students/${studentId}/tasks/${taskId}`;
 
             const r = await fetch(url, {
                 method: "PATCH",

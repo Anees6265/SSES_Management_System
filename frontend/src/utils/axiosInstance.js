@@ -1,5 +1,6 @@
 import axios from "axios";
 import CryptoJS from "crypto-js";
+import { API_BASE_URL } from "../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
 
@@ -14,7 +15,7 @@ const decrypt = (encrypted) => {
 };
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {

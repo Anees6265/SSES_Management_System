@@ -4,6 +4,7 @@ import * as faceapi from 'face-api.js';
 import { toast } from 'react-toastify';
 import CryptoJS from 'crypto-js';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
+import { API_BASE_URL } from '../../../config/apiConfig';
 
 const FaceLogin = ({ onLoginSuccess, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -197,7 +198,7 @@ const FaceLogin = ({ onLoginSuccess, onClose }) => {
 
       const faceDescriptor = Array.from(detections.descriptor);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL.replace('/api', '')}/api/face-auth/login-face`, {
+      const response = await fetch(`${API_BASE_URL}/face-auth/login-face`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

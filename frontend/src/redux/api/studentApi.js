@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import CryptoJS from "crypto-js";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 const SECRET_KEY = import.meta.env.VITE_APP_SECRET_KEY || "ITEG@123";
 const decrypt = (enc) => {
@@ -15,7 +16,7 @@ const decrypt = (enc) => {
 export const studentApi = createApi({
   reducerPath: "studentApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL,
+    baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       const token = decrypt(localStorage.getItem("studentToken"));
       if (token) headers.set("Authorization", `Bearer ${token}`);

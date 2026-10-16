@@ -7,6 +7,7 @@ import CompactFaceLogin from "../../face-auth/CompactFaceLogin";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 import SecurityHelmet from "../../../shared/SecurityHelmet";
+import { API_BASE_URL } from "../../../../config/apiConfig";
 
 import logo from "../../../../assets/images/logo-ssism.png";
 import googleLogo from "../../../../assets/icons/google-icon.png";
@@ -95,7 +96,7 @@ const LoginPage = () => {
   };
 
   const handleGoogleLogin = () => {
-    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const apiBase = API_BASE_URL;
     const googleEndpoint = import.meta.env.VITE_LOGIN_WITH_GOOGLE || "/user/google";
     window.location.href = `${apiBase}${googleEndpoint}`;
   };

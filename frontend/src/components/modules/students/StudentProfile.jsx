@@ -11,6 +11,7 @@ import {
   useGetStudentLevelHistoryQuery
 } from "../../../redux/api/authApi";
 import { taskAPI } from '../../../services/taskService';
+import { API_BASE_URL } from '../../../config/apiConfig';
 import PermissionModal from "./PermissionModal";
 import PlacementModal from "./PlacementModal";
 import Loader from "../../shared/loader/Loader";
@@ -1082,7 +1083,7 @@ const DynamicProgressOverview = ({ studentData, reportCardData, reportLoading })
           } catch { return null; }
         })();
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/students/${studentData._id}/tasks`,
+          `${API_BASE_URL}/students/${studentData._id}/tasks`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await res.json();

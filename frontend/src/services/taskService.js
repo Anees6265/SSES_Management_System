@@ -1,7 +1,6 @@
 // API service functions for task management
 import CryptoJS from 'crypto-js';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { API_BASE_URL } from '../config/apiConfig';
 
 // Decrypt function for token
 const decrypt = (encrypted) => {

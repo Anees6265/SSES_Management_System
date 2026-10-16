@@ -45,14 +45,29 @@ const clientOrigins = (process.env.CLIENT_BASE_URL || "")
   })
   .filter(Boolean);
 
-const allowedOriginsSet = new Set([...defaultAllowedOrigins, ...envOrigins, ...clientOrigins]);
+const extraOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map(u => u.trim().replace(/\/api\/?$/, ""))
+  .filter(Boolean);
+
+const allowedOriginsSet = new Set([
+  ...defaultAllowedOrigins,
+  ...envOrigins,
+  ...clientOrigins,
+  ...extraOrigins
+]);
 
 const isAllowedOrigin = (origin) => {
-  if (!origin) return true; // Allow non-browser agents, tools, or mobile requests
+  if (!origin) return true; // Allow non-browser agents, tools, curl, mobile, or same-origin requests
+  if (process.env.CORS_ALLOW_ALL === "true") return true;
   if (allowedOriginsSet.has(origin)) return true;
-  if (/^https:\/\/iteg-management-system.*\.vercel\.app$/.test(origin)) return true;
-  if (/^https:\/\/sses-management-system.*\.vercel\.app$/.test(origin)) return true;
-  if (/^https:\/\/.*\.ssism\.org$/.test(origin)) return true;
+  if (/^https?:\/\/iteg-management-system.*\.vercel\.app$/.test(origin)) return true;
+  if (/^https?:\/\/sses-management-system.*\.vercel\.app$/.test(origin)) return true;
+  if (/^https?:\/\/.*\.ssism\.org(:[0-9]+)?$/.test(origin)) return true;
+  if (/^https?:\/\/.*\.elb\.amazonaws\.com(:[0-9]+)?$/.test(origin)) return true;
+  if (/^https?:\/\/.*\.compute\.amazonaws\.com(:[0-9]+)?$/.test(origin)) return true;
+  // Match direct IP addresses (e.g. EC2 public IP http://1.2.3.4 or http://1.2.3.4:5002)
+  if (/^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:[0-9]+)?$/.test(origin)) return true;
   return false;
 };
 
@@ -88,9 +103,14 @@ const passport = require("./src/config/passport.js");
 // Swagger setup
 setupSwagger(app);
 
-// Health Check Route
-app.get('/api/health-check', (req, res) => {
-  res.status(200).send("Backend is alive");
+// Health Check Route (supports root, /health, and /api/health-check for AWS load balancers & container checks)
+app.get(['/', '/health', '/api/health-check'], (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Backend is alive',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
 });
 
 // API Routes
@@ -139,16 +159,42 @@ if (require.main === module) {
     });
 
   const PORT = parseInt(process.env.PORT, 10) || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  const HOST = '0.0.0.0';
+
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       const fallbackPort = PORT + 1;
       console.warn(`Port ${PORT} is in use, falling back to port ${fallbackPort}`);
-      app.listen(fallbackPort, () => {
+      app.listen(fallbackPort, HOST, () => {
         console.log(`Server running on fallback port ${fallbackPort}`);
       });
     }
   });
+
+  // Graceful shutdown for Docker and AWS container orchestrators (SIGTERM, SIGINT)
+  const handleShutdown = (signal) => {
+    console.log(`\nReceived ${signal}. Gracefully stopping server...`);
+    server.close(async () => {
+      console.log('HTTP server closed.');
+      try {
+        await mongoose.connection.close(false);
+        console.log('MongoDB connection closed.');
+        process.exit(0);
+      } catch (err) {
+        console.error('Error closing MongoDB connection:', err);
+        process.exit(1);
+      }
+    });
+
+    setTimeout(() => {
+      console.error('Graceful shutdown timeout exceeded. Force quitting.');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
 

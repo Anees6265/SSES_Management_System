@@ -22,6 +22,7 @@ import { HiOutlineBookOpen } from "react-icons/hi";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import Pagination from "../../../shared/pagination/Pagination";
 import InputField from "../../../shared/form-fields/InputField";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CustomDropdown from "../../../shared/form-fields/CustomDropdown";
@@ -770,56 +771,16 @@ const CurriculumManagement = () => {
                     </table>
                   </div>
 
-                  {/* Responsive Pagination Row */}
-                  <div className="px-4 sm:px-6 py-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-semibold text-slate-500">
-                    <div className="text-center sm:text-left text-[11px] sm:text-xs">
-                      Showing <span className="font-bold text-slate-700">{filtered.length > 0 ? startIndex + 1 : 0}</span> to{" "}
-                      <span className="font-bold text-slate-700">{Math.min(startIndex + rowsPerPage, filtered.length)}</span> of{" "}
-                      <span className="font-bold text-slate-700">{filtered.length}</span> results
-                    </div>
-
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
-                      >
-                        Previous
-                      </button>
-
-                      {/* Mobile: Condensed page text */}
-                      <div className="sm:hidden px-2 text-xs font-bold text-slate-700">
-                        {currentPage} / {totalPages}
-                      </div>
-
-                      {/* Desktop: Numbered buttons */}
-                      <div className="hidden sm:flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-                          <button
-                            type="button"
-                            key={pg}
-                            onClick={() => setCurrentPage(pg)}
-                            className={`w-8 h-8 rounded-xl font-bold transition text-xs cursor-pointer ${
-                              currentPage === pg
-                                ? "bg-orange-500 text-white shadow-2xs"
-                                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
-                            }`}
-                          >
-                            {pg}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
-                      >
-                        Next
-                      </button>
-                    </div>
+                  {/* Pagination Footer */}
+                  <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
+                    <Pagination
+                      totalItems={filtered.length}
+                      currentPage={currentPage}
+                      pageSize={rowsPerPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      label="entries"
+                    />
                   </div>
                 </>
               )}

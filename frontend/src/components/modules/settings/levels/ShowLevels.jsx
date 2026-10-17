@@ -135,7 +135,7 @@ const ShowLevels = () => {
 
           {/* Pagination Footer */}
           {filteredLevels.length > pageSize && (
-            <div className="mt-6 pt-4 border-t border-slate-100">
+            <div className="border border-gray-200 rounded-2xl bg-gray-100 px-3 sm:px-6 py-3 sm:py-4 mt-6">
               <Pagination
                 totalItems={filteredLevels.length}
                 currentPage={currentPage}
@@ -145,7 +145,7 @@ const ShowLevels = () => {
                   setCurrentPage(newPage);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                label="levels"
+                label="entries"
               />
             </div>
           )}

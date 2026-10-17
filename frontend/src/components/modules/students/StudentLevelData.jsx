@@ -6,7 +6,7 @@ import { useState, useMemo } from "react";
 import { IoSearchOutline } from "react-icons/io5";
 import { FaUpload } from "react-icons/fa";
 import CommonTable from "../../shared/table/CommonTable";
-import Pagination from "../../shared/pagination/Pagination";
+import SearchBox from "../../shared/search-export/SearchBox";
 import Header from "../../shared/sidebar/Header";
 
 const toTitleCase = (str) =>
@@ -200,14 +200,7 @@ const StudentLevelData = () => {
           
           {/* Search and Filters */}
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <Pagination
-              rowsPerPage={rowsPerPage}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              filtersConfig={filtersConfig}
-              filteredData={filteredData}
-              sectionName={activeTab.replace(/\s+/g, '').toLowerCase()}
-            />
+            <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
           </div>
         </div>
         

@@ -7,6 +7,7 @@ import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
+import Pagination from '../../shared/pagination/Pagination';
 import TabsCommon from '../../shared/table/TabsCommon';
 import Loader from '../../shared/loader/Loader';
 import InputField from '../../shared/form-fields/InputField';
@@ -647,26 +648,15 @@ const UsersManagement = () => {
 
                                     {/* Mobile Pagination */}
                                     {totalMobilePages > 1 && (
-                                        <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-gray-200 shadow-2xs">
-                                            <button
-                                                type="button"
-                                                disabled={mobilePage === 1}
-                                                onClick={() => setMobilePage(p => Math.max(1, p - 1))}
-                                                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 disabled:opacity-40"
-                                            >
-                                                Previous
-                                            </button>
-                                            <span className="text-xs font-semibold text-gray-600">
-                                                Page {mobilePage} of {totalMobilePages}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                disabled={mobilePage === totalMobilePages}
-                                                onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
-                                                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 text-gray-700 disabled:opacity-40"
-                                            >
-                                                Next
-                                            </button>
+                                        <div className="bg-gray-100 p-3 sm:px-6 sm:py-4 rounded-2xl border border-gray-200 shadow-2xs">
+                                            <Pagination
+                                                totalItems={displayData.length}
+                                                currentPage={mobilePage}
+                                                pageSize={mobilePageSize}
+                                                totalPages={totalMobilePages}
+                                                onPageChange={setMobilePage}
+                                                label="entries"
+                                            />
                                         </div>
                                     )}
                                 </>

@@ -20,6 +20,7 @@ import { usePermissions } from "../../../../hooks/usePermissions";
 import SearchBox from "../../../shared/search-export/SearchBox";
 import ExportDropdown from "../../../shared/search-export/ExportDropdown";
 import CommonTable from "../../../shared/table/CommonTable";
+import Pagination from "../../../shared/pagination/Pagination";
 import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import SyllabusTab, { TasksTab, ManualTaskForm, TaskUploadDrawer, SyllabusUploadModalContent } from "./SyllabusTab";
@@ -255,26 +256,15 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
 
                         {/* Mobile Pagination */}
                         {totalMobilePages > 1 && (
-                            <div className="flex items-center justify-between pt-3 pb-1 px-1 text-xs">
-                                <span className="text-gray-500 font-medium">Page {mobilePage} of {totalMobilePages}</span>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setMobilePage(p => Math.max(1, p - 1))}
-                                        disabled={mobilePage === 1}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                                    >
-                                        Prev
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
-                                        disabled={mobilePage === totalMobilePages}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
+                            <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs mt-3">
+                                <Pagination
+                                    totalItems={searchedStudents.length}
+                                    currentPage={mobilePage}
+                                    pageSize={mobilePageSize}
+                                    totalPages={totalMobilePages}
+                                    onPageChange={setMobilePage}
+                                    label="entries"
+                                />
                             </div>
                         )}
                     </div>
@@ -573,26 +563,15 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
                 {/* Mobile Pagination */}
                 {totalMobilePages > 1 && (
-                    <div className="flex items-center justify-between pt-3 pb-1 px-1 text-xs">
-                        <span className="text-gray-500 font-medium">Page {mobilePage} of {totalMobilePages}</span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setMobilePage(p => Math.max(1, p - 1))}
-                                disabled={mobilePage === 1}
-                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                            >
-                                Prev
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
-                                disabled={mobilePage === totalMobilePages}
-                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                            >
-                                Next
-                            </button>
-                        </div>
+                    <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs mt-3">
+                        <Pagination
+                            totalItems={filteredProgress.length}
+                            currentPage={mobilePage}
+                            pageSize={mobilePageSize}
+                            totalPages={totalMobilePages}
+                            onPageChange={setMobilePage}
+                            label="entries"
+                        />
                     </div>
                 )}
             </div>

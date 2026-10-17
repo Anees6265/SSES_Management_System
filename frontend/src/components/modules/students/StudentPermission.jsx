@@ -384,14 +384,14 @@ const StudentPermission = () => {
 
               {/* Mobile Pagination */}
               {filteredData.length > mobilePageSize && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-xs">
+                <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs">
                   <Pagination
                     totalItems={filteredData.length}
                     currentPage={mobilePage}
                     pageSize={mobilePageSize}
                     totalPages={Math.max(1, Math.ceil(filteredData.length / mobilePageSize))}
                     onPageChange={setMobilePage}
-                    label="students"
+                    label="entries"
                   />
                 </div>
               )}

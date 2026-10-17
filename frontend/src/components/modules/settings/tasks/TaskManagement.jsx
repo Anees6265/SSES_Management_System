@@ -10,6 +10,7 @@ import { confirmToast } from "../../../../utils/confirmToast";
 import Header from "../../../shared/sidebar/Header";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import Pagination from "../../../shared/pagination/Pagination";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -1133,91 +1134,36 @@ const TaskManagement = () => {
                                 </>
                             )}
 
-                            {/* Responsive Pagination Row with Rows-Per-Page Selector */}
-                            <div className="px-3.5 sm:px-6 py-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-semibold text-slate-500">
-                                <div className="flex items-center justify-between sm:justify-start gap-4">
-                                    {/* Rows Per Page Selector */}
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-semibold text-slate-500">Show:</span>
-                                        <SelectDropdown
-                                            value={rowsPerPage}
-                                            onChange={(val) => {
-                                                setRowsPerPage(Number(val));
-                                                setCurrentPage(1);
-                                            }}
-                                            options={[
-                                                { value: 10, label: "10" },
-                                                { value: 25, label: "25" },
-                                                { value: 50, label: "50" },
-                                                { value: 100, label: "100" },
-                                            ]}
-                                            className="w-20"
-                                            buttonClassName="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-orange-400 flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div className="text-[11px] sm:text-xs text-slate-500">
-                                        Showing <span className="font-bold text-slate-700">{filtered.length > 0 ? startIndex + 1 : 0}</span> to{" "}
-                                        <span className="font-bold text-slate-700">{Math.min(startIndex + rowsPerPage, filtered.length)}</span> of{" "}
-                                        <span className="font-bold text-slate-700">{filtered.length}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-center sm:justify-end gap-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                        className="h-8 px-2.5 sm:px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs flex items-center gap-1"
-                                    >
-                                        <MdChevronLeft size={16} />
-                                        <span className="hidden sm:inline">Previous</span>
-                                    </button>
-
-                                    {/* Mobile: Condensed page count */}
-                                    <div className="sm:hidden px-2 text-xs font-bold text-slate-700">
-                                        {currentPage} / {totalPages}
-                                    </div>
-
-                                    {/* Desktop: Numbered buttons */}
-                                    <div className="hidden sm:flex items-center gap-1">
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                            .filter((pg) => {
-                                                if (totalPages <= 7) return true;
-                                                return pg === 1 || pg === totalPages || Math.abs(pg - currentPage) <= 1;
-                                            })
-                                            .map((pg, idx, arr) => {
-                                                const prev = arr[idx - 1];
-                                                const showEllipsis = prev && pg - prev > 1;
-                                                return (
-                                                    <div key={pg} className="flex items-center gap-1">
-                                                        {showEllipsis && <span className="px-1 text-slate-400">...</span>}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setCurrentPage(pg)}
-                                                            className={`w-8 h-8 rounded-xl font-bold transition text-xs cursor-pointer ${
-                                                                currentPage === pg
-                                                                    ? "bg-orange-500 text-white shadow-2xs"
-                                                                    : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
-                                                            }`}
-                                                        >
-                                                            {pg}
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                        className="h-8 px-2.5 sm:px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-slate-700 font-bold text-xs cursor-pointer shadow-2xs flex items-center gap-1"
-                                    >
-                                        <span className="hidden sm:inline">Next</span>
-                                        <MdChevronRight size={16} />
-                                    </button>
-                                </div>
+                            {/* Table Footer with Pagination */}
+                            <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
+                                <Pagination
+                                    totalItems={filtered.length}
+                                    currentPage={currentPage}
+                                    pageSize={rowsPerPage}
+                                    totalPages={totalPages}
+                                    onPageChange={setCurrentPage}
+                                    label="entries"
+                                    leftSlot={
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[11px] font-semibold text-slate-500">Show:</span>
+                                            <SelectDropdown
+                                                value={rowsPerPage}
+                                                onChange={(val) => {
+                                                    setRowsPerPage(Number(val));
+                                                    setCurrentPage(1);
+                                                }}
+                                                options={[
+                                                    { value: 10, label: "10" },
+                                                    { value: 25, label: "25" },
+                                                    { value: 50, label: "50" },
+                                                    { value: 100, label: "100" },
+                                                ]}
+                                                className="w-20"
+                                                buttonClassName="h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-700 hover:border-[#FDA92D] flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer"
+                                            />
+                                        </div>
+                                    }
+                                />
                             </div>
                         </>
                     )}

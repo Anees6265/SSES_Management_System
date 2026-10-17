@@ -9,6 +9,7 @@ import Header from '../../shared/sidebar/Header';
 import Avatar from '../../shared/Avatar';
 import StatsCard from './dashboard/StatsCard';
 import EmptyState from '../../shared/empty-state/EmptyState';
+import Pagination from '../../shared/pagination/Pagination';
 import { MdPeople, MdWork, MdCheckCircle, MdSearch, MdArrowForward, MdSchool, MdFilterList } from 'react-icons/md';
 
 const DepartmentPlacementOverview = () => {
@@ -399,40 +400,16 @@ const DepartmentPlacementOverview = () => {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="px-6 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <p className="text-xs font-medium text-gray-500">
-                    Showing {(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length} placed students
-                  </p>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Prev
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setCurrentPage(p)}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all ${
-                          p === currentPage
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
-                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Next
-                    </button>
-                  </div>
+              {filtered.length > 0 && (
+                <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
+                  <Pagination
+                    totalItems={filtered.length}
+                    currentPage={currentPage}
+                    pageSize={rowsPerPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    label="entries"
+                  />
                 </div>
               )}
             </>

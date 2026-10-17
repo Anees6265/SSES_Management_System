@@ -184,7 +184,7 @@ const CommonTable = ({
 
         {/* ================= PAGINATION ================= */}
         {pagination && (
-          <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100">
+          <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
             <Pagination
               totalItems={table.getFilteredRowModel().rows.length}
               currentPage={pageIndex + 1}

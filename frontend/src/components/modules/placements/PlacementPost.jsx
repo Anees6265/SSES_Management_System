@@ -4,6 +4,7 @@ import { useGetNewPlacedStudentsQuery, useGetAllCompaniesQuery } from "../../../
 import { pdf } from "@react-pdf/renderer";
 import CreatePostModal from "./CreatePostModal";
 import CommonTable from "../../shared/table/CommonTable";
+import Pagination from "../../shared/pagination/Pagination";
 import Loader from "../../shared/loader/Loader";
 import Header from "../../shared/sidebar/Header";
 import StatsCard from "./dashboard/StatsCard";
@@ -426,30 +427,15 @@ const PlacementPost = () => {
 
               {/* Mobile Table Pagination */}
               {placedStudents.length > MOBILE_PAGE_SIZE && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex items-center justify-between text-xs">
-                  <span className="text-gray-500 text-[11px] font-medium">
-                    Showing {(mobilePage - 1) * MOBILE_PAGE_SIZE + 1}–
-                    {Math.min(mobilePage * MOBILE_PAGE_SIZE, placedStudents.length)} of {placedStudents.length}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
-                      disabled={mobilePage === 1}
-                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 disabled:pointer-events-none hover:bg-gray-50"
-                    >
-                      <MdChevronLeft size={16} />
-                    </button>
-                    <span className="font-bold text-gray-700 px-1">
-                      {mobilePage} / {totalMobilePages}
-                    </span>
-                    <button
-                      onClick={() => setMobilePage((p) => Math.min(totalMobilePages, p + 1))}
-                      disabled={mobilePage === totalMobilePages}
-                      className="p-1.5 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 disabled:pointer-events-none hover:bg-gray-50"
-                    >
-                      <MdChevronRight size={16} />
-                    </button>
-                  </div>
+                <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs">
+                  <Pagination
+                    totalItems={placedStudents.length}
+                    currentPage={mobilePage}
+                    pageSize={MOBILE_PAGE_SIZE}
+                    totalPages={totalMobilePages}
+                    onPageChange={setMobilePage}
+                    label="entries"
+                  />
                 </div>
               )}
             </div>

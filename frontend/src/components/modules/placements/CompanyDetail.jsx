@@ -8,6 +8,7 @@ import {
 } from '../../../redux/api/authApi';
 import Loader from '../../shared/loader/Loader';
 import CommonTable from '../../shared/table/CommonTable';
+import Pagination from '../../shared/pagination/Pagination';
 import Header from '../../shared/sidebar/Header';
 import StatsCard from './dashboard/StatsCard';
 import AddCompanyModal from './AddCompanyModal';
@@ -518,24 +519,15 @@ const CompanyDetail = () => {
 
             {/* Mobile Pagination */}
             {filteredCompanies.length > 10 && (
-              <div className="flex items-center justify-between p-3 border-t border-gray-100 bg-gray-50/60 text-xs">
-                <button
-                  onClick={() => setMobilePage(p => Math.max(1, p - 1))}
-                  disabled={mobilePage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-bold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                >
-                  Previous
-                </button>
-                <span className="text-gray-500 font-medium text-[11px]">
-                  Page <strong className="text-gray-800">{mobilePage}</strong> of {totalMobilePages}
-                </span>
-                <button
-                  onClick={() => setMobilePage(p => Math.min(totalMobilePages, p + 1))}
-                  disabled={mobilePage >= totalMobilePages}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white font-bold text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                >
-                  Next
-                </button>
+              <div className="bg-gray-100 p-3 sm:px-6 sm:py-4 border-t border-gray-200">
+                <Pagination
+                  totalItems={filteredCompanies.length}
+                  currentPage={mobilePage}
+                  pageSize={10}
+                  totalPages={totalMobilePages}
+                  onPageChange={setMobilePage}
+                  label="entries"
+                />
               </div>
             )}
           </div>

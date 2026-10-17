@@ -9,7 +9,7 @@ import { X, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { confirmToast } from '../../../utils/confirmToast';
 import CommonTable from '../../shared/table/CommonTable';
-import Pagination from '../../shared/pagination/Pagination';
+import SearchBox from '../../shared/search-export/SearchBox';
 import profile from '../../../assets/images/profile-img.png';
 import { useNavigate } from 'react-router-dom';
 import GlobalPermissionMatrix from './GlobalPermissionMatrix';
@@ -200,20 +200,10 @@ const RolesPermissions = () => {
                         </div>
                     </div>
                     
-                    <div className="px-3 sm:px-5 flex justify-between items-center flex-wrap gap-3 sm:gap-4 mt-2 sm:mt-4">
-                        <Pagination
+                    <div className="px-3 sm:px-5 flex justify-end items-center flex-wrap gap-3 sm:gap-4 mt-2 sm:mt-4">
+                        <SearchBox
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
-                            filtersConfig={[
-                                {
-                                    title: 'Department',
-                                    options: [...new Set(users.filter(user => user.role === selectedRole.roleName).map(user => user.department).filter(Boolean))],
-                                    selected: selectedDepartments,
-                                    setter: setSelectedDepartments
-                                }
-                            ]}
-                            allData={users.filter(user => user.role === selectedRole.roleName)}
-                            sectionName="users"
                         />
                     </div>
                     

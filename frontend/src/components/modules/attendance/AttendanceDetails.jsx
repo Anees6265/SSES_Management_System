@@ -10,6 +10,7 @@ import { buttonStyles } from '../../../styles/buttonStyles';
 import DatePicker from '../../shared/DatePicker';
 import Header from '../../shared/sidebar/Header';
 import SelectDropdown from '../../shared/form-fields/SelectDropdown';
+import Pagination from '../../shared/pagination/Pagination';
 
 // Helper function to get current week dates
 const getCurrentWeekDates = () => {
@@ -733,31 +734,16 @@ const AttendanceDetails = () => {
           )}
 
           {/* ── RESPONSIVE PAGINATION FOOTER ── */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 sm:px-6 py-3.5 border-t border-gray-100 bg-white text-xs">
-              <span className="text-gray-500 font-medium text-center sm:text-left">
-                Showing {filteredData.length === 0 ? "0" : `${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(currentPage * itemsPerPage, filteredData.length)} of ${filteredData.length}`} students
-              </span>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent font-medium transition cursor-pointer"
-                >
-                  Previous
-                </button>
-                <span className="px-2 font-bold text-gray-800">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent font-medium transition cursor-pointer"
-                >
-                  Next
-                </button>
-              </div>
+          {filteredData.length > 0 && (
+            <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
+              <Pagination
+                totalItems={filteredData.length}
+                currentPage={currentPage}
+                pageSize={itemsPerPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                label="entries"
+              />
             </div>
           )}
         </div>

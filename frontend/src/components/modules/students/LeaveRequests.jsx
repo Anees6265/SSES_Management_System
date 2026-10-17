@@ -754,14 +754,14 @@ const LeaveRequests = () => {
 
               {/* Mobile Pagination */}
               {filteredRequests.length > mobilePageSize && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-xs">
+                <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs">
                   <Pagination
                     totalItems={filteredRequests.length}
                     currentPage={mobilePage}
                     pageSize={mobilePageSize}
                     totalPages={Math.max(1, Math.ceil(filteredRequests.length / mobilePageSize))}
                     onPageChange={setMobilePage}
-                    label="requests"
+                    label="entries"
                   />
                 </div>
               )}

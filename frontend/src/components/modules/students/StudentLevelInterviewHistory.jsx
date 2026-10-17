@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useGetAdmittedStudentsByIdQuery, useGetStudentLevelInterviewsQuery } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import Header from "../../shared/sidebar/Header";
+import Pagination from "../../shared/pagination/Pagination";
 import InterviewSuccessModal from "./InterviewSuccessModal";
 
 const StudentLevelInterviewHistory = () => {
@@ -95,7 +96,16 @@ const StudentLevelInterviewHistory = () => {
                             ))}
                         </div>
                         {totalPages > 1 && (
-                            <PaginationComponent currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                            <div className="border border-gray-200 rounded-2xl bg-gray-100 px-3 sm:px-6 py-3 sm:py-4 mt-6">
+                                <Pagination
+                                    totalItems={interviews.length}
+                                    currentPage={currentPage}
+                                    pageSize={itemsPerPage}
+                                    totalPages={totalPages}
+                                    onPageChange={setCurrentPage}
+                                    label="entries"
+                                />
+                            </div>
                         )}
                     </>
                 )}
@@ -176,39 +186,5 @@ const InterviewCard = ({ interview }) => {
     );
 };
 
-const PaginationComponent = ({ currentPage, totalPages, onPageChange }) => {
-    const getPageNumbers = () => {
-        const pages = [];
-        if (totalPages <= 5) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
-        } else {
-            if (currentPage <= 3) { for (let i = 1; i <= 4; i++) pages.push(i); pages.push('...'); pages.push(totalPages); }
-            else if (currentPage >= totalPages - 2) { pages.push(1); pages.push('...'); for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i); }
-            else { pages.push(1); pages.push('...'); for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i); pages.push('...'); pages.push(totalPages); }
-        }
-        return pages;
-    };
-
-    return (
-        <div className="flex items-center justify-center space-x-2 mt-8 py-4">
-            <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'}`}>
-                ← Previous
-            </button>
-            <div className="flex items-center space-x-1">
-                {getPageNumbers().map((page, index) => (
-                    <button key={index} onClick={() => typeof page === 'number' && onPageChange(page)} disabled={page === '...'}
-                        className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${page === currentPage ? 'bg-orange-500 text-white' : page === '...' ? 'text-gray-400 cursor-default' : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'}`}>
-                        {page}
-                    </button>
-                ))}
-            </div>
-            <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'}`}>
-                Next →
-            </button>
-        </div>
-    );
-};
-
 export default StudentLevelInterviewHistory;
+

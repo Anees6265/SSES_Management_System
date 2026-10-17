@@ -18,6 +18,7 @@ import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
+import { DeleteConfirmModal } from "../../../shared/modal/DeleteConfirmModal";
 
 const SubLevelCount = ({ levelId, render }) => {
   const { data } = useGetSubLevelsByLevelQuery(levelId, { skip: !levelId });
@@ -433,44 +434,16 @@ const SubdepartmentDetails = () => {
       </div>
 
       {/* Delete Level Confirmation Modal */}
-      {levelToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-gray-100 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 border border-red-100">
-                <MdWarning size={24} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Delete Level</h3>
-                <p className="text-xs text-gray-500">This action will deactivate the level.</p>
-              </div>
-            </div>
-
-            <p className="text-xs sm:text-sm text-gray-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
-              Are you sure you want to delete <strong className="text-gray-900 uppercase">"{levelToDelete.name}"</strong> (Order: {levelToDelete.order})? Students and sublevels linked to this level may be affected.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setLevelToDelete(null)}
-                disabled={isDeletingLevel}
-                className="px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteLevel}
-                disabled={isDeletingLevel}
-                className="px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-[0.98] rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-              >
-                {isDeletingLevel ? "Deleting..." : "Delete Level"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(levelToDelete)}
+        onClose={() => setLevelToDelete(null)}
+        onConfirm={handleDeleteLevel}
+        title="Delete Level"
+        itemName={levelToDelete ? `${levelToDelete.name} (Order: ${levelToDelete.order})` : ""}
+        message="Are you sure you want to delete this level? Students and sublevels linked to this level may be affected."
+        confirmText="Delete Level"
+        isLoading={isDeletingLevel}
+      />
     </>
   );
 };

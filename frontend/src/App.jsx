@@ -17,6 +17,7 @@ const OtpEnter = React.lazy(() => import("./components/modules/auth/otp/OtpEnter
 const GoogleSuccess = React.lazy(() => import('./components/modules/auth/login/GoogleSuccess.jsx'));
 const ServerError = React.lazy(() => import("./components/shared/error-pages/ServerError"));
 const SessionTimeoutModal = React.lazy(() => import('./components/shared/user-profile/SessionTimeoutModal'));
+import { DeleteConfirmModalContainer } from "./components/shared/modal/DeleteConfirmModal";
 
 // Student Portal
 const StudentPortalLayout = React.lazy(() => import("./components/student-portal/layout/StudentPortalLayout"));
@@ -109,6 +110,8 @@ function App() {
         onContinue={handleContinue}
         onLogout={handleLogout}
       />
+
+      <DeleteConfirmModalContainer />
 
       <ToastContainer
         position="top-right"

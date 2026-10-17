@@ -1,11 +1,15 @@
 import { toast } from "react-toastify";
+import { confirmDelete } from "../components/shared/modal/DeleteConfirmModal";
+
+export { confirmDelete };
 
 /**
- * Replaces native window.confirm() with an interactive React-Toastify prompt.
- * Returns a Promise that resolves to true (Confirm) or false (Cancel).
+ * Replaces native window.confirm() with:
+ * - If action is a deletion: opens the interactive Delete Confirmation Popup requiring the user to type "delete".
+ * - For general non-delete confirmation: interactive React-Toastify prompt.
  *
  * @param {string} message - Confirmation message to display
- * @param {object} options - Optional customization { confirmText, cancelText, confirmButtonClass }
+ * @param {object} options - Optional customization { confirmText, cancelText, confirmButtonClass, isDelete, itemName, title }
  * @returns {Promise<boolean>}
  */
 export const confirmToast = (message, options = {}) => {
@@ -14,6 +18,31 @@ export const confirmToast = (message, options = {}) => {
     cancelText = "Cancel",
     confirmButtonClass = "bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white",
   } = options;
+
+  // Detect if this is a delete action
+  const isDeleteAction =
+    options.isDelete === true ||
+    (typeof message === "string" && /\bdelete\b/i.test(message)) ||
+    (confirmButtonClass && (confirmButtonClass.includes("red") || confirmButtonClass.includes("rose")));
+
+  if (isDeleteAction) {
+    // Extract item name if wrapped in quotes e.g. Delete session "2024-25"? or Delete task "Design"?
+    let extractedItem = options.itemName || "";
+    if (!extractedItem && typeof message === "string") {
+      const match = message.match(/["']([^"']+)["']/);
+      if (match) {
+        extractedItem = match[1];
+      }
+    }
+
+    return confirmDelete({
+      title: options.title || "Confirm Deletion",
+      message: message,
+      itemName: extractedItem,
+      confirmText: options.confirmText || "Delete",
+      cancelText: options.cancelText || "Cancel",
+    });
+  }
 
   return new Promise((resolve) => {
     let resolved = false;

@@ -124,8 +124,14 @@ const DepartmentManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (await confirmToast("Are you sure you want to delete this department?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" })) {
+  const handleDelete = async (id, deptName) => {
+    const dept = departments.find(d => d._id === id);
+    const targetName = deptName || dept?.name || "this department";
+    if (await confirmToast(`Are you sure you want to delete ${targetName}?`, {
+      confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white",
+      title: "Delete Department",
+      itemName: targetName
+    })) {
       try {
         await deleteDepartment(id).unwrap();
         toast.success("Department deleted successfully!");

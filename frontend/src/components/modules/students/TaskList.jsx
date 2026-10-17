@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import Header from '../../shared/sidebar/Header';
+import { confirmDelete } from '../../shared/modal/DeleteConfirmModal';
 
 export default function TaskList() {
   const { id } = useParams();
@@ -152,8 +153,16 @@ export default function TaskList() {
     }
   };
 
-  const handleDeleteTask = (taskId) => {
+  const handleDeleteTask = async (taskId) => {
+    const target = tasks.find(task => task.id === taskId);
+    const confirmed = await confirmDelete({
+      title: "Delete Task",
+      message: "Are you sure you want to delete this task from the board?",
+      itemName: target?.title || "Task"
+    });
+    if (!confirmed) return;
     setTasks(tasks.filter(task => task.id !== taskId));
+    toast.success("Task removed from board");
   };
 
   const handleStatusChange = async (taskId, newStatus) => {

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bell, BellOff, X, CheckCheck, Trash2, Info } from "lucide-react";
+import { confirmDelete } from "../modal/DeleteConfirmModal";
 
 const NotificationDrawer = ({
   isOpen,
@@ -83,7 +84,16 @@ const NotificationDrawer = ({
             {notifications.length > 0 && onClearAll && (
               <button
                 type="button"
-                onClick={onClearAll}
+                onClick={async () => {
+                  if (await confirmDelete({
+                    title: "Clear Notifications",
+                    message: "Are you sure you want to permanently clear all notifications?",
+                    itemName: `${notifications.length} Notification(s)`,
+                    confirmText: "Clear All"
+                  })) {
+                    onClearAll();
+                  }
+                }}
                 className="text-xs font-semibold text-gray-400 hover:text-rose-600 px-2 py-1 rounded-lg hover:bg-rose-50 transition cursor-pointer flex items-center gap-1"
                 title="Clear all notifications"
               >

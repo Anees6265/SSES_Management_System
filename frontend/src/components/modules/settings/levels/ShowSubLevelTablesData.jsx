@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline } from "react-icons/md";
+import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import { 
@@ -277,20 +277,113 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
 
 const ProgressTab = ({ subLevel, onRowClick }) => {
     const [progressSearch, setProgressSearch] = useState("");
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [progressRangeFilter, setProgressRangeFilter] = useState("all");
+    const [attendanceFilter, setAttendanceFilter] = useState("all");
+    const filterRef = useRef(null);
+
     const [mobilePage, setMobilePage] = useState(1);
     const mobilePageSize = 10;
 
     const { data, isLoading } = useGetSubLevelProgressQuery(subLevel?._id, { skip: !subLevel?._id });
     const progressList = data?.data || [];
 
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (filterRef.current && !filterRef.current.contains(e.target)) {
+                setShowFilterDropdown(false);
+            }
+        };
+        if (showFilterDropdown) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showFilterDropdown]);
+
+    const activeFilterCount = 
+        (statusFilter !== "all" ? 1 : 0) +
+        (progressRangeFilter !== "all" ? 1 : 0) +
+        (attendanceFilter !== "all" ? 1 : 0);
+
+    const handleClearFilters = () => {
+        setStatusFilter("all");
+        setProgressRangeFilter("all");
+        setAttendanceFilter("all");
+    };
+
+    const statusCounts = useMemo(() => {
+        return {
+            all: progressList.length,
+            active: progressList.filter(s => (s.currentStatus || "Active").toLowerCase() === "active").length,
+            placed: progressList.filter(s => (s.currentStatus || "").toLowerCase() === "placed").length,
+            dropped: progressList.filter(s => (s.currentStatus || "").toLowerCase() === "dropped").length,
+        };
+    }, [progressList]);
+
+    const taskCounts = useMemo(() => {
+        return {
+            all: progressList.length,
+            completed: progressList.filter(s => (s.taskProgress?.percentage || 0) === 100).length,
+            inProgress: progressList.filter(s => {
+                const pct = s.taskProgress?.percentage || 0;
+                return pct > 0 && pct < 100;
+            }).length,
+            notStarted: progressList.filter(s => (s.taskProgress?.percentage || 0) === 0).length,
+        };
+    }, [progressList]);
+
+    const attendanceCounts = useMemo(() => {
+        return {
+            all: progressList.length,
+            high: progressList.filter(s => (s.attendanceRate ?? 100) >= 90).length,
+            moderate: progressList.filter(s => {
+                const att = s.attendanceRate ?? 100;
+                return att >= 75 && att < 90;
+            }).length,
+            low: progressList.filter(s => (s.attendanceRate ?? 100) < 75).length,
+        };
+    }, [progressList]);
+
     const filteredProgress = useMemo(() => {
-        if (!progressSearch.trim()) return progressList;
-        const q = progressSearch.toLowerCase();
-        return progressList.filter(s =>
-            s.name.toLowerCase().includes(q) ||
-            s.prkey.toLowerCase().includes(q)
-        );
-    }, [progressList, progressSearch]);
+        let list = progressList;
+
+        if (progressSearch.trim()) {
+            const q = progressSearch.toLowerCase();
+            list = list.filter(s =>
+                s.name?.toLowerCase().includes(q) ||
+                s.prkey?.toLowerCase().includes(q)
+            );
+        }
+
+        if (statusFilter !== "all") {
+            list = list.filter(s => (s.currentStatus || "Active").toLowerCase() === statusFilter.toLowerCase());
+        }
+
+        if (progressRangeFilter !== "all") {
+            list = list.filter(s => {
+                const pct = s.taskProgress?.percentage || 0;
+                if (progressRangeFilter === "completed") return pct === 100;
+                if (progressRangeFilter === "inProgress") return pct > 0 && pct < 100;
+                if (progressRangeFilter === "notStarted") return pct === 0;
+                return true;
+            });
+        }
+
+        if (attendanceFilter !== "all") {
+            list = list.filter(s => {
+                const att = s.attendanceRate ?? 100;
+                if (attendanceFilter === "high") return att >= 90;
+                if (attendanceFilter === "moderate") return att >= 75 && att < 90;
+                if (attendanceFilter === "low") return att < 75;
+                return true;
+            });
+        }
+
+        return list;
+    }, [progressList, progressSearch, statusFilter, progressRangeFilter, attendanceFilter]);
 
     const totalMobilePages = Math.max(1, Math.ceil(filteredProgress.length / mobilePageSize));
     const paginatedMobileProgress = useMemo(() => {
@@ -300,7 +393,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     useEffect(() => {
         setMobilePage(1);
-    }, [progressSearch, subLevel?._id]);
+    }, [progressSearch, statusFilter, progressRangeFilter, attendanceFilter, subLevel?._id]);
 
     const PROGRESS_COLUMNS = [
         {
@@ -450,132 +543,400 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
                 {/* Filter and Export Actions */}
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <button className="flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border border-gray-200 rounded-xl bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer">
-                        <MdFilterList size={16} className="text-gray-400" />
-                        <span>Filter</span>
-                    </button>
+                    <div ref={filterRef} className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setShowFilterDropdown((prev) => !prev)}
+                            className={`flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border rounded-xl transition-all cursor-pointer ${
+                                activeFilterCount > 0 || showFilterDropdown
+                                    ? "border-orange-500 bg-orange-50 text-orange-600 shadow-xs"
+                                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98]"
+                            }`}
+                        >
+                            <MdFilterList size={16} className={activeFilterCount > 0 ? "text-orange-500" : "text-gray-400"} />
+                            <span>Filter</span>
+                            {activeFilterCount > 0 && (
+                                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center -mr-1">
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Filter Popover Dropdown */}
+                        {showFilterDropdown && (
+                            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-150 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                                {/* Dropdown Header */}
+                                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+                                            <MdFilterList size={16} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs sm:text-sm font-bold text-gray-800">Filter Progress</h4>
+                                            <p className="text-[10px] text-gray-400">Refine student progress list</p>
+                                        </div>
+                                    </div>
+                                    {activeFilterCount > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleClearFilters}
+                                            className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                                        >
+                                            Reset All
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Filter Options */}
+                                <div className="py-3 space-y-3.5 max-h-[60vh] overflow-y-auto">
+                                    {/* 1. Student Status */}
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                                            Student Status
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {[
+                                                { id: "all", label: "All Status", count: statusCounts.all },
+                                                { id: "active", label: "Active", count: statusCounts.active },
+                                                { id: "placed", label: "Placed", count: statusCounts.placed },
+                                                { id: "dropped", label: "Dropped", count: statusCounts.dropped },
+                                            ].map((opt) => {
+                                                const isSelected = statusFilter === opt.id;
+                                                return (
+                                                    <button
+                                                        key={opt.id}
+                                                        type="button"
+                                                        onClick={() => setStatusFilter(opt.id)}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                                                            isSelected
+                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        <span className="truncate">{opt.label}</span>
+                                                        <span
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
+                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                            }`}
+                                                        >
+                                                            {opt.count}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Task Completion */}
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                                            Task Completion
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {[
+                                                { id: "all", label: "All Tasks", count: taskCounts.all },
+                                                { id: "completed", label: "100% Done", count: taskCounts.completed },
+                                                { id: "inProgress", label: "In Progress", count: taskCounts.inProgress },
+                                                { id: "notStarted", label: "0% Done", count: taskCounts.notStarted },
+                                            ].map((opt) => {
+                                                const isSelected = progressRangeFilter === opt.id;
+                                                return (
+                                                    <button
+                                                        key={opt.id}
+                                                        type="button"
+                                                        onClick={() => setProgressRangeFilter(opt.id)}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                                                            isSelected
+                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        <span className="truncate">{opt.label}</span>
+                                                        <span
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
+                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                            }`}
+                                                        >
+                                                            {opt.count}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* 3. Attendance Rate */}
+                                    <div>
+                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                                            Attendance Rate
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {[
+                                                { id: "all", label: "All Rates", count: attendanceCounts.all },
+                                                { id: "high", label: "≥ 90% (Good)", count: attendanceCounts.high },
+                                                { id: "moderate", label: "75% - 89%", count: attendanceCounts.moderate },
+                                                { id: "low", label: "< 75% (Low)", count: attendanceCounts.low },
+                                            ].map((opt) => {
+                                                const isSelected = attendanceFilter === opt.id;
+                                                return (
+                                                    <button
+                                                        key={opt.id}
+                                                        type="button"
+                                                        onClick={() => setAttendanceFilter(opt.id)}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                                                            isSelected
+                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        <span className="truncate">{opt.label}</span>
+                                                        <span
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
+                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                            }`}
+                                                        >
+                                                            {opt.count}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Dropdown Footer */}
+                                <div className="pt-3 border-t border-gray-150 flex items-center justify-between gap-2">
+                                    <span className="text-[11px] text-gray-500">
+                                        Showing <strong className="text-gray-800 font-bold">{filteredProgress.length}</strong> of {progressList.length}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFilterDropdown(false)}
+                                        className="px-3.5 py-1.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                                    >
+                                        Apply Filter
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <ExportDropdown data={filteredProgress} sectionName="progress" />
                 </div>
             </div>
 
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-                <CommonTable
-                    key={`progress-${subLevel?._id}`}
-                    columns={PROGRESS_COLUMNS}
-                    data={filteredProgress}
-                    editable={false}
-                    pagination={true}
-                    rowsPerPage={10}
-                    searchTerm={progressSearch}
-                    onRowClick={onRowClick}
-                />
-            </div>
+            {/* Active Filter Chips */}
+            {activeFilterCount > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-1">
+                    <span className="text-[11px] font-semibold text-gray-400 mr-1">Active Filters:</span>
+                    {statusFilter !== "all" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
+                            Status: <strong className="capitalize">{statusFilter}</strong>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter("all")}
+                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
+                                title="Remove status filter"
+                            >
+                                <MdClose size={13} />
+                            </button>
+                        </span>
+                    )}
+                    {progressRangeFilter !== "all" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
+                            Task:{" "}
+                            <strong>
+                                {progressRangeFilter === "completed"
+                                    ? "100% Done"
+                                    : progressRangeFilter === "inProgress"
+                                    ? "In Progress"
+                                    : "0% Done"}
+                            </strong>
+                            <button
+                                type="button"
+                                onClick={() => setProgressRangeFilter("all")}
+                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
+                                title="Remove task progress filter"
+                            >
+                                <MdClose size={13} />
+                            </button>
+                        </span>
+                    )}
+                    {attendanceFilter !== "all" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
+                            Attendance:{" "}
+                            <strong>
+                                {attendanceFilter === "high"
+                                    ? "≥90%"
+                                    : attendanceFilter === "moderate"
+                                    ? "75%-89%"
+                                    : "<75%"}
+                            </strong>
+                            <button
+                                type="button"
+                                onClick={() => setAttendanceFilter("all")}
+                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
+                                title="Remove attendance filter"
+                            >
+                                <MdClose size={13} />
+                            </button>
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="text-xs font-semibold text-gray-500 hover:text-gray-800 underline ml-1 cursor-pointer"
+                    >
+                        Clear all
+                    </button>
+                </div>
+            )}
 
-            {/* Mobile Cards View */}
-            <div className="md:hidden space-y-3">
-                {paginatedMobileProgress.map((row) => {
-                    const status = row.currentStatus || "Active";
-                    const statusCls =
-                        status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                        status === "Placed" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                        status === "Dropped" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                        "bg-amber-50 text-amber-700 border-amber-200";
-
-                    const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
-                    const { pending = 0, inProgress = 0 } = row.statusCounters || {};
-                    const subjects = row.subjectProgress || [];
-
-                    return (
-                        <div
-                            key={row._id}
-                            onClick={() => onRowClick?.(row)}
-                            className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-3"
-                        >
-                            <div className="flex items-start justify-between gap-2.5">
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
-                                    <div className="min-w-0 flex-1">
-                                        <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{row.name}</h4>
-                                        <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
-                                            PR Key: <strong className="text-gray-700 font-semibold">{row.prkey}</strong>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
-                                        {status}
-                                    </span>
-                                    <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                        {row.attendanceRate ?? 100}% Att.
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Task progress bar */}
-                            <div className="space-y-1.5 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="text-[9.5px] font-bold text-gray-500 uppercase tracking-wider">Task Progress</span>
-                                    <span className="text-xs font-bold text-gray-700">{completed}/{total} ({percentage}%)</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-orange-500 rounded-full transition-all duration-300"
-                                        style={{ width: `${percentage}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Status counters & Subjects */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-800 border border-amber-100">
-                                        {pending} Pending
-                                    </span>
-                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
-                                        {inProgress} In Prog
-                                    </span>
-                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
-                                        {completed} Done
-                                    </span>
-                                </div>
-
-                                {subjects.length > 0 && (
-                                    <div className="flex items-center gap-1">
-                                        {subjects.map((sub, sIdx) => {
-                                            const colorClass =
-                                                sub.status === "completed" ? "bg-emerald-500" :
-                                                sub.status === "inProgress" ? "bg-orange-500" :
-                                                "bg-gray-200";
-                                            return (
-                                                <div
-                                                    key={sIdx}
-                                                    className={`w-3.5 h-1.5 rounded-full ${colorClass}`}
-                                                    title={`${sub.subjectName}: ${sub.status}`}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {/* Mobile Pagination */}
-                {totalMobilePages > 1 && (
-                    <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs mt-3">
-                        <Pagination
-                            totalItems={filteredProgress.length}
-                            currentPage={mobilePage}
-                            pageSize={mobilePageSize}
-                            totalPages={totalMobilePages}
-                            onPageChange={setMobilePage}
-                            label="entries"
+            {/* Empty State when filters/search yield 0 results */}
+            {filteredProgress.length === 0 ? (
+                <div className="bg-white border border-gray-150 rounded-2xl p-8 text-center shadow-2xs">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mb-3">
+                        <MdSearch size={24} />
+                    </div>
+                    <h4 className="text-base font-bold text-gray-800">No matching students found</h4>
+                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                        No students match your active filters or search query. Try clearing filters or search term.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setProgressSearch("");
+                            handleClearFilters();
+                        }}
+                        className="mt-4 px-4 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                        Reset Filters & Search
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                        <CommonTable
+                            key={`progress-${subLevel?._id}`}
+                            columns={PROGRESS_COLUMNS}
+                            data={filteredProgress}
+                            editable={false}
+                            pagination={true}
+                            rowsPerPage={10}
+                            searchTerm={progressSearch}
+                            onRowClick={onRowClick}
                         />
                     </div>
-                )}
-            </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="md:hidden space-y-3">
+                        {paginatedMobileProgress.map((row) => {
+                            const status = row.currentStatus || "Active";
+                            const statusCls =
+                                status === "Active"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : status === "Placed"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : status === "Dropped"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200";
+
+                            const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
+                            const { pending = 0, inProgress = 0 } = row.statusCounters || {};
+                            const subjects = row.subjectProgress || [];
+
+                            return (
+                                <div
+                                    key={row._id}
+                                    onClick={() => onRowClick?.(row)}
+                                    className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-2xs hover:border-orange-200 transition-all active:scale-[0.99] cursor-pointer space-y-3"
+                                >
+                                    <div className="flex items-start justify-between gap-2.5">
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                            <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{row.name}</h4>
+                                                <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
+                                                    PR Key: <strong className="text-gray-700 font-semibold">{row.prkey}</strong>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
+                                                {status}
+                                            </span>
+                                            <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                                {row.attendanceRate ?? 100}% Att.
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Task progress bar */}
+                                    <div className="space-y-1.5 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-[9.5px] font-bold text-gray-500 uppercase tracking-wider">Task Progress</span>
+                                            <span className="text-xs font-bold text-gray-700">{completed}/{total} ({percentage}%)</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-orange-500 rounded-full transition-all duration-300"
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Status counters & Subjects */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-800 border border-amber-100">
+                                                {pending} Pending
+                                            </span>
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
+                                                {inProgress} In Prog
+                                            </span>
+                                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
+                                                {completed} Done
+                                            </span>
+                                        </div>
+
+                                        {subjects.length > 0 && (
+                                            <div className="flex items-center gap-1">
+                                                {subjects.map((sub, sIdx) => {
+                                                    const colorClass =
+                                                        sub.status === "completed" ? "bg-emerald-500" :
+                                                        sub.status === "inProgress" ? "bg-orange-500" :
+                                                        "bg-gray-200";
+                                                    return (
+                                                        <div
+                                                            key={sIdx}
+                                                            className={`w-3.5 h-1.5 rounded-full ${colorClass}`}
+                                                            title={`${sub.subjectName}: ${sub.status}`}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Mobile Pagination */}
+                        {totalMobilePages > 1 && (
+                            <div className="bg-gray-100 rounded-2xl border border-gray-200 p-3 sm:px-6 sm:py-4 shadow-xs mt-3">
+                                <Pagination
+                                    totalItems={filteredProgress.length}
+                                    currentPage={mobilePage}
+                                    pageSize={mobilePageSize}
+                                    totalPages={totalMobilePages}
+                                    onPageChange={setMobilePage}
+                                    label="entries"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     );
 };

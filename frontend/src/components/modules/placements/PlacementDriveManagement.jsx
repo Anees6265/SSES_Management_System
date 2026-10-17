@@ -27,6 +27,7 @@ const PlacementDriveManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [isAddCompanyModalOpen, setAddCompanyModalOpen] = useState(false);
+  const [returnToCreateDrive, setReturnToCreateDrive] = useState(false);
 
   // Fetch Active Master Companies for Drive Dropdown
   const { data: companiesRes, refetch: refetchCompanies } = useGetAllCompaniesQuery({ status: "Active" });
@@ -148,6 +149,16 @@ const PlacementDriveManagement = () => {
               {filteredDrives.length} {filteredDrives.length === 1 ? "Drive" : "Drives"}
             </span>
             <button
+              onClick={() => {
+                setReturnToCreateDrive(false);
+                setAddCompanyModalOpen(true);
+              }}
+              className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 text-xs font-bold px-4 rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+            >
+              <MdBusiness size={18} className="text-orange-500" />
+              <span>Add Company</span>
+            </button>
+            <button
               onClick={() => setCreateModalOpen(true)}
               className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-4 sm:px-5 rounded-xl shadow-sm transition-all cursor-pointer"
             >
@@ -256,6 +267,7 @@ const PlacementDriveManagement = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    setReturnToCreateDrive(true);
                     setCreateModalOpen(false);
                     setAddCompanyModalOpen(true);
                   }}
@@ -268,6 +280,7 @@ const PlacementDriveManagement = () => {
                 value={form.companyName}
                 onChange={(val) => {
                   if (val === "__add_new__") {
+                    setReturnToCreateDrive(true);
                     setCreateModalOpen(false);
                     setAddCompanyModalOpen(true);
                   } else {
@@ -394,7 +407,13 @@ const PlacementDriveManagement = () => {
       {/* ADD COMPANY MODAL */}
       <AddCompanyModal
         isOpen={isAddCompanyModalOpen}
-        onClose={() => setAddCompanyModalOpen(false)}
+        onClose={() => {
+          setAddCompanyModalOpen(false);
+          if (returnToCreateDrive) {
+            setCreateModalOpen(true);
+            setReturnToCreateDrive(false);
+          }
+        }}
         onSuccess={(addedCompany) => {
           refetchCompanies();
           setAddCompanyModalOpen(false);
@@ -404,6 +423,10 @@ const PlacementDriveManagement = () => {
               companyName: addedCompany.companyName,
               jobLocation: prev.jobLocation || addedCompany.location || addedCompany.city || ""
             }));
+          }
+          if (returnToCreateDrive) {
+            setCreateModalOpen(true);
+            setReturnToCreateDrive(false);
           }
         }}
       />

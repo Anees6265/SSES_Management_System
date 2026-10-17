@@ -322,7 +322,9 @@ const CurriculumManagement = () => {
         subLevel: version.subLevelId?.name || "-",
         syllabusFile: version.title || version.version || "Syllabus Version",
         taskList: taskCount ? `${taskCount} task${taskCount > 1 ? "s" : ""}` : null,
-        status: version.status || "active",
+        status: version.status
+          ? version.status.charAt(0).toUpperCase() + version.status.slice(1).toLowerCase()
+          : "Active",
         raw: version,
       };
     });
@@ -347,7 +349,7 @@ const CurriculumManagement = () => {
       (!filterDept || row.department === filterDept) &&
       (!filterSub || row.subDept === filterSub) &&
       (!filterLevel || row.level === filterLevel) &&
-      (!filterStatus || row.status === filterStatus)
+      (!filterStatus || row.status?.toLowerCase() === filterStatus.toLowerCase())
     );
   }), [curriculumRows, searchTerm, filterYear, filterSession, filterDept, filterSub, filterLevel, filterStatus]);
 
@@ -433,8 +435,10 @@ const CurriculumManagement = () => {
   }, [levels, curriculumRows]);
 
   const statuses = useMemo(() => {
-    const fromRows = getOptionValues(curriculumRows, "status");
-    return [...new Set(["active", "draft", "archived", ...fromRows])].filter(Boolean);
+    const fromRows = getOptionValues(curriculumRows, "status").map(
+      (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+    );
+    return [...new Set(["Active", "Draft", "Archived", ...fromRows])].filter(Boolean);
   }, [curriculumRows]);
 
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -525,11 +529,10 @@ const CurriculumManagement = () => {
                 <button
                   type="button"
                   onClick={() => setShowMobileFilters((p) => !p)}
-                  className={`md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                    showMobileFilters || activeFilterCount > 0
+                  className={`md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${showMobileFilters || activeFilterCount > 0
                       ? "bg-orange-50 border-orange-200 text-orange-600"
                       : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   <MdFilterList size={17} />
                   <span>Filters</span>
@@ -696,11 +699,10 @@ const CurriculumManagement = () => {
                             <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
                               {row.academicYear} • {row.session}
                             </span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              row.status === "active"
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${row.status === "Active"
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                 : "bg-slate-100 text-slate-600 border border-slate-200"
-                            }`}>
+                              }`}>
                               {row.status}
                             </span>
                           </div>

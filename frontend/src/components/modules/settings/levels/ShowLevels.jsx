@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import Header from '../../../shared/sidebar/Header';
-import { useGetAllLevelsQuery } from '../../../../redux/api/authApi';
+import { useGetAllLevelsQuery, useUpdateLevelMutation } from '../../../../redux/api/authApi';
 import Loader from '../../../shared/loader/Loader';
 import { Layers } from 'lucide-react';
 import EmptyState from '../../../shared/empty-state/EmptyState';
@@ -9,9 +9,22 @@ import { useNavigate } from 'react-router-dom';
 import CommonCard from '../CommonCard';
 import { MdOutlineMenuBook, MdSearch, MdClose } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
+import OrangeButton from '../../../shared/sidebar/OrangeButton';
+import { Formik, Form } from 'formik';
+import * as Yup from 'yup';
+import InputField from '../../../shared/form-fields/InputField';
+import RadioGroup from '../../../shared/form-fields/RadioGroup';
+import { toast } from 'react-toastify';
+
+const validationSchema = Yup.object({
+  name: Yup.string().required("Level name is required"),
+  order: Yup.number().required("Order is required").positive("Must be positive"),
+  isActive: Yup.boolean(),
+});
 
 const ShowLevels = () => {
-  const { data: levelsData, isLoading } = useGetAllLevelsQuery();
+  const { data: levelsData, isLoading, refetch } = useGetAllLevelsQuery();
+  const [updateLevel] = useUpdateLevelMutation();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
@@ -128,6 +141,50 @@ const ShowLevels = () => {
                       }
                     });
                   }}
+                  onEdit={
+                    <Formik
+                      key={level._id}
+                      initialValues={{ name: level.name, order: level.order, isActive: level.isActive }}
+                      validationSchema={validationSchema}
+                      onSubmit={async (values, { setSubmitting, resetForm }) => {
+                        try {
+                          await updateLevel({
+                            levelId: level._id,
+                            name: values.name,
+                            order: Number(values.order),
+                            subDepartmentId: level.subDepartmentId?._id || level.subDepartmentId,
+                            isActive: values.isActive
+                          }).unwrap();
+                          toast.success("Level updated successfully!");
+                          resetForm();
+                          refetch();
+                        } catch (error) {
+                          toast.error(error?.data?.message || "Error updating level");
+                        } finally {
+                          setSubmitting(false);
+                        }
+                      }}
+                    >
+                      {({ isSubmitting, submitForm, resetForm }) => (
+                        <OrangeButton
+                          buttonTitle="EDIT"
+                          panelTitle="Edit Level"
+                          customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
+                          drawerContent={
+                            <Form className="space-y-4">
+                              <InputField label="Level Name" name="name" placeholder="Enter level name" />
+                              <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                              <RadioGroup label="Status" name="isActive" required={false} />
+                            </Form>
+                          }
+                          leftBtnText="Cancel"
+                          rightBtnText={isSubmitting ? "Updating..." : "Update Level"}
+                          onLeftClick={resetForm}
+                          onRightClick={submitForm}
+                        />
+                      )}
+                    </Formik>
+                  }
                 />
               ))}
             </div>

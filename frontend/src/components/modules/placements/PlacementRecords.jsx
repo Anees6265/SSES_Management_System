@@ -143,10 +143,10 @@ const PlacementRecords = () => {
                           <div className="flex items-center justify-between mt-2">
                             {renderBadge(currentStatus)}
                             <button
-                              className="bg-gradient-to-r from-green-500 to-green-600 text-white text-xs px-3 py-1.5 rounded hover:opacity-90 cursor-pointer"
+                              className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
                               onClick={() => handleUpdateClick(student._id, interview)}
                             >
-                              Update
+                              EDIT
                             </button>
                           </div>
                         </div>

@@ -197,14 +197,14 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={updatingResult}
-                className="px-5 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition shadow-sm disabled:opacity-50"
+                className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
               >
                 {updatingResult ? "Saving..." : offerStatus === "Accepted" ? "Next: Joining Details" : "Save Offer Status"}
               </button>
@@ -268,14 +268,14 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
               <button
                 type="button"
                 onClick={() => setStep("offer")}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
               >
                 Back
               </button>
               <button
                 type="submit"
                 disabled={confirmingPlacement || updatingResult}
-                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm disabled:opacity-50"
+                className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
               >
                 {confirmingPlacement || updatingResult ? "Saving..." : joiningStatus === "Joined" ? "Confirm & Mark PLACED" : "Update Status"}
               </button>

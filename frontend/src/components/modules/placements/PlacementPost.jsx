@@ -129,9 +129,9 @@ const PlacementPost = () => {
               setSelectedStudent(row);
               setCreatePostModalOpen(true);
             }}
-            className="bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+            className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1"
           >
-            <MdEdit /> Edit
+            <MdEdit /> EDIT
           </button>
           <button
             onClick={(e) => {
@@ -408,9 +408,9 @@ const PlacementPost = () => {
                         setSelectedStudent(student);
                         setCreatePostModalOpen(true);
                       }}
-                      className="flex-1 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 text-orange-700 border border-orange-200 text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold tracking-wider uppercase py-2 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1"
                     >
-                      <MdEdit /> Edit
+                      <MdEdit /> EDIT
                     </button>
                     <button
                       onClick={(e) => {

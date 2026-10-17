@@ -416,7 +416,7 @@ const UserProfile = () => {
                   <button
                     type="button"
                     onClick={() => setShowEditModal(true)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
                   >
                     <FiEdit3 size={14} />
                     <span>Edit Profile</span>
@@ -1095,7 +1095,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+            className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
           >
             Cancel
           </button>
@@ -1103,7 +1103,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 rounded-xl shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+            className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
           >
             {isLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             <span>Save Changes</span>

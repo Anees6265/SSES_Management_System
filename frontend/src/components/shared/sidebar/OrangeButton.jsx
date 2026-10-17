@@ -92,7 +92,7 @@ const OrangeButton = ({
           onClick={openDrawer}
           className={
             customButtonClass ||
-            "rounded-md bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-[1.03] active:scale-[0.97]"
+            "rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 px-4 py-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-white transition-all duration-200 hover:shadow-md active:scale-[0.97] shadow-xs cursor-pointer"
           }
         >
           {buttonTitle}
@@ -147,12 +147,12 @@ const OrangeButton = ({
                   {customFooter ? (
                     customFooter
                   ) : (
-                    <div className="flex gap-4">
+                    <div className="flex gap-3 sm:gap-4">
                       {leftBtnText && (
                         <button
                           type="button"
                           onClick={handleLeftClick}
-                          className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold transition-all duration-200 hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+                          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
                         >
                           {leftBtnText}
                         </button>
@@ -161,7 +161,7 @@ const OrangeButton = ({
                         <button
                           type="button"
                           onClick={onRightClick}
-                          className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                          className="flex-1 py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
                         >
                           {rightBtnText}
                         </button>

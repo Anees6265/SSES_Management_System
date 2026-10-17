@@ -432,14 +432,14 @@ const RolesPermissions = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateRole(false)}
-                                    className="flex-1 py-2.5 font-medium bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
+                                    className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => createRoleFormRef.current?.submitForm()}
-                                    className={`flex-1 py-2.5 font-medium ${buttonStyles.primary} cursor-pointer`}
+                                    className={`flex-1 py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer ${buttonStyles.primary}`}
                                 >
                                     Create Role
                                 </button>

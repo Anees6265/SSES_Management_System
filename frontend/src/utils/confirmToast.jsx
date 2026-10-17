@@ -12,7 +12,7 @@ export const confirmToast = (message, options = {}) => {
   const {
     confirmText = "Confirm",
     cancelText = "Cancel",
-    confirmButtonClass = "bg-orange-500 hover:bg-orange-600 text-white",
+    confirmButtonClass = "bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white",
   } = options;
 
   return new Promise((resolve) => {
@@ -32,7 +32,7 @@ export const confirmToast = (message, options = {}) => {
                 closeToast();
                 resolve(false);
               }}
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition"
+              className="px-3 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
             >
               {cancelText}
             </button>
@@ -43,7 +43,7 @@ export const confirmToast = (message, options = {}) => {
                 closeToast();
                 resolve(true);
               }}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition shadow-xs ${confirmButtonClass}`}
+              className={`px-3.5 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer ${confirmButtonClass}`}
             >
               {confirmText}
             </button>

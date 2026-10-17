@@ -70,9 +70,9 @@ const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
                   onClose();
                   onEdit(company);
                 }}
-                className="px-2.5 sm:px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition flex items-center gap-1 border border-white/20 cursor-pointer"
+                className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1"
               >
-                <MdEdit size={14} /> <span className="hidden sm:inline">Edit Company</span>
+                <MdEdit size={14} /> <span>EDIT</span>
               </button>
             )}
             <button

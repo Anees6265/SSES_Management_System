@@ -305,7 +305,7 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="px-5 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition"
+                        className="px-5 py-3 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
                       >
                         Cancel
                       </button>

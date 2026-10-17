@@ -213,9 +213,9 @@ const SubDepartment = () => {
                                         onEdit={
                                             hasPermission('Page_SubDepartment', 'update') ? (
                                                 <OrangeButton
-                                                    buttonTitle="Edit"
+                                                    buttonTitle="EDIT"
                                                     panelTitle="Edit Subdepartment"
-                                                    customButtonClass="w-full py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition bg-white"
+                                                    customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
                                                     drawerContent={
                                                         <Form className="space-y-4">
                                                             <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />

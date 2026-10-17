@@ -43,16 +43,16 @@ const DepartmentCard = ({ name, description, hod, students, status, onView, onEd
       </div>
 
       {/* Footer actions */}
-      <div className="flex gap-3 p-4 bg-gray-50">
+      <div className="flex gap-2.5 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5 mt-auto">
         <button
           onClick={onView}
-          className="w-1/2 border border-gray-300 rounded-lg py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+          className="flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs"
         >
           VIEW
         </button>
         <button
           onClick={onEdit}
-          className="w-1/2 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
+          className="flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white shadow-xs hover:shadow-md cursor-pointer"
         >
           EDIT
         </button>

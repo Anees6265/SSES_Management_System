@@ -848,9 +848,9 @@ const ShowSubLevelTablesData = () => {
                         >
                             {({ isSubmitting, submitForm, resetForm }) => (
                                 <OrangeButton
-                                    buttonTitle="Edit Sub Level"
+                                    buttonTitle="EDIT SUB LEVEL"
                                     panelTitle="Edit Sub Level"
-                                    customButtonClass="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] rounded-xl transition cursor-pointer"
+                                    customButtonClass="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer"
                                     drawerContent={
                                         <Form className="space-y-4">
                                             <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
@@ -998,7 +998,7 @@ const ShowSubLevelTablesData = () => {
                                 type="button"
                                 onClick={() => setSubLevelToDelete(null)}
                                 disabled={isDeletingSubLevel}
-                                className="px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+                                className="px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
                             >
                                 Cancel
                             </button>

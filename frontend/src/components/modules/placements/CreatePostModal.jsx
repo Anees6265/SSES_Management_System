@@ -157,14 +157,14 @@ const CreatePostModal = ({ isOpen, onClose, student, onSuccess, isUpdateMode = f
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
+                    className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`flex-1 py-3 font-medium rounded-xl ${buttonStyles.primary}`}
+                    className={`flex-1 py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 ${buttonStyles.primary}`}
                   >
                     {isSubmitting
                       ? isUpdateMode ? "Updating..." : "Creating..."

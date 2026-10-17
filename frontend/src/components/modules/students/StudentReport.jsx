@@ -387,7 +387,7 @@ export default function StudentReport() {
           <button
             onClick={() => navigate(`/student/${id}/report/edit`)}
             title="Edit Report Card"
-            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-orange-200"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
           >
             <RiEdit2Fill size={14} />
             <span className="hidden sm:inline">Edit Report</span>

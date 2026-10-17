@@ -154,10 +154,10 @@ const StudentPermission = () => {
               event.stopPropagation();
               setPreviewDoc(row.dummyDetails);
             }}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg text-xs font-bold hover:bg-orange-100 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
           >
             <Eye size={13} />
-            <span>View</span>
+            <span>VIEW</span>
           </button>
         ) : (
           <span className="text-xs text-gray-400 italic">No Doc</span>

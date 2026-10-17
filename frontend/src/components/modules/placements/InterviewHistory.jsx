@@ -1017,17 +1017,17 @@ const DatePickerComponent = ({ selectedDate, selectedTime, onDateTimeSelect, onC
       )}
 
       {/* Action buttons */}
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end gap-2.5 pt-3">
         <button
           onClick={onClose}
-          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
         >
           Cancel
         </button>
         <button
           onClick={handleConfirm}
           disabled={!tempSelectedDate}
-          className="px-3 py-1 text-sm bg-[#FDA92D] text-white rounded hover:opacity-90 disabled:opacity-50"
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
         >
           Confirm
         </button>

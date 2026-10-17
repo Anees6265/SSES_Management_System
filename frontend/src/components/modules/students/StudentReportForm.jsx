@@ -2037,7 +2037,7 @@ export default function StudentReportForm() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="w-full sm:w-auto px-6 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold text-xs sm:text-sm transition text-center"
+              className="w-full sm:w-auto px-6 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-xs sm:text-sm text-center"
             >
               Cancel
             </button>

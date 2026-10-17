@@ -215,17 +215,17 @@ const CompanyDetail = () => {
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => handleViewProfile(row)}
-            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
+            className="border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center gap-1"
           >
-            <MdVisibility size={14} /> View
+            <MdVisibility size={14} /> VIEW
           </button>
 
           {isAuthorizedToManage && (
             <button
               onClick={() => handleOpenEditModal(row)}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+              className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold tracking-wider uppercase px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1"
             >
-              <MdEdit size={14} /> Edit
+              <MdEdit size={14} /> EDIT
             </button>
           )}
         </div>
@@ -498,16 +498,16 @@ const CompanyDetail = () => {
                       <div className="flex items-center gap-1.5 ml-auto">
                         <button
                           onClick={() => handleViewProfile(row)}
-                          className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-2.5 py-1 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                          className="border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 text-xs font-bold tracking-wider uppercase px-2.5 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center gap-1"
                         >
-                          <MdVisibility size={13} /> View
+                          <MdVisibility size={13} /> VIEW
                         </button>
                         {isAuthorizedToManage && (
                           <button
                             onClick={() => handleOpenEditModal(row)}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-2.5 py-1 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                            className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold tracking-wider uppercase px-2.5 py-1.5 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1"
                           >
-                            <MdEdit size={13} /> Edit
+                            <MdEdit size={13} /> EDIT
                           </button>
                         )}
                       </div>

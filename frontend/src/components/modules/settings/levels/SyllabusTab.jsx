@@ -416,7 +416,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer text-center w-full sm:w-auto"
+          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-center"
         >
           Cancel
         </button>
@@ -786,7 +786,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer text-center"
+          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-center"
         >
           Cancel
         </button>

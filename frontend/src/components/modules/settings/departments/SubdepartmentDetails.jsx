@@ -146,16 +146,16 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDele
         )}
       </div>
 
-      {/* Action buttons at the bottom (aligned to bottom) */}
+      {/* Action buttons at the bottom (aligned to bottom matching Department card exactly) */}
       <div className="flex items-center gap-2.5 sm:gap-3 mt-auto pt-3 sm:pt-4 border-t border-slate-100">
         <button
           onClick={onView}
-          className="flex-1 py-2.5 sm:py-2 text-xs font-bold text-gray-700 bg-slate-50 hover:bg-slate-100 active:scale-[0.98] border border-slate-200/70 rounded-xl transition duration-150 cursor-pointer text-center"
+          className="flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs"
         >
-          View
+          VIEW
         </button>
         {onEdit && (
-          <div className="flex-1">
+          <div className={`${onView ? 'flex-1' : 'w-full'} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:!text-xs [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600`}>
             {onEdit}
           </div>
         )}
@@ -405,9 +405,9 @@ const SubdepartmentDetails = () => {
                         >
                           {({ isSubmitting, submitForm, resetForm }) => (
                             <OrangeButton
-                              buttonTitle="Edit"
+                              buttonTitle="EDIT"
                               panelTitle="Edit Level"
-                              customButtonClass="w-full bg-orange-400 hover:bg-orange-600 active:scale-[0.98] text-white rounded-xl py-2.5 sm:py-2 text-xs font-bold transition duration-150 cursor-pointer shadow-2xs"
+                              customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
                               drawerContent={
                                 <Form className="space-y-4">
                                   <InputField label="Level Name" name="name" placeholder="Enter level name" />
@@ -455,7 +455,7 @@ const SubdepartmentDetails = () => {
                 type="button"
                 onClick={() => setLevelToDelete(null)}
                 disabled={isDeletingLevel}
-                className="px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+                className="px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
               >
                 Cancel
               </button>

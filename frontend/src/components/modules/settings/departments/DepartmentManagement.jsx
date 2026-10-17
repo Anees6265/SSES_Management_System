@@ -365,7 +365,7 @@ const DepartmentManagement = () => {
                         <OrangeButton
                           buttonTitle="EDIT"
                           panelTitle="Edit Department"
-                          customButtonClass="w-full bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition"
+                          customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
                           drawerContent={
                             <Form className="space-y-4">
                               {/* Logo Upload */}

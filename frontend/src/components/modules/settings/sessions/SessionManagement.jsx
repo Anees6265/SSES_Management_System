@@ -629,14 +629,14 @@ const SessionManagement = () => {
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="w-full sm:flex-1 h-10 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold tracking-wider uppercase transition flex items-center justify-center cursor-pointer"
+                    className="w-full sm:flex-1 h-10 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs flex items-center justify-center cursor-pointer text-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full sm:flex-1 h-10 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-xl text-xs font-bold tracking-wider uppercase transition shadow-2xs hover:shadow-xs flex items-center justify-center cursor-pointer"
+                    className="w-full sm:flex-1 h-10 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:bg-orange-300 text-white font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md flex items-center justify-center cursor-pointer text-xs"
                   >
                     {submitting ? "Saving Records..." : editingSession ? "Update Session" : "Create Session"}
                   </button>

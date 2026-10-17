@@ -6,15 +6,15 @@ import { toast } from "react-toastify";
 import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
-import { 
-    useGetSubLevelsByLevelQuery, 
-    useAddSubLevelMutation, 
+import {
+    useGetSubLevelsByLevelQuery,
+    useAddSubLevelMutation,
     useUpdateSubLevelMutation,
     useDeleteSubLevelMutation,
     useGetLevelByIdQuery,
-    useGetSyllabusVersionsBySubLevelQuery, 
-    useGetNewStudentsQuery, 
-    useGetSubLevelProgressQuery 
+    useGetSyllabusVersionsBySubLevelQuery,
+    useGetNewStudentsQuery,
+    useGetSubLevelProgressQuery
 } from "../../../../redux/api/authApi";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import SearchBox from "../../../shared/search-export/SearchBox";
@@ -37,9 +37,9 @@ const validationSchema = Yup.object({
 });
 
 const STUDENT_COLUMNS = [
-    { label: "S.No",        key: "sno" },
-    { 
-        label: "Student",   
+    { label: "S.No", key: "sno" },
+    {
+        label: "Student",
         key: "fullName",
         render: (row) => (
             <div className="flex items-center gap-3">
@@ -52,30 +52,33 @@ const STUDENT_COLUMNS = [
         )
     },
     { label: "Father Name", key: "fatherName" },
-    { label: "Course",      key: "course", render: (row) => (
-        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
-            {row.course}
-            {row.raw?.withITEG && !row.course?.toUpperCase().includes("ITEG") && !row.course?.toUpperCase().includes("BCA") && !row.course?.toUpperCase().includes("DIPLOMA") && (
-                <span className="bg-orange-500 text-white text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-full">
-                    + ITEG
-                </span>
-            )}
-        </span>
-    ) },
-    { label: "Session",     key: "session", render: (row) => <span className="bg-orange-50 text-orange-600 text-xs font-semibold px-2.5 py-1 rounded-full">{row.raw.sessionId?.name || "N/A"}</span> },
-    { label: "Status",      key: "status", render: (row) => (
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            row.status === "Active"    ? "bg-green-100 text-green-700" :
-            row.status === "Dropped"   ? "bg-red-100 text-red-700" :
-            row.status === "Placed"    ? "bg-purple-100 text-purple-700" :
-            "bg-gray-100 text-gray-600"
-        }`}>{row.status}</span>
-    )},
+    {
+        label: "Course", key: "course", render: (row) => (
+            <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                {row.course}
+                {row.raw?.withITEG && !row.course?.toUpperCase().includes("ITEG") && !row.course?.toUpperCase().includes("BCA") && !row.course?.toUpperCase().includes("DIPLOMA") && (
+                    <span className="bg-orange-500 text-white text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-full">
+                        + ITEG
+                    </span>
+                )}
+            </span>
+        )
+    },
+    { label: "Session", key: "session", render: (row) => <span className="bg-orange-50 text-orange-600 text-xs font-semibold px-2.5 py-1 rounded-full">{row.raw.sessionId?.name || "N/A"}</span> },
+    {
+        label: "Status", key: "status", render: (row) => (
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${row.status === "Active" ? "bg-green-100 text-green-700" :
+                row.status === "Dropped" ? "bg-red-100 text-red-700" :
+                    row.status === "Placed" ? "bg-purple-100 text-purple-700" :
+                        "bg-gray-100 text-gray-600"
+                }`}>{row.status}</span>
+        )
+    },
 ];
 
 const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onRowClick, onTaskBoard }) => {
     const [selectedSessionId, setSelectedSessionId] = useState("");
-    const params = subLevel?._id 
+    const params = subLevel?._id
         ? `currentSubLevelId=${subLevel._id}${selectedSessionId ? `&sessionId=${selectedSessionId}` : ''}`
         : "";
     const { data, isLoading, refetch } = useGetNewStudentsQuery(params, { skip: !subLevel?._id });
@@ -124,14 +127,16 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
 
     const columns = [
         ...STUDENT_COLUMNS,
-        { label: "Task Board", key: "taskboard", render: (row) => (
-            <button
-                onClick={(e) => { e.stopPropagation(); onTaskBoard(row); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 border border-orange-200 transition"
-            >
-                <MdTableChart size={14} /> Task Board
-            </button>
-        )},
+        {
+            label: "Task Board", key: "taskboard", render: (row) => (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onTaskBoard(row); }}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 border border-orange-200 transition"
+                >
+                    <MdTableChart size={14} /> Task Board
+                </button>
+            )
+        },
     ];
 
     if (isLoading) return <Loader />;
@@ -202,12 +207,11 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                                             </span>
                                         </div>
                                     </div>
-                                    <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
-                                        st.status === "Active" ? "bg-green-100 text-green-700" :
+                                    <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${st.status === "Active" ? "bg-green-100 text-green-700" :
                                         st.status === "Dropped" ? "bg-red-100 text-red-700" :
-                                        st.status === "Placed" ? "bg-purple-100 text-purple-700" :
-                                        "bg-gray-100 text-gray-600"
-                                    }`}>
+                                            st.status === "Placed" ? "bg-purple-100 text-purple-700" :
+                                                "bg-gray-100 text-gray-600"
+                                        }`}>
                                         {st.status}
                                     </span>
                                 </div>
@@ -303,7 +307,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
         };
     }, [showFilterDropdown]);
 
-    const activeFilterCount = 
+    const activeFilterCount =
         (statusFilter !== "all" ? 1 : 0) +
         (progressRangeFilter !== "all" ? 1 : 0) +
         (attendanceFilter !== "all" ? 1 : 0);
@@ -403,7 +407,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                 <div className="flex items-center gap-3">
                     <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
                     <div className="flex flex-col">
-                        <span 
+                        <span
                             onClick={(e) => { e.stopPropagation(); onRowClick?.(row); }}
                             className="font-bold text-sm text-orange-500 hover:text-orange-600 transition-colors cursor-pointer"
                         >
@@ -458,8 +462,8 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                         {subjects.map((sub, sIdx) => {
                             const colorClass =
                                 sub.status === "completed" ? "bg-emerald-500" :
-                                sub.status === "inProgress" ? "bg-orange-500" :
-                                "bg-gray-200";
+                                    sub.status === "inProgress" ? "bg-orange-500" :
+                                        "bg-gray-200";
                             return (
                                 <div
                                     key={sIdx}
@@ -499,9 +503,9 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                 const status = row.currentStatus || "Active";
                 const statusCls =
                     status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                    status === "Placed" ? "bg-purple-50 text-purple-700 border-purple-200" :
-                    status === "Dropped" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                    "bg-amber-50 text-amber-700 border-amber-200";
+                        status === "Placed" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                            status === "Dropped" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                "bg-amber-50 text-amber-700 border-amber-200";
                 return (
                     <span className={`inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${statusCls}`}>
                         {status}
@@ -547,11 +551,10 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                         <button
                             type="button"
                             onClick={() => setShowFilterDropdown((prev) => !prev)}
-                            className={`flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border rounded-xl transition-all cursor-pointer ${
-                                activeFilterCount > 0 || showFilterDropdown
-                                    ? "border-orange-500 bg-orange-50 text-orange-600 shadow-xs"
-                                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98]"
-                            }`}
+                            className={`flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border rounded-xl transition-all cursor-pointer ${activeFilterCount > 0 || showFilterDropdown
+                                ? "border-orange-500 bg-orange-50 text-orange-600 shadow-xs"
+                                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98]"
+                                }`}
                         >
                             <MdFilterList size={16} className={activeFilterCount > 0 ? "text-orange-500" : "text-gray-400"} />
                             <span>Filter</span>
@@ -607,17 +610,15 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                         key={opt.id}
                                                         type="button"
                                                         onClick={() => setStatusFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-                                                            isSelected
-                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                        }`}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
+                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                            }`}
                                                     >
                                                         <span className="truncate">{opt.label}</span>
                                                         <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
-                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                            }`}
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                                }`}
                                                         >
                                                             {opt.count}
                                                         </span>
@@ -645,17 +646,15 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                         key={opt.id}
                                                         type="button"
                                                         onClick={() => setProgressRangeFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-                                                            isSelected
-                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                        }`}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
+                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                            }`}
                                                     >
                                                         <span className="truncate">{opt.label}</span>
                                                         <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
-                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                            }`}
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                                }`}
                                                         >
                                                             {opt.count}
                                                         </span>
@@ -683,17 +682,15 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                         key={opt.id}
                                                         type="button"
                                                         onClick={() => setAttendanceFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
-                                                            isSelected
-                                                                ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                        }`}
+                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
+                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
+                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                                                            }`}
                                                     >
                                                         <span className="truncate">{opt.label}</span>
                                                         <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
-                                                                isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                            }`}
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                                                }`}
                                                         >
                                                             {opt.count}
                                                         </span>
@@ -748,8 +745,8 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                 {progressRangeFilter === "completed"
                                     ? "100% Done"
                                     : progressRangeFilter === "inProgress"
-                                    ? "In Progress"
-                                    : "0% Done"}
+                                        ? "In Progress"
+                                        : "0% Done"}
                             </strong>
                             <button
                                 type="button"
@@ -768,8 +765,8 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                 {attendanceFilter === "high"
                                     ? "≥90%"
                                     : attendanceFilter === "moderate"
-                                    ? "75%-89%"
-                                    : "<75%"}
+                                        ? "75%-89%"
+                                        : "<75%"}
                             </strong>
                             <button
                                 type="button"
@@ -836,10 +833,10 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                 status === "Active"
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : status === "Placed"
-                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                    : status === "Dropped"
-                                    ? "bg-rose-50 text-rose-700 border-rose-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200";
+                                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                                        : status === "Dropped"
+                                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                                            : "bg-amber-50 text-amber-700 border-amber-200";
 
                             const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
                             const { pending = 0, inProgress = 0 } = row.statusCounters || {};
@@ -904,8 +901,8 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                 {subjects.map((sub, sIdx) => {
                                                     const colorClass =
                                                         sub.status === "completed" ? "bg-emerald-500" :
-                                                        sub.status === "inProgress" ? "bg-orange-500" :
-                                                        "bg-gray-200";
+                                                            sub.status === "inProgress" ? "bg-orange-500" :
+                                                                "bg-gray-200";
                                                     return (
                                                         <div
                                                             key={sIdx}
@@ -958,17 +955,17 @@ const TaskDrawerContent = ({ activeTab }) => {
             <div className="px-5 py-4">
                 <div className="flex gap-1 bg-[#F8F7F5] border border-gray-200 p-1 rounded-xl">
                     <button onClick={() => setMode("manual")} className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${mode === "manual" ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Single Task</button>
-                    <button onClick={() => setMode("bulk")}   className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${mode === "bulk"   ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Bulk Upload</button>
+                    <button onClick={() => setMode("bulk")} className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${mode === "bulk" ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>Bulk Upload</button>
                 </div>
                 {mode === "bulk" && !syllabusVersionId && (
                     <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">No syllabus version found. Please upload syllabus first from Syllabus tab.</p>
                 )}
             </div>
             {mode === "manual" ? (
-                <ManualTaskForm subLevel={activeTab} onSaved={() => {}} showSubmitButton={false} formId="manual-task-form" />
+                <ManualTaskForm subLevel={activeTab} onSaved={() => { }} showSubmitButton={false} formId="manual-task-form" />
             ) : syllabusVersionId ? (
                 <div className="px-5 py-4">
-                    <TaskUploadDrawer syllabusVersionId={syllabusVersionId} subjectName={activeTab?.name || ""} version={activeVersion?.version || ""} onSaved={() => {}} />
+                    <TaskUploadDrawer syllabusVersionId={syllabusVersionId} subjectName={activeTab?.name || ""} version={activeVersion?.version || ""} onSaved={() => { }} />
                 </div>
             ) : null}
         </div>
@@ -977,13 +974,13 @@ const TaskDrawerContent = ({ activeTab }) => {
 
 const ShowSubLevelTablesData = () => {
     const { hasPermission } = usePermissions();
-    const location       = useLocation();
-    const navigate       = useNavigate();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
-    const queryLevelId   = searchParams.get("levelId");
+    const queryLevelId = searchParams.get("levelId");
     const querySubdeptId = searchParams.get("subdeptId");
-    const queryDeptId    = searchParams.get("deptId");
+    const queryDeptId = searchParams.get("deptId");
 
     // Cache fallback
     const cachedData = (() => {
@@ -995,13 +992,13 @@ const ShowSubLevelTablesData = () => {
         }
     })();
 
-    const effectiveLevelId = 
-        location.state?.level?._id || 
-        queryLevelId || 
+    const effectiveLevelId =
+        location.state?.level?._id ||
+        queryLevelId ||
         cachedData?.level?._id;
 
-    const { data: fetchedLevelRes, isLoading: isLevelLoading } = useGetLevelByIdQuery(effectiveLevelId, { 
-        skip: !effectiveLevelId 
+    const { data: fetchedLevelRes, isLoading: isLevelLoading } = useGetLevelByIdQuery(effectiveLevelId, {
+        skip: !effectiveLevelId
     });
     const fetchedLevel = fetchedLevelRes?.data;
 
@@ -1010,9 +1007,9 @@ const ShowSubLevelTablesData = () => {
     const rawSubdept = location.state?.subdepartment || (level?.subDepartmentId && typeof level.subDepartmentId === "object" ? level.subDepartmentId : null) || (fetchedLevel?.subDepartmentId && typeof fetchedLevel.subDepartmentId === "object" ? fetchedLevel.subDepartmentId : null) || cachedData?.subdepartment;
     const subdepartment = rawSubdept;
 
-    const departmentId   = location.state?.departmentId || queryDeptId || subdepartment?.departmentId?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "") || cachedData?.departmentId || "";
+    const departmentId = location.state?.departmentId || queryDeptId || subdepartment?.departmentId?._id || (typeof subdepartment?.departmentId === "string" ? subdepartment?.departmentId : "") || cachedData?.departmentId || "";
     const departmentName = location.state?.departmentName || subdepartment?.departmentId?.name || cachedData?.departmentName || "Department";
-    const session        = location.state?.session || location.state?.sessionName || cachedData?.session;
+    const session = location.state?.session || location.state?.sessionName || cachedData?.session;
 
     useEffect(() => {
         if (level?._id) {
@@ -1030,11 +1027,11 @@ const ShowSubLevelTablesData = () => {
         }
     }, [level, subdepartment, departmentId, departmentName, session]);
 
-    const [activeTab,           setActiveTab]           = useState(null);
-    const [activeSection,       setActiveSection]       = useState("Students");
-    const [searchTerm,          setSearchTerm]          = useState("");
+    const [activeTab, setActiveTab] = useState(null);
+    const [activeSection, setActiveSection] = useState("Students");
+    const [searchTerm, setSearchTerm] = useState("");
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
-    const [subLevelToDelete,    setSubLevelToDelete]    = useState(null);
+    const [subLevelToDelete, setSubLevelToDelete] = useState(null);
 
     const { data: subLevelsData, isLoading: isSubLevelsLoading } = useGetSubLevelsByLevelQuery(level?._id, { skip: !level?._id });
     const subLevels = subLevelsData?.data || [];
@@ -1116,15 +1113,15 @@ const ShowSubLevelTablesData = () => {
 
     const breadcrumbs = [
         { label: "Departments", path: "/department-management" },
-        ...(departmentId ? [{ 
-            label: departmentName || "Department", 
-            path: `/department-details/${departmentId}`, 
-            state: { department: subdepartment?.departmentId } 
+        ...(departmentId ? [{
+            label: departmentName || "Department",
+            path: `/department-details/${departmentId}`,
+            state: { department: subdepartment?.departmentId }
         }] : []),
-        ...(subdepartment?._id ? [{ 
-            label: subdepartment?.name || "Subdepartment", 
-            path: `/subdepartment/${subdepartment._id}/levels`, 
-            state: { subdepartment, departmentId, departmentName } 
+        ...(subdepartment?._id ? [{
+            label: subdepartment?.name || "Subdepartment",
+            path: `/subdepartment/${subdepartment._id}/levels`,
+            state: { subdepartment, departmentId, departmentName }
         }] : []),
         { label: level?.name || "Level" },
     ];
@@ -1144,11 +1141,10 @@ const ShowSubLevelTablesData = () => {
                                 <button
                                     key={sl._id}
                                     onClick={() => handleTabChange(sl)}
-                                    className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 cursor-pointer ${
-                                        activeTab?._id === sl._id 
-                                            ? "bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs font-bold" 
-                                            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/60"
-                                    }`}
+                                    className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 cursor-pointer ${activeTab?._id === sl._id
+                                        ? "bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs font-bold"
+                                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/60"
+                                        }`}
                                 >
                                     {sl.name}
                                 </button>
@@ -1160,7 +1156,7 @@ const ShowSubLevelTablesData = () => {
                 <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
                     {/* Action buttons — only when sublevels exist */}
                     {subLevels.length > 0 && activeSection === "Progress" && (
-                        <button onClick={() => {}} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
+                        <button onClick={() => { }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
                             <MdTableChart size={16} /> Upload Excel
                         </button>
                     )}
@@ -1210,7 +1206,7 @@ const ShowSubLevelTablesData = () => {
                         >
                             {({ isSubmitting, submitForm, resetForm }) => (
                                 <OrangeButton
-                                    buttonTitle="EDIT SUB LEVEL"
+                                    buttonTitle="+ EDIT SUB LEVEL"
                                     panelTitle="Edit Sub Level"
                                     customButtonClass="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer"
                                     drawerContent={
@@ -1328,8 +1324,8 @@ const ShowSubLevelTablesData = () => {
                             <SyllabusTab level={level} subLevel={activeTab} />
                         )}
                         {activeSection === "Progress" && (
-                            <ProgressTab 
-                                subLevel={activeTab} 
+                            <ProgressTab
+                                subLevel={activeTab}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: { _id: row._id }, level, subdepartment } })}
                             />
                         )}

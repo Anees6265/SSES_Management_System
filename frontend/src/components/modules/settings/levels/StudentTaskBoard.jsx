@@ -14,6 +14,7 @@ import { useSidebar } from "../../../../contexts/SidebarContext";
 import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
@@ -529,6 +530,8 @@ const StudentTaskBoard = () => {
     const [saving,            setSaving]            = useState(false);
     const [showExtraModal,    setShowExtraModal]    = useState(false);
     const [activeMobileTab,   setActiveMobileTab]   = useState("all");
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [userNotifications, setUserNotifications] = useState(null);
 
     useEffect(() => {
         setTasks(null);
@@ -596,6 +599,53 @@ const StudentTaskBoard = () => {
     const inProgressCount = filtered.filter(t => t.status === "inProgress").length;
     const pendingCount = filtered.filter(t => t.status === "pending" || !t.status).length;
     const percent   = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    const defaultTaskBoardNotifications = useMemo(() => {
+        if (!student) return [];
+        const list = [];
+
+        if (pendingCount > 0) {
+            list.push({
+                id: "tb-pending-tasks",
+                title: `${pendingCount} Pending Task(s)`,
+                message: `There are ${pendingCount} task(s) waiting to be started in ${subLevelName || "this sublevel"}.`,
+                time: "Task Alert",
+                type: "warning",
+            });
+        }
+
+        if (inProgressCount > 0) {
+            list.push({
+                id: "tb-inprogress-tasks",
+                title: `${inProgressCount} Task(s) In Progress`,
+                message: `${inProgressCount} task(s) are currently being worked on by ${studentName}.`,
+                time: "In Progress",
+                type: "info",
+            });
+        }
+
+        if (completed > 0) {
+            list.push({
+                id: "tb-completed-tasks",
+                title: `${completed} Task(s) Completed`,
+                message: `Total ${completed} task(s) have been completed successfully (${percent}% level completion rate).`,
+                time: "Milestone",
+                type: "success",
+            });
+        }
+
+        list.push({
+            id: "tb-board-info",
+            title: `Task Board: ${levelName} - ${subLevelName}`,
+            message: `Active practical task progression board for ${studentName} (ID: ${student.prkey || "N/A"}). Total tasks: ${total}.`,
+            time: "Active Level",
+            type: "info",
+        });
+
+        return list;
+    }, [student, pendingCount, inProgressCount, completed, subLevelName, percent, levelName, studentName, total]);
+
+    const activeNotifications = userNotifications ?? defaultTaskBoardNotifications;
 
     const handleDragStart = (task) => setDragTask(task);
 
@@ -749,11 +799,16 @@ const StudentTaskBoard = () => {
                     <div className="flex items-center gap-2 sm:hidden">
                         <button
                             type="button"
-                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-xs relative shrink-0"
-                            title="Notifications"
+                            onClick={() => setShowNotifications(true)}
+                            className="h-9 w-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 shadow-xs relative shrink-0 cursor-pointer active:scale-95"
+                            title="Notifications & Alerts"
                         >
                             <MdNotificationsNone size={18} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                            {activeNotifications.length > 0 && (
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
+                                    {activeNotifications.length}
+                                </span>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -781,11 +836,16 @@ const StudentTaskBoard = () => {
 
                     <button
                         type="button"
-                        className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-xs transition relative shrink-0 cursor-pointer"
-                        title="Notifications"
+                        onClick={() => setShowNotifications(true)}
+                        className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 shadow-xs transition relative shrink-0 cursor-pointer active:scale-95"
+                        title="Notifications & Alerts"
                     >
-                        <MdNotificationsNone size={18} />
-                        <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                        <MdNotificationsNone size={19} />
+                        {activeNotifications.length > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
+                                {activeNotifications.length}
+                            </span>
+                        )}
                     </button>
                 </div>
             </div>
@@ -1046,6 +1106,15 @@ const StudentTaskBoard = () => {
                 </div>
             )}
             </div>
+            <NotificationDrawer
+                isOpen={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                notifications={activeNotifications}
+                onClearAll={() => setUserNotifications([])}
+                onDismiss={(notifId) => setUserNotifications(prev => (prev ?? defaultTaskBoardNotifications).filter(n => n.id !== notifId))}
+                title="Task Board Notifications"
+                subtitle={`${studentName} • Practical task alerts & level status`}
+            />
         </>
     );
 };

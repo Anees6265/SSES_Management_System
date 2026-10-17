@@ -629,7 +629,7 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
       subTopicName: studentTask.subTopicName || "",
       taskId: studentTask.taskId,
       taskTitle: studentTask.title,
-      taskNodeType: studentTask.taskNodeType,
+      taskNodeType: studentTask.taskNodeType || (studentTask.isGeneralTask ? "general" : "topic"),
       status: studentTask.status,
       marks: studentTask.marks,
       maxMarks: studentTask.maxMarks,
@@ -650,7 +650,7 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
         status: studentTask.status,
         marks: studentTask.marks,
         maxMarks: studentTask.maxMarks,
-        taskNodeType: studentTask.taskNodeType,
+        taskNodeType: studentTask.taskNodeType || (studentTask.isGeneralTask ? "general" : "topic"),
         progressSnapshots
       },
       createdBy: actorId,

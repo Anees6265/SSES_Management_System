@@ -19,6 +19,8 @@ import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import StudentPlacementTimeline from "../../placements/StudentPlacementTimeline";
 import OfferJoiningModal from "../../placements/OfferJoiningModal";
 import Loader from "../../../shared/loader/Loader";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
 import {
     useGetNewStudentTasksQuery,
     useGetNewStudentByIdQuery,
@@ -379,6 +381,19 @@ const isNaturallyITEG = (c) => {
     return s.includes("bca") || s.includes("diploma");
 };
 
+const GENDER_OPTIONS = [
+    { value: "Male", label: "Male" },
+    { value: "Female", label: "Female" },
+    { value: "Other", label: "Other" }
+];
+
+const ACADEMIC_YEAR_OPTIONS = [
+    { value: "1st Year", label: "1st Year" },
+    { value: "2nd Year", label: "2nd Year" },
+    { value: "3rd Year", label: "3rd Year" },
+    { value: "4th Year", label: "4th Year" }
+];
+
 const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
     const fileInputRef = useRef(null);
     const [form, setForm] = useState({
@@ -532,21 +547,24 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                         </div>
                         <div>
                             <label className={lc}>Gender</label>
-                            <select className={ic} value={form.gender} onChange={set("gender")}>
-                                <option value="">Select</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <SelectDropdown
+                                value={form.gender}
+                                onChange={(val) => setForm(p => ({ ...p, gender: val }))}
+                                options={GENDER_OPTIONS}
+                                placeholder="Select Gender"
+                                buttonClassName="w-full !h-10 flex items-center justify-between gap-2 px-3 text-xs border border-gray-200 hover:border-orange-400 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
+                            />
                         </div>
                         <div>
                             <label className={lc}>Academic Year</label>
-                            <select className={ic} value={form.year || "1st Year"} onChange={set("year")}>
-                                <option value="1st Year">1st Year</option>
-                                <option value="2nd Year">2nd Year</option>
-                                <option value="3rd Year">3rd Year</option>
-                                <option value="4th Year">4th Year</option>
-                            </select>
+                            <SelectDropdown
+                                value={form.year || "1st Year"}
+                                onChange={(val) => setForm(p => ({ ...p, year: val }))}
+                                options={ACADEMIC_YEAR_OPTIONS}
+                                placeholder="Select Academic Year"
+                                align="right"
+                                buttonClassName="w-full !h-10 flex items-center justify-between gap-2 px-3 text-xs border border-gray-200 hover:border-orange-400 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
+                            />
                         </div>
                     </div>
                 </div>
@@ -1086,6 +1104,8 @@ const StudentProfilePage = () => {
     const [dummyModal, setDummyModal] = useState(false);
     const [activityModal, setActivityModal] = useState(false);
     const [sectionModal, setSectionModal] = useState(null);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [userNotifications, setUserNotifications] = useState(null);
     const [ftpLoading, setFtpLoading] = useState(false);
     const [itegLoading, setItegLoading] = useState(false);
     const [readyLoading, setReadyLoading] = useState(false);
@@ -1377,6 +1397,112 @@ const StudentProfilePage = () => {
     const permissionHistory = Array.isArray(raw.permissions) ? raw.permissions : [];
     const pendingPermissions = permissionHistory.filter(item => item.status === "pending").length;
 
+    const defaultStudentNotifications = useMemo(() => {
+        if (!raw) return [];
+        const list = [];
+
+        // 1. Attendance Alert
+        const attendance = raw.attendanceRate !== undefined && raw.attendanceRate !== null ? Number(raw.attendanceRate) : null;
+        if (attendance !== null && attendance < 75) {
+            list.push({
+                id: "attendance-warning",
+                title: "Low Attendance Warning",
+                message: `${name}'s attendance is currently at ${attendance}%, which is below the minimum mandatory 75% requirement. Immediate academic counseling recommended.`,
+                time: "Attendance Alert",
+                type: "warning",
+            });
+        } else if (attendance !== null && attendance >= 75) {
+            list.push({
+                id: "attendance-good",
+                title: "Good Attendance Record",
+                message: `${name} has maintained a consistent attendance rate of ${attendance}%.`,
+                time: "Attendance Verified",
+                type: "success",
+            });
+        }
+
+        // 2. Tasks Status
+        if (overdueTasks > 0) {
+            list.push({
+                id: "tasks-overdue",
+                title: "Overdue Tasks Pending",
+                message: `${name} has ${overdueTasks} overdue task(s) in ${currentSubLevelName || "current sublevel"} requiring immediate evaluation or submission.`,
+                time: "Task Alert",
+                type: "warning",
+            });
+        } else if (pendingTasks > 0) {
+            list.push({
+                id: "tasks-pending",
+                title: "Tasks In Progress",
+                message: `${pendingTasks} active task(s) currently pending or in progress in ${currentSubLevelName || "current sublevel"}. Completion rate: ${completionRate}%.`,
+                time: "Academic Progress",
+                type: "info",
+            });
+        } else if (totalTasks > 0 && completedTasks === totalTasks) {
+            list.push({
+                id: "tasks-completed",
+                title: "All Level Tasks Completed",
+                message: `All ${totalTasks} assigned tasks for ${currentSubLevelName} have been completed successfully. Ready for evaluation or level promotion.`,
+                time: "Milestone",
+                type: "success",
+            });
+        }
+
+        // 3. Permission / Gate Pass Requests
+        if (pendingPermissions > 0) {
+            list.push({
+                id: "permissions-pending",
+                title: "Pending Permission Requests",
+                message: `${name} has ${pendingPermissions} pending permission/gate pass request(s) awaiting approval or review.`,
+                time: "Permission Alert",
+                type: "warning",
+            });
+        }
+
+        // 4. Placement Readiness
+        if (readinessStatus === "Ready") {
+            list.push({
+                id: "placement-ready",
+                title: "Placement Ready",
+                message: `${name} is verified and marked as 'Ready for Placement'. Profile is active in the placement officer portal.`,
+                time: "Placement Status",
+                type: "success",
+            });
+        } else if (readinessStatus === "In Progress" || readinessStatus === "Training") {
+            list.push({
+                id: "placement-progress",
+                title: "Placement Readiness In Progress",
+                message: `Currently undergoing placement preparation (${readinessStatus}). Portfolio and interview readiness in progress.`,
+                time: "Career Portal",
+                type: "info",
+            });
+        }
+
+        // 5. Academic Level & Track Status
+        list.push({
+            id: "academic-level",
+            title: `Academic Level: ${currentLevelLabel} (${currentSubLevelName})`,
+            message: `Active in ${currentLevelLabel} • ${currentSubLevelName}. Specialization Track: ${trackName}.`,
+            time: daysInSubLevel ? `${daysInSubLevel} in sublevel` : "Current Level",
+            type: "info",
+        });
+
+        // 6. Documents status
+        if (regularDocs.length === 0) {
+            list.push({
+                id: "docs-missing",
+                title: "Verification Documents Missing",
+                message: "No official verification documents have been uploaded for this student record yet.",
+                time: "Document Notice",
+                type: "warning",
+            });
+        }
+
+        return list;
+    }, [raw, name, overdueTasks, pendingTasks, completedTasks, totalTasks, currentSubLevelName, completionRate, pendingPermissions, readinessStatus, currentLevelLabel, trackName, daysInSubLevel, regularDocs.length]);
+
+    const activeNotifications = userNotifications ?? defaultStudentNotifications;
+
     const goToTaskBoard = () => {
         navigate("/student/task-board", {
             state: {
@@ -1583,6 +1709,15 @@ const StudentProfilePage = () => {
                 <DocumentUploadPanel type="extra" loading={uploadingExtraDocument} onUpload={handleExtraDocumentUpload} />
                 {extraDocs.map(doc => <DocumentRow key={doc._id || doc.fileURL} doc={doc} />)}
             </ProfileSectionModal>
+            <NotificationDrawer
+                isOpen={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                notifications={activeNotifications}
+                onClearAll={() => setUserNotifications([])}
+                onDismiss={(notifId) => setUserNotifications(prev => (prev ?? defaultStudentNotifications).filter(n => n.id !== notifId))}
+                title="Student Alerts & Notifications"
+                subtitle={`${name} • Live status alerts & academic updates`}
+            />
 
             {/* MAIN HEADER WITH SIDEBAR TOGGLE & BREADCRUMBS */}
             <Header
@@ -1652,11 +1787,16 @@ const StudentProfilePage = () => {
                         {/* Notification Button */}
                         <button
                             type="button"
-                            className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-xs transition-all relative flex-shrink-0"
-                            title="Notifications"
+                            onClick={() => setShowNotifications(true)}
+                            className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 shadow-xs transition-all relative flex-shrink-0 cursor-pointer active:scale-95"
+                            title="Notifications & Alerts"
                         >
-                            <MdNotificationsNone size={18} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
+                            <MdNotificationsNone size={19} />
+                            {activeNotifications.length > 0 && (
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
+                                    {activeNotifications.length}
+                                </span>
+                            )}
                         </button>
                     </div>
                 </div>

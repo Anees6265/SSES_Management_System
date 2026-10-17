@@ -11,10 +11,7 @@ import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
 import SubDepartmentCard from "./SubDepartmentCard";
 import { MdAccountTree } from "react-icons/md";
-import { HiOutlineUserGroup } from "react-icons/hi";
-import { MdOutlineMenuBook } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
-import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import AddStudentModal from "../../students/AddStudentModal";
 import { UserPlus } from "lucide-react";
@@ -23,36 +20,8 @@ const DepartmentDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: departmentIdParam } = useParams();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [selectedSubDeptId, setSelectedSubDeptId] = useState(null);
-
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) {
-      setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1));
-    }
-    if (isRightSwipe) {
-      setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1));
-    }
-  };
 
   const { user, role: authRole } = useSelector((state) => state.auth || {});
   const role = (
@@ -113,6 +82,89 @@ const DepartmentDetails = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleViewSubdept = (subdept) => {
+    navigate(`/subdepartment/${subdept._id}/levels`, {
+      state: { departmentId: department._id, subdepartment: subdept, departmentName: department.name }
+    });
+  };
+
+  const renderEditButton = (subdept) => {
+    if (!canManage) return null;
+    return (
+      <Formik
+        key={subdept._id}
+        initialValues={{
+          name: subdept.name,
+          departmentId: subdept.departmentId?._id || subdept.departmentId || department._id,
+          allowedCourses: subdept.allowedCourses || [],
+          isActive: subdept.isActive
+        }}
+        validationSchema={validationSchema}
+        onSubmit={async (values, { setSubmitting, resetForm }) => {
+          try {
+            await updateSubdepartment({
+              subdepartmentId: subdept._id,
+              name: values.name,
+              departmentId: values.departmentId,
+              allowedCourses: values.allowedCourses.filter(c => c),
+              isActive: values.isActive
+            }).unwrap();
+            toast.success("Subdepartment updated successfully!");
+            resetForm();
+            refetch();
+          } catch (error) {
+            toast.error(error?.data?.message || "Error updating subdepartment");
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+      >
+        {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
+          <OrangeButton
+            buttonTitle="EDIT"
+            panelTitle="Edit Subdepartment"
+            customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
+            drawerContent={
+              <Form className="space-y-4">
+                <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
+                <div>
+                  <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                  {departmentCourses.length > 0 ? (
+                    <div className="space-y-2">
+                      {departmentCourses.map((course) => (
+                        <label key={course} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={values.allowedCourses.includes(course)}
+                            onChange={(e) => {
+                              const updated = e.target.checked
+                                ? [...values.allowedCourses, course]
+                                : values.allowedCourses.filter(c => c !== course);
+                              setFieldValue("allowedCourses", updated);
+                            }}
+                            className="w-4 h-4 accent-orange-500"
+                          />
+                          <span className="text-sm text-gray-700">{course}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">No courses defined in this department.</p>
+                  )}
+                </div>
+                <RadioGroup label="Status" name="isActive" required={false} />
+              </Form>
+            }
+            leftBtnText="Cancel"
+            rightBtnText={isSubmitting ? "Updating..." : "Update"}
+            onLeftClick={resetForm}
+            onRightClick={submitForm}
+          />
+        )}
+      </Formik>
+    );
   };
 
   if (isDeptsLoading || isSubdeptsLoading) return <Loader />;
@@ -243,7 +295,7 @@ const DepartmentDetails = () => {
         </div>
       )}
 
-        {/* Sliding Carousel of Sub-Departments */}
+        {/* Sub-Departments Content: Single Pager if 1, Normal Cards Grid if > 1, EmptyState if 0 */}
         <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
           {subdepartments.length === 0 ? (
             <EmptyState
@@ -251,184 +303,53 @@ const DepartmentDetails = () => {
               title="No Sub-Departments Found"
               subtitle="Add sub-departments using '+ Add Subdepartment' above to organize academic levels."
             />
+          ) : subdepartments.length === 1 ? (
+            /* Single Sub-Department: Simple Single Pager View (No carousel controls) */
+            <div className="w-full">
+              <SubDepartmentCard
+                variant="fullpage"
+                title={subdepartments[0].name}
+                departmentName={department.name}
+                status={subdepartments[0].isActive}
+                totalStudents={subdepartments[0].totalStudents || 0}
+                allowedCourses={subdepartments[0].allowedCourses || []}
+                faculties={subdepartments[0].faculties || []}
+                levelCounts={subdepartments[0].levelCounts || []}
+                onView={() => handleViewSubdept(subdepartments[0])}
+                onEdit={renderEditButton(subdepartments[0])}
+              />
+            </div>
           ) : (
-            <div className="relative w-full max-w-none mx-auto px-0 md:px-14 flex flex-col items-center">
-              {/* Mobile Subdepartment Counter & Swipe Hint */}
-              {subdepartments.length > 1 && (
-                <div className="w-full flex items-center justify-between gap-2 mb-3 md:hidden px-1">
-                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                    {currentIndex + 1} of {subdepartments.length} Sub-Departments
+            /* Multiple Sub-Departments: Normal Cards Grid on Single Page */
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs sm:text-sm font-extrabold text-gray-800 uppercase tracking-wider">
+                    Sub-Departments
+                  </h2>
+                  <span className="text-[11px] font-bold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">
+                    {subdepartments.length}
                   </span>
-                  <span className="text-[10px] text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">
-                    Swipe ⇄
-                  </span>
-                </div>
-              )}
-
-              {/* Outer Slider Window */}
-              <div 
-                className="w-full overflow-hidden rounded-2xl relative"
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={onTouchEnd}
-              >
-                <div 
-                  className="flex transition-transform duration-500 ease-in-out"
-                  style={{ transform: `translateX(-${Math.min(currentIndex, Math.max(0, subdepartments.length - 1)) * 100}%)` }}
-                >
-                  {subdepartments.map((subdept) => (
-                    <div key={subdept._id} className="w-full flex-shrink-0 px-2">
-                      <SubDepartmentCard
-                        variant="fullpage"
-                        title={subdept.name}
-                        departmentName={department.name}
-                        status={subdept.isActive}
-                        totalStudents={subdept.totalStudents || 0}
-                        allowedCourses={subdept.allowedCourses || []}
-                        faculties={subdept.faculties || []}
-                        levelCounts={subdept.levelCounts || []}
-                        onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
-                          state: { departmentId: department._id, subdepartment: subdept, departmentName: department.name }
-                        })}
-
-                        onEdit={
-                          canManage ? (
-                            <Formik
-                              key={subdept._id}
-                              initialValues={{
-                                name: subdept.name,
-                                departmentId: subdept.departmentId?._id || subdept.departmentId || department._id,
-                                allowedCourses: subdept.allowedCourses || [],
-                                isActive: subdept.isActive
-                              }}
-                              validationSchema={validationSchema}
-                              onSubmit={async (values, { setSubmitting, resetForm }) => {
-                                try {
-                                  await updateSubdepartment({
-                                    subdepartmentId: subdept._id,
-                                    name: values.name,
-                                    departmentId: values.departmentId,
-                                    allowedCourses: values.allowedCourses.filter(c => c),
-                                    isActive: values.isActive
-                                  }).unwrap();
-                                  toast.success("Subdepartment updated successfully!");
-                                  resetForm();
-                                  refetch();
-                                } catch (error) {
-                                  toast.error(error?.data?.message || "Error updating subdepartment");
-                                } finally {
-                                  setSubmitting(false);
-                                }
-                              }}
-                            >
-                              {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-                                <OrangeButton
-                                  buttonTitle="EDIT"
-                                  panelTitle="Edit Subdepartment"
-                                  customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-                                  drawerContent={
-                                    <Form className="space-y-4">
-                                      <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
-                                      {/* departmentId hidden — auto-filled */}
-                                      <div>
-                                        <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                                        {departmentCourses.length > 0 ? (
-                                          <div className="space-y-2">
-                                            {departmentCourses.map((course) => (
-                                              <label key={course} className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={values.allowedCourses.includes(course)}
-                                                  onChange={(e) => {
-                                                    const updated = e.target.checked
-                                                      ? [...values.allowedCourses, course]
-                                                      : values.allowedCourses.filter(c => c !== course);
-                                                    setFieldValue("allowedCourses", updated);
-                                                  }}
-                                                  className="w-4 h-4 accent-orange-500"
-                                                />
-                                                <span className="text-sm text-gray-700">{course}</span>
-                                              </label>
-                                            ))}
-                                          </div>
-                                        ) : (
-                                          <p className="text-xs text-gray-400">No courses defined in this department.</p>
-                                        )}
-                                      </div>
-                                      <RadioGroup label="Status" name="isActive" required={false} />
-                                    </Form>
-                                  }
-                                  leftBtnText="Cancel"
-                                  rightBtnText={isSubmitting ? "Updating..." : "Update"}
-                                  onLeftClick={resetForm}
-                                  onRightClick={submitForm}
-                                />
-                              )}
-                            </Formik>
-                          ) : null
-                        }
-                      />
-                    </div>
-                  ))}
                 </div>
               </div>
 
-              {/* Desktop Slider Navigation Controls */}
-              {subdepartments.length > 1 && (
-                <>
-                  {/* Left Arrow Button (Desktop) */}
-                  <button
-                    onClick={() => setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1))}
-                    className="hidden md:flex absolute left-2 md:left-4 top-[50%] transform -translate-y-1/2 bg-white/95 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95 items-center justify-center cursor-pointer"
-                    aria-label="Previous Slide"
-                  >
-                    <HiChevronLeft size={24} />
-                  </button>
-
-                  {/* Right Arrow Button (Desktop) */}
-                  <button
-                    onClick={() => setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1))}
-                    className="hidden md:flex absolute right-2 md:right-4 top-[50%] transform -translate-y-1/2 bg-white/95 backdrop-blur-xs text-gray-800 p-3 rounded-full shadow-lg border border-gray-250 hover:bg-orange-50 hover:text-orange-500 transition-all duration-200 z-20 hover:scale-105 active:scale-95 items-center justify-center cursor-pointer"
-                    aria-label="Next Slide"
-                  >
-                    <HiChevronRight size={24} />
-                  </button>
-                </>
-              )}
-
-              {/* Bottom Pagination & Mobile Nav Arrows */}
-              {subdepartments.length > 1 && (
-                <div className="flex items-center justify-center gap-3 mt-4 sm:mt-5">
-                  <button
-                    onClick={() => setCurrentIndex((prev) => (prev === 0 ? subdepartments.length - 1 : prev - 1))}
-                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-xs border border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-500 active:scale-95 transition cursor-pointer"
-                    aria-label="Previous Slide"
-                  >
-                    <HiChevronLeft size={18} />
-                  </button>
-
-                  <div className="flex items-center gap-1.5">
-                    {subdepartments.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentIndex(idx)}
-                        className={`rounded-full transition-all duration-300 cursor-pointer ${
-                          currentIndex === idx ? 'bg-orange-500 w-5 h-2' : 'bg-gray-300 w-2 h-2 hover:bg-gray-400'
-                        }`}
-                        aria-label={`Slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setCurrentIndex((prev) => (prev === subdepartments.length - 1 ? 0 : prev + 1))}
-                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-xs border border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-500 active:scale-95 transition cursor-pointer"
-                    aria-label="Next Slide"
-                  >
-                    <HiChevronRight size={18} />
-                  </button>
-                </div>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {subdepartments.map((subdept) => (
+                  <SubDepartmentCard
+                    key={subdept._id}
+                    variant="compact"
+                    title={subdept.name}
+                    departmentName={department.name}
+                    status={subdept.isActive}
+                    totalStudents={subdept.totalStudents || 0}
+                    allowedCourses={subdept.allowedCourses || []}
+                    faculties={subdept.faculties || []}
+                    levelCounts={subdept.levelCounts || []}
+                    onView={() => handleViewSubdept(subdept)}
+                    onEdit={renderEditButton(subdept)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

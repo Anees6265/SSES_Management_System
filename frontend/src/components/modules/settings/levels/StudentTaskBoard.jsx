@@ -12,6 +12,7 @@ import { useGetNewStudentTasksQuery, useAssignExtraTaskMutation, useGetSyllabusV
 import { useSidebar } from "../../../../contexts/SidebarContext";
 import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
@@ -197,9 +198,29 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
 };
 
 // ── Extra Task Modal ──────────────────────────────────────────────────────────
-const TASK_TYPES = ["assignment", "writtenExam", "interview", "project", "presentation", "learning", "assessment"];
-const PRIORITIES = ["low", "medium", "high"];
+const TASK_TYPE_OPTIONS = [
+    { value: "assessment", label: "Assessment" },
+    { value: "assignment", label: "Assignment" },
+    { value: "project", label: "Project" },
+    { value: "writtenExam", label: "Written Exam" },
+    { value: "interview", label: "Interview" },
+    { value: "presentation", label: "Presentation" },
+    { value: "learning", label: "Learning" },
+    { value: "practice", label: "Practice" },
+    { value: "other", label: "Other" }
+];
+
+const PRIORITY_OPTIONS = [
+    { value: "low", label: "Low Priority" },
+    { value: "medium", label: "Medium Priority" },
+    { value: "high", label: "High Priority" }
+];
+
 const EMPTY_EXTRA = { title: "", description: "", type: "assessment", priority: "medium", maxMarks: 5, timeDays: "", dueDate: "", measurablePoints: "", subjectName: "" };
+
+const selectBtnCls = "w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-gray-200/90 hover:border-orange-400 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer";
+const inputCls = "w-full border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder-gray-400 font-medium text-gray-800 shadow-2xs";
+const labelCls = "block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5";
 
 const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) => {
     const [form, setForm] = useState(EMPTY_EXTRA);
@@ -217,8 +238,11 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
     const versionSubjects = (versionData?.data?.subjects || []).map(s => s?.name).filter(Boolean);
     const availableSubjects = Array.from(new Set([...versionSubjects, ...(defaultSubjects || [])])).filter(Boolean);
 
-    const ic = "w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
-    const lc = "block text-xs font-semibold text-slate-700 mb-1";
+    const subjectOptions = useMemo(() => [
+        { value: "", label: "Select Subject (Optional)" },
+        ...availableSubjects.map((sName) => ({ value: sName, label: sName }))
+    ], [availableSubjects]);
+
     const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
 
     const handleSubmit = async (e) => {
@@ -254,63 +278,139 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
             onClose={onClose}
             panelTitle="Assign New Task"
             panelSubtitle={studentDisplayName}
-            showFooter={false}
+            showFooter={true}
+            customFooter={
+                <div className="flex gap-3 w-full">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        form="assign-task-form"
+                        disabled={isLoading}
+                        className="flex-1 py-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer"
+                    >
+                        {isLoading ? "Assigning..." : "Assign Task"}
+                    </button>
+                </div>
+            }
             drawerContent={
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form id="assign-task-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
                     <div>
-                        <label className={lc}>Task Title <span className="text-rose-500">*</span></label>
-                        <input className={ic} value={form.title} onChange={set("title")} placeholder="Enter task title..." />
-                    </div>
-
-                    <div>
-                        <label className={lc}>Description</label>
-                        <textarea className={`${ic} resize-none`} rows={2} value={form.description} onChange={set("description")} placeholder="Task description..." />
-                    </div>
-
-                    <div>
-                        <label className={lc}>Subject</label>
-                        <select className={ic} value={form.subjectName} onChange={set("subjectName")}>
-                            <option value="">Select Subject</option>
-                            {availableSubjects.map((sName, idx) => <option key={`${sName}-${idx}`} value={sName}>{sName}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label className={lc}>Type</label>
-                            <select className={ic} value={form.type} onChange={set("type")}>
-                                {TASK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className={lc}>Priority</label>
-                            <select className={ic} value={form.priority} onChange={set("priority")}>
-                                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label className={lc}>Max Marks</label>
-                            <input type="number" min={1} max={10} className={ic} value={form.maxMarks} onChange={set("maxMarks")} />
-                        </div>
-                        <div>
-                            <label className={lc}>Time (Days)</label>
-                            <input type="number" min={1} className={ic} value={form.timeDays} onChange={set("timeDays")} placeholder="Optional" />
-                        </div>
+                        <label className={labelCls}>
+                            Task Title <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className={inputCls}
+                            value={form.title}
+                            onChange={set("title")}
+                            placeholder="Enter task title..."
+                            required
+                        />
                     </div>
 
                     <div>
-                        <label className={lc}>Due Date</label>
-                        <input type="date" className={ic} value={form.dueDate} onChange={set("dueDate")} />
+                        <label className={labelCls}>
+                            Description <span className="text-slate-400 normal-case font-normal">(optional)</span>
+                        </label>
+                        <textarea
+                            className={`${inputCls} resize-none`}
+                            rows={3}
+                            value={form.description}
+                            onChange={set("description")}
+                            placeholder="Task description, instructions or guidelines..."
+                        />
                     </div>
 
-                    <div className="flex gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="flex-1 py-2.5 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer">
-                            {isLoading ? "Assigning..." : "Assign Task"}
-                        </button>
+                    <div>
+                        <label className={labelCls}>
+                            Subject <span className="text-slate-400 normal-case font-normal">(optional)</span>
+                        </label>
+                        <SelectDropdown
+                            value={form.subjectName}
+                            onChange={(val) => setForm((p) => ({ ...p, subjectName: val }))}
+                            options={subjectOptions}
+                            placeholder="Select Subject"
+                            buttonClassName={selectBtnCls}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                            <label className={labelCls}>Task Type</label>
+                            <SelectDropdown
+                                value={form.type}
+                                onChange={(val) => setForm((p) => ({ ...p, type: val }))}
+                                options={TASK_TYPE_OPTIONS}
+                                placeholder="Select Type"
+                                buttonClassName={selectBtnCls}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Priority</label>
+                            <SelectDropdown
+                                value={form.priority}
+                                onChange={(val) => setForm((p) => ({ ...p, priority: val }))}
+                                options={PRIORITY_OPTIONS}
+                                placeholder="Select Priority"
+                                buttonClassName={selectBtnCls}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                            <label className={labelCls}>Max Marks</label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                className={inputCls}
+                                value={form.maxMarks}
+                                onChange={set("maxMarks")}
+                                placeholder="e.g. 5"
+                            />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Time (Days)</label>
+                            <input
+                                type="number"
+                                min={1}
+                                className={inputCls}
+                                value={form.timeDays}
+                                onChange={set("timeDays")}
+                                placeholder="e.g. 3"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                            <label className={labelCls}>Due Date</label>
+                            <input
+                                type="date"
+                                className={inputCls}
+                                value={form.dueDate}
+                                onChange={set("dueDate")}
+                            />
+                        </div>
+                        <div>
+                            <label className={labelCls}>
+                                Measurable Points <span className="text-slate-400 normal-case font-normal">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                className={inputCls}
+                                value={form.measurablePoints}
+                                onChange={set("measurablePoints")}
+                                placeholder="e.g. Accuracy, code quality"
+                            />
+                        </div>
                     </div>
                 </form>
             }

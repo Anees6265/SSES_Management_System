@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import Header from '../../shared/sidebar/Header';
+import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import { confirmDelete } from '../../shared/modal/DeleteConfirmModal';
 
 export default function TaskList() {
@@ -629,6 +630,30 @@ const TaskCard = ({ task, onStatusChange, onEdit, onDelete, getPriorityColor, ge
   );
 };
 
+const TASKLIST_SUBJECT_OPTIONS = [
+  { value: "", label: "Select Subject" },
+  { value: "HTML/CSS", label: "HTML/CSS" },
+  { value: "Java", label: "Java" },
+  { value: "JavaScript", label: "JavaScript" },
+  { value: "React", label: "React" },
+  { value: "Node.js", label: "Node.js" },
+  { value: "Database", label: "Database" },
+  { value: "Data Structures", label: "Data Structures" },
+  { value: "System Design", label: "System Design" },
+  { value: "Algorithms", label: "Algorithms" },
+  { value: "Machine Learning", label: "Machine Learning" },
+  { value: "Project Work", label: "Project Work" },
+  { value: "Soft Skills", label: "Soft Skills" },
+  { value: "Interview Prep", label: "Interview Prep" },
+  { value: "Other", label: "Other" }
+];
+
+const TASKLIST_PRIORITY_OPTIONS = [
+  { value: "1st", label: "1st Priority (High)" },
+  { value: "2nd", label: "2nd Priority (Medium)" },
+  { value: "3rd", label: "3rd Priority (Low)" }
+];
+
 // Task Modal Component
 const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
   return (
@@ -667,27 +692,13 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
           
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Subject *</label>
-            <select
+            <SelectDropdown
               value={task.subject}
-              onChange={(e) => setTask({ ...task, subject: e.target.value, customSubject: '' })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D]"
-            >
-              <option value="">Select Subject</option>
-              <option value="HTML/CSS">HTML/CSS</option>
-              <option value="Java">Java</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="React">React</option>
-              <option value="Node.js">Node.js</option>
-              <option value="Database">Database</option>
-              <option value="Data Structures">Data Structures</option>
-              <option value="System Design">System Design</option>
-              <option value="Algorithms">Algorithms</option>
-              <option value="Machine Learning">Machine Learning</option>
-              <option value="Project Work">Project Work</option>
-              <option value="Soft Skills">Soft Skills</option>
-              <option value="Interview Prep">Interview Prep</option>
-              <option value="Other">Other</option>
-            </select>
+              onChange={(val) => setTask({ ...task, subject: val, customSubject: '' })}
+              options={TASKLIST_SUBJECT_OPTIONS}
+              placeholder="Select Subject"
+              buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-gray-200/90 hover:border-orange-400 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
+            />
             {task.subject === 'Other' && (
               <input
                 type="text"
@@ -701,15 +712,13 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
           
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Priority</label>
-            <select
+            <SelectDropdown
               value={task.priority}
-              onChange={(e) => setTask({ ...task, priority: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D]"
-            >
-              <option value="1st">1st</option>
-              <option value="2nd">2nd</option>
-              <option value="3rd">3rd</option>
-            </select>
+              onChange={(val) => setTask({ ...task, priority: val })}
+              options={TASKLIST_PRIORITY_OPTIONS}
+              placeholder="Select Priority"
+              buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-gray-200/90 hover:border-orange-400 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
+            />
           </div>
           
           <div>

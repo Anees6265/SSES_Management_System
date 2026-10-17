@@ -5,11 +5,12 @@ const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const Task = require("../models/syllabus/Task");
 const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
-const { syncTasksToSubLevelStudents, updateStudentTaskStatus } = require("../services/taskAssignmentService");
+const { syncTasksToSubLevelStudents, updateStudentTaskStatus, syncTaskToStudents } = require("../services/taskAssignmentService");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod"];
 
 const populateTaskContext = [
+  { path: "sessionId", select: "name startDate endDate status" },
   {
     path: "levelId",
     select: "name order subDepartmentId",
@@ -53,7 +54,7 @@ const serializeTask = (task) => {
   const subLevel = task.subLevelId || version?.subLevelId || null;
   const subDepartment = level?.subDepartmentId || null;
   const department = subDepartment?.departmentId || null;
-  const session = version?.sessionId || null;
+  const session = task.sessionId || version?.sessionId || null;
 
   return {
     ...task,
@@ -115,7 +116,21 @@ router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), as
 // Create general task (not tied to syllabus)
 router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => {
   try {
-    const { levelId, subLevelId, title, description, type, priority, maxMarks, timeDays, measurablePoints, dueDate } = req.body;
+    const {
+      levelId,
+      subLevelId,
+      title,
+      description,
+      type,
+      priority,
+      maxMarks,
+      timeDays,
+      measurablePoints,
+      dueDate,
+      sessionId,
+      subjectName,
+      topicName
+    } = req.body;
     
     if (!levelId || !subLevelId || !title) {
       return res.status(400).json({ 
@@ -125,8 +140,11 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
     }
 
     const task = await Task.create({
+      sessionId: sessionId || null,
       levelId,
       subLevelId,
+      subjectName: subjectName || "General",
+      topicName: topicName || "",
       title: title.trim(),
       description: description || "",
       type: type || "assignment",
@@ -141,8 +159,8 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       isActive: true
     });
 
-    // Sync to all students in this sublevel
-    await syncTasksToSubLevelStudents(null, subLevelId).catch(() => {});
+    // Sync to all matching students in this sublevel / session
+    await syncTaskToStudents(task).catch((err) => console.error("syncTaskToStudents error:", err));
 
     res.status(201).json({
       success: true,
@@ -185,15 +203,11 @@ const handleUpdateTaskRoute = async (req, res) => {
     }
 
     // Sync changes to students asynchronously in background (do NOT block HTTP response)
-    if (task.syllabusVersionId) {
-      setImmediate(() => syncTasksToSubLevelStudents(task.syllabusVersionId).catch((err) => {
-        console.error("Async syncTasksToSubLevelStudents error:", err);
-      }));
-    } else if (task.subLevelId) {
-      setImmediate(() => syncTasksToSubLevelStudents(null, task.subLevelId).catch((err) => {
-        console.error("Async syncTasksToSubLevelStudents error:", err);
-      }));
-    }
+    setImmediate(() => {
+      syncTaskToStudents(task).catch((err) => {
+        console.error("Async syncTaskToStudents error:", err);
+      });
+    });
 
     res.status(200).json({
       success: true,
@@ -221,6 +235,9 @@ router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =
     if (!task) {
       return res.status(404).json({ success: false, message: "Task not found" });
     }
+
+    // Inactivate assigned student tasks
+    await StudentTask.updateMany({ taskId: req.params.taskId }, { $set: { isActive: false } }).catch(() => {});
 
     res.status(200).json({
       success: true,

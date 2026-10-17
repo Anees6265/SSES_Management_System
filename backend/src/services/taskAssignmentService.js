@@ -807,6 +807,93 @@ const syncStudentLevelProgressStats = async (studentId) => {
   }
 };
 
+/**
+ * Sync an individual task (general or syllabus) directly to active students in the target sublevel/session/level.
+ * @param {Object|String} task - Task document or Task ID
+ */
+const syncTaskToStudents = async (task) => {
+  const Task = require("../models/syllabus/Task");
+  const Student = require("../models/student/Student");
+  const StudentTask = require("../models/syllabus/StudentTask");
+
+  const taskDoc = typeof task === "object" && task._id ? task : await Task.findById(task);
+  if (!taskDoc || !taskDoc.subLevelId) return { success: false, message: "Task or subLevelId missing" };
+
+  // Find all active students in this sublevel (and session / level if specified)
+  const studentQuery = {
+    currentSubLevelId: taskDoc.subLevelId,
+    status: { $in: ["Active", "active"] }
+  };
+  if (taskDoc.sessionId) {
+    studentQuery.sessionId = taskDoc.sessionId;
+  }
+  if (taskDoc.levelId) {
+    studentQuery.currentLevelId = taskDoc.levelId;
+  }
+
+  const students = await Student.find(studentQuery).select("_id sessionId currentLevelId currentSubLevelId syllabusVersionId");
+  if (students.length === 0) {
+    return { success: true, count: 0, message: "No matching active students found" };
+  }
+
+  const bulkOps = students.map((student) => {
+    const payload = {
+      sessionId: student.sessionId || taskDoc.sessionId,
+      levelId: student.currentLevelId || taskDoc.levelId,
+      subLevelId: student.currentSubLevelId || taskDoc.subLevelId,
+      syllabusVersionId: taskDoc.syllabusVersionId || student.syllabusVersionId || null,
+      subjectId: taskDoc.subjectId || null,
+      topicId: taskDoc.topicId || null,
+      subTopicId: taskDoc.subTopicId || null,
+      subjectName: taskDoc.subjectName || "General",
+      topicName: taskDoc.topicName || "General",
+      subTopicName: taskDoc.subTopicName || null,
+      taskNodeType: taskDoc.taskNodeType || (taskDoc.isGeneralTask ? "general" : "topic"),
+      title: taskDoc.title,
+      description: taskDoc.description || "",
+      type: taskDoc.type || "assignment",
+      priority: taskDoc.priority || "medium",
+      mandatory: taskDoc.mandatory !== false,
+      maxMarks: typeof taskDoc.maxMarks === "number" ? taskDoc.maxMarks : 5,
+      timeDays: taskDoc.timeDays || null,
+      dueDate: taskDoc.dueDate || null,
+      measurablePoints: taskDoc.measurablePoints || "",
+      isGeneralTask: Boolean(taskDoc.isGeneralTask),
+      isActive: taskDoc.isActive !== false,
+      assignedType: "auto",
+      assignedByName: taskDoc.assignedByName || "System",
+      assignedAt: taskDoc.createdAt || new Date()
+    };
+
+    return {
+      updateOne: {
+        filter: { studentId: student._id, taskId: taskDoc._id },
+        update: {
+          $set: payload,
+          $setOnInsert: {
+            status: "pending",
+            marks: null
+          }
+        },
+        upsert: true
+      }
+    };
+  });
+
+  if (bulkOps.length > 0) {
+    await StudentTask.bulkWrite(bulkOps, { ordered: false });
+  }
+
+  // Update progress stats for affected students asynchronously
+  setImmediate(() => {
+    students.forEach((s) => {
+      syncStudentLevelProgressStats(s._id).catch(() => {});
+    });
+  });
+
+  return { success: true, count: students.length };
+};
+
 module.exports = {
   buildTaskEntries,
   assignTasksToStudent,
@@ -819,4 +906,5 @@ module.exports = {
   updateStudentTaskStatus,
   syncSyllabusTasksToStudents,
   syncTasksToSubLevelStudents,
+  syncTaskToStudents,
 };

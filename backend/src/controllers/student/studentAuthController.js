@@ -224,12 +224,19 @@ exports.changeMyPassword = async (req, res) => {
 // ✅ Get My Tasks (Student)
 exports.getMyTasks = async (req, res) => {
   try {
-    const StudentTask = require("../../models/syllabus/StudentTask");
-    const student = await Student.findById(req.user.id).select("syllabusVersionId");
+    const student = await Student.findById(req.user.id).select("syllabusVersionId currentSubLevelId");
     if (!student) return res.status(404).json({ message: "Student not found" });
 
     const { status, subLevelId } = req.query;
-    const filter = { studentId: req.user.id, syllabusVersionId: student.syllabusVersionId };
+    const filter = {
+      studentId: req.user.id,
+      $or: [
+        { isGeneralTask: true },
+        { isExtra: true },
+        ...(student.currentSubLevelId ? [{ subLevelId: student.currentSubLevelId }] : []),
+        ...(student.syllabusVersionId ? [{ syllabusVersionId: student.syllabusVersionId }] : [])
+      ]
+    };
     if (status) filter.status = status;
     if (subLevelId) filter.subLevelId = subLevelId;
 

@@ -1158,9 +1158,16 @@ exports.getStudentTasks = async (req, res) => {
     if (subLevelId === "all") {
       // Return all tasks across all sublevels/syllabus versions
     } else if (subLevelId) {
-      filter.$or = [{ subLevelId }, { isExtra: true }];
-    } else if (student.syllabusVersionId) {
-      filter.$or = [{ syllabusVersionId: student.syllabusVersionId }, { isExtra: true }];
+      filter.$or = [{ subLevelId }, { isExtra: true }, { isGeneralTask: true }];
+    } else {
+      const orConditions = [{ isExtra: true }, { isGeneralTask: true }];
+      if (student.currentSubLevelId) {
+        orConditions.push({ subLevelId: student.currentSubLevelId });
+      }
+      if (student.syllabusVersionId) {
+        orConditions.push({ syllabusVersionId: student.syllabusVersionId });
+      }
+      filter.$or = orConditions;
     }
     if (status) filter.status = status;
 

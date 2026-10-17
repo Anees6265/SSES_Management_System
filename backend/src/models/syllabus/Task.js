@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema({
+  sessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Session",
+    required: false
+  },
   syllabusVersionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SyllabusVersion",

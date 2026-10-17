@@ -47,13 +47,14 @@ const studentTaskSchema = new mongoose.Schema({
     default: null
   },
   subjectName: { type: String, required: true },
-  topicName: { type: String, required: true },
+  topicName: { type: String, default: "" },
   subTopicName: { type: String, default: null },
   taskNodeType: {
     type: String,
-    enum: ["topic", "subTopic"],
-    required: true
+    enum: ["topic", "subTopic", "general"],
+    default: "general"
   },
+  isGeneralTask: { type: Boolean, default: false },
   title: { type: String, required: true },
   description: { type: String, default: "" },
   type: { type: String, default: "assignment" },
@@ -128,7 +129,7 @@ const studentTaskSchema = new mongoose.Schema({
 
 studentTaskSchema.pre("validate", function validateTask(next) {
   // For syllabus tasks, sessionId/levelId/subLevelId/syllabusVersionId are required
-  if (!this.isExtra) {
+  if (!this.isExtra && !this.isGeneralTask) {
     if (!this.sessionId) return next(new Error("sessionId is required for syllabus tasks"));
     if (!this.levelId) return next(new Error("levelId is required for syllabus tasks"));
     if (!this.subLevelId) return next(new Error("subLevelId is required for syllabus tasks"));

@@ -1782,7 +1782,7 @@ export const authApi = createApi({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: ['SyllabusVersion', 'Task'],
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
     }),
 
     // Bulk upload tasks via Excel rows
@@ -1794,6 +1794,7 @@ export const authApi = createApi({
       }),
       invalidatesTags: (result, error, data) => [
         { type: 'SyllabusVersion', id: data.syllabusVersionId },
+        'Student',
       ],
     }),
 
@@ -1845,7 +1846,7 @@ export const authApi = createApi({
           };
         }
       },
-      invalidatesTags: ['SyllabusVersion', 'Task'],
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
     }),
 
     deleteTask: builder.mutation({
@@ -1853,7 +1854,7 @@ export const authApi = createApi({
         url: `/tasks/${taskId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['SyllabusVersion', 'Task'],
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
     }),
 
     // --- Student Auth APIs ---

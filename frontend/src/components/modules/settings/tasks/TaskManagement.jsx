@@ -11,6 +11,8 @@ import Header from "../../../shared/sidebar/Header";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import Pagination from "../../../shared/pagination/Pagination";
+import AddTaskModal from "./AddTaskModal";
+import { buttonStyles } from "../../../../styles/buttonStyles";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -277,14 +279,14 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                            className={`px-4 py-2 text-xs ${buttonStyles.cancel}`}
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSaving}
-                            className="px-5 py-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                            className={`px-5 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50 ${buttonStyles.primary}`}
                         >
                             {isSaving ? "Saving..." : "Save Changes"}
                         </button>
@@ -426,7 +428,7 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                                     onClose();
                                     onEdit(task);
                                 }}
-                                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
+                                className={`px-3.5 py-2 text-xs ${buttonStyles.primary}`}
                             >
                                 Edit Task
                             </button>
@@ -434,7 +436,7 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-2xs transition cursor-pointer"
+                            className={`px-4 py-2 text-xs ${buttonStyles.view}`}
                         >
                             Close
                         </button>
@@ -474,6 +476,7 @@ const TaskManagement = () => {
     const [viewMode, setViewMode] = useState("table");
     const [selectedTask, setSelectedTask] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const { data: tasksResponse, isLoading, isError, refetch } = useGetAllTasksQuery({ status: "all" });
     const { data: departmentsData } = useGetAllDepartmentsQuery();
@@ -666,8 +669,9 @@ const TaskManagement = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
                     {!isFaculty && (
                         <button
-                            onClick={refetch}
-                            className="w-full sm:w-auto h-10 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+                            type="button"
+                            onClick={() => setIsAddModalOpen(true)}
+                            className={`w-full sm:w-auto h-10 px-4 flex items-center justify-center gap-2 text-xs ${buttonStyles.primary}`}
                         >
                             <MdAdd size={18} />
                             <span>Add New Task</span>
@@ -1187,6 +1191,28 @@ const TaskManagement = () => {
                     onClose={() => setEditingTask(null)}
                     onSave={handleUpdateTask}
                     isSaving={isUpdatingTask}
+                />
+            )}
+
+            {/* Add Task Modal */}
+            {isAddModalOpen && (
+                <AddTaskModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSuccess={() => refetch()}
+                    sessionsList={sessionsList}
+                    departments={departments}
+                    subDepartments={subDepartments}
+                    levelsList={levelsList}
+                    subLevelsList={subLevelsList}
+                    initialFilters={{
+                        filterSession,
+                        filterDept,
+                        filterSub,
+                        filterLevel,
+                        filterSubLevel,
+                        filterPriority,
+                    }}
                 />
             )}
         </>

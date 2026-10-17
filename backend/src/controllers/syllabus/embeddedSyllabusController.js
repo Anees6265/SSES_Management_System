@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const ExcelJS = require("exceljs");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const Task = require("../../models/syllabus/Task");
-const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents } = require("../../services/taskAssignmentService");
+const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents, syncTaskToStudents } = require("../../services/taskAssignmentService");
 
 const ensureObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -296,7 +296,7 @@ exports.archiveSyllabusVersion = async (req, res) => {
 
 exports.addTaskToSyllabusVersion = async (req, res) => {
   try {
-    const { subjectId, topicId, subTopicId, title, description, type, mandatory, maxMarks, timeDays, measurablePoints } = req.body;
+    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate } = req.body;
     if (!ensureObjectId(subjectId) || !ensureObjectId(topicId) || !title) {
       return res.status(400).json({ success: false, message: "subjectId, topicId and title are required" });
     }
@@ -317,6 +317,9 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
 
     const task = await Task.create({
       syllabusVersionId: sv._id,
+      sessionId: sv.sessionId || null,
+      levelId: sv.levelId || null,
+      subLevelId: sv.subLevelId || null,
       subjectId,
       subjectName: subject.name,
       topicId,
@@ -327,6 +330,8 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       title,
       description: description || "",
       type: type || "assignment",
+      priority: priority || "medium",
+      dueDate: dueDate || null,
       mandatory: mandatory !== false,
       maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
       timeDays: timeDays ? Number(timeDays) : null,
@@ -336,14 +341,14 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       isActive: true
     });
 
-    const syncResults = await syncIfActive(sv._id);
+    const syncResults = await syncTaskToStudents(task);
 
     res.status(201).json({
       success: true,
       message: "Task added successfully",
       data: {
         task,
-        syncedStudents: syncResults.filter((r) => r.success).length
+        syncedStudents: syncResults.count || 0
       }
     });
   } catch (error) {

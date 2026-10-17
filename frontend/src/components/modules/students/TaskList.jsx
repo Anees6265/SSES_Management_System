@@ -572,8 +572,17 @@ function formatTimeAgo(dateString) {
   return "Just now";
 }
 
+const TASKLIST_STATUS_OPTIONS = [
+  { value: "pending", label: "Pending", dot: "bg-amber-500", badge: "bg-amber-50 text-amber-700 border-amber-200" },
+  { value: "in-progress", label: "In Progress", dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700 border-blue-200" },
+  { value: "completed", label: "Completed", dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" }
+];
+
 // Task Card Component
 const TaskCard = ({ task, onStatusChange, onEdit, onDelete, getPriorityColor, getStatusColor, onDragStart }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const currentOpt = TASKLIST_STATUS_OPTIONS.find(s => s.value === task.status) || TASKLIST_STATUS_OPTIONS[0];
+
   return (
     <div 
       className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-move"
@@ -615,16 +624,43 @@ const TaskCard = ({ task, onStatusChange, onEdit, onDelete, getPriorityColor, ge
         )}
       </div>
       
-      <div className="flex items-center gap-2">
-        <select
-          value={task.status}
-          onChange={(e) => onStatusChange(task.id, e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2 py-1 flex-1"
-        >
-          <option value="pending">Pending</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
-        </select>
+      <div className="relative pt-1 border-t border-gray-100 flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-gray-400">Status:</span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer ${currentOpt.badge}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${currentOpt.dot}`} />
+            <span>{currentOpt.label}</span>
+            <FaChevronDown className="text-[9px] opacity-70 ml-0.5" />
+          </button>
+          {isOpen && (
+            <div className="absolute right-0 bottom-full mb-1.5 w-32 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-30">
+              {TASKLIST_STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusChange(task.id, opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium hover:bg-gray-50 cursor-pointer ${
+                    task.status === opt.value ? "text-orange-500 font-bold bg-orange-50/50" : "text-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                    <span>{opt.label}</span>
+                  </div>
+                  {task.status === opt.value && <FaCheck className="text-orange-500 text-[10px]" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

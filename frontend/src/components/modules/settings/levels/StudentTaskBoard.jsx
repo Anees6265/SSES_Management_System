@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
-    MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified
+    MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified,
+    MdExpandMore, MdCheck
 } from "react-icons/md";
 import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
@@ -64,6 +65,105 @@ function formatTimeAgo(dateString) {
     return "Just now";
 }
 
+// ── Status Dropdown for Task Cards ───────────────────────────────────────────
+const STATUS_OPTIONS = [
+    {
+        value: "pending",
+        label: "Pending",
+        dotColor: "bg-amber-500",
+        badgeStyle: "bg-amber-50 text-amber-700 border-amber-200/90 hover:bg-amber-100/60",
+    },
+    {
+        value: "inProgress",
+        label: "In Progress",
+        dotColor: "bg-blue-500",
+        badgeStyle: "bg-blue-50 text-blue-700 border-blue-200/90 hover:bg-blue-100/60",
+    },
+    {
+        value: "completed",
+        label: "Done",
+        dotColor: "bg-emerald-500",
+        badgeStyle: "bg-emerald-50 text-emerald-700 border-emerald-200/90 hover:bg-emerald-100/60",
+    },
+];
+
+const StatusDropdown = ({ currentStatus, onStatusChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const activeConfig = STATUS_OPTIONS.find(s => s.value === currentStatus) || STATUS_OPTIONS[0];
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen]);
+
+    return (
+        <div
+            ref={dropdownRef}
+            className="relative shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+        >
+            <button
+                type="button"
+                onClick={() => setIsOpen((p) => !p)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all duration-150 shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer select-none ${activeConfig.badgeStyle}`}
+            >
+                <span className={`w-1.5 h-1.5 rounded-full ${activeConfig.dotColor} shrink-0`} />
+                <span>{activeConfig.label}</span>
+                <MdExpandMore
+                    size={13}
+                    className={`transition-transform duration-200 shrink-0 opacity-70 ${isOpen ? "rotate-180" : ""}`}
+                />
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-36 bg-white rounded-xl shadow-lg border border-slate-200/90 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-0.5">
+                        Change Status
+                    </div>
+                    {STATUS_OPTIONS.map((opt) => {
+                        const isSelected = opt.value === currentStatus;
+                        return (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                    if (opt.value !== currentStatus) {
+                                        onStatusChange(opt.value);
+                                    }
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold transition-colors duration-100 cursor-pointer ${
+                                    isSelected
+                                        ? "bg-slate-100 text-slate-900 font-bold"
+                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${opt.dotColor} shrink-0`} />
+                                    <span>{opt.label}</span>
+                                </div>
+                                {isSelected && <MdCheck size={14} className="text-orange-500 shrink-0" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ── Task Card ─────────────────────────────────────────────────────────────────
 const TaskCard = ({ task, onDragStart, onStatusChange }) => {
     const priority    = task.priority || "medium";
@@ -92,17 +192,10 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                     {isCompleted ? "COMPLETED" : `${priority} PRIORITY`}
                 </span>
 
-                <div className="relative shrink-0">
-                    <select
-                        value={task.status || "pending"}
-                        onChange={(e) => onStatusChange(task, e.target.value)}
-                        className="!h-auto !py-1 !px-2 !border !border-slate-200/70 !rounded-lg text-[10px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-600 hover:text-slate-800 bg-slate-50/80 outline-none focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer transition shadow-2xs"
-                    >
-                        <option value="pending">PENDING ▾</option>
-                        <option value="inProgress">IN PROGRESS ▾</option>
-                        <option value="completed">DONE ▾</option>
-                    </select>
-                </div>
+                <StatusDropdown
+                    currentStatus={task.status || "pending"}
+                    onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
+                />
             </div>
 
             {/* Title */}

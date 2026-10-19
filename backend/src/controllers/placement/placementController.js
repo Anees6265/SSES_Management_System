@@ -1410,11 +1410,26 @@ exports.getPlacedStudentsByCompany = async (req, res) => {
 // 18. UPLOAD RESUME BASE64
 exports.uploadResumeBase64 = async (req, res) => {
   try {
-    const { studentId, resumeBase64 } = req.body;
-    if (!studentId || !resumeBase64) return res.status(400).json({ message: "studentId and resumeBase64 are required" });
+    const { studentId } = req.body;
+    let resumeBase64 = req.body.resumeBase64 || req.body.fileData;
+    if (!studentId || !resumeBase64) {
+      return res.status(400).json({ message: "studentId and resumeBase64 (or fileData) are required" });
+    }
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
-    if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
+    if (!resumeBase64.startsWith("data:")) {
+      resumeBase64 = `data:application/pdf;base64,${resumeBase64}`;
+    }
+
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      const student = await Student.findById(studentId);
+      if (!student) return res.status(404).json({ message: "Student not found" });
+      placement = new StudentPlacement({
+        studentId,
+        subDepartmentId: student.subDepartmentId,
+        readinessStatus: "Ready",
+      });
+    }
 
     const result = await cloudinary.uploader.upload(resumeBase64, {
       folder: "student-resumes",
@@ -1424,6 +1439,11 @@ exports.uploadResumeBase64 = async (req, res) => {
 
     placement.resumeURL = result.secure_url;
     await placement.save();
+
+    // Also update Student document reference for fallback consistency
+    await Student.findByIdAndUpdate(studentId, {
+      $set: { resumeURL: result.secure_url }
+    });
 
     res.json({ success: true, message: "Resume uploaded successfully", resumeURL: result.secure_url });
   } catch (error) {

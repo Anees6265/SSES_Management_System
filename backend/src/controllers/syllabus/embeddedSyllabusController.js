@@ -543,7 +543,7 @@ exports.toggleSubTopicActive = async (req, res) => {
 // Rows with taskTitle = syllabus + task
 exports.uploadCombined = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [] } = req.body;
+    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version } = req.body;
     if (!sessionId || !levelId || !subLevelId)
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     if (!Array.isArray(rows) || rows.length === 0)
@@ -605,10 +605,21 @@ exports.uploadCombined = async (req, res) => {
     if (sv) {
       sv.isActive = true;
       sv.status = "active";
+      if (title && title.trim()) sv.title = title.trim();
+      if (version && version.trim()) sv.version = version.trim();
       upsertSubjectTree(sv, subjects);
       await sv.save();
     } else {
-      sv = await SyllabusVersion.create({ sessionId, levelId, subLevelId, version: "v1.0", subjects: normalizeSubjects(subjects), status: "active", isActive: true });
+      sv = await SyllabusVersion.create({
+        sessionId,
+        levelId,
+        subLevelId,
+        title: (title || "").trim(),
+        version: (version || "").trim() || "v1.0",
+        subjects: normalizeSubjects(subjects),
+        status: "active",
+        isActive: true
+      });
     }
 
     // Step 3: Create tasks for rows that have taskTitle

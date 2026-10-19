@@ -237,6 +237,15 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
                           {record.scheduleDate ? new Date(record.scheduleDate).toLocaleDateString() : "—"}
                         </span>
                       </div>
+                      <button
+                        onClick={() => {
+                          onClose();
+                          navigate(`/interview-history/${sId}`);
+                        }}
+                        className="w-full py-1 px-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-[11px] rounded-lg transition border border-orange-200/80 flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                      >
+                        <MdHistory size={13} /> Update Status & Rounds
+                      </button>
                     </div>
                   );
                 })}
@@ -257,6 +266,18 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
           >
             Full Profile
           </button>
+
+          {interviews.length > 0 && (
+            <button
+              onClick={() => {
+                onClose();
+                navigate(`/interview-history/${sId}`);
+              }}
+              className="px-3.5 py-2 border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1"
+            >
+              <MdHistory size={15} /> Rounds & Selection
+            </button>
+          )}
 
           {!placed && (
             <button
@@ -340,6 +361,7 @@ const PipelineStatCard = ({ title, count, subtitle, icon: Icon, isActive, onClic
 
 /* ─── Main Placement Candidates Page ──────────────────────── */
 const PlacementReadyStudents = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const statusParam = searchParams.get("status");
@@ -824,6 +846,15 @@ const PlacementReadyStudents = () => {
                           View Details
                         </button>
 
+                        {hasActiveInterview(candidate) && !isPlaced && !isSelected && (
+                          <button
+                            onClick={() => navigate(`/interview-history/${candidate._id}`)}
+                            className="px-2.5 py-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 font-extrabold text-[11px] shadow-2xs cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <MdHistory size={13} /> Result
+                          </button>
+                        )}
+
                         {!isPlaced && !isSelected && (
                           <button
                             onClick={() => {
@@ -1000,6 +1031,18 @@ const PlacementReadyStudents = () => {
                           {/* Actions */}
                           <td className="py-4 px-5 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
+                              {/* Direct action to record interview rounds/selection */}
+                              {hasActiveInterview(candidate) && !isPlaced && !isSelected && (
+                                <button
+                                  onClick={() => navigate(`/interview-history/${candidate._id}`)}
+                                  className="px-3 py-1.5 bg-white hover:bg-orange-50 border border-orange-200 text-orange-700 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                  title="Update Interview Rounds & Selection Result"
+                                >
+                                  <MdHistory size={14} className="text-orange-500" />
+                                  <span>Update Result</span>
+                                </button>
+                              )}
+
                               {!isPlaced && !isSelected && (
                                 <button
                                   onClick={() => {

@@ -519,36 +519,58 @@ exports.updateFinalResult = async (req, res) => {
     if (roundId) activeRound = interview.rounds.id(roundId);
     else if (interview.rounds && interview.rounds.length > 0) activeRound = interview.rounds[interview.rounds.length - 1];
 
-    // Require Conducted status before recording round result
-    if (activeRound && roundResult) {
-      if (activeRound.status !== "Conducted" && !activeRound.conductedDate && interview.status !== "Conducted") {
-        return res.status(400).json({
-          success: false,
-          message: "Interview must be marked as Conducted before recording result."
-        });
+    // If recording a result (e.g. Cleared, Selected, Placed, Not Selected), ensure activeRound is marked conducted
+    if (activeRound) {
+      if (!activeRound.conductedDate && activeRound.status !== "Conducted" && interview.status !== "Conducted") {
+        activeRound.conductedDate = new Date();
       }
-      activeRound.result = roundResult;
-      activeRound.status = ["Cleared", "Passed"].includes(roundResult) ? "Cleared" : "Not Cleared";
+      if (roundResult) {
+        activeRound.result = roundResult;
+        activeRound.status = ["Cleared", "Passed"].includes(roundResult) ? "Cleared" : "Not Cleared";
+      }
     }
 
     const finalStatus = status || (roundResult === "Cleared" ? "Ongoing" : roundResult === "Not Cleared" ? "Not Selected" : interview.status);
     interview.status = finalStatus;
     if (statusRemark) interview.statusRemark = statusRemark;
+    if (!interview.conductedDate && ["Selected", "Placed", "Cleared"].includes(finalStatus)) {
+      interview.conductedDate = new Date();
+    }
 
     if (["Did Not Join", "Offer Declined"].includes(finalStatus)) {
       interview.notJoiningReason = notJoiningReason || "";
       interview.notJoiningRemarks = notJoiningRemarks || statusRemark || "";
     }
 
+    let company = null;
     if (finalStatus === "Placed") {
-      const company = await Company.findById(interview.companyRef);
+      let companyRef = interview.companyRef;
+      if (companyRef) {
+        company = await Company.findById(companyRef);
+      }
+      if (!company) {
+        const compName = interview.companyName || "Company";
+        company = await Company.findOne({ companyName: compName });
+        if (!company) {
+          company = new Company({
+            companyName: compName,
+            headOffice: "Offline",
+            location: "Offline",
+            hrEmail: "",
+            hrContact: ""
+          });
+          await company.save();
+        }
+        companyRef = company._id;
+      }
+
       placement.placedInfo = {
-        companyRef: interview.companyRef,
+        companyRef: companyRef,
         interviewRecordId: interview._id,
         companyName: company?.companyName || "Company",
         salary: Number(salary) || 0,
-        location: company?.location || "Offline",
-        jobProfile: interview.jobProfile,
+        location: company?.location || company?.headOffice || "Offline",
+        jobProfile: interview.jobProfile || "Software Engineer",
         jobType: "Full-Time",
         joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
         placedDate: new Date(),
@@ -566,7 +588,7 @@ exports.updateFinalResult = async (req, res) => {
       title: `Result Recorded — ${roundResult || finalStatus}`,
       description: `Result for ${activeRound ? activeRound.roundName : 'Interview'}: ${roundResult || finalStatus}. ${statusRemark || ''}`,
       meta: {
-        company: interview.companyName || "Company",
+        company: company?.companyName || interview.companyName || "Company",
         round: activeRound ? activeRound.roundName : "Round 1",
         result: roundResult || finalStatus,
         statusRemark
@@ -1325,7 +1347,7 @@ exports.getStudentInterviewHistory = async (req, res) => {
 
     const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }))
       .populate("PlacementinterviewRecord.companyRef")
-      .populate("studentId", "firstName lastName");
+      .populate("studentId", "firstName lastName email studentMobile prkey course stream image");
 
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
@@ -1333,9 +1355,12 @@ exports.getStudentInterviewHistory = async (req, res) => {
       _id: i._id,
       jobProfile: i.jobProfile,
       status: i.status,
+      statusRemark: i.statusRemark || "",
       scheduleDate: i.scheduleDate,
+      conductedDate: i.conductedDate,
       rescheduleDate: i.rescheduleDate,
-      rounds: i.rounds,
+      rescheduleHistory: i.rescheduleHistory || [],
+      rounds: i.rounds || [],
       company: i.companyRef
         ? { _id: i.companyRef._id, companyName: i.companyRef.companyName, location: i.companyRef.location, companyLogo: i.companyRef.companyLogo }
         : null,
@@ -1344,7 +1369,9 @@ exports.getStudentInterviewHistory = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        student: placement.studentId || null,
         studentName: placement.studentId ? `${placement.studentId.firstName} ${placement.studentId.lastName}` : "—",
+        readinessStatus: placement.readinessStatus || "In Progress",
         totalInterviews: interviews.length,
         interviews,
       },

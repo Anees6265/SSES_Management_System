@@ -1,4 +1,4 @@
-import { MdAccountTree, MdOutlineMenuBook, MdVisibility } from 'react-icons/md';
+import { MdAccountTree, MdOutlineMenuBook, MdVisibility, MdEdit } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,8 +23,19 @@ const ActionButtons = ({ onView, onEdit, inactive, variant }) => {
         </button>
       )}
       {onEdit && (
-        <div className={`${onView ? 'flex-1' : 'w-full'} ${inactive ? 'opacity-40 pointer-events-none' : ''} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:!text-xs [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600`}>
-          {onEdit}
+        <div className={`${onView ? 'flex-1' : 'w-full'} ${inactive ? 'opacity-40 pointer-events-none' : ''} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2 [&_button]:sm:!py-2.5 [&_button]:!px-3 [&_button]:sm:!px-4 [&_button]:!text-xs [&_button]:sm:!text-sm [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600 [&_button]:!inline-flex [&_button]:!items-center [&_button]:!justify-center [&_button]:!gap-1.5 [&_button]:!shrink-0`}>
+          {typeof onEdit === 'function' ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="w-full h-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <MdEdit size={14} />
+              <span>EDIT</span>
+            </button>
+          ) : (
+            onEdit
+          )}
         </div>
       )}
     </div>

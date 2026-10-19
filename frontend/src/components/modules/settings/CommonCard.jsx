@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdBusiness, MdVisibility } from 'react-icons/md';
+import { MdBusiness, MdVisibility, MdEdit } from 'react-icons/md';
 
 const CardLogo = ({ logo, title, icon: Icon = MdBusiness, inactive }) => {
   const [aspect, setAspect] = useState(null); // 'circle' | 'wide' | null
@@ -85,7 +85,19 @@ const ActionButtons = ({ onView, onEdit, inactive }) => (
     )}
     {onEdit && (
       <div className={`${onView ? 'flex-1' : 'w-full'} ${inactive ? 'opacity-40 pointer-events-none' : ''} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:!text-xs [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600`}>
-        {onEdit}
+        {typeof onEdit === 'function' ? (
+          <button
+            type="button"
+            onClick={inactive ? undefined : onEdit}
+            disabled={inactive}
+            className="w-full h-full py-2.5 px-3 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <MdEdit size={14} />
+            <span>EDIT</span>
+          </button>
+        ) : (
+          onEdit
+        )}
       </div>
     )}
   </div>

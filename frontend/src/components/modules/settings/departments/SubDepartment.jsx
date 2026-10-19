@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import Header from '../../../shared/sidebar/Header';
 import { useGetAllSubdepartmentsQuery, useGetAllDepartmentsQuery, useAddSubdepartmentMutation, useUpdateSubdepartmentMutation } from '../../../../redux/api/authApi';
 import Loader from '../../../shared/loader/Loader';
@@ -52,6 +52,8 @@ const SubDepartment = () => {
     const [addSubdepartment] = useAddSubdepartmentMutation();
     const [updateSubdepartment] = useUpdateSubdepartmentMutation();
     const [searchTerm, setSearchTerm] = useState('');
+    const [editingSubdept, setEditingSubdept] = useState(null);
+    const editSubdeptFormRef = useRef(null);
     const navigate = useNavigate();
 
     const subdepartments = subdepartmentsData?.data || [];
@@ -168,103 +170,110 @@ const SubDepartment = () => {
                         </div>
                     ) : (
                         filteredSubdepartments.map((subdept) => (
-                            <Formik
+                            <SubDepartmentCard
                                 key={subdept._id}
-                                initialValues={{
-                                    name: subdept.name,
-                                    departmentId: subdept.departmentId?._id || subdept.departmentId || '',
-                                    allowedCourses: subdept.allowedCourses || [],
-                                    isActive: subdept.isActive
-                                }}
-                                validationSchema={validationSchema}
-                                onSubmit={async (values, { setSubmitting, resetForm }) => {
-                                    try {
-                                        await updateSubdepartment({
-                                            subdepartmentId: subdept._id,
-                                            name: values.name,
-                                            departmentId: values.departmentId,
-                                            allowedCourses: values.allowedCourses.filter(c => c),
-                                            isActive: values.isActive
-                                        }).unwrap();
-                                        toast.success('Subdepartment updated successfully!');
-                                        resetForm();
-                                        refetch();
-                                    } catch (error) {
-                                        toast.error(error?.data?.message || 'Error updating subdepartment');
-                                    } finally {
-                                        setSubmitting(false);
-                                    }
-                                }}
-                                enableReinitialize
-                            >
-                                {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-                                    <SubDepartmentCard
-                                        key={subdept._id}
-                                        title={subdept.name}
-                                        departmentName={subdept.departmentId?.name}
-                                        status={subdept.isActive}
-                                        totalStudents={subdept.totalStudents || 0}
-                                        allowedCourses={subdept.allowedCourses || []}
-                                        faculties={subdept.faculties || []}
-                                        levelCounts={subdept.levelCounts || []}
-                                        onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
-                                            state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
-                                        })}
-                                        onEdit={
-                                            hasPermission('Page_SubDepartment', 'update') ? (
-                                                <OrangeButton
-                                                    buttonTitle="EDIT"
-                                                    panelTitle="Edit Subdepartment"
-                                                    customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-                                                    drawerContent={
-                                                        <Form className="space-y-4">
-                                                            <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
-
-                                                            <div>
-                                                                <label className="block text-sm font-medium mb-1.5">Department</label>
-                                                                <SelectDropdown
-                                                                    value={values.departmentId}
-                                                                    onChange={(val) => {
-                                                                        setFieldValue('departmentId', val);
-                                                                        setFieldValue('allowedCourses', []);
-                                                                    }}
-                                                                    options={[
-                                                                        { value: "", label: "Select department" },
-                                                                        ...departments.map(d => ({ value: d._id, label: d.name }))
-                                                                    ]}
-                                                                    placeholder="Select department"
-                                                                    className="w-full"
-                                                                    buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
-                                                                />
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                                                                <CourseCheckboxes
-                                                                    departmentId={values.departmentId}
-                                                                    departments={departments}
-                                                                    values={values}
-                                                                    setFieldValue={setFieldValue}
-                                                                />
-                                                            </div>
-
-                                                            <RadioGroup label="Status" name="isActive" required={false} />
-                                                        </Form>
-                                                    }
-                                                    leftBtnText="Cancel"
-                                                    rightBtnText={isSubmitting ? 'Updating...' : 'Update'}
-                                                    onLeftClick={resetForm}
-                                                    onRightClick={submitForm}
-                                                />
-                                            ) : null
-                                        }
-                                    />
-                                )}
-                            </Formik>
+                                title={subdept.name}
+                                departmentName={subdept.departmentId?.name}
+                                status={subdept.isActive}
+                                totalStudents={subdept.totalStudents || 0}
+                                allowedCourses={subdept.allowedCourses || []}
+                                faculties={subdept.faculties || []}
+                                levelCounts={subdept.levelCounts || []}
+                                onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
+                                    state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
+                                })}
+                                onEdit={
+                                    hasPermission('Page_SubDepartment', 'update')
+                                        ? () => setEditingSubdept(subdept)
+                                        : null
+                                }
+                            />
                         ))
                     )}
                 </div>
             </div>
+
+            {/* Edit Subdepartment Drawer */}
+            <OrangeButton
+                isOpen={Boolean(editingSubdept)}
+                onClose={() => setEditingSubdept(null)}
+                panelTitle="Edit Subdepartment"
+                panelSubtitle={editingSubdept ? `Editing: ${editingSubdept.name}` : ""}
+                leftBtnText="Cancel"
+                rightBtnText="Update Subdepartment"
+                onLeftClick={() => setEditingSubdept(null)}
+                onRightClick={() => editSubdeptFormRef.current?.submitForm()}
+                drawerContent={
+                    editingSubdept && (
+                        <Formik
+                            innerRef={editSubdeptFormRef}
+                            initialValues={{
+                                name: editingSubdept.name || '',
+                                departmentId: editingSubdept.departmentId?._id || editingSubdept.departmentId || '',
+                                allowedCourses: editingSubdept.allowedCourses || [],
+                                isActive: editingSubdept.isActive ?? true
+                            }}
+                            validationSchema={validationSchema}
+                            enableReinitialize
+                            onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                try {
+                                    await updateSubdepartment({
+                                        subdepartmentId: editingSubdept._id,
+                                        name: values.name,
+                                        departmentId: values.departmentId,
+                                        allowedCourses: values.allowedCourses.filter(c => c),
+                                        isActive: values.isActive
+                                    }).unwrap();
+                                    toast.success('Subdepartment updated successfully!');
+                                    resetForm();
+                                    setEditingSubdept(null);
+                                    refetch();
+                                } catch (error) {
+                                    toast.error(error?.data?.message || 'Error updating subdepartment');
+                                } finally {
+                                    setSubmitting(false);
+                                }
+                            }}
+                        >
+                            {({ values, setFieldValue }) => (
+                                <Form className="space-y-4">
+                                    <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1.5">Department</label>
+                                        <SelectDropdown
+                                            value={values.departmentId}
+                                            onChange={(val) => {
+                                                setFieldValue('departmentId', val);
+                                                setFieldValue('allowedCourses', []);
+                                            }}
+                                            options={[
+                                                { value: "", label: "Select department" },
+                                                ...departments.map(d => ({ value: d._id, label: d.name }))
+                                            ]}
+                                            placeholder="Select department"
+                                            className="w-full"
+                                            buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                                        <CourseCheckboxes
+                                            departmentId={values.departmentId}
+                                            departments={departments}
+                                            values={values}
+                                            setFieldValue={setFieldValue}
+                                        />
+                                    </div>
+
+                                    <RadioGroup label="Status" name="isActive" required={false} />
+                                </Form>
+                            )}
+                        </Formik>
+                    )
+                }
+            />
         </>
     );
 };

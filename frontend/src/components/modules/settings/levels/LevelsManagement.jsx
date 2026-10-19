@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdLayers, MdSearch, MdClose } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
@@ -27,6 +27,8 @@ const SubLevelCount = ({ levelId, render }) => {
 const LevelsManagement = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingLevel, setEditingLevel] = useState(null);
+  const editLevelFormRef = useRef(null);
   const { data: levelsData, isLoading, refetch } = useGetAllLevelsQuery();
   const [updateLevel] = useUpdateLevelMutation();
 
@@ -124,50 +126,7 @@ const LevelsManagement = () => {
                         },
                       });
                     }}
-                    onEdit={
-                      <Formik
-                        key={level._id}
-                        initialValues={{ name: level.name, order: level.order, isActive: level.isActive }}
-                        validationSchema={validationSchema}
-                        onSubmit={async (values, { setSubmitting, resetForm }) => {
-                          try {
-                            await updateLevel({
-                              levelId: level._id,
-                              name: values.name,
-                              order: Number(values.order),
-                              subDepartmentId: level.subDepartmentId?._id || level.subDepartmentId,
-                              isActive: values.isActive
-                            }).unwrap();
-                            toast.success("Level updated successfully!");
-                            resetForm();
-                            refetch();
-                          } catch (error) {
-                            toast.error(error?.data?.message || "Error updating level");
-                          } finally {
-                            setSubmitting(false);
-                          }
-                        }}
-                      >
-                        {({ isSubmitting, submitForm, resetForm }) => (
-                          <OrangeButton
-                            buttonTitle="EDIT"
-                            panelTitle="Edit Level"
-                            customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-                            drawerContent={
-                              <Form className="space-y-4">
-                                <InputField label="Level Name" name="name" placeholder="Enter level name" />
-                                <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
-                                <RadioGroup label="Status" name="isActive" required={false} />
-                              </Form>
-                            }
-                            leftBtnText="Cancel"
-                            rightBtnText={isSubmitting ? "Updating..." : "Update Level"}
-                            onLeftClick={resetForm}
-                            onRightClick={submitForm}
-                          />
-                        )}
-                      </Formik>
-                    }
+                    onEdit={() => setEditingLevel(level)}
                   />
                 )}
               />
@@ -175,6 +134,59 @@ const LevelsManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Level Drawer */}
+      <OrangeButton
+        isOpen={Boolean(editingLevel)}
+        onClose={() => setEditingLevel(null)}
+        panelTitle="Edit Level"
+        panelSubtitle={editingLevel ? `Editing: ${editingLevel.name}` : ""}
+        leftBtnText="Cancel"
+        rightBtnText="Update Level"
+        onLeftClick={() => setEditingLevel(null)}
+        onRightClick={() => editLevelFormRef.current?.submitForm()}
+        drawerContent={
+          editingLevel && (
+            <Formik
+              innerRef={editLevelFormRef}
+              initialValues={{
+                name: editingLevel.name || "",
+                order: editingLevel.order ?? "",
+                isActive: editingLevel.isActive ?? true,
+              }}
+              validationSchema={validationSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                try {
+                  await updateLevel({
+                    levelId: editingLevel._id,
+                    name: values.name,
+                    order: Number(values.order),
+                    subDepartmentId: editingLevel.subDepartmentId?._id || editingLevel.subDepartmentId,
+                    isActive: values.isActive,
+                  }).unwrap();
+                  toast.success("Level updated successfully!");
+                  resetForm();
+                  setEditingLevel(null);
+                  refetch();
+                } catch (error) {
+                  toast.error(error?.data?.message || "Error updating level");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form className="space-y-4">
+                  <InputField label="Level Name" name="name" placeholder="Enter level name" />
+                  <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                  <RadioGroup label="Status" name="isActive" required={false} />
+                </Form>
+              )}
+            </Formik>
+          )
+        }
+      />
     </>
   );
 };

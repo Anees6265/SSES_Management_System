@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useGetSubdepartmentByIdQuery,
@@ -15,7 +15,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
-import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning, MdVisibility } from "react-icons/md";
+import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning, MdVisibility, MdEdit } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { DeleteConfirmModal } from "../../../shared/modal/DeleteConfirmModal";
@@ -158,7 +158,18 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDele
         </button>
         {onEdit && (
           <div className={`${onView ? 'flex-1' : 'w-full'} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:!text-xs [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600`}>
-            {onEdit}
+            {typeof onEdit === 'function' ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="w-full h-full py-2.5 px-3 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold text-xs tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <MdEdit size={14} />
+                <span>EDIT</span>
+              </button>
+            ) : (
+              onEdit
+            )}
           </div>
         )}
       </div>
@@ -174,6 +185,8 @@ const SubdepartmentDetails = () => {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [levelToDelete, setLevelToDelete] = useState(null);
+  const [editingLevel, setEditingLevel] = useState(null);
+  const editLevelFormRef = useRef(null);
 
   const querySubdeptId = searchParams.get("id");
   const subdepartmentId =
@@ -201,13 +214,10 @@ const SubdepartmentDetails = () => {
 
   const departmentName = location.state?.departmentName || departmentObj?.name || "Department";
 
-  // Sort levels: Active levels first, then by ascending numeric order (e.g. Level 1, Level 2)
-  const levels = [...(levelsData?.data || [])].sort((a, b) => {
-    if (b.isActive !== a.isActive) {
-      return (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0);
-    }
-    return (Number(a.order) || 0) - (Number(b.order) || 0);
-  });
+  // Filter out any inactive/deleted levels and sort by ascending numeric order (e.g. Level 1, Level 2)
+  const levels = [...(levelsData?.data || [])]
+    .filter((lvl) => lvl.isActive !== false)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
 
   const filteredLevels = levels.filter((lvl) =>
     lvl.name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -388,44 +398,9 @@ const SubdepartmentDetails = () => {
                         : null
                     }
                     onEdit={
-                      hasPermission('Page_Level', 'update') ? (
-                        <Formik
-                          key={level._id}
-                          initialValues={{ name: level.name, order: level.order, isActive: level.isActive }}
-                          validationSchema={validationSchema}
-                          onSubmit={async (values, { setSubmitting, resetForm }) => {
-                            try {
-                              await updateLevel({ levelId: level._id, name: values.name, order: Number(values.order), subDepartmentId: subdepartmentId, isActive: values.isActive }).unwrap();
-                              toast.success("Level updated successfully!");
-                              resetForm();
-                              refetch();
-                            } catch (error) {
-                              toast.error(error?.data?.message || "Error updating level");
-                            } finally {
-                              setSubmitting(false);
-                            }
-                          }}
-                        >
-                          {({ isSubmitting, submitForm, resetForm }) => (
-                            <OrangeButton
-                              buttonTitle="EDIT"
-                              panelTitle="Edit Level"
-                              customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-                              drawerContent={
-                                <Form className="space-y-4">
-                                  <InputField label="Level Name" name="name" placeholder="Enter level name" />
-                                  <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
-                                  <RadioGroup label="Status" name="isActive" required={false} />
-                                </Form>
-                              }
-                              leftBtnText="Cancel"
-                              rightBtnText={isSubmitting ? "Updating..." : "Update Level"}
-                              onLeftClick={resetForm}
-                              onRightClick={submitForm}
-                            />
-                          )}
-                        </Formik>
-                      ) : null
+                      hasPermission('Page_Level', 'update')
+                        ? () => setEditingLevel(level)
+                        : null
                     }
                   />
                 )}
@@ -434,6 +409,59 @@ const SubdepartmentDetails = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Level Drawer */}
+      <OrangeButton
+        isOpen={Boolean(editingLevel)}
+        onClose={() => setEditingLevel(null)}
+        panelTitle="Edit Level"
+        panelSubtitle={editingLevel ? `Editing: ${editingLevel.name}` : ""}
+        leftBtnText="Cancel"
+        rightBtnText="Update Level"
+        onLeftClick={() => setEditingLevel(null)}
+        onRightClick={() => editLevelFormRef.current?.submitForm()}
+        drawerContent={
+          editingLevel && (
+            <Formik
+              innerRef={editLevelFormRef}
+              initialValues={{
+                name: editingLevel.name || "",
+                order: editingLevel.order ?? "",
+                isActive: editingLevel.isActive ?? true,
+              }}
+              validationSchema={validationSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                try {
+                  await updateLevel({
+                    levelId: editingLevel._id,
+                    name: values.name,
+                    order: Number(values.order),
+                    subDepartmentId: subdepartmentId,
+                    isActive: values.isActive,
+                  }).unwrap();
+                  toast.success("Level updated successfully!");
+                  resetForm();
+                  setEditingLevel(null);
+                  refetch();
+                } catch (error) {
+                  toast.error(error?.data?.message || "Error updating level");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {({ isSubmitting }) => (
+                <Form className="space-y-4">
+                  <InputField label="Level Name" name="name" placeholder="Enter level name" />
+                  <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                  <RadioGroup label="Status" name="isActive" required={false} />
+                </Form>
+              )}
+            </Formik>
+          )
+        }
+      />
 
       {/* Delete Level Confirmation Modal */}
       <DeleteConfirmModal

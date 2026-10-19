@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck } from "react-icons/md";
+import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck, MdEdit } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import {
@@ -128,14 +128,30 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
     const columns = [
         ...STUDENT_COLUMNS,
         {
-            label: "Task Board", key: "taskboard", render: (row) => (
-                <button
-                    onClick={(e) => { e.stopPropagation(); onTaskBoard(row); }}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 border border-orange-200 transition"
-                >
-                    <MdTableChart size={14} /> Task Board
-                </button>
-            )
+            label: "Task Board", key: "taskboard", render: (row) => {
+                const isDummy = (row?.status || row?.raw?.status || "").toLowerCase() === "dummy";
+                return (
+                    <button
+                        disabled={isDummy}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isDummy) {
+                                toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                                return;
+                            }
+                            onTaskBoard(row);
+                        }}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
+                            isDummy
+                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
+                                : "bg-orange-50 text-orange-500 hover:bg-orange-100 border-orange-200 cursor-pointer"
+                        }`}
+                        title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                    >
+                        <MdTableChart size={14} /> Task Board
+                    </button>
+                );
+            }
         },
     ];
 
@@ -248,13 +264,31 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
 
                                 <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
                                     <span className="text-[11px] font-medium text-gray-400">View details →</span>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); onTaskBoard(st); }}
-                                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200 transition cursor-pointer"
-                                    >
-                                        <MdTableChart size={13} /> Task Board
-                                    </button>
+                                    {(() => {
+                                        const isDummy = (st?.status || st?.raw?.status || "").toLowerCase() === "dummy";
+                                        return (
+                                            <button
+                                                type="button"
+                                                disabled={isDummy}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (isDummy) {
+                                                        toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                                                        return;
+                                                    }
+                                                    onTaskBoard(st);
+                                                }}
+                                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition ${
+                                                    isDummy
+                                                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
+                                                        : "bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200 cursor-pointer"
+                                                }`}
+                                                title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                                            >
+                                                <MdTableChart size={13} /> Task Board
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         ))}
@@ -994,6 +1028,8 @@ const ShowSubLevelTablesData = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
     const [subLevelToDelete, setSubLevelToDelete] = useState(null);
+    const [isEditSubLevelOpen, setIsEditSubLevelOpen] = useState(false);
+    const editSubLevelFormRef = useRef(null);
 
     const { data: subLevelsData, isLoading: isSubLevelsLoading } = useGetSubLevelsByLevelQuery(level?._id, { skip: !level?._id });
     const subLevels = subLevelsData?.data || [];
@@ -1144,47 +1180,67 @@ const ShowSubLevelTablesData = () => {
 
                     {/* Edit Active SubLevel (when sublevels exist) */}
                     {subLevels.length > 0 && activeTab && hasPermission('Page_SubLevel', 'update') && (
-                        <Formik
-                            key={`edit_${activeTab._id}`}
-                            initialValues={{ name: activeTab.name, order: activeTab.order, isActive: activeTab.isActive }}
-                            validationSchema={validationSchema}
-                            onSubmit={async (values, { setSubmitting, resetForm }) => {
-                                try {
-                                    await updateSubLevel({
-                                        subLevelId: activeTab._id,
-                                        name: values.name,
-                                        order: Number(values.order),
-                                        levelId: level?._id,
-                                        isActive: values.isActive
-                                    }).unwrap();
-                                    toast.success("SubLevel updated successfully!");
-                                    resetForm();
-                                } catch (error) {
-                                    toast.error(error?.data?.message || "Error updating sublevel");
-                                } finally {
-                                    setSubmitting(false);
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditSubLevelOpen(true)}
+                                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0 inline-flex items-center justify-center gap-1.5"
+                            >
+                                <MdEdit size={16} />
+                                <span>EDIT SUB LEVEL</span>
+                            </button>
+
+                            <OrangeButton
+                                isOpen={isEditSubLevelOpen}
+                                onClose={() => setIsEditSubLevelOpen(false)}
+                                panelTitle="Edit Sub Level"
+                                panelSubtitle={activeTab ? `Editing: ${activeTab.name}` : ""}
+                                leftBtnText="Cancel"
+                                rightBtnText="Update Sub Level"
+                                onLeftClick={() => setIsEditSubLevelOpen(false)}
+                                onRightClick={() => editSubLevelFormRef.current?.submitForm()}
+                                drawerContent={
+                                    activeTab && (
+                                        <Formik
+                                            innerRef={editSubLevelFormRef}
+                                            initialValues={{
+                                                name: activeTab.name || "",
+                                                order: activeTab.order ?? "",
+                                                isActive: activeTab.isActive ?? true
+                                            }}
+                                            validationSchema={validationSchema}
+                                            enableReinitialize
+                                            onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                                try {
+                                                    await updateSubLevel({
+                                                        subLevelId: activeTab._id,
+                                                        name: values.name,
+                                                        order: Number(values.order),
+                                                        levelId: level?._id,
+                                                        isActive: values.isActive
+                                                    }).unwrap();
+                                                    toast.success("SubLevel updated successfully!");
+                                                    resetForm();
+                                                    setIsEditSubLevelOpen(false);
+                                                } catch (error) {
+                                                    toast.error(error?.data?.message || "Error updating sublevel");
+                                                } finally {
+                                                    setSubmitting(false);
+                                                }
+                                            }}
+                                        >
+                                            {({ isSubmitting }) => (
+                                                <Form className="space-y-4">
+                                                    <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
+                                                    <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                                                    <RadioGroup label="Status" name="isActive" required={false} />
+                                                </Form>
+                                            )}
+                                        </Formik>
+                                    )
                                 }
-                            }}
-                        >
-                            {({ isSubmitting, submitForm, resetForm }) => (
-                                <OrangeButton
-                                    buttonTitle="+ EDIT SUB LEVEL"
-                                    panelTitle="Edit Sub Level"
-                                    customButtonClass="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0"
-                                    drawerContent={
-                                        <Form className="space-y-4">
-                                            <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
-                                            <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
-                                            <RadioGroup label="Status" name="isActive" required={false} />
-                                        </Form>
-                                    }
-                                    leftBtnText="Cancel"
-                                    rightBtnText={isSubmitting ? "Updating..." : "Update Sub Level"}
-                                    onLeftClick={resetForm}
-                                    onRightClick={submitForm}
-                                />
-                            )}
-                        </Formik>
+                            />
+                        </>
                     )}
 
                     {/* Delete Active SubLevel (when sublevels exist) */}

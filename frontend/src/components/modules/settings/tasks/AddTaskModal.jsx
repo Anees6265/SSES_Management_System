@@ -223,7 +223,11 @@ const AddTaskModal = ({
         selectedVersionId,
         { skip: !selectedVersionId || taskSource !== "syllabus" }
     );
-    const subjects = versionDetail?.data?.subjects || [];
+    const subjects = useMemo(() => {
+        if (!selectedVersionId || taskSource !== "syllabus" || !versionDetail?.data?.subjects) return [];
+        if (String(versionDetail.data._id) !== String(selectedVersionId)) return [];
+        return versionDetail.data.subjects || [];
+    }, [selectedVersionId, taskSource, versionDetail]);
     const currentSubject = subjects.find((s) => s._id === selectedSubjectId);
     const topics = currentSubject?.topics || [];
     const currentTopic = topics.find((t) => t._id === selectedTopicId);
@@ -338,7 +342,13 @@ const AddTaskModal = ({
                                 </label>
                                 <SelectDropdown
                                     value={selectedSessionId}
-                                    onChange={setSelectedSessionId}
+                                    onChange={(val) => {
+                                        setSelectedSessionId(val);
+                                        setSelectedVersionId("");
+                                        setSelectedSubjectId("");
+                                        setSelectedTopicId("");
+                                        setSelectedSubTopicId("");
+                                    }}
                                     options={[
                                         { value: "", label: "Select Session" },
                                         ...sessionsList.map((s) => ({ value: s._id, label: s.name })),

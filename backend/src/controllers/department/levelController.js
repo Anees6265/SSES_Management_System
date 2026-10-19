@@ -55,8 +55,14 @@ exports.createLevel = async (req, res) => {
 exports.getLevelsBySubDepartment = async (req, res) => {
   try {
     const { subDepartmentId } = req.params;
+    const { includeInactive } = req.query;
+
+    const query = { subDepartmentId };
+    if (includeInactive !== 'true') {
+      query.isActive = { $ne: false };
+    }
     
-    const levels = await Level.find({ subDepartmentId })
+    const levels = await Level.find(query)
       .populate('subDepartmentId')
       .sort({ order: 1 });
     
@@ -75,7 +81,10 @@ exports.getLevelsBySubDepartment = async (req, res) => {
 // Get All Levels
 exports.getAllLevels = async (req, res) => {
   try {
-    const levels = await Level.find({})
+    const { includeInactive } = req.query;
+    const query = includeInactive === 'true' ? {} : { isActive: { $ne: false } };
+
+    const levels = await Level.find(query)
       .populate('subDepartmentId')
       .sort({ subDepartmentId: 1, order: 1 });
       
@@ -170,22 +179,60 @@ exports.updateLevel = async (req, res) => {
   }
 };
 
-// Delete Level (soft delete)
+// Delete Level
 exports.deleteLevel = async (req, res) => {
   try {
-    const level = await Level.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      { isActive: false },
-      { new: true }
-    );
-    
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid level ID format"
+      });
+    }
+
+    const level = await Level.findById(id);
     if (!level) {
       return res.status(404).json({
         success: false,
         message: "Level not found"
       });
     }
-    
+
+    // Check if any students are enrolled directly in this level
+    const Student = require("../../models/student/Student");
+    const studentCount = await Student.countDocuments({ currentLevelId: id });
+    if (studentCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete level '${level.name}' because ${studentCount} student(s) are currently assigned to it. Please reassign students first.`
+      });
+    }
+
+    // Check if any sub-levels under this level have students
+    const SubLevel = require("../../models/department/SubLevel");
+    const subLevels = await SubLevel.find({ levelId: id });
+    const subLevelIds = subLevels.map((s) => s._id);
+    if (subLevelIds.length > 0) {
+      const subLevelStudentCount = await Student.countDocuments({ currentSubLevelId: { $in: subLevelIds } });
+      if (subLevelStudentCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete level '${level.name}' because ${subLevelStudentCount} student(s) are enrolled in its sub-levels. Please reassign students first.`
+        });
+      }
+
+      // Delete associated sub-levels & their syllabus mappings
+      await SubLevel.deleteMany({ levelId: id });
+      try {
+        const SyllabusVersion = require("../../models/SyllabusVersion");
+        await SyllabusVersion.deleteMany({ subLevelId: { $in: subLevelIds } });
+      } catch (_) {}
+    }
+
+    // Delete the level permanently
+    await Level.findByIdAndDelete(id);
+
     res.status(200).json({
       success: true,
       message: "Level deleted successfully"

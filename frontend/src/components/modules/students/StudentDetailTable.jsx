@@ -16,6 +16,7 @@ import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import { MdTableChart } from "react-icons/md";
 import { Search, X, ChevronRight, Phone, RotateCcw, Filter } from "lucide-react";
+import { toast } from "react-toastify";
 
 const toTitle = (str) =>
   str?.toLowerCase().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "";
@@ -431,24 +432,37 @@ const StudentDetailTable = () => {
             ]}
             extraColumn={{
               header: "Task Board",
-              render: (row) => (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    navigate("/student/task-board", {
-                      state: {
-                        student: row,
-                        level: row.currentLevelId,
-                        subdepartment: row.subDepartmentId,
-                      },
-                    });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-500 transition hover:bg-orange-100"
-                >
-                  <MdTableChart size={14} /> Task Board
-                </button>
-              ),
+              render: (row) => {
+                const isDummy = (row?.status || "").toLowerCase() === "dummy";
+                return (
+                  <button
+                    type="button"
+                    disabled={isDummy}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (isDummy) {
+                        toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                        return;
+                      }
+                      navigate("/student/task-board", {
+                        state: {
+                          student: row,
+                          level: row.currentLevelId,
+                          subdepartment: row.subDepartmentId,
+                        },
+                      });
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                      isDummy
+                        ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                        : "border-orange-200 bg-orange-50 text-orange-500 hover:bg-orange-100 cursor-pointer"
+                    }`}
+                    title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                  >
+                    <MdTableChart size={14} /> Task Board
+                  </button>
+                );
+              },
             }}
             onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
           />
@@ -542,23 +556,38 @@ const StudentDetailTable = () => {
 
                   {/* Bottom Actions */}
                   <div className="flex items-center gap-2 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate("/student/task-board", {
-                          state: {
-                            student: row,
-                            level: row.currentLevelId,
-                            subdepartment: row.subDepartmentId,
-                          },
-                        });
-                      }}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-600 hover:bg-orange-100 transition active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      <MdTableChart size={15} />
-                      <span>Task Board</span>
-                    </button>
+                    {(() => {
+                      const isDummy = (row?.status || "").toLowerCase() === "dummy";
+                      return (
+                        <button
+                          type="button"
+                          disabled={isDummy}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (isDummy) {
+                              toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                              return;
+                            }
+                            navigate("/student/task-board", {
+                              state: {
+                                student: row,
+                                level: row.currentLevelId,
+                                subdepartment: row.subDepartmentId,
+                              },
+                            });
+                          }}
+                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition shadow-2xs ${
+                            isDummy
+                              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                              : "border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95 cursor-pointer"
+                          }`}
+                          title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                        >
+                          <MdTableChart size={15} />
+                          <span>Task Board</span>
+                        </button>
+                      );
+                    })()}
 
                     <button
                       type="button"

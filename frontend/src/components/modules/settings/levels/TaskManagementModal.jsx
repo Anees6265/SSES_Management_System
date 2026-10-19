@@ -86,23 +86,51 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
 
   const { data: versionsData } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId: subLevel?._id, sessionId: selectedSessionId },
-    { skip: !subLevel?._id }
+    { skip: !subLevel?._id, refetchOnMountOrArgChange: true }
   );
-  const versions = versionsData?.data || [];
+  const rawVersions = versionsData?.data || [];
+  const versions = useMemo(() => {
+    if (!selectedSessionId) return rawVersions;
+    return rawVersions.filter((v) => {
+      const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
+      return String(vSessionId) === String(selectedSessionId);
+    });
+  }, [rawVersions, selectedSessionId]);
+
+  const effectiveVersionId = useMemo(() => {
+    if (!versions.length) return "";
+    const found = versions.find(v => v._id === selectedVersionId);
+    if (found) return found._id;
+    const activeVersion = versions.find(v => v.status === "active") || versions[0];
+    return activeVersion?._id || "";
+  }, [versions, selectedVersionId]);
 
   const { data: versionDetail } = useGetSyllabusVersionWithHierarchyQuery(
-    selectedVersionId,
-    { skip: !selectedVersionId }
+    effectiveVersionId,
+    { skip: !effectiveVersionId }
   );
-  const subjects = versionDetail?.data?.subjects || [];
-  const topics = subjects.find(s => s._id === selectedSubjectId)?.topics || [];
-  const subTopics = topics.find(t => t._id === selectedTopicId)?.subTopics || [];
+  const subjects = useMemo(() => {
+    if (!effectiveVersionId || !versionDetail?.data?.subjects) return [];
+    if (String(versionDetail.data._id) !== String(effectiveVersionId)) return [];
+    return versionDetail.data.subjects || [];
+  }, [effectiveVersionId, versionDetail]);
+
+  const topics = useMemo(() => {
+    return subjects.find(s => s._id === selectedSubjectId)?.topics || [];
+  }, [subjects, selectedSubjectId]);
+
+  const subTopics = useMemo(() => {
+    return topics.find(t => t._id === selectedTopicId)?.subTopics || [];
+  }, [topics, selectedTopicId]);
 
   const { data: tasksData, refetch: refetchTasks } = useGetTasksByLevelQuery(
-    { subLevelId: subLevel?._id, syllabusVersionId: selectedVersionId },
-    { skip: !subLevel?._id }
+    { subLevelId: subLevel?._id, syllabusVersionId: effectiveVersionId },
+    { skip: !subLevel?._id || (Boolean(selectedSessionId) && !effectiveVersionId) }
   );
-  const allTasks = tasksData?.data || [];
+  const allTasks = useMemo(() => {
+    if (selectedSessionId && !effectiveVersionId) return [];
+    return tasksData?.data || [];
+  }, [selectedSessionId, effectiveVersionId, tasksData]);
 
   const [createTask, { isLoading: creating }] = useCreateTaskManualMutation();
   const [updateTask, { isLoading: updating }] = useUpdateTaskMasterMutation();
@@ -123,7 +151,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
     setSelectedSubjectId("");
     setSelectedTopicId("");
     setSelectedSubTopicId("");
-  }, [selectedVersionId]);
+  }, [effectiveVersionId]);
 
   const resetForm = () => {
     setTaskForm({
@@ -411,7 +439,13 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                           <label className={labelCls}>Academic Session</label>
                           <SelectDropdown
                             value={selectedSessionId}
-                            onChange={(val) => setSelectedSessionId(val)}
+                            onChange={(val) => {
+                              setSelectedSessionId(val);
+                              setSelectedVersionId("");
+                              setSelectedSubjectId("");
+                              setSelectedTopicId("");
+                              setSelectedSubTopicId("");
+                            }}
                             options={[
                               { value: "", label: "All Sessions" },
                               ...sessions.map(s => ({ value: s._id, label: s.name }))
@@ -728,7 +762,13 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                         <label className={labelCls}>Session</label>
                         <SelectDropdown
                           value={selectedSessionId}
-                          onChange={(val) => setSelectedSessionId(val)}
+                          onChange={(val) => {
+                            setSelectedSessionId(val);
+                            setSelectedVersionId("");
+                            setSelectedSubjectId("");
+                            setSelectedTopicId("");
+                            setSelectedSubTopicId("");
+                          }}
                           options={[
                             { value: "", label: "All Sessions" },
                             ...sessions.map(s => ({ value: s._id, label: s.name }))

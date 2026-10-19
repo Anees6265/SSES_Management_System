@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import Header from "../../../shared/sidebar/Header";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -22,6 +22,8 @@ const DepartmentDetails = () => {
   const { id: departmentIdParam } = useParams();
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [selectedSubDeptId, setSelectedSubDeptId] = useState(null);
+  const [editingSubdept, setEditingSubdept] = useState(null);
+  const editSubdeptFormRef = useRef(null);
 
   const { user, role: authRole } = useSelector((state) => state.auth || {});
   const role = (
@@ -90,81 +92,9 @@ const DepartmentDetails = () => {
     });
   };
 
-  const renderEditButton = (subdept) => {
+  const handleEditSubdept = (subdept) => {
     if (!canManage) return null;
-    return (
-      <Formik
-        key={subdept._id}
-        initialValues={{
-          name: subdept.name,
-          departmentId: subdept.departmentId?._id || subdept.departmentId || department._id,
-          allowedCourses: subdept.allowedCourses || [],
-          isActive: subdept.isActive
-        }}
-        validationSchema={validationSchema}
-        onSubmit={async (values, { setSubmitting, resetForm }) => {
-          try {
-            await updateSubdepartment({
-              subdepartmentId: subdept._id,
-              name: values.name,
-              departmentId: values.departmentId,
-              allowedCourses: values.allowedCourses.filter(c => c),
-              isActive: values.isActive
-            }).unwrap();
-            toast.success("Subdepartment updated successfully!");
-            resetForm();
-            refetch();
-          } catch (error) {
-            toast.error(error?.data?.message || "Error updating subdepartment");
-          } finally {
-            setSubmitting(false);
-          }
-        }}
-      >
-        {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-          <OrangeButton
-            buttonTitle="EDIT"
-            panelTitle="Edit Subdepartment"
-            customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-            drawerContent={
-              <Form className="space-y-4">
-                <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
-                <div>
-                  <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                  {departmentCourses.length > 0 ? (
-                    <div className="space-y-2">
-                      {departmentCourses.map((course) => (
-                        <label key={course} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={values.allowedCourses.includes(course)}
-                            onChange={(e) => {
-                              const updated = e.target.checked
-                                ? [...values.allowedCourses, course]
-                                : values.allowedCourses.filter(c => c !== course);
-                              setFieldValue("allowedCourses", updated);
-                            }}
-                            className="w-4 h-4 accent-orange-500"
-                          />
-                          <span className="text-sm text-gray-700">{course}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">No courses defined in this department.</p>
-                  )}
-                </div>
-                <RadioGroup label="Status" name="isActive" required={false} />
-              </Form>
-            }
-            leftBtnText="Cancel"
-            rightBtnText={isSubmitting ? "Updating..." : "Update"}
-            onLeftClick={resetForm}
-            onRightClick={submitForm}
-          />
-        )}
-      </Formik>
-    );
+    return () => setEditingSubdept(subdept);
   };
 
   if (isDeptsLoading || isSubdeptsLoading) return <Loader />;
@@ -316,7 +246,7 @@ const DepartmentDetails = () => {
                 faculties={subdepartments[0].faculties || []}
                 levelCounts={subdepartments[0].levelCounts || []}
                 onView={() => handleViewSubdept(subdepartments[0])}
-                onEdit={renderEditButton(subdepartments[0])}
+                onEdit={handleEditSubdept(subdepartments[0])}
               />
             </div>
           ) : (
@@ -346,13 +276,91 @@ const DepartmentDetails = () => {
                     faculties={subdept.faculties || []}
                     levelCounts={subdept.levelCounts || []}
                     onView={() => handleViewSubdept(subdept)}
-                    onEdit={renderEditButton(subdept)}
+                    onEdit={handleEditSubdept(subdept)}
                   />
                 ))}
               </div>
             </div>
           )}
         </div>
+
+      {/* Edit Subdepartment Drawer */}
+      <OrangeButton
+        isOpen={Boolean(editingSubdept)}
+        onClose={() => setEditingSubdept(null)}
+        panelTitle="Edit Subdepartment"
+        panelSubtitle={editingSubdept ? `Editing: ${editingSubdept.name}` : ""}
+        leftBtnText="Cancel"
+        rightBtnText="Update Subdepartment"
+        onLeftClick={() => setEditingSubdept(null)}
+        onRightClick={() => editSubdeptFormRef.current?.submitForm()}
+        drawerContent={
+          editingSubdept && (
+            <Formik
+              innerRef={editSubdeptFormRef}
+              initialValues={{
+                name: editingSubdept.name || "",
+                departmentId: editingSubdept.departmentId?._id || editingSubdept.departmentId || department?._id || "",
+                allowedCourses: editingSubdept.allowedCourses || [],
+                isActive: editingSubdept.isActive ?? true
+              }}
+              validationSchema={validationSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                try {
+                  await updateSubdepartment({
+                    subdepartmentId: editingSubdept._id,
+                    name: values.name,
+                    departmentId: values.departmentId,
+                    allowedCourses: values.allowedCourses.filter(c => c),
+                    isActive: values.isActive
+                  }).unwrap();
+                  toast.success("Subdepartment updated successfully!");
+                  resetForm();
+                  setEditingSubdept(null);
+                  refetch();
+                } catch (error) {
+                  toast.error(error?.data?.message || "Error updating subdepartment");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {({ values, setFieldValue }) => (
+                <Form className="space-y-4">
+                  <InputField label="Subdepartment Name" name="name" placeholder="Enter subdepartment name" />
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                    {departmentCourses.length > 0 ? (
+                      <div className="space-y-2">
+                        {departmentCourses.map((course) => (
+                          <label key={course} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={values.allowedCourses.includes(course)}
+                              onChange={(e) => {
+                                const updated = e.target.checked
+                                  ? [...values.allowedCourses, course]
+                                  : values.allowedCourses.filter(c => c !== course);
+                                setFieldValue("allowedCourses", updated);
+                              }}
+                              className="w-4 h-4 accent-orange-500"
+                            />
+                            <span className="text-sm text-gray-700">{course}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">No courses defined in this department.</p>
+                    )}
+                  </div>
+                  <RadioGroup label="Status" name="isActive" required={false} />
+                </Form>
+              )}
+            </Formik>
+          )
+        }
+      />
 
       <AddStudentModal
         isOpen={isAddStudentModalOpen}

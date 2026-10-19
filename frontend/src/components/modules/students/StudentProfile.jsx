@@ -335,6 +335,7 @@ export default function StudentProfile() {
   const permissionStatus = studentData?.permissionDetails?.status || (hasPermission ? "pending" : "No Request");
   const hasPlacement = !!(studentData?.status === "Placed");
   const placementStatus = hasPlacement ? "Placed" : "Not Placed";
+  const isDummy = (studentData?.status || "").toLowerCase() === "dummy";
 
   return (
     <>
@@ -385,15 +386,26 @@ export default function StudentProfile() {
                 <span className="sm:hidden">Elective</span>
               </button>
               <button
-                onClick={() => navigate("/student/task-board", {
-                  state: {
-                    student: studentData,
-                    level: studentData.currentLevelId,
-                    subdepartment: studentData.subDepartmentId,
-                  },
-                })}
-                className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white"
-                title="Manage student tasks and assignments"
+                disabled={isDummy}
+                onClick={() => {
+                  if (isDummy) {
+                    toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                    return;
+                  }
+                  navigate("/student/task-board", {
+                    state: {
+                      student: studentData,
+                      level: studentData.currentLevelId,
+                      subdepartment: studentData.subDepartmentId,
+                    },
+                  });
+                }}
+                className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg ${
+                  isDummy
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                    : 'bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white cursor-pointer'
+                }`}
+                title={isDummy ? "Task board is disabled for dummy students" : "Manage student tasks and assignments"}
               >
                 <span className="hidden sm:inline">Task List</span>
                 <span className="sm:hidden">Tasks</span>

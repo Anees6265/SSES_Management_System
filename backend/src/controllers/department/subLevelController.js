@@ -183,22 +183,44 @@ exports.updateSubLevel = async (req, res) => {
   }
 };
 
-// Delete SubLevel (soft delete)
+// Delete SubLevel
 exports.deleteSubLevel = async (req, res) => {
   try {
-    const subLevel = await SubLevel.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      { isActive: false },
-      { new: true }
-    );
-    
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid sub-level ID format"
+      });
+    }
+
+    const subLevel = await SubLevel.findById(id);
     if (!subLevel) {
       return res.status(404).json({
         success: false,
         message: "SubLevel not found"
       });
     }
-    
+
+    // Check if any students are enrolled in this sub-level
+    const Student = require("../../models/student/Student");
+    const studentCount = await Student.countDocuments({ currentSubLevelId: id });
+    if (studentCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete sub-level '${subLevel.name}' because ${studentCount} student(s) are enrolled in it.`
+      });
+    }
+
+    // Delete associated syllabus versions
+    try {
+      const SyllabusVersion = require("../../models/SyllabusVersion");
+      await SyllabusVersion.deleteMany({ subLevelId: id });
+    } catch (_) {}
+
+    await SubLevel.findByIdAndDelete(id);
+
     res.status(200).json({
       success: true,
       message: "SubLevel deleted successfully"

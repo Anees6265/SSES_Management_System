@@ -526,7 +526,11 @@ const StudentTaskBoard = () => {
     const sidebarContext = useSidebar();
     const openMobileSidebar = sidebarContext?.openMobileSidebar;
 
-    const { student, level, subdepartment } = location.state || {};
+    const { student, level, subdepartment, subLevel } = location.state || {};
+
+    const studentName = `${student?.firstName || ""} ${student?.lastName || ""}`.trim() || "Student";
+    const levelName = level?.name || student?.currentLevelId?.name || "Level";
+    const subLevelName = subLevel?.name || student?.currentSubLevelId?.name || "";
 
     const [search,            setSearch]            = useState("");
     const [subjectFilter,     setSubjectFilter]     = useState("");
@@ -544,9 +548,11 @@ const StudentTaskBoard = () => {
         setTasks(null);
     }, [student?._id]);
 
+    const isDummy = (student?.status || "").toLowerCase() === "dummy";
+
     const { data, isLoading, refetch } = useGetNewStudentTasksQuery(
         { id: student?._id },
-        { skip: !student?._id }
+        { skip: !student?._id || isDummy }
     );
 
     const allTasks = tasks
@@ -643,7 +649,7 @@ const StudentTaskBoard = () => {
 
         list.push({
             id: "tb-board-info",
-            title: `Task Board: ${levelName} - ${subLevelName}`,
+            title: subLevelName ? `Task Board: ${levelName} - ${subLevelName}` : `Task Board: ${levelName}`,
             message: `Active practical task progression board for ${studentName} (ID: ${student.prkey || "N/A"}). Total tasks: ${total}.`,
             time: "Active Level",
             type: "info",
@@ -742,7 +748,34 @@ const StudentTaskBoard = () => {
         );
     }
 
-    const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
+    if (isDummy) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
+                <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-amber-200 shadow-xl space-y-4">
+                    <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                        ⚠️
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-extrabold text-slate-800">Task Board Disabled</h3>
+                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                            <strong className="text-slate-800">{studentName}</strong> is currently marked as <strong className="text-amber-600">Dummy (Non-Attending)</strong>.
+                            Task Board is not accessible for dummy students. Reactivate or return student to an active level to enable the task board.
+                        </p>
+                    </div>
+                    <div className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="w-full py-2.5 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition shadow-xs cursor-pointer inline-flex items-center justify-center gap-2"
+                        >
+                            <MdArrowBack size={16} /> Go Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const initials = studentName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
     const mobileTabs = [

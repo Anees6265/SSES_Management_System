@@ -1336,7 +1336,7 @@ const StudentProfilePage = () => {
     });
 
     const raw = baseStudent || {};
-    const isDummy = raw.status === "Dummy" || raw.status?.toLowerCase() === "dummy" || Boolean(raw.dummyDetails?.markedAt);
+    const isDummy = (raw.status || "").toLowerCase() === "dummy";
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = (name.split(" ").map(n => n[0]).filter(Boolean).join("").slice(0, 2) || "ST").toUpperCase();
     const readinessStatus = (typeof raw.placement === "object" ? raw.placement?.readinessStatus : null) || raw.readinessStatus || "Not Ready";
@@ -1643,6 +1643,10 @@ const StudentProfilePage = () => {
     const activeNotifications = userNotifications ?? defaultStudentNotifications;
 
     const goToTaskBoard = () => {
+        if (isDummy) {
+            toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+            return;
+        }
         navigate("/student/task-board", {
             state: {
                 student: raw,
@@ -2082,7 +2086,13 @@ const StudentProfilePage = () => {
 
                             <button
                                 onClick={goToTaskBoard}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 border-2 border-orange-400 text-orange-500 hover:bg-orange-50 font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm"
+                                disabled={isDummy}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 border-2 font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm ${
+                                    isDummy
+                                        ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
+                                        : "border-orange-400 text-orange-500 hover:bg-orange-50 cursor-pointer"
+                                }`}
+                                title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
                             >
                                 <MdAssignment size={16} /> Task Board
                             </button>

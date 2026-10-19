@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { MdBusiness, MdOutlinePersonOutline, MdOutlineAddPhotoAlternate } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
@@ -37,6 +37,7 @@ const DepartmentManagement = () => {
   const [addDepartment] = useAddDepartmentMutation();
   const [updateDepartment] = useUpdateDepartmentMutation();
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const editDeptFormRef = useRef(null);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   const { user, role: authRole } = useSelector((state) => state.auth || {});
@@ -326,133 +327,139 @@ const DepartmentManagement = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
             {filteredDepartments.map((dept) => (
-              <Formik
+              <CommonCard
                 key={dept._id}
-                initialValues={{
-                  name: dept.name,
-                  code: dept.code,
-                  description: dept.description || "",
-                  universityName: dept.universityName,
-                  headOfDepartment: dept.headOfDepartment || "",
-                  allowedCourses: dept.allowedCourses || [{ courseName: "", durationInYears: "" }],
-                  isActive: dept.isActive,
-                  logoFile: null,
-                  logoPreview: dept.logo || ""
-                }}
-                validationSchema={validationSchema}
-                onSubmit={async (values, { setSubmitting, resetForm }) => {
-                  try {
-                    const fd = buildFormData(values);
-                    fd.append("code", values.code || "");
-                    const result = await updateDepartment({ id: dept._id, _formData: fd }).unwrap();
-                    toast.success(result.message || "Department updated successfully!");
-                    resetForm();
-                    refetch();
-                  } catch (error) {
-                    toast.error(error?.data?.message || "Error updating department");
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-                enableReinitialize
-              >
-                {({ isSubmitting, submitForm, resetForm, values, setFieldValue }) => (
-                  <CommonCard
-                    icon={MdBusiness}
-                    title={dept.name}
-                    subtitle={dept.universityName}
-                    description={dept.description || ""}
-                    status={dept.isActive}
-                    logo={dept.logo}
-                    infoItems={[
-                      { icon: <MdOutlinePersonOutline size={18} />, label: "HOD", value: dept.headOfDepartment || "Not assigned" },
-                      { icon: <HiOutlineUserGroup size={18} />, label: "Students", value: dept.totalStudents ?? 0 },
-                    ]}
-                    onView={() => handleRowClick(dept)}
-                    onEdit={
-                      canManageDepartment ? (
-                        <OrangeButton
-                          buttonTitle="EDIT"
-                          panelTitle="Edit Department"
-                          customButtonClass="w-full !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer"
-                          drawerContent={
-                            <Form className="space-y-4">
-                              {/* Logo Upload */}
-                              <div>
-                                <label className="block text-sm font-medium mb-2">Department Logo</label>
-                                  <div
-                                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
-                                    onClick={() => document.getElementById(`edit-logo-${dept._id}`).click()}
-                                  >
-                                    {values.logoPreview ? (
-                                      <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
-                                        <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
-                                        <span className="text-xs text-gray-400">Click to upload logo</span>
-                                      </>
-                                    )}
-                                  </div>
-                                <input
-                                  id={`edit-logo-${dept._id}`}
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                      setFieldValue("logoFile", file);
-                                      setFieldValue("logoPreview", URL.createObjectURL(file));
-                                    }
-                                  }}
-                                />
-                              </div>
-                              <InputField label="Department Name" name="name" placeholder="Enter department name" />
-                              <InputField label="Department Code" name="code" placeholder="Enter department code" disabled={true} />
-                              <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                              <InputField
-                                label="University Name"
-                                name="universityName"
-                                type="select"
-                                placeholder="Select university"
-                                options={UNIVERSITY_OPTIONS}
-                              />
-                              <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
-                              <div>
-                                <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                                {values.allowedCourses.map((course, index) => (
-                                  <div key={index} className="flex gap-2 mb-2">
-                                    <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
-                                    <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
-                                    {values.allowedCourses.length > 1 && (
-                                      <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
-                                    )}
-                                  </div>
-                                ))}
-                                <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
-                                  <Plus size={15} />
-                                  <span>Add Course</span>
-                                </button>
-                              </div>
-                              <RadioGroup label="Status" name="isActive" required={false} />
-                            </Form>
-                          }
-                          leftBtnText="Cancel"
-                          rightBtnText={isSubmitting ? "Updating..." : "Update Department"}
-                          onLeftClick={resetForm}
-                          onRightClick={submitForm}
-                        />
-                      ) : null
-                    }
-                  />
-                )}
-              </Formik>
+                icon={MdBusiness}
+                title={dept.name}
+                subtitle={dept.universityName}
+                description={dept.description || ""}
+                status={dept.isActive}
+                logo={dept.logo}
+                infoItems={[
+                  { icon: <MdOutlinePersonOutline size={18} />, label: "HOD", value: dept.headOfDepartment || "Not assigned" },
+                  { icon: <HiOutlineUserGroup size={18} />, label: "Students", value: dept.totalStudents ?? 0 },
+                ]}
+                onView={() => handleRowClick(dept)}
+                onEdit={canManageDepartment ? () => setEditingDepartment(dept) : null}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Edit Department Drawer */}
+      <OrangeButton
+        isOpen={Boolean(editingDepartment)}
+        onClose={() => setEditingDepartment(null)}
+        panelTitle="Edit Department"
+        panelSubtitle={editingDepartment ? `Editing: ${editingDepartment.name}` : ""}
+        leftBtnText="Cancel"
+        rightBtnText="Update Department"
+        onLeftClick={() => setEditingDepartment(null)}
+        onRightClick={() => editDeptFormRef.current?.submitForm()}
+        drawerContent={
+          editingDepartment && (
+            <Formik
+              innerRef={editDeptFormRef}
+              initialValues={{
+                name: editingDepartment.name || "",
+                code: editingDepartment.code || "",
+                description: editingDepartment.description || "",
+                universityName: editingDepartment.universityName || "",
+                headOfDepartment: editingDepartment.headOfDepartment || "",
+                allowedCourses: editingDepartment.allowedCourses?.length
+                  ? editingDepartment.allowedCourses
+                  : [{ courseName: "", durationInYears: "" }],
+                isActive: editingDepartment.isActive ?? true,
+                logoFile: null,
+                logoPreview: editingDepartment.logo || ""
+              }}
+              validationSchema={validationSchema}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting, resetForm }) => {
+                try {
+                  const fd = buildFormData(values);
+                  fd.append("code", values.code || "");
+                  const result = await updateDepartment({ id: editingDepartment._id, _formData: fd }).unwrap();
+                  toast.success(result.message || "Department updated successfully!");
+                  resetForm();
+                  setEditingDepartment(null);
+                  refetch();
+                } catch (error) {
+                  toast.error(error?.data?.message || "Error updating department");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {({ values, setFieldValue }) => (
+                <Form className="space-y-4">
+                  {/* Logo Upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Department Logo</label>
+                    <div
+                      className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
+                      onClick={() => document.getElementById(`edit-logo-${editingDepartment._id}`).click()}
+                    >
+                      {values.logoPreview ? (
+                        <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
+                          <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
+                        </div>
+                      ) : (
+                        <>
+                          <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
+                          <span className="text-xs text-gray-400">Click to upload logo</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      id={`edit-logo-${editingDepartment._id}`}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setFieldValue("logoFile", file);
+                          setFieldValue("logoPreview", URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </div>
+                  <InputField label="Department Name" name="name" placeholder="Enter department name" />
+                  <InputField label="Department Code" name="code" placeholder="Enter department code" disabled={true} />
+                  <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
+                  <InputField
+                    label="University Name"
+                    name="universityName"
+                    type="select"
+                    placeholder="Select university"
+                    options={UNIVERSITY_OPTIONS}
+                  />
+                  <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                    {values.allowedCourses.map((course, index) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
+                        <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
+                        {values.allowedCourses.length > 1 && (
+                          <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
+                      <Plus size={15} />
+                      <span>Add Course</span>
+                    </button>
+                  </div>
+                  <RadioGroup label="Status" name="isActive" required={false} />
+                </Form>
+              )}
+            </Formik>
+          )
+        }
+      />
 
       <AddStudentModal
         isOpen={isAddStudentModalOpen}

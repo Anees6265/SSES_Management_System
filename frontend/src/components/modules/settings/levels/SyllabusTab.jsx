@@ -867,7 +867,8 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
   const [viewMode, setViewMode] = useState("topics"); // "topics" | "detailed"
 
   const rows = useMemo(() => {
-    if (!data?.data?.subjects) return [];
+    if (!versionId || !data?.data?.subjects) return [];
+    if (String(data.data._id) !== String(versionId)) return [];
     const result = [];
     data.data.subjects.forEach((subject) => {
       if (activeSubject && subject.name !== activeSubject) return;
@@ -883,7 +884,7 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
       });
     });
     return result;
-  }, [data, activeSubject]);
+  }, [versionId, data, activeSubject]);
 
   const filtered = useMemo(() => {
     if (!searchTerm.trim()) return rows;
@@ -1111,7 +1112,11 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
 /* helper: subjects list from version */
 export const useSubjectsList = (versionId) => {
   const { data } = useGetSyllabusVersionWithHierarchyQuery(versionId, { skip: !versionId });
-  return useMemo(() => (data?.data?.subjects || []).map((s) => ({ _id: s._id, name: s.name, topicCount: s.topics?.length || 0 })), [data]);
+  return useMemo(() => {
+    if (!versionId || !data?.data?.subjects) return [];
+    if (String(data.data._id) !== String(versionId)) return [];
+    return (data.data.subjects || []).map((s) => ({ _id: s._id, name: s.name, topicCount: s.topics?.length || 0 }));
+  }, [versionId, data]);
 };
 
 /* ─── Task Excel Upload Drawer ─────────────────────────── */
@@ -1445,10 +1450,14 @@ const TaskDetailModal = ({ task, onClose }) => {
 /* ─── Tasks Table for a Syllabus Version ────────────────────────── */
 export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId, activeSubjectName }) => {
   const { data, isLoading } = useGetTasksBySyllabusVersionQuery(versionId, { skip: !versionId });
-  const allTasks = data?.tasks || data?.data || [];
+  const allTasks = useMemo(() => {
+    if (!versionId) return [];
+    return data?.tasks || data?.data || [];
+  }, [versionId, data]);
   const [selectedTask, setSelectedTask] = useState(null);
 
   const tasks = useMemo(() => {
+    if (!versionId) return [];
     let filteredTasks = allTasks;
     if (activeSubjectId) {
       const activeNameClean = (activeSubjectName || "").trim().toLowerCase();
@@ -1466,7 +1475,7 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
       t.topicName?.toLowerCase().includes(q) ||
       t.subTopicName?.toLowerCase().includes(q)
     );
-  }, [allTasks, searchTerm, activeSubjectId, activeSubjectName]);
+  }, [versionId, allTasks, searchTerm, activeSubjectId, activeSubjectName]);
 
   const taskColumns = useMemo(() => [
     {
@@ -1795,7 +1804,11 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
   }, [syllabusVersionId]);
 
   const { data: versionDetail } = useGetSyllabusVersionWithHierarchyQuery(syllabusVersionId, { skip: !syllabusVersionId });
-  const subjects  = versionDetail?.data?.subjects || [];
+  const subjects = useMemo(() => {
+    if (!syllabusVersionId || !versionDetail?.data?.subjects) return [];
+    if (String(versionDetail.data._id) !== String(syllabusVersionId)) return [];
+    return versionDetail.data.subjects || [];
+  }, [syllabusVersionId, versionDetail]);
   const topics    = subjects.find((s) => s._id === subjectId)?.topics || [];
   const subTopics = topics.find((t) => t._id === topicId)?.subTopics || [];
 
@@ -1989,12 +2002,21 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
     { subLevelId, sessionId: selectedSessionId },
     { skip: !subLevelId, refetchOnMountOrArgChange: true }
   );
-  const allVersions = versionsData?.data || [];
+  const rawVersions = versionsData?.data || [];
+  const allVersions = useMemo(() => {
+    if (!selectedSessionId) return rawVersions;
+    return rawVersions.filter((v) => {
+      const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
+      return String(vSessionId) === String(selectedSessionId);
+    });
+  }, [rawVersions, selectedSessionId]);
 
-  const currentVersionId = activeVersionId
-    || allVersions.find((v) => v.status === "active")?._id
-    || allVersions[0]?._id
-    || "";
+  const currentVersion = allVersions.find((v) => v._id === activeVersionId)
+    || allVersions.find((v) => v.status === "active")
+    || allVersions[0]
+    || null;
+
+  const currentVersionId = currentVersion?._id || "";
 
   // Get subjects list for current tasks version
   const subjectsList = useSubjectsList(currentVersionId);
@@ -2008,17 +2030,10 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
     } else {
       setActiveSubjectId("");
     }
-  }, [currentVersionId, subjectsList.length]);
+  }, [currentVersionId, subjectsList]);
 
   // Get active subject name for robust fallback matching
   const activeSubjectName = subjectsList.find(s => s._id === activeSubjectId)?.name || "";
-
-  console.log("TasksTab render debug:", {
-    currentVersionId,
-    subjectsList,
-    activeSubjectId,
-    activeSubjectName
-  });
 
   useEffect(() => {
     if (allVersions.length > 0) {
@@ -2073,7 +2088,12 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
               <div className="flex-1 sm:flex-initial min-w-[135px]">
                 <SelectDropdown
                   value={selectedSessionId}
-                  onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); }}
+                  onChange={(val) => {
+                    setSelectedSessionId(val);
+                    setActiveVersionId("");
+                    setActiveSubjectId("");
+                    setSearchTerm("");
+                  }}
                   options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
                   placeholder="All Sessions"
                 />
@@ -2106,7 +2126,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
         </div>
 
         {/* Subject tabs (Pill selectors) */}
-        {subjectsList.length > 0 && (
+        {allVersions.length > 0 && Boolean(currentVersionId) && subjectsList.length > 0 && (
           <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
             {subjectsList.map((s) => (
               <button
@@ -2131,7 +2151,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
         )}
 
         {/* Table or empty state */}
-        {allVersions.length === 0 ? (
+        {allVersions.length === 0 || !currentVersionId ? (
           <div className="py-20 text-center px-4">
             <div className="w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-3 border border-orange-100/40">
               <MdAssignment size={26} className="text-orange-400" />
@@ -2235,12 +2255,20 @@ const SyllabusTab = ({ level, subLevel }) => {
     { subLevelId, sessionId: selectedSessionId },
     { skip: !subLevelId, refetchOnMountOrArgChange: true }
   );
-  const allVersions = versionsData?.data || [];
+  const rawVersions = versionsData?.data || [];
+  const allVersions = useMemo(() => {
+    if (!selectedSessionId) return rawVersions;
+    return rawVersions.filter((v) => {
+      const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
+      return String(vSessionId) === String(selectedSessionId);
+    });
+  }, [rawVersions, selectedSessionId]);
 
-  const currentVersionId = activeVersionId
-    || allVersions.find((v) => v.status === "active")?._id
-    || allVersions[0]?._id
-    || "";
+  const currentVersion = allVersions.find((v) => v._id === activeVersionId)
+    || allVersions.find((v) => v.status === "active")
+    || allVersions[0]
+    || null;
+  const currentVersionId = currentVersion?._id || "";
 
   useEffect(() => {
     if (allVersions.length > 0) {
@@ -2260,9 +2288,14 @@ const SyllabusTab = ({ level, subLevel }) => {
 
   // auto-select first subject when version changes
   useEffect(() => {
-    if (subjectsList.length > 0) setActiveSubject(subjectsList[0].name);
-    else setActiveSubject("");
-  }, [currentVersionId, subjectsList.length]);
+    if (subjectsList.length > 0) {
+      if (!activeSubject || !subjectsList.some(s => s.name === activeSubject)) {
+        setActiveSubject(subjectsList[0].name);
+      }
+    } else {
+      setActiveSubject("");
+    }
+  }, [currentVersionId, subjectsList]);
 
   const [deleteSyllabusVersion]   = useDeleteSyllabusVersionMutation();
   const [activateSyllabusVersion] = useActivateSyllabusVersionMutation();
@@ -2306,7 +2339,12 @@ const SyllabusTab = ({ level, subLevel }) => {
           <div className="flex-1 sm:flex-initial min-w-[130px]">
             <SelectDropdown
               value={selectedSessionId}
-              onChange={(val) => { setSelectedSessionId(val); setActiveVersionId(""); setSearchTerm(""); }}
+              onChange={(val) => {
+                setSelectedSessionId(val);
+                setActiveVersionId("");
+                setActiveSubject("");
+                setSearchTerm("");
+              }}
               options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
               placeholder="All Sessions"
             />
@@ -2371,7 +2409,7 @@ const SyllabusTab = ({ level, subLevel }) => {
       </div>
 
       {/* Subject tabs (Pill selectors) */}
-      {subjectsList.length > 0 && (
+      {allVersions.length > 0 && Boolean(currentVersionId) && subjectsList.length > 0 && (
         <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
           {subjectsList.map((s) => (
             <button
@@ -2380,7 +2418,7 @@ const SyllabusTab = ({ level, subLevel }) => {
               className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 ${
                 activeSubject === s.name
                   ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
-                  : "border-transparent text-gray-550 hover:text-gray-805 hover:bg-gray-100/50"
+                  : "border-transparent text-gray-555 hover:text-gray-805 hover:bg-gray-100/50"
               }`}
             >
               <MdBook size={13} className={activeSubject === s.name ? "text-orange-500" : "text-gray-400"} />
@@ -2396,7 +2434,7 @@ const SyllabusTab = ({ level, subLevel }) => {
       )}
 
       {/* Content */}
-      {allVersions.length === 0 ? (
+      {allVersions.length === 0 || !currentVersionId ? (
         <div className="py-20 text-center px-4">
           <div className="w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-3 border border-orange-100/40">
             <MdBook size={26} className="text-orange-400" />

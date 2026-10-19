@@ -928,6 +928,10 @@ exports.updateStudent = async (req, res) => {
       });
     }
 
+    if (updateData.status && updateData.status !== "Dummy") {
+      updateData.dummyDetails = null;
+    }
+
     const student = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     return res.status(200).json({ message: "Student updated successfully", data: student });
   } catch (error) {

@@ -1,4 +1,4 @@
-import React from "react";
+/* eslint-disable react/prop-types */
 import { MdWarningAmber, MdTrendingDown, MdNotificationsActive, MdArrowForward } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 

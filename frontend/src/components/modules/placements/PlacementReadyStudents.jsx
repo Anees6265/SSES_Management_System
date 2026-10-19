@@ -1,776 +1,1129 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { toast } from "react-toastify";
+/* eslint-disable react/prop-types */
+import { useState, useMemo, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   useGetNewReadyStudentsQuery,
   useGetNewSelectedStudentsQuery,
   useGetNewPlacedStudentsQuery,
 } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
-import CommonTable from "../../shared/table/CommonTable";
 import Pagination from "../../shared/pagination/Pagination";
 import Header from "../../shared/sidebar/Header";
-import TabsCommon from "../../shared/table/TabsCommon";
 import Avatar from "../../shared/Avatar";
-import StatsCard from "./dashboard/StatsCard";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
-import { 
-  MdCheckCircle, MdWork, MdVerifiedUser, MdTrendingUp, MdSearch, 
-  MdCalendarToday, MdAdd, MdFilterList, MdCheckCircleOutline, 
-  MdFileDownload, MdOpenInNew, MdClose, MdPhone 
+import {
+  MdCheckCircle,
+  MdWork,
+  MdVerifiedUser,
+  MdTrendingUp,
+  MdSearch,
+  MdCalendarToday,
+  MdOpenInNew,
+  MdClose,
+  MdPhone,
+  MdEmail,
+  MdPerson,
+  MdHistory,
+  MdAssignment,
+  MdBusiness,
+  MdAdd,
+  MdVisibility,
 } from "react-icons/md";
+import { FaUserGraduate } from "react-icons/fa";
 
 const toTitle = (str) =>
-  str?.toLowerCase().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "";
+  str
+    ? str
+        .toLowerCase()
+        .split(" ")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    : "";
 
-const TABS = ["Ready for Placement", "Ready for Drive", "Interview", "Selected", "Placed"];
+const PIPELINE_TABS = [
+  { id: "All", label: "All Candidates", icon: FaUserGraduate },
+  { id: "Ready", label: "Ready Pool", icon: MdCheckCircle },
+  { id: "Interview", label: "In Interviews", icon: MdWork },
+  { id: "Selected", label: "Selected (Offers)", icon: MdVerifiedUser },
+  { id: "Placed", label: "Confirmed Placed", icon: MdTrendingUp },
+];
 
-const DEFAULT_TECHNOLOGIES = ["All", "Python", "MERN Stack", "Java", ".NET", "UI/UX", "Data Analytics", "Salesforce", "SAP"];
-
-const PlacementReadyStudents = () => {
+/* ─── Candidate Quick View Drawer ─────────────────────────── */
+const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onConfirmPlacement, onPostBanner }) => {
   const navigate = useNavigate();
+  if (!candidate) return null;
+
+  const sId = candidate.studentId?._id || candidate._id;
+  const resumeURL =
+    candidate.resumeURL ||
+    candidate.studentId?.documents?.find((d) =>
+      (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf"
+    )?.fileURL;
+
+  const interviews = candidate.PlacementinterviewRecord || candidate.interviewRecord || [];
+  const placed = candidate.placedInfo;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in">
+      <div className="fixed inset-0" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col z-10 overflow-hidden animate-in slide-in-from-right duration-200">
+        
+        {/* Drawer Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold">
+              <MdPerson size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 leading-tight">Candidate Profile</h3>
+              <p className="text-[11px] text-slate-400 font-mono">ID: {candidate.prkey || "PR-KEY"}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition cursor-pointer"
+          >
+            <MdClose size={18} />
+          </button>
+        </div>
+
+        {/* Drawer Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-xs">
+          
+          {/* Identity Card */}
+          <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center gap-3.5">
+            <Avatar firstName={candidate.firstName} lastName={candidate.lastName} imageUrl={candidate.image} size="lg" />
+            <div className="min-w-0 flex-1">
+              <h4 className="text-base font-extrabold text-slate-900 truncate">
+                {toTitle(`${candidate.firstName || ""} ${candidate.lastName || ""}`)}
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">{candidate.course || "Technical Course"}</p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {candidate.studentMobile && (
+                  <a
+                    href={`tel:${candidate.studentMobile}`}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:border-orange-400 transition"
+                  >
+                    <MdPhone size={12} className="text-orange-500" /> +91 {candidate.studentMobile}
+                  </a>
+                )}
+                {candidate.email && (
+                  <a
+                    href={`mailto:${candidate.email}`}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:border-orange-400 transition"
+                  >
+                    <MdEmail size={12} className="text-orange-500" /> {candidate.email}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Academic & Stage Details */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-white border border-slate-200/80 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Technology / Track</span>
+              <p className="font-extrabold text-slate-800 text-xs truncate">
+                {candidate.technology || candidate.track || candidate.course || "General"}
+              </p>
+            </div>
+            <div className="p-3 bg-white border border-slate-200/80 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Stage</span>
+              <p className="font-extrabold text-slate-800 text-xs truncate">
+                {candidate.currentSubLevel || candidate.currentLevel || "Stage 2A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Resume Section */}
+          <div className="p-3.5 bg-orange-50/50 border border-orange-100 rounded-2xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+                <MdAssignment size={18} />
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 text-xs">Candidate Resume</p>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  {resumeURL ? "Resume uploaded & verified" : "No resume uploaded yet"}
+                </p>
+              </div>
+            </div>
+            {resumeURL ? (
+              <a
+                href={resumeURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 font-extrabold text-xs rounded-xl shadow-2xs transition flex items-center gap-1 shrink-0"
+              >
+                <MdOpenInNew size={13} /> View
+              </a>
+            ) : (
+              <span className="text-[10px] text-slate-400 italic">Not Uploaded</span>
+            )}
+          </div>
+
+          {/* Placed Information (If Placed) */}
+          {placed && (
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2.5">
+              <div className="flex items-center gap-2">
+                <MdCheckCircle className="text-emerald-600" size={18} />
+                <h4 className="font-extrabold text-emerald-950 text-xs">Confirmed Placement Details</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                <div>
+                  <span className="text-[10px] text-emerald-700 font-medium">Company</span>
+                  <p className="font-bold text-slate-900">{placed.companyName || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 font-medium">Package (CTC)</span>
+                  <p className="font-black text-emerald-700">
+                    {placed.salary ? `₹${(placed.salary / 100000).toFixed(1)} LPA` : "—"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 font-medium">Job Profile</span>
+                  <p className="font-semibold text-slate-800">{placed.jobProfile || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 font-medium">Job Type</span>
+                  <p className="font-semibold text-slate-800">{placed.jobType || "Full-Time"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Interview History Timeline */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+              <MdHistory size={16} className="text-orange-500" />
+              Interview Records ({interviews.length})
+            </h4>
+
+            {interviews.length === 0 ? (
+              <div className="p-4 text-center border border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-medium">
+                No interview drives scheduled yet for this candidate.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {interviews.map((record, index) => {
+                  const statusColors = {
+                    Scheduled: "bg-blue-50 text-blue-700 border-blue-200",
+                    Ongoing: "bg-amber-50 text-amber-700 border-amber-200",
+                    Selected: "bg-purple-50 text-purple-700 border-purple-200",
+                    Rejected: "bg-rose-50 text-rose-700 border-rose-200",
+                    Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  }[record.status] || "bg-slate-100 text-slate-700 border-slate-200";
+
+                  return (
+                    <div
+                      key={index}
+                      className="p-3 bg-white border border-slate-200/80 rounded-xl space-y-1.5 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-slate-900 text-xs flex items-center gap-1">
+                          <MdBusiness className="text-slate-400" /> {record.companyName || "Company Drive"}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColors}`}>
+                          {record.status || "Scheduled"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Role: {record.jobProfile || "Standard Profile"}</span>
+                        <span>
+                          {record.scheduleDate ? new Date(record.scheduleDate).toLocaleDateString() : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Drawer Action Footer */}
+        <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-white flex items-center gap-2 justify-end">
+          <button
+            onClick={() => {
+              onClose();
+              navigate(`/student-profile/${sId}`);
+            }}
+            className="px-3.5 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Full Profile
+          </button>
+
+          {!placed && (
+            <button
+              onClick={() => {
+                onClose();
+                onScheduleInterview(candidate);
+              }}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+            >
+              <MdCalendarToday size={14} /> Schedule Drive
+            </button>
+          )}
+
+          {candidate.readinessStatus === "Selected" && !placed && (
+            <button
+              onClick={() => {
+                onClose();
+                onConfirmPlacement(candidate);
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            >
+              Confirm Placement
+            </button>
+          )}
+
+          {placed && (
+            <button
+              onClick={() => {
+                onClose();
+                onPostBanner(candidate);
+              }}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+            >
+              <MdAdd size={15} /> Post Banner
+            </button>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+/* ─── Metric Card Component ───────────────────────────────── */
+const PipelineStatCard = ({ title, count, subtitle, icon: Icon, isActive, onClick, color = "orange" }) => {
+  const colorStyles = {
+    orange: "text-orange-500 bg-orange-50 border-orange-100",
+    blue: "text-blue-500 bg-blue-50 border-blue-100",
+    amber: "text-amber-500 bg-amber-50 border-amber-100",
+    purple: "text-purple-500 bg-purple-50 border-purple-100",
+    emerald: "text-emerald-500 bg-emerald-50 border-emerald-100",
+  }[color];
+
+  return (
+    <div
+      onClick={onClick}
+      className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between shadow-2xs relative overflow-hidden group ${
+        isActive
+          ? "bg-white border-orange-500 ring-2 ring-orange-500/10 shadow-sm"
+          : "bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
+      }`}
+    >
+      {isActive && (
+        <span className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+          {title}
+        </span>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${colorStyles}`}>
+          <Icon size={17} />
+        </div>
+      </div>
+      <div className="mt-2.5">
+        <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{count}</p>
+        <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{subtitle}</p>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Main Placement Candidates Page ──────────────────────── */
+const PlacementReadyStudents = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const statusParam = searchParams.get("status");
 
-  const [activeTab, setActiveTab]       = useState("Ready for Placement");
-  const [searchTerm, setSearchTerm]     = useState("");
+  // Tab State
+  const [activeTab, setActiveTab] = useState("All");
+  const [readySubFilter, setReadySubFilter] = useState("All"); // All | Stage2A | Stage2B
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedTech, setSelectedTech] = useState("All");
-  const [mobilePage, setMobilePage]     = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
-  const [selectedStudent, setSelectedStudent]           = useState(null);
+  // Selected candidate state for modals / quick view
+  const [quickViewCandidate, setQuickViewCandidate] = useState(null);
+  const [selectedStudentForInterview, setSelectedStudentForInterview] = useState(null);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen]     = useState(false);
-  const [isPostModalOpen, setIsPostModalOpen]           = useState(false);
   const [selectedForPlacement, setSelectedForPlacement] = useState(null);
-  const [selectedForPost, setSelectedForPost]           = useState(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [selectedForPost, setSelectedForPost] = useState(null);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
-  // Reset mobile page on filter change
-  useEffect(() => {
-    setMobilePage(1);
-  }, [activeTab, selectedTech, searchTerm]);
+  // Queries
+  const { data: readyRes = {}, isLoading: loadingReady, refetch: refetchReady } = useGetNewReadyStudentsQuery();
+  const { data: selectedRes = {}, isLoading: loadingSelected, refetch: refetchSelected } = useGetNewSelectedStudentsQuery();
+  const { data: placedRes = {}, isLoading: loadingPlaced, refetch: refetchPlaced } = useGetNewPlacedStudentsQuery();
 
-  // Sync tab with URL status parameter if passed from dashboard click
+  const readyStudents = useMemo(() => readyRes.data || [], [readyRes]);
+  const selectedStudents = useMemo(() => selectedRes.data || [], [selectedRes]);
+  const placedStudents = useMemo(() => placedRes.data || [], [placedRes]);
+
+  const isLoading = loadingReady || loadingSelected || loadingPlaced;
+
+  const refetchAll = () => {
+    refetchReady();
+    refetchSelected();
+    refetchPlaced();
+  };
+
+  // Sync tab with URL search parameter (e.g. from Dashboard click)
   useEffect(() => {
     if (statusParam) {
       if (statusParam === "Ready for Placement" || statusParam === "Ready") {
-        setActiveTab("Ready for Placement");
+        setActiveTab("Ready");
+        setReadySubFilter("Stage2A");
       } else if (statusParam === "Ready for Drive" || statusParam === "Ready for Interview") {
-        setActiveTab("Ready for Drive");
-      } else if (statusParam === "Interview" || statusParam === "Interviews Running") {
+        setActiveTab("Ready");
+        setReadySubFilter("Stage2B");
+      } else if (statusParam === "Interview" || statusParam === "Ongoing Interview") {
         setActiveTab("Interview");
       } else if (statusParam === "Selected") {
         setActiveTab("Selected");
-      } else if (statusParam === "Placed" || statusParam === "Placed Students") {
+      } else if (statusParam === "Placed") {
         setActiveTab("Placed");
       }
     }
   }, [statusParam]);
 
-  const { data: readyRes    = {}, isLoading: loadingReady,    refetch: refetchReady    } = useGetNewReadyStudentsQuery();
-  const { data: selectedRes = {}, isLoading: loadingSelected, refetch: refetchSelected } = useGetNewSelectedStudentsQuery();
-  const { data: placedRes   = {}, isLoading: loadingPlaced,   refetch: refetchPlaced   } = useGetNewPlacedStudentsQuery();
+  // Reset page when tab/filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, readySubFilter, selectedTech, searchTerm]);
 
-  const readyStudents    = readyRes.data    || [];
-  const selectedStudents = selectedRes.data || [];
-  const placedStudents   = placedRes.data   || [];
+  // Check if candidate is currently in an active interview round
+  const hasActiveInterview = (s) =>
+    s.PlacementinterviewRecord?.some((r) =>
+      ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
+    );
 
-  const isLoading = loadingReady || loadingSelected || loadingPlaced;
+  // Categorize Pools
+  const readyPool = useMemo(() => {
+    return readyStudents.filter((s) => !hasActiveInterview(s));
+  }, [readyStudents]);
 
-  // Categorize ready students into "Ready for Placement" and "Ready for Drive"
-  const readyForPlacementStudents = useMemo(() =>
-    readyStudents.filter((s) => {
-      const status = s.readinessStatus || "Ready";
-      const hasActiveInterview = s.PlacementinterviewRecord?.some((r) =>
-        ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
-      );
-      return (status === "Ready" || status === "Ready for Placement") && !hasActiveInterview;
-    }), [readyStudents]);
+  const interviewPool = useMemo(() => {
+    return readyStudents.filter((s) => hasActiveInterview(s));
+  }, [readyStudents]);
 
-  const readyForDriveStudents = useMemo(() =>
-    readyStudents.filter((s) => {
-      const status = s.readinessStatus || "";
-      const hasActiveInterview = s.PlacementinterviewRecord?.some((r) =>
-        ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
-      );
-      return (status === "Ready for Drive" || status === "Ready for Interview") && !hasActiveInterview;
-    }), [readyStudents]);
+  const selectedPool = useMemo(() => selectedStudents, [selectedStudents]);
+  const placedPool = useMemo(() => placedStudents, [placedStudents]);
 
-  const interviewStudents = useMemo(() =>
-    readyStudents.filter((s) =>
-      s.PlacementinterviewRecord?.some((r) =>
-        ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
-      )
-    ), [readyStudents]);
-
-  const tabCounts = {
-    "Ready for Placement": readyForPlacementStudents.length,
-    "Ready for Drive":     readyForDriveStudents.length,
-    "Interview":           interviewStudents.length,
-    "Selected":            selectedStudents.length,
-    "Placed":              placedStudents.length,
-  };
-
-  // Build dynamic technology list from student data
-  const availableTechnologies = useMemo(() => {
-    const techSet = new Set(DEFAULT_TECHNOLOGIES);
+  // Unified Pool of all candidates across categories
+  const allPool = useMemo(() => {
+    const map = new Map();
     [...readyStudents, ...selectedStudents, ...placedStudents].forEach((s) => {
-      if (s.track) techSet.add(s.track);
-      if (s.technology) techSet.add(s.technology);
-      if (s.course) techSet.add(s.course);
+      const id = s.studentId?._id || s.studentId || s._id;
+      if (id && !map.has(id.toString())) {
+        map.set(id.toString(), s);
+      }
     });
-    return Array.from(techSet);
+    return Array.from(map.values());
   }, [readyStudents, selectedStudents, placedStudents]);
 
-  const getActiveData = () => {
-    const map = {
-      "Ready for Placement": readyForPlacementStudents,
-      "Ready for Drive":     readyForDriveStudents,
-      "Interview":           interviewStudents,
-      "Selected":            selectedStudents,
-      "Placed":              placedStudents,
-    };
-    let data = map[activeTab] || [];
+  // Counts for tabs & stat cards
+  const poolCounts = {
+    All: allPool.length,
+    Ready: readyPool.length,
+    Interview: interviewPool.length,
+    Selected: selectedPool.length,
+    Placed: placedPool.length,
+  };
+
+  // Dynamic Technology options
+  const availableTechnologies = useMemo(() => {
+    const set = new Set(["All"]);
+    allPool.forEach((s) => {
+      if (s.technology) set.add(s.technology);
+      if (s.track) set.add(s.track);
+    });
+    return Array.from(set);
+  }, [allPool]);
+
+  // Filter active dataset based on activeTab, subFilter, tech, and search
+  const filteredCandidates = useMemo(() => {
+    let dataset = allPool;
+    if (activeTab === "Ready") dataset = readyPool;
+    else if (activeTab === "Interview") dataset = interviewPool;
+    else if (activeTab === "Selected") dataset = selectedPool;
+    else if (activeTab === "Placed") dataset = placedPool;
+
+    // Sub-stage filter for Ready pool
+    if (activeTab === "Ready" && readySubFilter !== "All") {
+      dataset = dataset.filter((s) => {
+        const status = s.readinessStatus || "";
+        if (readySubFilter === "Stage2A") return status === "Ready" || status === "Ready for Placement";
+        if (readySubFilter === "Stage2B") return status === "Ready for Drive" || status === "Ready for Interview";
+        return true;
+      });
+    }
 
     // Technology Filter
     if (selectedTech && selectedTech !== "All") {
-      data = data.filter((s) => {
+      dataset = dataset.filter((s) => {
         const stdTech = (s.technology || s.track || s.course || "").toLowerCase();
         return stdTech.includes(selectedTech.toLowerCase());
       });
     }
 
     // Search Filter
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      data = data.filter((s) => {
-        const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      dataset = dataset.filter((s) => {
+        const fullName = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+        const prkey = (s.prkey || "").toLowerCase();
+        const mobile = (s.studentMobile || "").toLowerCase();
+        const tech = (s.technology || s.track || "").toLowerCase();
+        const company = (s.placedInfo?.companyName || "").toLowerCase();
         return (
-          name.includes(q) ||
-          s.prkey?.toLowerCase().includes(q) ||
-          s.studentMobile?.includes(q) ||
-          s.course?.toLowerCase().includes(q)
+          fullName.includes(q) ||
+          prkey.includes(q) ||
+          mobile.includes(q) ||
+          tech.includes(q) ||
+          company.includes(q)
         );
       });
     }
 
-    return data;
+    return dataset;
+  }, [allPool, readyPool, interviewPool, selectedPool, placedPool, activeTab, readySubFilter, selectedTech, searchTerm]);
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredCandidates.length / rowsPerPage) || 1;
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const paginatedData = filteredCandidates.slice(startIndex, startIndex + rowsPerPage);
+
+  const hasActiveFilters = Boolean(searchTerm || selectedTech !== "All" || readySubFilter !== "All");
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedTech("All");
+    setReadySubFilter("All");
+    setCurrentPage(1);
   };
-
-  const baseColumns = [
-    {
-      key: "name",
-      label: "Student Profile",
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
-          <div>
-            <p className="font-semibold text-slate-900 hover:text-slate-700 transition cursor-pointer text-xs sm:text-sm">
-              {toTitle(`${row.firstName || ""} ${row.lastName || ""}`)}
-            </p>
-            <p className="text-[11px] text-slate-400 font-mono mt-0.5">{row.prkey || "PR-KEY"}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "technology",
-      label: "Technology / Track",
-      render: (row) => (
-        <span className="text-xs font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-          {row.technology || row.track || row.course || "General"}
-        </span>
-      ),
-    },
-    {
-      key: "level",
-      label: "Current Stage",
-      align: "center",
-      render: (row) => (
-        <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-          {row.currentSubLevel || row.currentLevel || "Stage 2A"}
-        </span>
-      ),
-    },
-    { 
-      key: "studentMobile", 
-      label: "Contact", 
-      align: "center",
-      render: (row) => (
-        <span className="text-xs font-medium text-slate-600">
-          {row.studentMobile ? `+91 ${row.studentMobile}` : "—"}
-        </span>
-      )
-    },
-    {
-      key: "readinessStatus",
-      label: "Placement Status",
-      render: (row) => {
-        let label = row.readinessStatus || "Ready for Placement";
-        if (row.placedInfo) label = "Placed";
-        else if (label === "Ready") label = "Ready for Placement";
-        else if (label === "Ready for Interview") label = "Ready for Drive";
-
-        const badgeStyle = {
-          "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-          "Ready for Drive":     "bg-sky-50 text-sky-700 border-sky-200/80",
-          "Interview":           "bg-amber-50 text-amber-700 border-amber-200/80",
-          "Selected":            "bg-violet-50 text-violet-700 border-violet-200/80",
-          "Placed":              "bg-teal-50 text-teal-700 border-teal-200/80",
-        }[label] || "bg-slate-100 text-slate-700 border-slate-200";
-
-        return (
-          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${badgeStyle}`}>
-            {label}
-          </span>
-        );
-      },
-    },
-    {
-      key: "resume",
-      label: "Resume",
-      align: "center",
-      render: (row) => {
-        const resumeURL = row.resumeURL || row.studentId?.documents?.find(d => (d.title || "").toLowerCase().includes("resume"))?.fileURL;
-        return (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (resumeURL) window.open(resumeURL, "_blank", "noopener,noreferrer");
-              else toast.info("Resume not uploaded yet.");
-            }}
-            className={`text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 transition ${
-              resumeURL 
-                ? "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 shadow-2xs" 
-                : "bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed"
-            }`}
-          >
-            <MdOpenInNew size={13} /> {resumeURL ? "View Resume" : "No Resume"}
-          </button>
-        );
-      }
-    }
-  ];
-
-  const readyForPlacementColumns = [
-    ...baseColumns,
-    {
-      key: "action",
-      label: "Actions",
-      render: (row) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedStudent(row);
-            setIsInterviewModalOpen(true);
-          }}
-          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1.5"
-        >
-          <MdCalendarToday className="text-sm" /> Schedule Drive
-        </button>
-      ),
-    },
-  ];
-
-  const readyForDriveColumns = [
-    ...baseColumns,
-    {
-      key: "action",
-      label: "Actions",
-      render: (row) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedStudent(row);
-            setIsInterviewModalOpen(true);
-          }}
-          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1.5"
-        >
-          <MdCalendarToday className="text-sm" /> Schedule Drive
-        </button>
-      ),
-    },
-  ];
-
-  const interviewColumns = [
-    ...baseColumns,
-    {
-      key: "interviews", 
-      label: "Active Drive Status",
-      render: (row) => {
-        const active = row.PlacementinterviewRecord?.find((r) =>
-          ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
-        );
-        return (
-          <div>
-            <p className="text-xs font-semibold text-slate-800">{active?.jobProfile || "Drive In Progress"}</p>
-            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
-              active?.status === "Ongoing" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-              active?.status === "Rescheduled" ? "bg-violet-50 text-violet-700 border border-violet-200" :
-              "bg-slate-100 text-slate-700 border border-slate-200"
-            }`}>{active?.status || "Scheduled"}</span>
-          </div>
-        );
-      },
-    },
-    {
-      key: "action", 
-      label: "Actions",
-      render: (row) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/interview-history/${row.studentId?._id || row._id}`); }}
-          className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-xl border border-slate-200 transition shadow-2xs"
-        >
-          View History
-        </button>
-      ),
-    },
-  ];
-
-  const selectedColumns = [
-    ...baseColumns,
-    { 
-      key: "company", 
-      label: "Recruiting Company",
-      render: (row) => {
-        const sel = row.selectedInterviews?.[0];
-        return (
-          <span className="font-medium text-slate-800 bg-slate-50 text-xs px-2.5 py-1 rounded-lg border border-slate-200">
-            {toTitle(sel?.companyRef?.companyName || "Selected Company")}
-          </span>
-        );
-      }
-    },
-    {
-      key: "actions", 
-      label: "Actions",
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); setIsInterviewModalOpen(true); }}
-            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
-          >
-            <MdAdd /> Next Round
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setSelectedForPlacement(row); setIsConfirmModalOpen(true); }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs"
-          >
-            Confirm Placement
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  const placedColumns = [
-    ...baseColumns,
-    { key: "company",    label: "Company",  render: (row) => <span className="font-semibold text-slate-800">{toTitle(row.placedInfo?.companyName || "—")}</span> },
-    { key: "jobProfile", label: "Job Role",     render: (row) => <span className="text-xs font-medium bg-slate-50 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200">{toTitle(row.placedInfo?.jobProfile || "—")}</span> },
-    { key: "salary",     label: "Package",      render: (row) => <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80">{row.placedInfo?.salary ? `₹${(row.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}</span> },
-    {
-      key: "action", 
-      label: "Actions",
-      render: (row) => (
-        <button 
-          onClick={(e) => { e.stopPropagation(); setSelectedForPost(row); setIsPostModalOpen(true); }}
-          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1"
-        >
-          <MdAdd /> Post Banner
-        </button>
-      ),
-    },
-  ];
-
-  const getColumns = () => {
-    if (activeTab === "Placed")              return placedColumns;
-    if (activeTab === "Selected")            return selectedColumns;
-    if (activeTab === "Interview")           return interviewColumns;
-    if (activeTab === "Ready for Drive")     return readyForDriveColumns;
-    return readyForPlacementColumns;
-  };
-
-  const handleRowClick = (row) => {
-    const sId = row.studentId?._id || row._id;
-    if (sId) {
-      navigate(`/student-profile/${sId}`);
-    }
-  };
-
-  const refetchAll = () => { refetchReady(); refetchSelected(); refetchPlaced(); };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
         <Loader />
       </div>
     );
   }
 
-  const activeData = getActiveData();
-  const totalMobilePages = Math.ceil(activeData.length / 10) || 1;
-  const paginatedMobileData = activeData.slice((mobilePage - 1) * 10, mobilePage * 10);
-
   return (
     <>
       <Header
         title="Placement Candidates"
-        subtitle="Manage ready pool, interview schedules, and confirmed placements"
-        breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Candidates" }]}
+        subtitle="Manage placement readiness pipeline: ready talent pool, interview tracking, and offers"
+        badge={`${allPool.length} Candidates`}
+        breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Placement Candidates" }]}
       />
 
-      <div className="bg-slate-50 min-h-screen pb-12">
-        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
-
-        {/* ── Summary Stats Row (2x2 on mobile, 5th card spans full width) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-          <StatsCard
-            title="Ready for Placement"
-            value={readyForPlacementStudents.length}
-            icon={<MdCheckCircle />}
-            color="green"
-            trend="Stage 2A Cleared"
-            sub="ready pool"
-            onClick={() => setActiveTab("Ready for Placement")}
-          />
-          <StatsCard
-            title="Ready for Drive"
-            value={readyForDriveStudents.length}
-            icon={<MdCheckCircleOutline />}
-            color="blue"
-            trend="Stage 2B Cleared"
-            sub="eligible for drives"
-            onClick={() => setActiveTab("Ready for Drive")}
-          />
-          <StatsCard
-            title="Interview"
-            value={interviewStudents.length}
-            icon={<MdWork />}
+      <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+        
+        {/* ── 1. Top Metrics Cards (5 Cards) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <PipelineStatCard
+            title="Total Candidates"
+            count={poolCounts.All}
+            subtitle="Complete candidate pool"
+            icon={FaUserGraduate}
             color="orange"
-            trend="Active Drives"
-            sub="in evaluation"
+            isActive={activeTab === "All"}
+            onClick={() => setActiveTab("All")}
+          />
+          <PipelineStatCard
+            title="Ready for Drives"
+            count={poolCounts.Ready}
+            subtitle="Stage 2A & 2B cleared"
+            icon={MdCheckCircle}
+            color="blue"
+            isActive={activeTab === "Ready"}
+            onClick={() => setActiveTab("Ready")}
+          />
+          <PipelineStatCard
+            title="In Interviews"
+            count={poolCounts.Interview}
+            subtitle="Active company drives"
+            icon={MdWork}
+            color="amber"
+            isActive={activeTab === "Interview"}
             onClick={() => setActiveTab("Interview")}
           />
-          <StatsCard
-            title="Selected"
-            value={selectedStudents.length}
-            icon={<MdVerifiedUser />}
+          <PipelineStatCard
+            title="Selected (Offers)"
+            count={poolCounts.Selected}
+            subtitle="Awaiting final confirmation"
+            icon={MdVerifiedUser}
             color="purple"
-            trend="Offer Received"
-            sub="awaiting confirmation"
+            isActive={activeTab === "Selected"}
             onClick={() => setActiveTab("Selected")}
           />
-          <StatsCard
-            title="Placed"
-            value={placedStudents.length}
-            icon={<MdTrendingUp />}
-            color="teal"
-            trend="Confirmed Offers"
-            sub="hired students"
+          <PipelineStatCard
+            title="Confirmed Placed"
+            count={poolCounts.Placed}
+            subtitle="Recruited students"
+            icon={MdTrendingUp}
+            color="emerald"
+            isActive={activeTab === "Placed"}
             onClick={() => setActiveTab("Placed")}
-            className="col-span-2 sm:col-span-2 lg:col-span-1"
           />
         </div>
 
-        {/* ── Tabs & Search Toolbar Container ── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3.5 sm:p-4 space-y-3 sm:space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-            <div className="flex-1 overflow-x-auto -mx-1 px-1">
-              <TabsCommon 
-                tabs={TABS.map(t => `${t} (${tabCounts[t] || 0})`)} 
-                activeTab={`${activeTab} (${tabCounts[activeTab] || 0})`} 
-                onTabChange={(tabWithCount) => {
-                  const rawTab = TABS.find(t => tabWithCount.startsWith(t)) || TABS[0];
-                  setActiveTab(rawTab);
-                }} 
-              />
+        {/* ── 2. Pipeline Navigation & Filter Bar ── */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3.5">
+          
+          {/* Top Row: Pipeline Stage Tabs */}
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 overflow-x-auto -mx-1 px-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {PIPELINE_TABS.map((tab) => {
+                const isCurrent = activeTab === tab.id;
+                const Icon = tab.icon;
+                const count = poolCounts[tab.id] || 0;
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 ${
+                      isCurrent
+                        ? "bg-orange-500 text-white shadow-xs"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+                    }`}
+                  >
+                    <Icon size={15} />
+                    <span>{tab.label}</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                        isCurrent ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0">
-              {/* Technology Filter */}
-              <SelectDropdown
-                value={selectedTech}
-                onChange={(val) => setSelectedTech(val)}
-                options={availableTechnologies.map((tech) => ({
-                  value: tech,
-                  label: tech === "All" ? "All Technologies" : tech
-                }))}
-                className="w-full sm:w-auto sm:min-w-[165px]"
-                buttonClassName="w-full bg-white border border-slate-200 hover:border-orange-400 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
-              />
+            <span className="hidden lg:block text-xs font-bold text-slate-400 shrink-0">
+              Showing <strong className="text-slate-800">{filteredCandidates.length}</strong> candidates
+            </span>
+          </div>
 
-              {/* Search Input */}
-              <div className="relative w-full sm:w-64">
-                <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
-                <input
-                  type="text"
-                  placeholder="Search candidate name or PR-Key..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:bg-white w-full transition"
-                />
-                {searchTerm && (
-                  <button 
-                    onClick={() => setSearchTerm("")} 
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                    title="Clear search"
+          {/* Bottom Row: Search & Dropdown Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search candidate name, PR-Key, technology, company..."
+                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                >
+                  <MdClose size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Controls */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              
+              {/* Ready Stage Sub-Filter (Visible only in Ready tab) */}
+              {activeTab === "Ready" && (
+                <div className="flex items-center rounded-xl bg-slate-100 p-0.5 border border-slate-200/80">
+                  <button
+                    onClick={() => setReadySubFilter("All")}
+                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
+                      readySubFilter === "All" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    <MdClose size={16} />
+                    All Ready
                   </button>
-                )}
+                  <button
+                    onClick={() => setReadySubFilter("Stage2A")}
+                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
+                      readySubFilter === "Stage2A" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Stage 2A
+                  </button>
+                  <button
+                    onClick={() => setReadySubFilter("Stage2B")}
+                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
+                      readySubFilter === "Stage2B" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Stage 2B
+                  </button>
+                </div>
+              )}
+
+              {/* Technology Filter */}
+              <div className="w-44">
+                <SelectDropdown
+                  value={selectedTech}
+                  onChange={(val) => setSelectedTech(val)}
+                  options={availableTechnologies.map((t) => ({
+                    value: t,
+                    label: t === "All" ? "All Technologies" : t,
+                  }))}
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-400 cursor-pointer"
+                />
               </div>
+
+              {/* Reset Filter Button */}
+              {hasActiveFilters && (
+                <button
+                  onClick={resetFilters}
+                  className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <MdClose size={15} /> Clear Filters
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Main Data View (Mobile Cards + Desktop Table) ── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
-          {/* Mobile Card List View */}
-          <div className="block md:hidden divide-y divide-slate-100">
-            {paginatedMobileData.length === 0 ? (
-              <div className="p-4">
-                <EmptyState
-                  title="No Candidates Found"
-                  subtitle={
-                    searchTerm
-                      ? `No candidates match "${searchTerm}". Try adjusting your search query.`
-                      : "No candidate records match your current filter selections."
-                  }
-                  actionText={searchTerm || selectedTech !== "All" ? "Clear Filters" : undefined}
-                  onAction={searchTerm || selectedTech !== "All" ? () => { setSearchTerm(""); setSelectedTech("All"); } : undefined}
-                />
-              </div>
-            ) : (
-              paginatedMobileData.map((row) => {
-                const sId = row.studentId?._id || row._id;
-                const resumeURL = row.resumeURL || row.studentId?.documents?.find(d => (d.title || "").toLowerCase().includes("resume"))?.fileURL;
-                
-                let label = row.readinessStatus || "Ready for Placement";
-                if (row.placedInfo) label = "Placed";
-                else if (label === "Ready") label = "Ready for Placement";
-                else if (label === "Ready for Interview") label = "Ready for Drive";
+        {/* ── 3. Candidate Data View (Mobile Cards + Desktop Table) ── */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
+          {paginatedData.length === 0 ? (
+            <div className="p-6 sm:p-10">
+              <EmptyState
+                title="No Candidates Found"
+                subtitle={
+                  searchTerm
+                    ? `No candidate matched "${searchTerm}". Try another name, PR-Key, or clear filters.`
+                    : "No student records found under the current placement stage and technology filter."
+                }
+                actionText={hasActiveFilters ? "Reset All Filters" : undefined}
+                onAction={hasActiveFilters ? resetFilters : undefined}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Mobile View: Cards Layout (< 768px) */}
+              <div className="block md:hidden divide-y divide-slate-100">
+                {paginatedData.map((candidate) => {
+                  const sId = candidate.studentId?._id || candidate._id;
+                  const resumeURL =
+                    candidate.resumeURL ||
+                    candidate.studentId?.documents?.find((d) =>
+                      (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf"
+                    )?.fileURL;
 
-                const badgeStyle = {
-                  "Ready for Placement": "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-                  "Ready for Drive":     "bg-sky-50 text-sky-700 border-sky-200/80",
-                  "Interview":           "bg-amber-50 text-amber-700 border-amber-200/80",
-                  "Selected":            "bg-violet-50 text-violet-700 border-violet-200/80",
-                  "Placed":              "bg-teal-50 text-teal-700 border-teal-200/80",
-                }[label] || "bg-slate-100 text-slate-700 border-slate-200";
+                  const activeInterview =
+                    candidate.PlacementinterviewRecord?.find((r) =>
+                      ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
+                    ) || candidate.PlacementinterviewRecord?.[candidate.PlacementinterviewRecord.length - 1];
 
-                return (
-                  <div
-                    key={sId}
-                    className="p-4 space-y-3 hover:bg-slate-50/50 transition"
-                  >
-                    {/* Header Row: Profile + Current Stage */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
-                        <div className="min-w-0">
-                          <p 
-                            onClick={() => handleRowClick(row)}
-                            className="font-semibold text-xs text-slate-900 hover:text-slate-700 transition cursor-pointer truncate"
-                          >
-                            {toTitle(`${row.firstName || ""} ${row.lastName || ""}`)}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-mono">{row.prkey || "PR-KEY"}</p>
+                  const isPlaced = Boolean(candidate.placedInfo);
+                  const isSelected = candidate.readinessStatus === "Selected" && !isPlaced;
+
+                  return (
+                    <div
+                      key={sId}
+                      className="p-4 space-y-3 hover:bg-slate-50/60 transition cursor-pointer"
+                      onClick={() => setQuickViewCandidate(candidate)}
+                    >
+                      {/* Top: Avatar, Name, Stage */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Avatar firstName={candidate.firstName} lastName={candidate.lastName} imageUrl={candidate.image} size="sm" />
+                          <div className="min-w-0">
+                            <h4 className="font-extrabold text-xs text-slate-900 truncate">
+                              {toTitle(`${candidate.firstName || ""} ${candidate.lastName || ""}`)}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-mono">{candidate.prkey || "PR-KEY"}</p>
+                          </div>
                         </div>
+
+                        {/* Status Badge */}
+                        {isPlaced ? (
+                          <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            Placed
+                          </span>
+                        ) : isSelected ? (
+                          <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                            Selected
+                          </span>
+                        ) : activeInterview ? (
+                          <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                            Interviewing
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                            Ready
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[10px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
-                        {row.currentSubLevel || row.currentLevel || "Stage 2A"}
-                      </span>
-                    </div>
 
-                    {/* Tags & Contact Row */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
-                      <span className="text-[10px] font-medium text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 truncate max-w-[140px]">
-                        {row.technology || row.track || row.course || "General"}
-                      </span>
+                      {/* Middle: Tech & Track Details */}
+                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100">
+                        <span className="font-bold text-slate-700 truncate max-w-[170px]">
+                          {candidate.technology || candidate.track || candidate.course || "General"}
+                        </span>
+                        <span className="text-slate-400 font-medium">
+                          {candidate.currentSubLevel || candidate.currentLevel || "Stage 2A"}
+                        </span>
+                      </div>
 
-                      {row.studentMobile && (
-                        <a 
-                          href={`tel:${row.studentMobile}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[10px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition"
-                        >
-                          <MdPhone size={10} /> +91 {row.studentMobile}
-                        </a>
+                      {/* Detail Pill */}
+                      {isPlaced && (
+                        <div className="p-2 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between text-[11px]">
+                          <span className="font-extrabold text-slate-900">{candidate.placedInfo?.companyName || "Placed"}</span>
+                          <span className="font-black text-emerald-700">
+                            {candidate.placedInfo?.salary ? `₹${(candidate.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}
+                          </span>
+                        </div>
                       )}
 
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ml-auto ${badgeStyle}`}>
-                        {label}
-                      </span>
-                    </div>
+                      {activeInterview && !isPlaced && (
+                        <div className="p-2 rounded-xl bg-amber-50/60 border border-amber-100 flex items-center justify-between text-[11px]">
+                          <span className="font-extrabold text-slate-900">{activeInterview.companyName || "Drive"}</span>
+                          <span className="text-amber-800 font-bold">{activeInterview.status || "Scheduled"}</span>
+                        </div>
+                      )}
 
-                    {/* Resume + Extra Details Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
-                      <div>
+                      {/* Actions Bottom Bar */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                        {resumeURL && (
+                          <a
+                            href={resumeURL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                          >
+                            <MdOpenInNew size={12} /> Resume
+                          </a>
+                        )}
+
                         <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (resumeURL) window.open(resumeURL, "_blank", "noopener,noreferrer");
-                            else toast.info("Resume not uploaded yet.");
-                          }}
-                          className={`text-[10px] px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition ${
-                            resumeURL 
-                              ? "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-2xs" 
-                              : "bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed"
-                          }`}
+                          onClick={() => setQuickViewCandidate(candidate)}
+                          className="flex-1 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] text-center shadow-2xs cursor-pointer"
                         >
-                          <MdOpenInNew size={11} /> {resumeURL ? "View Resume" : "No Resume"}
+                          View Details
                         </button>
-                      </div>
 
-                      {activeTab === "Interview" && (() => {
-                        const active = row.PlacementinterviewRecord?.find((r) =>
+                        {!isPlaced && !isSelected && (
+                          <button
+                            onClick={() => {
+                              setSelectedStudentForInterview(candidate);
+                              setIsInterviewModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
+                          >
+                            Schedule Drive
+                          </button>
+                        )}
+
+                        {isSelected && (
+                          <button
+                            onClick={() => {
+                              setSelectedForPlacement(candidate);
+                              setIsConfirmModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
+                          >
+                            Confirm
+                          </button>
+                        )}
+
+                        {isPlaced && (
+                          <button
+                            onClick={() => {
+                              setSelectedForPost(candidate);
+                              setIsPostModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[11px] shadow-xs cursor-pointer flex items-center gap-1"
+                          >
+                            <MdAdd size={14} /> Banner
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop View: Full Data Table (>= 768px) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      <th className="py-4 px-5">CANDIDATE PROFILE</th>
+                      <th className="py-4 px-4">TRACK / TECHNOLOGY</th>
+                      <th className="py-4 px-4 text-center">STAGE</th>
+                      <th className="py-4 px-5">PLACEMENT PIPELINE STATUS</th>
+                      <th className="py-4 px-4 text-center">RESUME</th>
+                      <th className="py-4 px-5 text-right">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                    {paginatedData.map((candidate) => {
+                      const sId = candidate.studentId?._id || candidate._id;
+                      const resumeURL =
+                        candidate.resumeURL ||
+                        candidate.studentId?.documents?.find((d) =>
+                          (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf"
+                        )?.fileURL;
+
+                      const isPlaced = Boolean(candidate.placedInfo);
+                      const isSelected = candidate.readinessStatus === "Selected" && !isPlaced;
+                      const activeInterview =
+                        candidate.PlacementinterviewRecord?.find((r) =>
                           ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
-                        );
-                        return (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                            active?.status === "Ongoing" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                            active?.status === "Rescheduled" ? "bg-violet-50 text-violet-700 border border-violet-200" :
-                            "bg-slate-100 text-slate-700 border border-slate-200"
-                          }`}>
-                            {active?.jobProfile || "Drive"} • {active?.status || "Scheduled"}
-                          </span>
-                        );
-                      })()}
+                        ) || candidate.PlacementinterviewRecord?.[candidate.PlacementinterviewRecord.length - 1];
 
-                      {activeTab === "Selected" && (() => {
-                        const sel = row.selectedInterviews?.[0];
-                        return (
-                          <span className="font-medium text-slate-800 bg-slate-100 text-[10px] px-2 py-0.5 rounded-md border border-slate-200">
-                            {toTitle(sel?.companyRef?.companyName || "Selected")}
-                          </span>
-                        );
-                      })()}
-
-                      {activeTab === "Placed" && (
-                        <div className="flex items-center gap-1.5 text-[11px]">
-                          <span className="font-medium text-slate-800 truncate max-w-[120px]">{toTitle(row.placedInfo?.companyName || "—")}</span>
-                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
-                            {row.placedInfo?.salary ? `₹${(row.placedInfo.salary / 100000).toFixed(1)} LPA` : "—"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions Row */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                      {(activeTab === "Ready for Placement" || activeTab === "Ready for Drive") && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedStudent(row);
-                            setIsInterviewModalOpen(true);
-                          }}
-                          className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white text-xs font-medium py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                      return (
+                        <tr
+                          key={sId}
+                          onClick={() => setQuickViewCandidate(candidate)}
+                          className="hover:bg-slate-50/70 transition cursor-pointer group"
                         >
-                          <MdCalendarToday className="text-sm" /> Schedule Drive
-                        </button>
-                      )}
+                          {/* Profile */}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-3">
+                              <Avatar firstName={candidate.firstName} lastName={candidate.lastName} imageUrl={candidate.image} size="sm" />
+                              <div className="min-w-0">
+                                <p className="font-extrabold text-slate-900 group-hover:text-orange-600 transition truncate max-w-[190px]">
+                                  {toTitle(`${candidate.firstName || ""} ${candidate.lastName || ""}`)}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
+                                  <span className="font-mono">{candidate.prkey || "PR-KEY"}</span>
+                                  {candidate.studentMobile && (
+                                    <>
+                                      <span>•</span>
+                                      <span>+91 {candidate.studentMobile}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                      {activeTab === "Interview" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/interview-history/${row.studentId?._id || row._id}`);
-                          }}
-                          className="w-full bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium py-2 rounded-xl border border-slate-200 transition text-center shadow-2xs cursor-pointer"
-                        >
-                          View History
-                        </button>
-                      )}
+                          {/* Technology */}
+                          <td className="py-4 px-4">
+                            <span className="inline-block text-xs font-bold text-slate-700 bg-slate-100/80 border border-slate-200/80 px-2.5 py-1 rounded-lg">
+                              {candidate.technology || candidate.track || candidate.course || "General"}
+                            </span>
+                          </td>
 
-                      {activeTab === "Selected" && (
-                        <>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); setIsInterviewModalOpen(true); }}
-                            className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
-                          >
-                            <MdAdd /> Next Round
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setSelectedForPlacement(row); setIsConfirmModalOpen(true); }}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium py-2 rounded-xl transition shadow-2xs text-center cursor-pointer"
-                          >
-                            Confirm Placement
-                          </button>
-                        </>
-                      )}
+                          {/* Stage */}
+                          <td className="py-4 px-4 text-center">
+                            <span className="inline-block text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-md">
+                              {candidate.currentSubLevel || candidate.currentLevel || "Stage 2A"}
+                            </span>
+                          </td>
 
-                      {activeTab === "Placed" && (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setSelectedForPost(row); setIsPostModalOpen(true); }}
-                          className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium py-2 rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <MdAdd /> Post Banner
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                          {/* Placement Status */}
+                          <td className="py-4 px-5">
+                            {isPlaced ? (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                  <span className="font-extrabold text-slate-900">
+                                    {toTitle(candidate.placedInfo?.companyName || "Placed")}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-black text-emerald-700 pl-3.5">
+                                  {candidate.placedInfo?.salary ? `₹${(candidate.placedInfo.salary / 100000).toFixed(1)} LPA` : "Placed"}
+                                </p>
+                              </div>
+                            ) : isSelected ? (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                                  <span className="font-bold text-purple-800">Offer Received</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 pl-3.5">
+                                  {candidate.selectedInterviews?.[0]?.companyRef?.companyName || "Selected"}
+                                </p>
+                              </div>
+                            ) : activeInterview ? (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                  <span className="font-bold text-amber-900">
+                                    {activeInterview.companyName || "Interviewing"}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 pl-3.5">
+                                  {activeInterview.status || "Scheduled"} • {activeInterview.jobProfile || "Drive"}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md text-[11px]">
+                                  Ready for Drives
+                                </span>
+                              </div>
+                            )}
+                          </td>
 
-            {/* Mobile Pagination Bar */}
-            {activeData.length > 10 && (
-              <div className="bg-gray-100 p-3 sm:px-6 sm:py-4 border-t border-gray-200">
+                          {/* Resume */}
+                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            {resumeURL ? (
+                              <a
+                                href={resumeURL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:border-orange-400 hover:text-orange-600 rounded-lg shadow-2xs transition"
+                              >
+                                <MdOpenInNew size={13} className="text-orange-500" /> View
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">No Resume</span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-2">
+                              {!isPlaced && !isSelected && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedStudentForInterview(candidate);
+                                    setIsInterviewModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                  title="Schedule Drive for this candidate"
+                                >
+                                  <MdCalendarToday size={13} />
+                                  <span>Schedule Drive</span>
+                                </button>
+                              )}
+
+                              {isSelected && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedForPlacement(candidate);
+                                    setIsConfirmModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+                                >
+                                  Confirm Placement
+                                </button>
+                              )}
+
+                              {isPlaced && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedForPost(candidate);
+                                    setIsPostModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1 active:scale-95"
+                                >
+                                  <MdAdd size={14} /> Banner
+                                </button>
+                              )}
+
+                              {/* More Menu */}
+                              <button
+                                onClick={() => setQuickViewCandidate(candidate)}
+                                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                title="Quick Overview"
+                              >
+                                <MdVisibility size={17} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Pagination Footer */}
+              <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl sm:rounded-b-3xl">
                 <Pagination
-                  totalItems={activeData.length}
-                  currentPage={mobilePage}
-                  pageSize={10}
-                  totalPages={totalMobilePages}
-                  onPageChange={setMobilePage}
-                  label="entries"
+                  totalItems={filteredCandidates.length}
+                  currentPage={currentPage}
+                  pageSize={rowsPerPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  label="candidates"
                 />
               </div>
-            )}
-          </div>
-
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <CommonTable
-              columns={getColumns()}
-              data={activeData}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              pagination
-              rowsPerPage={10}
-              onRowClick={handleRowClick}
-            />
-          </div>
+            </>
+          )}
         </div>
 
       </div>
 
+      {/* ── Candidate Quick View Drawer ── */}
+      {quickViewCandidate && (
+        <CandidateQuickViewDrawer
+          candidate={quickViewCandidate}
+          onClose={() => setQuickViewCandidate(null)}
+          onScheduleInterview={(c) => {
+            setSelectedStudentForInterview(c);
+            setIsInterviewModalOpen(true);
+          }}
+          onConfirmPlacement={(c) => {
+            setSelectedForPlacement(c);
+            setIsConfirmModalOpen(true);
+          }}
+          onPostBanner={(c) => {
+            setSelectedForPost(c);
+            setIsPostModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* ── Schedule Interview Modal ── */}
       <ScheduleInterviewModal
         isOpen={isInterviewModalOpen}
-        onClose={() => { setIsInterviewModalOpen(false); setSelectedStudent(null); }}
-        studentId={selectedStudent?.studentId?._id || selectedStudent?._id}
+        onClose={() => {
+          setIsInterviewModalOpen(false);
+          setSelectedStudentForInterview(null);
+        }}
+        studentId={selectedStudentForInterview?.studentId?._id || selectedStudentForInterview?.studentId || selectedStudentForInterview?._id}
         onSuccess={refetchAll}
       />
+
+      {/* ── Confirm Placement Modal ── */}
       <ConfirmPlacementModal
         isOpen={isConfirmModalOpen}
-        onClose={() => { setIsConfirmModalOpen(false); setSelectedForPlacement(null); }}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setSelectedForPlacement(null);
+        }}
         student={selectedForPlacement}
         onSuccess={refetchAll}
       />
+
+      {/* ── Create Post Modal ── */}
       <CreatePostModal
         isOpen={isPostModalOpen}
-        onClose={() => { setIsPostModalOpen(false); setSelectedForPost(null); }}
+        onClose={() => {
+          setIsPostModalOpen(false);
+          setSelectedForPost(null);
+        }}
         student={selectedForPost}
         onSuccess={refetchAll}
       />
-      </div>
     </>
   );
 };

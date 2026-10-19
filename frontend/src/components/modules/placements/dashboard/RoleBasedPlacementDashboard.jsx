@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetAllSubdepartmentsQuery } from "../../../../redux/api/authApi";
 import Header from "../../../shared/sidebar/Header";
@@ -19,7 +19,7 @@ const RoleBasedPlacementDashboard = () => {
     skip: isGlobalAdmin
   });
   
-  const subDepts = res.data || [];
+  const subDepts = useMemo(() => res.data || [], [res]);
 
   // Automatic redirect for users with exactly one department
   useEffect(() => {
@@ -32,15 +32,7 @@ const RoleBasedPlacementDashboard = () => {
     return <PlacementDashboard />;
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader />
-      </div>
-    );
-  }
-
-  if (subDepts.length === 1) {
+  if (isLoading || subDepts.length === 1) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
@@ -58,7 +50,7 @@ const RoleBasedPlacementDashboard = () => {
       />
 
       <div className="p-3.5 sm:p-5 lg:p-6">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 sm:mb-4">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 sm:mb-4">
           Select Department
         </p>
 

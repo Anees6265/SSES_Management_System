@@ -1,4 +1,5 @@
-import React from "react";
+/* eslint-disable react/prop-types */
+import { useState } from "react";
 import {
   MdClose, MdBusiness, MdLocationOn, MdEmail, MdPhone, MdLanguage,
   MdWork, MdPeople, MdCheckCircle, MdCategory, MdEdit
@@ -7,6 +8,7 @@ import { useGetCompanyByIdQuery } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 
 const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
+  const [logoError, setLogoError] = useState(false);
   const { data, isLoading, error } = useGetCompanyByIdQuery(companyId, {
     skip: !isOpen || !companyId,
   });
@@ -33,14 +35,17 @@ const CompanyProfileModal = ({ isOpen, onClose, companyId, onEdit }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            {company.companyLogo ? (
-              <img
-                src={company.companyLogo}
-                alt={company.companyName}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl object-cover border border-white/20 shadow-xs shrink-0"
-              />
+            {company.companyLogo && !logoError ? (
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-white p-1.5 border border-white/20 shadow-md flex items-center justify-center shrink-0 overflow-hidden">
+                <img
+                  src={company.companyLogo}
+                  alt={company.companyName}
+                  onError={() => setLogoError(true)}
+                  className="w-full h-full object-contain object-center"
+                />
+              </div>
             ) : (
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-extrabold text-lg sm:text-xl flex items-center justify-center shadow-xs shrink-0">
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-extrabold text-lg sm:text-xl flex items-center justify-center shadow-xs shrink-0 select-none">
                 {company.companyName?.charAt(0)?.toUpperCase() || "C"}
               </div>
             )}

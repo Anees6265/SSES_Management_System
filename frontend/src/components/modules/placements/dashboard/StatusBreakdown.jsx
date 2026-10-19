@@ -1,4 +1,4 @@
-import React from "react";
+/* eslint-disable react/prop-types */
 
 const STATUSES = [
   { key: "notReady",          label: "Not Ready",           color: "bg-gray-100 border-gray-200 text-gray-700",       badge: "bg-gray-200 text-gray-800" },

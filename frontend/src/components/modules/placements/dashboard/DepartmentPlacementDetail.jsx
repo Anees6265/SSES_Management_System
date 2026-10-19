@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
-  MdPeople, MdCheckCircle, MdWork, MdTrendingUp, MdPercent, 
+  MdPeople, MdCheckCircle, MdWork, MdTrendingUp, 
   MdWarningAmber, MdBlock, MdFilterList,
   MdRefresh, MdFileDownload, MdSearch, MdCheckCircleOutline, MdClose
 } from "react-icons/md";
@@ -30,7 +30,7 @@ const DepartmentPlacementDetail = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
-  const sessionsList = sessionsData?.data || [];
+  const sessionsList = useMemo(() => sessionsData?.data || [], [sessionsData]);
 
   useEffect(() => {
     if (sessionsList.length > 0 && !selectedSessionId) {

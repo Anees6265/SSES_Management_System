@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+/* eslint-disable react/prop-types */
+import { useState, Fragment } from "react";
 import { 
   MdTrendingUp, MdCheckCircleOutline, MdWorkOutline, MdVerifiedUser,
   MdViewStream, MdGridOn, MdLinearScale, MdArrowForward
@@ -190,7 +191,7 @@ const PlacementFunnel = ({ data = {}, loading }) => {
             const isLast = idx === STEPS.length - 1;
 
             return (
-              <React.Fragment key={step.key}>
+              <Fragment key={step.key}>
                 <div className={`p-4 rounded-xl border flex items-center justify-between transition-all ${step.bgColor} hover:shadow-xs`}>
                   <div className="flex items-center gap-3">
                     <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold border ${step.badgeBg}`}>
@@ -218,7 +219,7 @@ const PlacementFunnel = ({ data = {}, loading }) => {
                     <MdArrowForward className="rotate-90 text-lg text-orange-400" />
                   </div>
                 )}
-              </React.Fragment>
+              </Fragment>
             );
           })}
         </div>

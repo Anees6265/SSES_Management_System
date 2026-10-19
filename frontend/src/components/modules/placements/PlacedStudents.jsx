@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useGetPlacedStudentsByCompanyQuery } from '../../../redux/api/authApi';
 import Loader from '../../shared/loader/Loader';
@@ -8,9 +8,8 @@ import Header from '../../shared/sidebar/Header';
 import Avatar from '../../shared/Avatar';
 import EmptyState from '../../shared/empty-state/EmptyState';
 import { 
-  MdArrowBack, MdBusiness, MdPeople, MdEmail, MdPhone, 
-  MdLocationOn, MdAttachMoney, MdSearch, MdClose, 
-  MdChevronLeft, MdChevronRight, MdCalendarToday, MdArrowForward 
+  MdArrowBack, MdPeople, MdEmail, MdPhone, 
+  MdSearch, MdClose, MdCalendarToday, MdArrowForward 
 } from 'react-icons/md';
 
 const PlacedStudents = () => {

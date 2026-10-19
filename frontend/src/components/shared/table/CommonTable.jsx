@@ -34,6 +34,7 @@ const CommonTable = ({
 
   const tableColumns = useMemo(() => {
     const cols = columns.map((col) => ({
+      ...col,
       header: col.label,
       accessorKey: col.key,
       align: col.align,
@@ -157,7 +158,9 @@ const CommonTable = ({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 align-top ${
+                        className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 ${
+                          cell.column.columnDef.verticalAlign || "align-middle"
+                        } ${
                           cell.column.columnDef.cellClassName ||
                           (cell.column.columnDef.wrap ? "whitespace-normal break-words" : "whitespace-nowrap")
                         } ${

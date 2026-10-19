@@ -9,7 +9,7 @@ import {
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
-    MdPerson, MdArrowBack
+    MdPerson, MdArrowBack, MdNotInterested
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -915,7 +915,124 @@ const PromoteModal = ({ name, onConfirm, onCancel, loading }) => {
     );
 };
 
-const PlacementHistorySection = ({ raw, readinessStatus }) => {
+// Dummy Student Details Modal
+const DummyDetailsModal = ({ raw, name, onCancel, onMarkActive }) => {
+    const dummy = raw?.dummyDetails || {};
+    const formatDate = (dateStr) =>
+        dateStr
+            ? new Date(dateStr).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            })
+            : "N/A";
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-amber-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center font-bold shadow-2xs">
+                            <MdWarning size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-gray-900">Dummy Student Status</h3>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                                    Dummy
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{name} {raw.prkey ? `• PR: ${raw.prkey}` : ""}</p>
+                        </div>
+                    </div>
+                    <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition cursor-pointer">
+                        <MdClose size={18} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {/* Notice Banner */}
+                    <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2.5">
+                        <MdWarning size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold">Excluded from Campus Placements</p>
+                            <p className="text-[11px] text-amber-850 mt-0.5 leading-relaxed">
+                                Student is marked as Dummy (Non-Attending) and is automatically excluded from placement readiness and campus drives until reactivated.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                            <span className="text-slate-400 font-bold uppercase text-[10px]">Reason:</span>
+                            <span className="font-bold text-slate-800 text-right">{dummy.reason || "Not specified"}</span>
+                        </div>
+                        {dummy.remark && (
+                            <div className="flex items-start justify-between gap-2 border-t border-slate-100 pt-2">
+                                <span className="text-slate-400 font-bold uppercase text-[10px]">Remark:</span>
+                                <span className="text-slate-700 text-right italic">{dummy.remark}</span>
+                            </div>
+                        )}
+                        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                            <span className="text-slate-400 font-bold uppercase text-[10px]">Marked On:</span>
+                            <span className="font-semibold text-slate-700">{formatDate(dummy.markedAt)}</span>
+                        </div>
+                        {dummy.markedByName && (
+                            <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                                <span className="text-slate-400 font-bold uppercase text-[10px]">Marked By:</span>
+                                <span className="font-semibold text-slate-700">{dummy.markedByName}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Application Document */}
+                    {dummy.applicationURL ? (
+                        <div className="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                                    <MdBadge size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 truncate">Application Document</p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-medium">{dummy.applicationType || "Document"}</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => window.open(dummy.applicationURL, "_blank", "noopener,noreferrer")}
+                                className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                            >
+                                <MdOpenInNew size={13} /> View Doc
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400">
+                            No application document attached
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2.5 px-6 pb-6 pt-1">
+                    <button
+                        onClick={onCancel}
+                        className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer"
+                    >
+                        Close
+                    </button>
+                    <button
+                        onClick={() => { onCancel(); onMarkActive(); }}
+                        className="flex-1 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                        <MdCheckCircle size={15} /> Mark Active
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PlacementHistorySection = ({ raw, readinessStatus, isDummy }) => {
     const records = useMemo(() => {
         if (raw?.PlacementinterviewRecord?.length > 0) return raw.PlacementinterviewRecord;
         if (raw?.placement?.PlacementinterviewRecord?.length > 0) return raw.placement.PlacementinterviewRecord;
@@ -944,9 +1061,15 @@ const PlacementHistorySection = ({ raw, readinessStatus }) => {
                     </h3>
                     <p className="text-xs font-medium text-slate-400 mt-0.5">Comprehensive multi-company attempt history, dynamic rounds, and feedback</p>
                 </div>
-                <span className="bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Placement Stage: {readinessStatus}
-                </span>
+                {isDummy ? (
+                    <span className="bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
+                        <MdWarning size={14} className="text-amber-600" /> Placement: Excluded (Dummy Student)
+                    </span>
+                ) : (
+                    <span className="bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                        Placement Stage: {readinessStatus}
+                    </span>
+                )}
             </div>
 
             {/* PLACEMENT STATS GRID */}
@@ -1102,6 +1225,7 @@ const StudentProfilePage = () => {
     const [editModal, setEditModal] = useState(false);
     const [dropModal, setDropModal] = useState(false);
     const [dummyModal, setDummyModal] = useState(false);
+    const [dummyDetailsModal, setDummyDetailsModal] = useState(false);
     const [activityModal, setActivityModal] = useState(false);
     const [sectionModal, setSectionModal] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -1206,10 +1330,11 @@ const StudentProfilePage = () => {
     });
 
     const raw = baseStudent || {};
+    const isDummy = raw.status === "Dummy" || raw.status?.toLowerCase() === "dummy" || Boolean(raw.dummyDetails?.markedAt);
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = (name.split(" ").map(n => n[0]).filter(Boolean).join("").slice(0, 2) || "ST").toUpperCase();
     const readinessStatus = (typeof raw.placement === "object" ? raw.placement?.readinessStatus : null) || raw.readinessStatus || "Not Ready";
-    const isPlacementReady = [
+    const isPlacementReady = !isDummy && [
         "Ready",
         "Ready for Placement",
         "Ready for Drive",
@@ -1345,7 +1470,7 @@ const StudentProfilePage = () => {
         return diffDays === 0 ? "Today" : diffDays === 1 ? "1 Day" : `${diffDays} Days`;
     }, [raw, levelHistoryResponse]);
 
-    const isEligibleForPlacement = (() => {
+    const isEligibleForPlacement = !isDummy && (() => {
         const levelOrder = raw?.currentLevelId?.order || level?.order;
         if (typeof levelOrder === "number") {
             return levelOrder > 1;
@@ -1459,8 +1584,16 @@ const StudentProfilePage = () => {
             });
         }
 
-        // 4. Placement Readiness
-        if (readinessStatus === "Ready") {
+        // 4. Placement Readiness / Dummy Status
+        if (isDummy) {
+            list.push({
+                id: "dummy-student-alert",
+                title: "Dummy Student (Non-Attending)",
+                message: `${name} is currently marked as Dummy (${raw.dummyDetails?.reason || "Non-Attending"}). Excluded from campus placement recruitment drives.`,
+                time: "Student Status",
+                type: "warning",
+            });
+        } else if (readinessStatus === "Ready") {
             list.push({
                 id: "placement-ready",
                 title: "Placement Ready",
@@ -1499,7 +1632,7 @@ const StudentProfilePage = () => {
         }
 
         return list;
-    }, [raw, name, overdueTasks, pendingTasks, completedTasks, totalTasks, currentSubLevelName, completionRate, pendingPermissions, readinessStatus, currentLevelLabel, trackName, daysInSubLevel, regularDocs.length]);
+    }, [raw, name, overdueTasks, pendingTasks, completedTasks, totalTasks, currentSubLevelName, completionRate, pendingPermissions, readinessStatus, currentLevelLabel, trackName, daysInSubLevel, regularDocs.length, isDummy]);
 
     const activeNotifications = userNotifications ?? defaultStudentNotifications;
 
@@ -1683,6 +1816,14 @@ const StudentProfilePage = () => {
             {dummyModal && (
                 <MarkDroppedModal name={name} onConfirm={handleMarkDummy} onCancel={() => setDummyModal(false)} loading={dummyLoading} variant="dummy" />
             )}
+            {dummyDetailsModal && (
+                <DummyDetailsModal
+                    raw={raw}
+                    name={name}
+                    onCancel={() => setDummyDetailsModal(false)}
+                    onMarkActive={handleMarkActive}
+                />
+            )}
             <FullStudentActivityModal
                 isOpen={activityModal}
                 onClose={() => setActivityModal(false)}
@@ -1814,7 +1955,12 @@ const StudentProfilePage = () => {
                                         {initials}
                                     </div>
                                 )}
-                                <span className="absolute bottom-1 right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                                <span className={`absolute bottom-1 right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                                    isDummy ? "bg-amber-500 ring-2 ring-amber-200" :
+                                    raw.status === "Dropped" ? "bg-rose-500 ring-2 ring-rose-200" :
+                                    raw.status === "Placed" ? "bg-purple-500 ring-2 ring-purple-200" :
+                                    "bg-emerald-500"
+                                } border-2 border-white rounded-full`} title={`Status: ${isDummy ? "Dummy" : (raw.status || "Active")}`} />
                             </div>
 
                             {/* Info Section */}
@@ -1822,6 +1968,16 @@ const StudentProfilePage = () => {
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
                                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">{name}</h2>
                                     <MdVerified size={20} className="text-orange-500 shrink-0" />
+                                    {isDummy && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shrink-0 shadow-2xs">
+                                            <MdWarning size={13} className="text-amber-600" /> Dummy
+                                        </span>
+                                    )}
+                                    {raw.status === "Dropped" && (
+                                        <span className="text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
+                                            Dropped
+                                        </span>
+                                    )}
                                     {raw.isFTP && (
                                         <span className="text-[10px] sm:text-[11px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">
                                             FTP
@@ -1852,41 +2008,63 @@ const StudentProfilePage = () => {
                                     )}
                                 </div>
 
-                                {/* Placement Badge */}
+                                {/* Placement Badge / Dummy Status */}
                                 <div className="pt-1 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                                    {(() => {
-                                        let label = readinessStatus;
-                                        if (label === "Ready") label = "Ready for Placement";
-                                        else if (label === "Ready for Interview") label = "Ready for Drive";
-
-                                        let badgeCls = "bg-purple-50 text-purple-600 border border-purple-100";
-                                        let icon = <MdCheckCircle size={14} />;
-
-                                        if (label === "Ready for Placement") {
-                                            badgeCls = "bg-emerald-50 text-emerald-700 border border-emerald-200";
-                                        } else if (label === "Ready for Drive") {
-                                            badgeCls = "bg-indigo-50 text-indigo-700 border border-indigo-200";
-                                        } else if (label === "Not Ready") {
-                                            badgeCls = "bg-rose-50 text-rose-600 border border-rose-100";
-                                            icon = <MdWarning size={14} />;
-                                        } else if (label === "In Progress") {
-                                            badgeCls = "bg-amber-50 text-amber-600 border border-amber-100";
-                                            icon = <MdAccessTime size={14} />;
-                                        }
-
-                                        return (
-                                            <span className={`inline-flex items-center gap-1.5 ${badgeCls} text-[11px] sm:text-xs font-extrabold px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full uppercase tracking-wider`}>
-                                                {icon} PLACEMENT {label}
+                                    {isDummy ? (
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDummyDetailsModal(true)}
+                                                className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[11px] sm:text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider transition cursor-pointer shadow-2xs"
+                                                title="Click to view dummy details"
+                                            >
+                                                <MdWarning size={14} className="text-amber-600 shrink-0" /> STATUS: DUMMY
+                                            </button>
+                                            <span className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                Out of Placement
                                             </span>
-                                        );
-                                    })()}
+                                            {raw.dummyDetails?.reason && (
+                                                <span className="text-[11px] font-medium text-slate-500 hidden md:inline">
+                                                    • Reason: {raw.dummyDetails.reason}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        (() => {
+                                            let label = readinessStatus;
+                                            if (label === "Ready") label = "Ready for Placement";
+                                            else if (label === "Ready for Interview") label = "Ready for Drive";
+
+                                            let badgeCls = "bg-purple-50 text-purple-600 border border-purple-100";
+                                            let icon = <MdCheckCircle size={14} />;
+
+                                            if (label === "Ready for Placement") {
+                                                badgeCls = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                                            } else if (label === "Ready for Drive") {
+                                                badgeCls = "bg-indigo-50 text-indigo-700 border border-indigo-200";
+                                            } else if (label === "Not Ready") {
+                                                badgeCls = "bg-rose-50 text-rose-600 border border-rose-100";
+                                                icon = <MdWarning size={14} />;
+                                            } else if (label === "In Progress") {
+                                                badgeCls = "bg-amber-50 text-amber-600 border border-amber-100";
+                                                icon = <MdAccessTime size={14} />;
+                                            }
+
+                                            return (
+                                                <span className={`inline-flex items-center gap-1.5 ${badgeCls} text-[11px] sm:text-xs font-extrabold px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full uppercase tracking-wider`}>
+                                                    {icon} PLACEMENT {label}
+                                                </span>
+                                            );
+                                        })()
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Right Buttons */}
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
-                            {isLevel2ACompleted && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
+                            {isLevel2ACompleted && !isDummy && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
                                 <button
                                     onClick={handleMoveToReadyForPlacement}
                                     disabled={movingToReady}
@@ -1921,7 +2099,7 @@ const StudentProfilePage = () => {
                                     <>
                                         <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
                                         <div className="absolute right-0 top-11 z-30 bg-white border border-slate-100 rounded-2xl shadow-xl w-56 py-1.5 text-slate-700 text-xs font-semibold">
-                                            {isLevel2ACompleted && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
+                                            {isLevel2ACompleted && !isDummy && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
                                                 <button onClick={handleMoveToReadyForPlacement} className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 flex items-center gap-2 font-bold">
                                                     <MdCheckCircle size={14} /> Move to Ready for Placement
                                                 </button>
@@ -1941,9 +2119,14 @@ const StudentProfilePage = () => {
                                                     <MdSchool size={14} /> {raw.withITEG ? "Remove ITEG Program" : "Enroll with ITEG Program"}
                                                 </button>
                                             )}
-                                            {isEligibleForPlacement && (
+                                            {isEligibleForPlacement && !isDummy && (
                                                 <button onClick={() => { setMoreOpen(false); setReadyModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
                                                     <MdCheckCircle size={14} /> Shift Placement Status
+                                                </button>
+                                            )}
+                                            {isDummy && (
+                                                <button onClick={() => { setMoreOpen(false); setDummyDetailsModal(true); }} className="w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-700 flex items-center gap-2 font-bold">
+                                                    <MdWarning size={14} /> View Dummy Details
                                                 </button>
                                             )}
                                             <button onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/report`); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
@@ -2346,7 +2529,7 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* PLACEMENT HISTORY & COMPANY DRIVES SECTION */}
-                        <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} />
+                        <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} isDummy={isDummy} />
 
                         {/* BOTTOM QUICK ACCESS MODULE CARDS */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-2 pb-6">
@@ -2382,24 +2565,47 @@ const StudentProfilePage = () => {
                                 <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
                             </div>
 
-                            <div
-                                onClick={() => setReadyModal(true)}
-                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold">
-                                        <MdWork size={20} />
+                            {isDummy ? (
+                                <div
+                                    onClick={() => setDummyDetailsModal(true)}
+                                    className="bg-amber-50/60 rounded-2xl sm:rounded-3xl border border-amber-200 p-4 sm:p-5 shadow-sm hover:border-amber-300 transition cursor-pointer flex items-center justify-between group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
+                                            <MdNotInterested size={20} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5">
+                                                <p className="text-xs font-extrabold text-amber-900 group-hover:text-amber-700 transition">Dummy Status</p>
+                                                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">Active</span>
+                                            </div>
+                                            <p className="text-[11px] font-semibold text-amber-700 truncate max-w-[130px]">
+                                                {raw.dummyDetails?.reason ? `Reason: ${raw.dummyDetails.reason}` : "Non-attending / Out of Placement"}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Placement Status</p>
-                                        <p className="text-[11px] font-semibold text-slate-400">{readinessStatus}</p>
-                                    </div>
+                                    <MdArrowForward size={16} className="text-amber-500 group-hover:text-amber-700 group-hover:translate-x-1 transition" />
                                 </div>
-                                <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
-                            </div>
+                            ) : (
+                                <div
+                                    onClick={() => setReadyModal(true)}
+                                    className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold">
+                                            <MdWork size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Placement Status</p>
+                                            <p className="text-[11px] font-semibold text-slate-400">{readinessStatus}</p>
+                                        </div>
+                                    </div>
+                                    <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
+                                </div>
+                            )}
 
                             <div
-                                onClick={() => navigate("/leave-requests")}
+                                onClick={() => navigate(isDummy ? "/student-permission" : "/leave-requests")}
                                 className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-3">
@@ -2407,8 +2613,12 @@ const StudentProfilePage = () => {
                                         <MdCalendarToday size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Leave Permissions</p>
-                                        <p className="text-[11px] font-semibold text-slate-400">{pendingPermissions} pending requests</p>
+                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">
+                                            {isDummy ? "Dummy / Permissions" : "Leave Permissions"}
+                                        </p>
+                                        <p className="text-[11px] font-semibold text-slate-400">
+                                            {isDummy ? "View Permission Page" : `${pendingPermissions} pending requests`}
+                                        </p>
                                     </div>
                                 </div>
                                 <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />

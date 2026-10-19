@@ -423,19 +423,23 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
         {
             key: "attendance",
             label: "ATTENDANCE",
+            align: "center",
             render: (row) => (
-                <span className="text-sm font-semibold text-gray-700">
-                    {row.attendanceRate ?? 100}%
-                </span>
+                <div className="flex items-center justify-center">
+                    <span className="text-sm font-semibold text-gray-700">
+                        {row.attendanceRate ?? 100}%
+                    </span>
+                </div>
             )
         },
         {
             key: "taskProgress",
             label: "TASK PROGRESS",
+            align: "center",
             render: (row) => {
                 const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
                 return (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center gap-3">
                         <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0 border border-gray-250/20">
                             <div
                                 className="h-full bg-orange-500 rounded-full transition-all duration-300"
@@ -450,39 +454,13 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
             }
         },
         {
-            key: "subjectProgress",
-            label: "SUBJECT PROGRESS",
-            render: (row) => {
-                const subjects = row.subjectProgress || [];
-                if (subjects.length === 0) {
-                    return <span className="text-xs text-gray-400 italic">No active syllabus</span>;
-                }
-                return (
-                    <div className="flex items-center gap-1">
-                        {subjects.map((sub, sIdx) => {
-                            const colorClass =
-                                sub.status === "completed" ? "bg-emerald-500" :
-                                    sub.status === "inProgress" ? "bg-orange-500" :
-                                        "bg-gray-200";
-                            return (
-                                <div
-                                    key={sIdx}
-                                    className={`w-7 h-1.5 rounded-full ${colorClass} transition-all`}
-                                    title={`${sub.subjectName}: ${sub.status}`}
-                                />
-                            );
-                        })}
-                    </div>
-                );
-            }
-        },
-        {
             key: "statusCounters",
             label: "STATUS COUNTERS",
+            align: "center",
             render: (row) => {
                 const { pending = 0, inProgress = 0, completed = 0 } = row.statusCounters || {};
                 return (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5">
                         <span className="px-2.5 py-1 text-[10.5px] font-bold rounded-lg bg-amber-50 text-amber-800 border border-amber-100/60 flex items-center justify-center">
                             {pending} Pending
                         </span>
@@ -499,6 +477,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
         {
             key: "currentStatus",
             label: "CURRENT STATUS",
+            align: "center",
             render: (row) => {
                 const status = row.currentStatus || "Active";
                 const statusCls =
@@ -507,9 +486,11 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                             status === "Dropped" ? "bg-rose-50 text-rose-700 border-rose-200" :
                                 "bg-amber-50 text-amber-700 border-amber-200";
                 return (
-                    <span className={`inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${statusCls}`}>
-                        {status}
-                    </span>
+                    <div className="flex items-center justify-center">
+                        <span className={`inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${statusCls}`}>
+                            {status}
+                        </span>
+                    </div>
                 );
             }
         }
@@ -840,7 +821,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
                             const { completed = 0, total = 0, percentage = 0 } = row.taskProgress || {};
                             const { pending = 0, inProgress = 0 } = row.statusCounters || {};
-                            const subjects = row.subjectProgress || [];
 
                             return (
                                 <div
@@ -882,7 +862,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                         </div>
                                     </div>
 
-                                    {/* Status counters & Subjects */}
+                                    {/* Status counters */}
                                     <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-800 border border-amber-100">
@@ -895,24 +875,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                 {completed} Done
                                             </span>
                                         </div>
-
-                                        {subjects.length > 0 && (
-                                            <div className="flex items-center gap-1">
-                                                {subjects.map((sub, sIdx) => {
-                                                    const colorClass =
-                                                        sub.status === "completed" ? "bg-emerald-500" :
-                                                            sub.status === "inProgress" ? "bg-orange-500" :
-                                                                "bg-gray-200";
-                                                    return (
-                                                        <div
-                                                            key={sIdx}
-                                                            className={`w-3.5 h-1.5 rounded-full ${colorClass}`}
-                                                            title={`${sub.subjectName}: ${sub.status}`}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );

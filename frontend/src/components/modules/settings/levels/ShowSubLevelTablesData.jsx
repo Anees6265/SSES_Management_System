@@ -1170,7 +1170,7 @@ const ShowSubLevelTablesData = () => {
                                 <OrangeButton
                                     buttonTitle="+ EDIT SUB LEVEL"
                                     panelTitle="Edit Sub Level"
-                                    customButtonClass="px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer"
+                                    customButtonClass="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0"
                                     drawerContent={
                                         <Form className="space-y-4">
                                             <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
@@ -1193,9 +1193,10 @@ const ShowSubLevelTablesData = () => {
                             type="button"
                             onClick={() => setSubLevelToDelete(activeTab)}
                             title="Delete Sub Level"
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 border border-slate-200/80 hover:border-red-200 rounded-xl transition-colors cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200/80 hover:border-red-200 rounded-xl transition-all active:scale-[0.97] cursor-pointer shrink-0"
                         >
-                            <MdDelete size={18} />
+                            <MdDelete size={16} />
+                            <span>Delete Sub Level</span>
                         </button>
                     )}
 

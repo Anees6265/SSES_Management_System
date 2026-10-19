@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MdBusiness } from 'react-icons/md';
+import { MdBusiness, MdVisibility } from 'react-icons/md';
 
 const CardLogo = ({ logo, title, icon: Icon = MdBusiness, inactive }) => {
   const [aspect, setAspect] = useState(null); // 'circle' | 'wide' | null
@@ -73,13 +73,14 @@ const ActionButtons = ({ onView, onEdit, inactive }) => (
       <button
         onClick={inactive ? undefined : onView}
         disabled={inactive}
-        className={`flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] ${
+        className={`flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5 ${
           inactive
             ? 'border-gray-150 bg-gray-50 text-gray-300 cursor-not-allowed'
             : 'border-gray-200 text-gray-700 hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs'
         }`}
       >
-        VIEW
+        <MdVisibility size={14} />
+        <span>VIEW</span>
       </button>
     )}
     {onEdit && (

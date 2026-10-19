@@ -32,6 +32,7 @@ import download from "../../../assets/icons/download-icon.png";
 import studentProfileBg from "../../../assets/images/Student_profile_2nd_bg.jpg";
 import Header from '../../shared/sidebar/Header';
 import { IoCamera } from "react-icons/io5";
+import { MdLock, MdCheck } from "react-icons/md";
 
 const translateLevelName = (name) => {
   if (!name) return "";
@@ -72,7 +73,7 @@ export default function StudentProfile() {
     let entryDate = null;
     const history = levelHistoryResponse?.data;
     if (Array.isArray(history)) {
-      const currentProgress = history.find(h => 
+      const currentProgress = history.find(h =>
         (h.subLevelId?._id || h.subLevelId)?.toString() === currentSubLevelId.toString()
       );
       if (currentProgress) {
@@ -104,30 +105,30 @@ export default function StudentProfile() {
   const [setStudentPassword] = useSetStudentPasswordMutation();
 
   // New schema adapters — map new fields to what the UI expects
-  const currentLevelName    = studentData?.currentLevelId?.name    || "—";
+  const currentLevelName = studentData?.currentLevelId?.name || "—";
   const currentSubLevelName = studentData?.currentSubLevelId?.name || "—";
-  const latestLevel         = currentSubLevelName;
-  const currentLevel        = currentSubLevelName;
+  const latestLevel = currentSubLevelName;
+  const currentLevel = currentSubLevelName;
 
   const [isPermissionModalOpen, setPermissionModalOpen] = useState(false);
-  const [isPlacedModalOpen, setPlacedModalOpen]         = useState(false);
-  const [isYearView, setIsYearView]                     = useState(false);
-  const [isTechModalOpen, setTechModalOpen]             = useState(false);
-  const [isImageUploading, setIsImageUploading]         = useState(false);
-  const [isEmailModalOpen, setEmailModalOpen]           = useState(false);
-  const [isReportCardOpen, setReportCardOpen]           = useState(false);
-  const [isSetPasswordOpen, setSetPasswordOpen]         = useState(false);
+  const [isPlacedModalOpen, setPlacedModalOpen] = useState(false);
+  const [isYearView, setIsYearView] = useState(false);
+  const [isTechModalOpen, setTechModalOpen] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [isEmailModalOpen, setEmailModalOpen] = useState(false);
+  const [isReportCardOpen, setReportCardOpen] = useState(false);
+  const [isSetPasswordOpen, setSetPasswordOpen] = useState(false);
 
   const fileInputRef = useRef(null);
 
 
   // Helper function to get resume URL from various possible field names
   const getResumeUrl = () => {
-    return studentData?.resumeURL || 
-           studentData?.resume || 
-           studentData?.resumeUrl || 
-           studentData?.resume_url || 
-           null;
+    return studentData?.resumeURL ||
+      studentData?.resume ||
+      studentData?.resumeUrl ||
+      studentData?.resume_url ||
+      null;
   };
 
   // Function to handle resume link clicks with error handling
@@ -138,7 +139,7 @@ export default function StudentProfile() {
       toast.error('Resume URL not found');
       return;
     }
-    
+
     // Test if URL is accessible
     fetch(resumeUrl, { method: 'HEAD' })
       .then(response => {
@@ -295,9 +296,9 @@ export default function StudentProfile() {
   const calculateAttendanceData = () => {
     const attendanceRecord = studentData.attendanceRecord || [];
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
+
     const monthlyData = [["Month", "Attendance", { role: "style" }]];
-    
+
     monthNames.forEach((month, index) => {
       const monthRecord = attendanceRecord.find(record => {
         if (!record.date) return false;
@@ -308,27 +309,27 @@ export default function StudentProfile() {
           return false;
         }
       });
-      
+
       const attendanceRate = monthRecord ? monthRecord.attendancePercentage || 0 : 0;
       const color = attendanceRate >= 80 ? "#22C55E" : attendanceRate >= 60 ? "#FDA92D" : "#EF4444";
-      
+
       monthlyData.push([month, attendanceRate, color]);
     });
-    
+
     return monthlyData;
   };
-  
+
   const monthlyData = calculateAttendanceData();
-  
+
   // Calculate overall attendance rate
   const calculateOverallAttendance = () => {
     const attendanceRecord = studentData.attendanceRecord || [];
     if (attendanceRecord.length === 0) return 0;
-    
+
     const totalAttendance = attendanceRecord.reduce((sum, record) => sum + (record.attendancePercentage || 0), 0);
     return Math.round(totalAttendance / attendanceRecord.length);
   };
-  
+
   const overallAttendanceRate = calculateOverallAttendance();
   const hasPermission = !!(studentData?.permissionDetails && Object.keys(studentData.permissionDetails).length > 0);
   const permissionStatus = studentData?.permissionDetails?.status || (hasPermission ? "pending" : "No Request");
@@ -380,7 +381,7 @@ export default function StudentProfile() {
                   }`}
                 title={canChooseElective() ? 'Choose your elective technology' : 'Complete Level 2A/2B/2C to unlock electives'}
               >
-                <span className="hidden sm:inline">Choose Elective</span> 
+                <span className="hidden sm:inline">Choose Elective</span>
                 <span className="sm:hidden">Elective</span>
               </button>
               <button
@@ -542,8 +543,8 @@ export default function StudentProfile() {
         </div>
 
 
-            {/* Analytics Dashboard */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8 pr-2 sm:pr-0">
+        {/* Analytics Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8 pr-2 sm:pr-0">
           {/* Attendance Analytics */}
           <div className="lg:col-span-2">
             <div className={`transition-all duration-500 ${isYearView ? 'hidden' : 'block'}`}>
@@ -673,9 +674,9 @@ export default function StudentProfile() {
               subtitle="Academic achievements"
               icon={<svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>}
             >
-              <DynamicProgressOverview 
-                studentData={studentData} 
-                reportCardData={reportCardData} 
+              <DynamicProgressOverview
+                studentData={studentData}
+                reportCardData={reportCardData}
                 reportLoading={reportLoading}
               />
             </AnalyticsCard>
@@ -715,13 +716,13 @@ export default function StudentProfile() {
                 label="Last Request"
                 value={studentData?.permissionDetails?.uploadDate
                   ? (() => {
-                      try {
-                        const date = new Date(studentData.permissionDetails.uploadDate);
-                        return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Invalid date';
-                      } catch {
-                        return 'Invalid date';
-                      }
-                    })()
+                    try {
+                      const date = new Date(studentData.permissionDetails.uploadDate);
+                      return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Invalid date';
+                    } catch {
+                      return 'Invalid date';
+                    }
+                  })()
                   : "No recent requests"}
               />
               <DetailRow
@@ -780,92 +781,92 @@ export default function StudentProfile() {
               </div>
             </div>
             <div className="p-3 sm:p-6">
-            <div className="space-y-4">
-              {getResumeUrl() ? (
-                <div>
-                  {/* Resume Header */}
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-t-lg border border-blue-200 border-b-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <span className="text-blue-600 text-sm">📄</span>
+              <div className="space-y-4">
+                {getResumeUrl() ? (
+                  <div>
+                    {/* Resume Header */}
+                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-t-lg border border-blue-200 border-b-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <span className="text-blue-600 text-sm">📄</span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-blue-900">
+                            {(() => {
+                              try {
+                                const url = getResumeUrl();
+                                if (!url) return 'Resume.pdf';
+                                const fileName = url.split('/').pop();
+                                if (!fileName) return 'Resume.pdf';
+                                const parts = fileName.split('-');
+                                return parts.length > 1 ? parts.slice(1).join('-') : fileName;
+                              } catch {
+                                return 'Resume.pdf';
+                              }
+                            })()}
+                          </p>
+                          <p className="text-xs text-blue-600">Resume document</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-blue-900">
-                        {(() => {
-                          try {
-                            const url = getResumeUrl();
-                            if (!url) return 'Resume.pdf';
-                            const fileName = url.split('/').pop();
-                            if (!fileName) return 'Resume.pdf';
-                            const parts = fileName.split('-');
-                            return parts.length > 1 ? parts.slice(1).join('-') : fileName;
-                          } catch {
-                            return 'Resume.pdf';
-                          }
-                        })()} 
-                      </p>
-                        <p className="text-xs text-blue-600">Resume document</p>
-                      </div>
-                    </div>
-                    {/* <a
+                      {/* <a
                       href={getResumeUrl()}
                       download
                       className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors flex items-center"
                     >
                       <img src={download} />
                     </a> */}
-                  </div>
-                  {/* Resume Card */}
-                  <div className="border border-blue-200 rounded-b-lg bg-blue-50 p-6">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <span className="text-blue-600 text-2xl">📄</span>
-                      </div>
-                      <h4 className="text-lg font-semibold text-blue-900 mb-2">Resume Available</h4>
-                      <p className="text-sm text-blue-700 mb-4">Student&rsquo;s resume has been uploaded successfully</p>
-                      <div className="flex gap-3 justify-center">
-                        <a
-                          href={getResumeUrl()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
-                          onClick={handleResumeView}
-                        >
-                          <span className="hidden sm:inline">View Resume</span>
-                          <span className="sm:hidden">View</span>
-                        </a>
-                        <a
-                          href={getResumeUrl()}
-                          download
-                          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center gap-1 sm:gap-2"
-                          onClick={handleResumeView}
-                        >
-                          <img src={download} className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="hidden sm:inline">Download</span>
-                          <span className="sm:hidden">DL</span>
-                        </a>
+                    </div>
+                    {/* Resume Card */}
+                    <div className="border border-blue-200 rounded-b-lg bg-blue-50 p-6">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                          <span className="text-blue-600 text-2xl">📄</span>
+                        </div>
+                        <h4 className="text-lg font-semibold text-blue-900 mb-2">Resume Available</h4>
+                        <p className="text-sm text-blue-700 mb-4">Student&rsquo;s resume has been uploaded successfully</p>
+                        <div className="flex gap-3 justify-center">
+                          <a
+                            href={getResumeUrl()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
+                            onClick={handleResumeView}
+                          >
+                            <span className="hidden sm:inline">View Resume</span>
+                            <span className="sm:hidden">View</span>
+                          </a>
+                          <a
+                            href={getResumeUrl()}
+                            download
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center gap-1 sm:gap-2"
+                            onClick={handleResumeView}
+                          >
+                            <img src={download} className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Download</span>
+                            <span className="sm:hidden">DL</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <span className="text-gray-400 text-xl">📄</span>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <span className="text-gray-400 text-xl">📄</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">No Resume Uploaded</p>
+                    <p className="text-xs text-gray-500">Student has not uploaded a resume yet</p>
                   </div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">No Resume Uploaded</p>
-                  <p className="text-xs text-gray-500">Student has not uploaded a resume yet</p>
-                </div>
-              )}
+                )}
+              </div>
+              <input
+                id="resume-upload-profile"
+                type="file"
+                accept=".pdf"
+                onChange={handleResumeUpload}
+                className="hidden"
+              />
             </div>
-            <input
-              id="resume-upload-profile"
-              type="file"
-              accept=".pdf"
-              onChange={handleResumeUpload}
-              className="hidden"
-            />
-          </div>
           </div>
 
           {/* Additional Information Card */}
@@ -975,7 +976,6 @@ export default function StudentProfile() {
         currentLevel={currentLevel}
         daysInSubLevel={daysInSubLevel}
       />
-      </div>
     </>
   );
 }
@@ -1100,16 +1100,16 @@ const DynamicProgressOverview = ({ studentData, reportCardData, reportLoading })
     return <div className="h-48 sm:h-80 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" /></div>;
   }
 
-  const total     = taskStats?.totalTasks     || 0;
+  const total = taskStats?.totalTasks || 0;
   const completed = taskStats?.completedTasks || 0;
-  const pending   = taskStats?.pendingTasks   || 0;
+  const pending = taskStats?.pendingTasks || 0;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="h-48 sm:h-80 flex flex-col justify-center space-y-6">
-      <ProgressMetric title="Task Completion"    value={completionRate} total="100" color="#FDA92D" suffix="%" />
-      <ProgressMetric title="Tasks Completed"    value={completed}      total={total || 1} color="#22C55E" />
-      <ProgressMetric title="Tasks Pending"      value={pending}        total={total || 1} color="#EF4444" />
+      <ProgressMetric title="Task Completion" value={completionRate} total="100" color="#FDA92D" suffix="%" />
+      <ProgressMetric title="Tasks Completed" value={completed} total={total || 1} color="#22C55E" />
+      <ProgressMetric title="Tasks Pending" value={pending} total={total || 1} color="#EF4444" />
       {total > 0 && (
         <div className="text-xs text-gray-500 text-center">{completed}/{total} tasks completed</div>
       )}
@@ -1232,9 +1232,9 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 {studentData.firstName} {studentData.lastName}
               </h3>
               <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
-                <div><span className="font-medium text-gray-600">Student ID:</span> <br/><span className="font-semibold">{studentData._id?.slice(-8) || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Student ID:</span> <br /><span className="font-semibold">{studentData._id?.slice(-8) || 'N/A'}</span></div>
                 <div>
-                  <span className="font-medium text-gray-600">Course:</span> <br/>
+                  <span className="font-medium text-gray-600">Course:</span> <br />
                   <span className="font-semibold inline-flex items-center gap-1.5 flex-wrap">
                     {studentData.withITEG && !studentData.course?.toUpperCase().includes("ITEG") && !isNaturallyITEG(studentData.course)
                       ? `${studentData.course} + ITEG`
@@ -1246,14 +1246,14 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                     )}
                   </span>
                 </div>
-                <div><span className="font-medium text-gray-600">Session / Batch:</span> <br/><span className="font-semibold">{studentData.sessionId?.name || 'N/A'}{studentData.batchYear ? ` (${studentData.batchYear})` : ''}</span></div>
-                <div><span className="font-medium text-gray-600">Current Semester:</span> <br/><span className="font-semibold">{currentSemester}</span></div>
-                <div><span className="font-medium text-gray-600">Email:</span> <br/><span className="font-semibold">{studentData.email}</span></div>
-                <div><span className="font-medium text-gray-600">Phone:</span> <br/><span className="font-semibold">{studentData.studentMobile || 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">Enrollment Date:</span> <br/><span className="font-semibold">{enrollmentDate}</span></div>
-                <div><span className="font-medium text-gray-600">Specialization:</span> <br/><span className="font-semibold">{studentData.techno || 'Not Selected'}</span></div>
-                <div><span className="font-medium text-gray-600">Address:</span> <br/><span className="font-semibold">{studentData.address || studentData.village || 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">CGPA:</span> <br/><span className="font-semibold text-green-600 text-lg">{cgpa}/4.0</span></div>
+                <div><span className="font-medium text-gray-600">Session / Batch:</span> <br /><span className="font-semibold">{studentData.sessionId?.name || 'N/A'}{studentData.batchYear ? ` (${studentData.batchYear})` : ''}</span></div>
+                <div><span className="font-medium text-gray-600">Current Semester:</span> <br /><span className="font-semibold">{currentSemester}</span></div>
+                <div><span className="font-medium text-gray-600">Email:</span> <br /><span className="font-semibold">{studentData.email}</span></div>
+                <div><span className="font-medium text-gray-600">Phone:</span> <br /><span className="font-semibold">{studentData.studentMobile || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Enrollment Date:</span> <br /><span className="font-semibold">{enrollmentDate}</span></div>
+                <div><span className="font-medium text-gray-600">Specialization:</span> <br /><span className="font-semibold">{studentData.techno || 'Not Selected'}</span></div>
+                <div><span className="font-medium text-gray-600">Address:</span> <br /><span className="font-semibold">{studentData.address || studentData.village || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">CGPA:</span> <br /><span className="font-semibold text-green-600 text-lg">{cgpa}/4.0</span></div>
               </div>
             </div>
           </div>
@@ -1263,7 +1263,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
         <div className="p-6">
           <h4 className="text-lg font-bold text-gray-800 mb-4">Academic Performance</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* Level Progress */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h5 className="font-semibold text-gray-700 mb-3">📚 Course Progress</h5>
@@ -1272,9 +1272,8 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                   studentData.academicHistory.map((h, i) => (
                     <div key={i} className="flex justify-between items-center p-2 bg-white rounded border">
                       <span className="font-medium">{h.yearName}</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        h.result === 'Pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>{h.result} — {h.percentage}%</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${h.result === 'Pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>{h.result} — {h.percentage}%</span>
                     </div>
                   ))
                 ) : (
@@ -1339,9 +1338,8 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
               </div>
               <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                 <div className="text-sm text-gray-600 mb-1">Status</div>
-                <div className={`text-lg font-bold ${
-                  studentData.placedInfo?.companyName ? 'text-green-600' : 'text-yellow-600'
-                }`}>
+                <div className={`text-lg font-bold ${studentData.placedInfo?.companyName ? 'text-green-600' : 'text-yellow-600'
+                  }`}>
                   {studentData.placedInfo?.companyName ? 'Placed' : 'Active'}
                 </div>
                 <div className="text-xs text-gray-500">
@@ -1355,12 +1353,12 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
           <div className="mt-6 bg-gray-50 rounded-lg p-6">
             <h5 className="font-semibold text-gray-700 mb-4">👤 Personal Information</h5>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div><span className="font-medium text-gray-600">Father's Name:</span> <br/>{studentData.fatherName || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Mother's Name:</span> <br/>{studentData.motherName || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Date of Birth:</span> <br/>{studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Gender:</span> <br/>{studentData.gender || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Blood Group:</span> <br/>{studentData.bloodGroup || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Emergency Contact:</span> <br/>{studentData.emergencyContact || studentData.parentMobile || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Father's Name:</span> <br />{studentData.fatherName || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Mother's Name:</span> <br />{studentData.motherName || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Date of Birth:</span> <br />{studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Gender:</span> <br />{studentData.gender || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Blood Group:</span> <br />{studentData.bloodGroup || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Emergency Contact:</span> <br />{studentData.emergencyContact || studentData.parentMobile || 'N/A'}</div>
             </div>
           </div>
 
@@ -1388,12 +1386,12 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
             <h5 className="font-semibold text-gray-700 mb-4">💼 Career & Placement</h5>
             {studentData.placedInfo?.companyName ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="font-medium text-gray-600">Company:</span> <br/><span className="font-semibold text-[#E6941A]">{studentData.placedInfo.companyName}</span></div>
-                <div><span className="font-medium text-gray-600">Position:</span> <br/><span className="font-semibold">{studentData.placedInfo.jobProfile}</span></div>
-                <div><span className="font-medium text-gray-600">Package:</span> <br/><span className="font-semibold">{studentData.placedInfo.package || 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">Location:</span> <br/><span className="font-semibold">{studentData.placedInfo.location}</span></div>
-                <div><span className="font-medium text-gray-600">Joining Date:</span> <br/><span className="font-semibold">{studentData.placedInfo.joiningDate ? new Date(studentData.placedInfo.joiningDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">Offer Letter:</span> <br/><span className={`font-semibold ${studentData.placedInfo.offerLetterURL ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.placedInfo.offerLetterURL ? '✓ Available' : '✗ Pending'}</span></div>
+                <div><span className="font-medium text-gray-600">Company:</span> <br /><span className="font-semibold text-[#E6941A]">{studentData.placedInfo.companyName}</span></div>
+                <div><span className="font-medium text-gray-600">Position:</span> <br /><span className="font-semibold">{studentData.placedInfo.jobProfile}</span></div>
+                <div><span className="font-medium text-gray-600">Package:</span> <br /><span className="font-semibold">{studentData.placedInfo.package || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Location:</span> <br /><span className="font-semibold">{studentData.placedInfo.location}</span></div>
+                <div><span className="font-medium text-gray-600">Joining Date:</span> <br /><span className="font-semibold">{studentData.placedInfo.joiningDate ? new Date(studentData.placedInfo.joiningDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Offer Letter:</span> <br /><span className={`font-semibold ${studentData.placedInfo.offerLetterURL ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.placedInfo.offerLetterURL ? '✓ Available' : '✗ Pending'}</span></div>
               </div>
             ) : (
               <div className="text-center py-8">
@@ -1401,8 +1399,8 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 <div className="text-lg font-medium text-gray-700">Placement In Progress</div>
                 <div className="text-sm text-gray-500 mt-1">Student is actively seeking placement opportunities</div>
                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="font-medium text-gray-600">Resume Status:</span> <br/><span className={`font-semibold ${studentData.resumeURL || studentData.resume ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.resumeURL || studentData.resume ? '✓ Ready' : '✗ Pending'}</span></div>
-                  <div><span className="font-medium text-gray-600">Eligibility:</span> <br/><span className={`font-semibold ${studentData?.status === 'Placed' ? 'text-green-600' : 'text-yellow-600'}`}>{studentData?.status === 'Placed' ? '✓ Placed' : '⚠ In Progress'}</span></div>
+                  <div><span className="font-medium text-gray-600">Resume Status:</span> <br /><span className={`font-semibold ${studentData.resumeURL || studentData.resume ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.resumeURL || studentData.resume ? '✓ Ready' : '✗ Pending'}</span></div>
+                  <div><span className="font-medium text-gray-600">Eligibility:</span> <br /><span className={`font-semibold ${studentData?.status === 'Placed' ? 'text-green-600' : 'text-yellow-600'}`}>{studentData?.status === 'Placed' ? '✓ Placed' : '⚠ In Progress'}</span></div>
                 </div>
               </div>
             )}
@@ -1499,14 +1497,21 @@ const SetPasswordModal = ({ isOpen, onClose, studentId, onSetPassword }) => {
               required
             />
           </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer">
+          <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:flex-1 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center shrink-0"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50">
-              {loading ? "Setting..." : "Set Password"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:flex-1 py-2 sm:py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <MdLock size={16} />
+              <span>{loading ? "Setting..." : "Set Password"}</span>
             </button>
           </div>
         </form>
@@ -1520,7 +1525,7 @@ const UpdateEmailModal = ({ isOpen, onClose, studentData, onUpdate, isLoading })
     email: Yup.string()
       .email('Please enter a valid email address')
       .required('Email is required')
-      .test('different', 'New email must be different from current email', function(value) {
+      .test('different', 'New email must be different from current email', function (value) {
         return value !== studentData?.email;
       })
   });
@@ -1547,7 +1552,7 @@ const UpdateEmailModal = ({ isOpen, onClose, studentData, onUpdate, isLoading })
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl py-4 px-4 sm:px-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl sm:text-2xl font-semibold text-center mb-4 sm:mb-6 text-[var(--primary)]">Update Email</h2>
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -1565,7 +1570,7 @@ const UpdateEmailModal = ({ isOpen, onClose, studentData, onUpdate, isLoading })
                   placeholder="Current email address"
                 />
               </div>
-              
+
               <div className="mb-4">
                 <InputField
                   label="New Email Address"
@@ -1574,27 +1579,28 @@ const UpdateEmailModal = ({ isOpen, onClose, studentData, onUpdate, isLoading })
                   placeholder="Enter new email address"
                 />
               </div>
-              
-              <div className="flex gap-3">
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                  className="w-full sm:flex-1 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center shrink-0"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+                  className="w-full sm:flex-1 py-2 sm:py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shrink-0"
                 >
-                  {isSubmitting ? 'Updating...' : 'Update Email'}
+                  <MdCheck size={16} />
+                  <span>{isSubmitting ? 'Updating...' : 'Update Email'}</span>
                 </button>
               </div>
             </Form>
           )}
         </Formik>
-        
+
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-xl text-gray-400 hover:text-gray-700"

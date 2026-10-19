@@ -713,14 +713,14 @@ const AddTaskModal = ({
                         <button
                             type="button"
                             onClick={onClose}
-                            className={`px-4 py-2 text-xs ${buttonStyles.cancel}`}
+                            className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm flex items-center justify-center text-center ${buttonStyles.cancel}`}
                         >
-                            Cancel
+                            <span>Cancel</span>
                         </button>
                         <button
                             type="submit"
                             disabled={isCreating}
-                            className={`px-5 py-2 text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 ${buttonStyles.primary}`}
+                            className={`px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50 text-center ${buttonStyles.primary}`}
                         >
                             <MdAdd size={16} />
                             <span>{isCreating ? "Creating..." : "Create Task"}</span>

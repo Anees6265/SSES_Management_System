@@ -17,7 +17,7 @@ import Header from "../../../shared/sidebar/Header";
 import CommonCard from "../CommonCard";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import AddStudentModal from "../../students/AddStudentModal";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Plus } from "lucide-react";
 
 const UNIVERSITY_OPTIONS = [
   {
@@ -244,7 +244,10 @@ const DepartmentManagement = () => {
                           )}
                         </div>
                       ))}
-                      <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
+                      <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
+                        <Plus size={15} />
+                        <span>Add Course</span>
+                      </button>
                     </div>
 
                     <RadioGroup label="Status" name="isActive" required={false} />
@@ -428,7 +431,10 @@ const DepartmentManagement = () => {
                                     )}
                                   </div>
                                 ))}
-                                <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm text-orange-500 hover:text-orange-600">+ Add Course</button>
+                                <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
+                                  <Plus size={15} />
+                                  <span>Add Course</span>
+                                </button>
                               </div>
                               <RadioGroup label="Status" name="isActive" required={false} />
                             </Form>

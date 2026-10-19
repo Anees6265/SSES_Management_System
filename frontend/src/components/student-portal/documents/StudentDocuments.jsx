@@ -412,19 +412,19 @@ const UploadModal = ({ onClose, onSuccess }) => {
                 </form>
 
                 {/* Footer */}
-                <div className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 bg-gray-50 border-t border-gray-100 shrink-0">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 px-4 sm:px-6 py-3.5 bg-gray-50 border-t border-gray-100 shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+                        className="w-full sm:flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors inline-flex items-center justify-center shrink-0 cursor-pointer"
                     >
-                        Cancel
+                        <span>Cancel</span>
                     </button>
                     <button
                         type="button"
                         onClick={handleUpload}
                         disabled={isLoading}
-                        className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                        className={`w-full sm:flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl inline-flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                             isLoading
                                 ? "bg-orange-300 text-white cursor-not-allowed"
                                 : "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs"

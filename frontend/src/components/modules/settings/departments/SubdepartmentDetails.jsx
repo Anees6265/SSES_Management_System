@@ -15,7 +15,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
-import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning } from "react-icons/md";
+import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning, MdVisibility } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { DeleteConfirmModal } from "../../../shared/modal/DeleteConfirmModal";
@@ -151,9 +151,10 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDele
       <div className="flex items-center gap-2.5 sm:gap-3 mt-auto pt-3 sm:pt-4 border-t border-slate-100">
         <button
           onClick={onView}
-          className="flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs"
+          className="flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5"
         >
-          VIEW
+          <MdVisibility size={14} />
+          <span>VIEW</span>
         </button>
         {onEdit && (
           <div className={`${onView ? 'flex-1' : 'w-full'} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:!text-xs [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600`}>
@@ -346,9 +347,10 @@ const SubdepartmentDetails = () => {
             </span>
             <button
               onClick={() => setSearchQuery("")}
-              className="text-orange-500 hover:text-orange-600 font-semibold cursor-pointer"
+              className="text-orange-500 hover:text-orange-600 font-semibold cursor-pointer flex items-center gap-1"
             >
-              Clear filter
+              <MdClose size={13} />
+              <span>Clear filter</span>
             </button>
           </div>
         )}

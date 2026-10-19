@@ -697,9 +697,9 @@ const AddCompanyModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className={`${buttonStyles.cancel} px-5 py-2.5 text-xs sm:text-sm text-center`}
+                className={`${buttonStyles.cancel} px-5 py-2.5 text-xs sm:text-sm text-center flex items-center justify-center`}
               >
-                Cancel
+                <span>Cancel</span>
               </button>
               <button
                 type="submit"

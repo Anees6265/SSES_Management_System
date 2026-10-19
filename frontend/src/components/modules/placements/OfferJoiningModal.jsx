@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useUpdateFinalResultMutation, useConfirmPlacementMutation } from "../../../redux/api/authApi";
-import { MdClose, MdFileUpload, MdBadge, MdWork, MdCheckCircle } from "react-icons/md";
+import { MdClose, MdFileUpload, MdBadge, MdWork, MdCheckCircle, MdCheck, MdArrowBack } from "react-icons/md";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const NOT_JOINING_REASONS = [
@@ -193,20 +193,21 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
               >
-                Cancel
+                <span>Cancel</span>
               </button>
               <button
                 type="submit"
                 disabled={updatingResult}
-                className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 text-center"
               >
-                {updatingResult ? "Saving..." : offerStatus === "Accepted" ? "Next: Joining Details" : "Save Offer Status"}
+                <MdCheck size={15} />
+                <span>{updatingResult ? "Saving..." : offerStatus === "Accepted" ? "Next: Joining Details" : "Save Offer Status"}</span>
               </button>
             </div>
           </form>
@@ -268,16 +269,18 @@ const OfferJoiningModal = ({ isOpen, onClose, student, interview, onSuccess }) =
               <button
                 type="button"
                 onClick={() => setStep("offer")}
-                className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Back
+                <MdArrowBack size={15} />
+                <span>Back</span>
               </button>
               <button
                 type="submit"
                 disabled={confirmingPlacement || updatingResult}
-                className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
+                className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                {confirmingPlacement || updatingResult ? "Saving..." : joiningStatus === "Joined" ? "Confirm & Mark PLACED" : "Update Status"}
+                <MdCheckCircle size={15} />
+                <span>{confirmingPlacement || updatingResult ? "Saving..." : joiningStatus === "Joined" ? "Confirm & Mark PLACED" : "Update Status"}</span>
               </button>
             </div>
           </form>

@@ -185,19 +185,19 @@ export const DeleteConfirmModal = ({
           </div>
 
           {/* Footer Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 font-bold tracking-wider uppercase text-xs transition active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 font-bold tracking-wider uppercase text-xs transition active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-center"
             >
-              {cancelText}
+              <span>{cancelText}</span>
             </button>
             <button
               type="submit"
               disabled={!isMatch || isLoading}
-              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 isMatch && !isLoading
                   ? "!bg-rose-600 hover:!bg-rose-700 active:!bg-rose-800 text-white shadow-xs hover:shadow-md cursor-pointer active:scale-[0.97]"
                   : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"

@@ -1,5 +1,6 @@
 import { toast } from "react-toastify";
 import { confirmDelete } from "../components/shared/modal/DeleteConfirmModal";
+import { MdClose, MdCheck, MdDelete } from "react-icons/md";
 
 export { confirmDelete };
 
@@ -61,9 +62,9 @@ export const confirmToast = (message, options = {}) => {
                 closeToast();
                 resolve(false);
               }}
-              className="px-3 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+              className="px-3 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
             >
-              {cancelText}
+              <span>{cancelText}</span>
             </button>
             <button
               type="button"
@@ -72,9 +73,10 @@ export const confirmToast = (message, options = {}) => {
                 closeToast();
                 resolve(true);
               }}
-              className={`px-3.5 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer ${confirmButtonClass}`}
+              className={`px-3.5 py-1.5 text-xs font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1.5 ${confirmButtonClass}`}
             >
-              {confirmText}
+              {isDeleteAction ? <MdDelete size={14} /> : <MdCheck size={14} />}
+              <span>{confirmText}</span>
             </button>
           </div>
         </div>

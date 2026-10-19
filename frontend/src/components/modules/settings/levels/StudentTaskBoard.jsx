@@ -374,21 +374,28 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
             panelSubtitle={studentDisplayName}
             showFooter={true}
             customFooter={
-                <div className="flex gap-3 w-full">
+                <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 w-full">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                        className="w-full sm:flex-1 py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center shrink-0"
                     >
-                        Cancel
+                        <span>Cancel</span>
                     </button>
                     <button
                         type="submit"
                         form="assign-task-form"
                         disabled={isLoading}
-                        className="flex-1 py-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer"
+                        className="w-full sm:flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs hover:shadow-md cursor-pointer shrink-0"
                     >
-                        {isLoading ? "Assigning..." : "Assign Task"}
+                        {isLoading ? (
+                            "Assigning..."
+                        ) : (
+                            <>
+                                <MdAdd size={16} />
+                                <span>Assign Task</span>
+                            </>
+                        )}
                     </button>
                 </div>
             }

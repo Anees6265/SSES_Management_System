@@ -403,7 +403,8 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
                   onClick={() => addSubTopic(ti)}
                   className="text-[11px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
                 >
-                  + Add SubTopic
+                  <MdAdd size={13} />
+                  <span>Add SubTopic</span>
                 </button>
               </div>
             </div>
@@ -416,9 +417,9 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-center"
+          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
         >
-          Cancel
+          <span>Cancel</span>
         </button>
         <button
           type="button"
@@ -786,9 +787,9 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-center"
+          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
         >
-          Cancel
+          <span>Cancel</span>
         </button>
         <button
           type="button"
@@ -1261,7 +1262,9 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
             <span className="ml-3 text-gray-400">Preview: {rows.slice(0, 2).map((r) => r.taskTitle).join(", ")}{rows.length > 2 ? "..." : ""}</span>
           </div>
           <div className="flex flex-col-reverse sm:flex-row gap-2">
-            <button onClick={reset} className="w-full sm:w-auto px-4 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-center">Clear</button>
+            <button onClick={reset} className="w-full sm:w-auto px-4 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-center flex items-center justify-center">
+              <span>Clear</span>
+            </button>
             <button
               onClick={handleUpload} disabled={saving}
               className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-sm font-semibold py-2 rounded-lg transition text-center"
@@ -1961,8 +1964,8 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
             </button>
           )}
           <button type="button" onClick={resetForm}
-            className="px-4 py-2.5 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-            Reset
+            className="px-4 py-2.5 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center justify-center text-center">
+            <span>Reset</span>
           </button>
         </div>
       )}
@@ -2197,9 +2200,9 @@ const EmptyUploadState = ({ level, subLevel, onSaved }) => {
             </div>
             <button
               onClick={() => setShowUpload(false)}
-              className="text-xs text-slate-400 hover:text-slate-700 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              className="text-xs text-slate-400 hover:text-slate-700 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer flex items-center justify-center text-center"
             >
-              ✕ Close
+              <span>Close</span>
             </button>
           </div>
           <SyllabusUploadModalContent
@@ -2346,9 +2349,10 @@ const SyllabusTab = ({ level, subLevel }) => {
             <button
               type="button"
               onClick={() => handleActivate(currentVersionDoc._id)}
-              className="text-xs px-3 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 font-bold transition border border-green-200 cursor-pointer"
+              className="text-xs px-3 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 font-bold transition border border-green-200 cursor-pointer flex items-center gap-1.5"
             >
-              Activate
+              <MdCheckCircle size={14} />
+              <span>Activate</span>
             </button>
           )}
 

@@ -354,10 +354,11 @@ const RolesPermissions = () => {
                                 </div>
                                 
                                 <button
-                                    className="w-full py-2 text-xs sm:text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors mt-auto cursor-pointer"
+                                    className="w-full py-2 text-xs sm:text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors mt-auto cursor-pointer flex items-center justify-center gap-1.5"
                                     onClick={() => handleManagePermissions(role)}
                                 >
-                                    Manage Permissions
+                                    <FaUserShield size={14} />
+                                    <span>Manage Permissions</span>
                                 </button>
                             </div>
                         );
@@ -428,20 +429,21 @@ const RolesPermissions = () => {
                         </div>
                         
                         <div className="p-4 sm:p-6 border-t bg-white">
-                            <div className="flex gap-3">
+                            <div className="flex gap-2.5 sm:gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateRole(false)}
-                                    className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                                    className="flex-1 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
                                 >
-                                    Cancel
+                                    <span>Cancel</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => createRoleFormRef.current?.submitForm()}
-                                    className={`flex-1 py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer ${buttonStyles.primary}`}
+                                    className={`flex-1 py-2 sm:py-2.5 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 text-center ${buttonStyles.primary}`}
                                 >
-                                    Create Role
+                                    <FaPlus size={14} />
+                                    <span>Create Role</span>
                                 </button>
                             </div>
                         </div>

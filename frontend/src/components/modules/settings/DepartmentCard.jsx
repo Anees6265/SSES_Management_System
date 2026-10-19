@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { MdBusiness } from "react-icons/md";
+import { MdBusiness, MdVisibility, MdEdit } from "react-icons/md";
 
 const DepartmentCard = ({ name, description, hod, students, status, onView, onEdit }) => {
   const isActive = status === "Active";
@@ -45,16 +45,20 @@ const DepartmentCard = ({ name, description, hod, students, status, onView, onEd
       {/* Footer actions */}
       <div className="flex gap-2.5 sm:gap-3 px-4 sm:px-5 pb-4 sm:pb-5 mt-auto">
         <button
+          type="button"
           onClick={onView}
-          className="flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs"
+          className="flex-1 border rounded-xl py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs inline-flex items-center justify-center gap-1.5 shrink-0"
         >
-          VIEW
+          <MdVisibility size={15} />
+          <span>VIEW</span>
         </button>
         <button
+          type="button"
           onClick={onEdit}
-          className="flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white shadow-xs hover:shadow-md cursor-pointer"
+          className="flex-1 rounded-xl py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
         >
-          EDIT
+          <MdEdit size={15} />
+          <span>EDIT</span>
         </button>
       </div>
     </div>

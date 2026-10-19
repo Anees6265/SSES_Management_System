@@ -1,10 +1,32 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Plus, Pencil, Check, Trash2, Upload } from "lucide-react";
+
+const getButtonIcon = (title, customIcon) => {
+  if (customIcon) return customIcon;
+  if (!title || typeof title !== "string") return null;
+  const lower = title.toLowerCase();
+  if (lower.includes("edit")) return <Pencil size={15} className="shrink-0" />;
+  if (lower.includes("delete") || lower.includes("remove")) return <Trash2 size={15} className="shrink-0" />;
+  if (lower.includes("upload")) return <Upload size={15} className="shrink-0" />;
+  if (lower.includes("add") || lower.includes("create") || title.trim().startsWith("+")) return <Plus size={16} className="shrink-0" />;
+  if (lower.includes("update") || lower.includes("save")) return <Check size={16} className="shrink-0" />;
+  return null;
+};
+
+const getFooterRightIcon = (text) => {
+  if (!text || typeof text !== "string") return <Check size={16} className="shrink-0" />;
+  const lower = text.toLowerCase();
+  if (lower.includes("add") || lower.includes("create")) return <Plus size={16} className="shrink-0" />;
+  if (lower.includes("delete") || lower.includes("remove")) return <Trash2 size={16} className="shrink-0" />;
+  if (lower.includes("upload")) return <Upload size={16} className="shrink-0" />;
+  return <Check size={16} className="shrink-0" />;
+};
 
 const OrangeButton = ({
   buttonTitle,
+  icon,
   drawerContent,
   children,
   panelTitle,
@@ -84,6 +106,9 @@ const OrangeButton = ({
     closeDrawer();
   };
 
+  const detectedIcon = getButtonIcon(buttonTitle, icon);
+  const cleanButtonTitle = typeof buttonTitle === "string" ? buttonTitle.replace(/^\+\s*/, "") : buttonTitle;
+
   return (
     <>
       {buttonTitle && !isControlled && (
@@ -91,11 +116,13 @@ const OrangeButton = ({
           type="button"
           onClick={openDrawer}
           className={
-            customButtonClass ||
-            "rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 px-4 py-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-white transition-all duration-200 hover:shadow-md active:scale-[0.97] shadow-xs cursor-pointer"
+            customButtonClass
+              ? `${customButtonClass} inline-flex items-center justify-center gap-1.5 sm:gap-2`
+              : "rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-white transition-all duration-200 hover:shadow-md active:scale-[0.97] shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2 shrink-0"
           }
         >
-          {buttonTitle}
+          {detectedIcon}
+          <span>{cleanButtonTitle}</span>
         </button>
       )}
 
@@ -130,7 +157,7 @@ const OrangeButton = ({
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors shrink-0"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -147,23 +174,24 @@ const OrangeButton = ({
                   {customFooter ? (
                     customFooter
                   ) : (
-                    <div className="flex gap-3 sm:gap-4">
+                    <div className="flex gap-2.5 sm:gap-4">
                       {leftBtnText && (
                         <button
                           type="button"
                           onClick={handleLeftClick}
-                          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                          className="flex-1 py-2 sm:py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
                         >
-                          {leftBtnText}
+                          <span>{leftBtnText}</span>
                         </button>
                       )}
                       {rightBtnText && (
                         <button
                           type="button"
                           onClick={onRightClick}
-                          className="flex-1 py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
+                          className="flex-1 py-2 sm:py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 text-center"
                         >
-                          {rightBtnText}
+                          {getFooterRightIcon(rightBtnText)}
+                          <span>{rightBtnText}</span>
                         </button>
                       )}
                     </div>

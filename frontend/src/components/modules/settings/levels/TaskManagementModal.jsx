@@ -677,18 +677,18 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                   </div>
 
                   {/* Actions footer */}
-                  <div className="flex items-center gap-3 pt-3 border-t border-slate-200">
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-3 border-t border-slate-200">
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                      className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] inline-flex items-center justify-center shrink-0"
                     >
-                      {editingTask ? "Cancel Edit" : "Reset Form"}
+                      <span>{editingTask ? "Cancel Edit" : "Reset Form"}</span>
                     </button>
                     <button
                       type="submit"
                       disabled={creating || updating}
-                      className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] disabled:opacity-50 text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 px-6 rounded-xl transition shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full sm:flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] disabled:opacity-50 text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl transition shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2 shrink-0"
                     >
                       {creating || updating ? (
                         <>

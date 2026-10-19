@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
     MdMoreVert, MdSearch, MdAdd, MdFilterList,
     MdExpandMore, MdClose, MdViewList, MdGridView,
-    MdChevronLeft, MdChevronRight, MdVisibility, MdEdit, MdDeleteOutline
+    MdChevronLeft, MdChevronRight, MdVisibility, MdEdit, MdDeleteOutline, MdCheck
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -275,20 +275,21 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
                         <button
                             type="button"
                             onClick={onClose}
-                            className={`px-4 py-2 text-xs ${buttonStyles.cancel}`}
+                            className={`w-full sm:w-auto px-4 py-2 text-xs sm:text-sm font-bold inline-flex items-center justify-center shrink-0 ${buttonStyles.cancel}`}
                         >
-                            Cancel
+                            <span>Cancel</span>
                         </button>
                         <button
                             type="submit"
                             disabled={isSaving}
-                            className={`px-5 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50 ${buttonStyles.primary}`}
+                            className={`w-full sm:w-auto px-5 py-2 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0 ${buttonStyles.primary}`}
                         >
-                            {isSaving ? "Saving..." : "Save Changes"}
+                            <MdCheck size={16} />
+                            <span>{isSaving ? "Saving..." : "Save Changes"}</span>
                         </button>
                     </div>
                 </form>
@@ -416,11 +417,12 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                             onClose();
                             onDelete(task);
                         }}
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
                     >
-                        Delete Task
+                        <MdDeleteOutline size={16} />
+                        <span>Delete Task</span>
                     </button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         {onEdit && (
                             <button
                                 type="button"
@@ -428,17 +430,18 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                                     onClose();
                                     onEdit(task);
                                 }}
-                                className={`px-3.5 py-2 text-xs ${buttonStyles.primary}`}
+                                className={`w-full sm:w-auto px-3.5 py-2 text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 shrink-0 ${buttonStyles.primary}`}
                             >
-                                Edit Task
+                                <MdEdit size={14} />
+                                <span>Edit Task</span>
                             </button>
                         )}
                         <button
                             type="button"
                             onClick={onClose}
-                            className={`px-4 py-2 text-xs ${buttonStyles.view}`}
+                            className={`w-full sm:w-auto px-4 py-2 text-xs sm:text-sm font-bold inline-flex items-center justify-center shrink-0 ${buttonStyles.view}`}
                         >
-                            Close
+                            <span>Close</span>
                         </button>
                     </div>
                 </div>
@@ -743,7 +746,8 @@ const TaskManagement = () => {
                                 onClick={resetFilters}
                                 className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
                             >
-                                Reset Filters
+                                <MdClose size={14} />
+                                <span>Reset Filters</span>
                             </button>
                         )}
                     </div>
@@ -827,9 +831,10 @@ const TaskManagement = () => {
                                 <button
                                     type="button"
                                     onClick={resetFilters}
-                                    className="text-xs font-bold text-orange-500 hover:text-orange-600 transition cursor-pointer"
+                                    className="text-xs font-bold text-orange-500 hover:text-orange-600 transition cursor-pointer flex items-center gap-1"
                                 >
-                                    Clear All
+                                    <MdClose size={13} />
+                                    <span>Clear All</span>
                                 </button>
                             )}
                         </div>

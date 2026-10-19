@@ -1017,19 +1017,22 @@ const DatePickerComponent = ({ selectedDate, selectedTime, onDateTimeSelect, onC
       )}
 
       {/* Action buttons */}
-      <div className="flex justify-end gap-2.5 pt-3">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3">
         <button
+          type="button"
           onClick={onClose}
-          className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center shrink-0"
         >
-          Cancel
+          <span>Cancel</span>
         </button>
         <button
+          type="button"
           onClick={handleConfirm}
           disabled={!tempSelectedDate}
-          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shrink-0"
         >
-          Confirm
+          <CheckCircle size={15} />
+          <span>Confirm</span>
         </button>
       </div>
     </div>

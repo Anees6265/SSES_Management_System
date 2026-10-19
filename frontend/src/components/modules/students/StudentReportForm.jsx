@@ -2047,9 +2047,10 @@ export default function StudentReportForm() {
               <button
                 type="submit"
                 disabled={isCreating}
-                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition text-center"
+                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
               >
-                {isCreating ? 'Submitting...' : 'Submit Report'}
+                <FaCheckCircle size={15} />
+                <span>{isCreating ? 'Submitting...' : 'Submit Report'}</span>
               </button>
             )}
 
@@ -2059,9 +2060,10 @@ export default function StudentReportForm() {
                 type="button"
                 onClick={handleUpdate}
                 disabled={isUpdating}
-                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition text-center"
+                className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-bold text-xs sm:text-sm disabled:opacity-50 shadow-xs shadow-orange-200 transition inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
               >
-                {isUpdating ? 'Updating...' : 'Update Report'}
+                <FaCheckCircle size={15} />
+                <span>{isUpdating ? 'Updating...' : 'Update Report'}</span>
               </button>
             )}
           </div>

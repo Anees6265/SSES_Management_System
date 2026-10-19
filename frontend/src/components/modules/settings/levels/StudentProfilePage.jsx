@@ -363,8 +363,10 @@ const ReadyStudentModal = ({ name, currentStatus, onConfirm, onCancel, loading }
                         </button>
                     ))}
                 </div>
-                <div className="flex gap-3 px-6 pb-6">
-                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer">Cancel</button>
+                <div className="flex gap-2.5 sm:gap-3 px-6 pb-6">
+                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center">
+                        <span>Cancel</span>
+                    </button>
                     <button onClick={() => onConfirm(selected)} disabled={loading}
                         className="flex-1 py-2.5 text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
                         {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MdCheckCircle size={15} />}
@@ -868,8 +870,10 @@ const MarkDroppedModal = ({ name, onConfirm, onCancel, loading, variant = "dropp
                         {fileErr && <p className="text-[11px] text-red-500 mt-1">{fileErr}</p>}
                     </div>
                 </div>
-                <div className="flex gap-3 px-6 pb-6">
-                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer">Cancel</button>
+                <div className="flex gap-2.5 sm:gap-3 px-6 pb-6">
+                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center">
+                        <span>Cancel</span>
+                    </button>
                     <button onClick={handleSubmit} disabled={loading}
                         className={`flex-1 py-2.5 text-xs font-semibold text-white rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-60 shadow-sm ${isDummy ? "bg-orange-500 hover:bg-orange-600" : "bg-red-500 hover:bg-red-600"}`}>
                         {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MdWarning size={15} />}
@@ -902,8 +906,10 @@ const PromoteModal = ({ name, onConfirm, onCancel, loading }) => {
                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-green-400 resize-none"
                     />
                 </div>
-                <div className="flex gap-3 px-6 pb-6">
-                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer">Cancel</button>
+                <div className="flex gap-2.5 sm:gap-3 px-6 pb-6">
+                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center">
+                        <span>Cancel</span>
+                    </button>
                     <button onClick={() => onConfirm(remark)} disabled={loading}
                         className="flex-1 py-2.5 text-xs font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-green-300 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
                         {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MdArrowUpward size={15} />}
@@ -1016,9 +1022,9 @@ const DummyDetailsModal = ({ raw, name, onCancel, onMarkActive }) => {
                 <div className="flex items-center gap-2.5 px-6 pb-6 pt-1">
                     <button
                         onClick={onCancel}
-                        className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer"
+                        className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer flex items-center justify-center text-center"
                     >
-                        Close
+                        <span>Close</span>
                     </button>
                     <button
                         onClick={() => { onCancel(); onMarkActive(); }}

@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { IoClose } from "react-icons/io5";
-import { MdAccountTree } from "react-icons/md";
+import { MdAccountTree, MdAdd, MdCheck } from "react-icons/md";
 import { toast } from "react-toastify";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
@@ -150,20 +150,27 @@ const AddSubdepartmentModal = ({ isOpen, onClose, onSuccess, departmentId, editD
                 </label>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 mt-6">
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                  className="w-full sm:flex-1 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center shrink-0"
                 >
-                  Cancel
+                  <span>Cancel</span>
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50"
+                  className="w-full sm:flex-1 py-2 sm:py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shrink-0"
                 >
-                  {isSubmitting ? (isEditMode ? "Updating..." : "Adding...") : (isEditMode ? "Update" : "Add")}
+                  {isSubmitting ? (
+                    isEditMode ? "Updating..." : "Adding..."
+                  ) : (
+                    <>
+                      {isEditMode ? <MdCheck size={16} /> : <MdAdd size={16} />}
+                      <span>{isEditMode ? "Update" : "Add"}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </Form>

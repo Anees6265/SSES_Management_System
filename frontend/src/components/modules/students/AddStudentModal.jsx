@@ -1039,20 +1039,21 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                   </div>
 
                   {/* Form Actions */}
-                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-150">
+                  <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-gray-150">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+                      className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
                     >
-                      Cancel
+                      <span>Cancel</span>
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting || isCreatingManual}
-                      className="px-5 py-2 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50"
+                      className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 sm:gap-2 text-center"
                     >
-                      {isSubmitting || isCreatingManual ? "Adding Student..." : "Add Student"}
+                      <UserPlus size={15} />
+                      <span>{isSubmitting || isCreatingManual ? "Adding Student..." : "Add Student"}</span>
                     </button>
                   </div>
                 </Form>
@@ -1063,13 +1064,13 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
         {/* Modal Footer (for Excel Tab) */}
         {activeTab === "excel" && (
-          <div className="px-5 sm:px-6 py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-between shrink-0">
+          <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-between gap-2.5 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
             >
-              {importResult ? "Close" : "Cancel"}
+              <span>{importResult ? "Close" : "Cancel"}</span>
             </button>
 
             <button

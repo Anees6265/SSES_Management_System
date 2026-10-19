@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { confirmToast } from '../../../utils/confirmToast';
-import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon } from 'lucide-react';
+import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
@@ -471,9 +471,10 @@ const UsersManagement = () => {
                             <button
                                 type="button"
                                 onClick={() => setCreateModalOpen(true)}
-                                className="rounded-md bg-orange-500 px-3.5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                                className="rounded-xl bg-orange-500 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] inline-flex items-center justify-center gap-1.5 shrink-0"
                             >
-                                + Create New
+                                <Plus size={16} />
+                                <span>Create New</span>
                             </button>
                             <OrangeButton
                                 isOpen={createModalOpen}
@@ -613,16 +614,17 @@ const UsersManagement = () => {
 
                                             {/* Bottom Actions Row */}
                                             <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/user-profile/${user._id || user.id}`);
-                                                    }}
-                                                    className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 p-1"
-                                                >
-                                                    <span>View Profile</span>
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/user-profile/${user._id || user.id}`);
+                                                        }}
+                                                        className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 p-1"
+                                                    >
+                                                        <Eye size={13} />
+                                                        <span>View Profile</span>
+                                                    </button>
 
                                                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                     <button

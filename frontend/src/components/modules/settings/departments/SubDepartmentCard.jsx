@@ -1,4 +1,4 @@
-import { MdAccountTree, MdOutlineMenuBook } from 'react-icons/md';
+import { MdAccountTree, MdOutlineMenuBook, MdVisibility } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,15 +9,17 @@ const ActionButtons = ({ onView, onEdit, inactive, variant }) => {
     <div className={`flex gap-2.5 sm:gap-3 mt-auto ${isFull ? 'w-full' : 'px-4 sm:px-5 pb-4 sm:pb-5'}`}>
       {onView && (
         <button
+          type="button"
           onClick={inactive ? undefined : onView}
           disabled={inactive}
-          className={`flex-1 border rounded-xl py-2.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] ${
+          className={`flex-1 border rounded-xl py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-1.5 shrink-0 ${
             inactive
               ? 'border-gray-150 bg-gray-50 text-gray-300 cursor-not-allowed'
               : 'border-gray-200 text-gray-700 hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs'
           }`}
         >
-          {isFull ? 'VIEW DETAILS' : 'VIEW'}
+          <MdVisibility size={15} />
+          <span>{isFull ? 'VIEW DETAILS' : 'VIEW'}</span>
         </button>
       )}
       {onEdit && (

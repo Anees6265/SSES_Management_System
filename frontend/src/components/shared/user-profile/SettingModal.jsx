@@ -5,7 +5,7 @@ import { useUpdateUserMutation } from "../../../redux/api/authApi";
 import { toast } from "react-toastify";
 import profileImg from "../../../assets/images/profile-img.png";
 // import FaceRegistration from "../../modules/face-auth/FaceRegistration"; // Face recognition disabled
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
 const SettingsModal = ({ user, isOpen, onClose }) => {
@@ -220,20 +220,23 @@ const SettingsModal = ({ user, isOpen, onClose }) => {
                 </div>
 
                 {/* FOOTER BUTTONS */}
-                <div className="px-6 py-5 border-t bg-white">
-                    <div className="flex gap-4">
+                <div className="px-4 sm:px-6 py-4 sm:py-5 border-t bg-white">
+                    <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4">
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition shadow-sm"
+                            className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition shadow-2xs hover:shadow-xs text-xs sm:text-sm inline-flex items-center justify-center cursor-pointer shrink-0"
                         >
-                            Cancel
+                            <span>Cancel</span>
                         </button>
                         <button
+                            type="button"
                             onClick={handleSubmit}
                             disabled={isLoading}
-                            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#FDA92D] to-[#FDB84D] text-white font-semibold shadow-md hover:shadow-lg transition"
+                            className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#FDA92D] to-[#FDB84D] text-white font-semibold shadow-xs hover:shadow-md transition text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 disabled:opacity-50"
                         >
-                            {isLoading ? "Saving..." : "Save"}
+                            <Check size={16} />
+                            <span>{isLoading ? "Saving..." : "Save"}</span>
                         </button>
                     </div>
                 </div>

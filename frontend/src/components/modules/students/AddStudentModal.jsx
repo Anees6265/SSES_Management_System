@@ -15,7 +15,7 @@ import {
   Info
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { Formik, Form } from "formik";
+import { Formik, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { 
   useGetAllSubdepartmentsQuery, 
@@ -49,6 +49,7 @@ const manualStudentValidationSchema = Yup.object({
     .trim()
     .nullable()
     .email("Enter a valid email address"),
+  subDepartmentId: Yup.string().required("Department / Sub-Department is required"),
   course: Yup.string().required("Branch / Course is required"),
   sessionId: Yup.string().nullable(),
   year: Yup.string().required("Academic Year is required"),
@@ -80,17 +81,6 @@ export const isNaturallyITEG = (c) => {
 
 const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdded }) => {
   const [activeTab, setActiveTab] = useState("excel"); // "excel" | "manual"
-  const [selectedSubDeptId, setSelectedSubDeptId] = useState(defaultSubDepartmentId || "");
-  const [selectedBatch, setSelectedBatch] = useState("2025");
-  const [selectedYear, setSelectedYear] = useState("");
-
-  useEffect(() => {
-    if (defaultSubDepartmentId) {
-      setSelectedSubDeptId(defaultSubDepartmentId);
-    } else {
-      setSelectedSubDeptId("");
-    }
-  }, [defaultSubDepartmentId, isOpen]);
   
   // Excel File State
   const [excelFile, setExcelFile] = useState(null);
@@ -110,60 +100,37 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   const [createNewStudent, { isLoading: isCreatingManual }] = useCreateNewStudentMutation();
   const [importStudentsExcel, { isLoading: isImportingExcel }] = useImportStudentsExcelMutation();
 
-  // Selected subdepartment object
+  // Selected subdepartment object (if opened from department page)
   const currentSubDept = useMemo(() => {
-    const targetId = selectedSubDeptId || defaultSubDepartmentId;
-    if (!targetId) return null;
-    return subDepartments.find(sd => sd._id === targetId) || null;
-  }, [subDepartments, selectedSubDeptId, defaultSubDepartmentId]);
+    if (!defaultSubDepartmentId) return null;
+    return subDepartments.find(sd => sd._id === defaultSubDepartmentId) || null;
+  }, [subDepartments, defaultSubDepartmentId]);
 
-  // Allowed courses for the selected subdepartment
-  const allowedCourses = useMemo(() => {
-    if (!currentSubDept) return [];
-    if (currentSubDept.allowedCourses && currentSubDept.allowedCourses.length > 0) {
-      return currentSubDept.allowedCourses;
+  // Default subdepartment and courses for manual entry
+  const defaultSubDept = useMemo(() => {
+    if (defaultSubDepartmentId) {
+      return subDepartments.find(sd => sd._id === defaultSubDepartmentId) || null;
     }
-    const deptCourses = currentSubDept.departmentId?.allowedCourses || [];
-    return deptCourses.map(c => c.courseName).filter(Boolean);
-  }, [currentSubDept]);
+    return subDepartments[0] || null;
+  }, [subDepartments, defaultSubDepartmentId]);
 
-  // Handle Batch change and smart Year suggestion
-  const handleBatchChange = (newBatch) => {
-    setSelectedBatch(newBatch);
-    const match = String(newBatch).match(/\b(20\d\d)\b/);
-    if (match) {
-      const yr = parseInt(match[1], 10);
-      const curr = new Date().getFullYear();
-      const diff = curr - yr;
-      if (diff <= 0) setSelectedYear("1st Year");
-      else if (diff === 1) setSelectedYear("2nd Year");
-      else if (diff === 2) setSelectedYear("3rd Year");
-      else if (diff >= 3) setSelectedYear("4th Year");
+  const defaultCourses = useMemo(() => {
+    if (!defaultSubDept) return [];
+    let list = defaultSubDept.allowedCourses || [];
+    if (!list.length && defaultSubDept.departmentId?.allowedCourses) {
+      list = defaultSubDept.departmentId.allowedCourses.map(c => typeof c === 'string' ? c : c.courseName).filter(Boolean);
     }
-  };
-
-  // Active year calculation and smart fallback based on batch
-  const activeYear = useMemo(() => {
-    if (selectedYear) return selectedYear;
-    const match = String(selectedBatch).match(/\b(20\d\d)\b/);
-    if (match) {
-      const yr = parseInt(match[1], 10);
-      const curr = new Date().getFullYear();
-      const diff = curr - yr;
-      if (diff <= 0) return "1st Year";
-      if (diff === 1) return "2nd Year";
-      if (diff === 2) return "3rd Year";
-      if (diff >= 3) return "4th Year";
-    }
-    return "1st Year";
-  }, [selectedYear, selectedBatch]);
+    return list;
+  }, [defaultSubDept]);
 
   if (!isOpen) return null;
 
   // ── Download Sample Excel Template (26 Requested Fields) ──────────────────────────
   const handleDownloadSample = () => {
     try {
-      const coursesList = allowedCourses.length > 0 ? allowedCourses : ["BCA", "B.Tech", "MCA", "BBA", "B.Sc"];
+      const coursesList = currentSubDept?.allowedCourses?.length > 0 
+        ? currentSubDept.allowedCourses 
+        : ["BCA", "BBA", "B.com(CA)", "BSC(BT)", "BSC(Micro)", "B.Tech(CS)", "B.Tech(AIML)", "B.Tech(IT)"];
       const deptName = currentSubDept?.name || "Department";
 
       const sampleData = [
@@ -516,8 +483,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           const lastName = String(normalized.lastName || "").trim();
           const fullName = String(normalized.fullName || `${firstName} ${lastName}`).trim();
           const fatherName = String(normalized.fatherName || "").trim();
-          const studentMobile = String(normalized.studentMobile || "").trim();
-          const course = String(normalized.course || normalized.branch || "").trim() || allowedCourses[0] || "General";
+          const course = String(normalized.course || normalized.branch || "").trim() || "General";
 
           const missing = [];
           if (!firstName && !fullName) missing.push("First / Full Name");
@@ -557,8 +523,8 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             parentMobile: normalized.fatherContactNumber || normalized.parentMobile || studentMobile,
             course,
             branch: normalized.branch || course,
-            year: normalized.currentYear || normalized.year || selectedYear || "1st Year",
-            currentYear: normalized.currentYear || normalized.year || selectedYear || "1st Year",
+            year: normalized.currentYear || normalized.year || "1st Year",
+            currentYear: normalized.currentYear || normalized.year || "1st Year",
             currentSemester: normalized.currentSemester || "",
             batch: normalized.batch || normalized.batchYear || "",
             batchYear: normalized.batch || normalized.batchYear || "",
@@ -621,7 +587,6 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
   // ── Submit Excel Import ─────────────────────────────────────
   const handleSubmitImport = async () => {
-    const targetSubDeptId = selectedSubDeptId || defaultSubDepartmentId || "";
     if (!excelFile && parsedRows.length === 0) {
       toast.error("Please upload an Excel file first");
       return;
@@ -632,20 +597,16 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
       if (excelFile) {
         const formData = new FormData();
         formData.append("file", excelFile);
-        if (targetSubDeptId) {
-          formData.append("subDepartmentId", targetSubDeptId);
+        if (defaultSubDepartmentId) {
+          formData.append("subDepartmentId", defaultSubDepartmentId);
         }
-        formData.append("batch", selectedBatch || "");
-        formData.append("year", activeYear);
         res = await importStudentsExcel(formData).unwrap();
       } else {
         const payload = {
-          batch: selectedBatch || "",
-          year: activeYear,
           students: parsedRows
         };
-        if (targetSubDeptId) {
-          payload.subDepartmentId = targetSubDeptId;
+        if (defaultSubDepartmentId) {
+          payload.subDepartmentId = defaultSubDepartmentId;
         }
         res = await importStudentsExcel(payload).unwrap();
       }
@@ -662,9 +623,9 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   // ── Submit Single Student Manual Form ───────────────────────
   const handleManualSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
-      const targetSubDeptId = values.subDepartmentId || selectedSubDeptId || defaultSubDepartmentId;
-      const targetYear = values.year || values.currentYear || activeYear || "1st Year";
-      const targetBatch = values.batch?.trim() || selectedBatch || "2025";
+      const targetSubDeptId = values.subDepartmentId || defaultSubDepartmentId;
+      const targetYear = values.year || values.currentYear || "1st Year";
+      const targetBatch = values.batch?.trim() || new Date().getFullYear().toString();
 
       const finalPayload = {
         ...values,
@@ -726,17 +687,24 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-5 sm:px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-gradient-to-r from-orange-50/50 via-white to-white shrink-0">
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-150 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-orange-100/80 text-orange-600 flex items-center justify-center font-bold shrink-0">
               <Users size={20} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-gray-900 tracking-tight">
-                Add Students to Department
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-gray-900 tracking-tight">
+                  Add Students
+                </h2>
+                {currentSubDept?.name && (
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-orange-50 text-orange-700 border border-orange-200">
+                    {currentSubDept.name}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 font-medium">
-                {currentSubDept?.name ? `Target: ${currentSubDept.name}` : "Bulk import via Excel or add single student"}
+                Bulk import via Excel spreadsheet or add single student manually
               </p>
             </div>
           </div>
@@ -755,7 +723,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           <button
             type="button"
             onClick={() => setActiveTab("excel")}
-            className={`flex items-center gap-2 py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
+            className={`flex items-center gap-2 py-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
               activeTab === "excel"
                 ? "border-orange-500 text-orange-600 bg-white"
                 : "border-transparent text-gray-500 hover:text-gray-800"
@@ -767,7 +735,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           <button
             type="button"
             onClick={() => setActiveTab("manual")}
-            className={`flex items-center gap-2 py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
+            className={`flex items-center gap-2 py-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
               activeTab === "manual"
                 ? "border-orange-500 text-orange-600 bg-white"
                 : "border-transparent text-gray-500 hover:text-gray-800"
@@ -780,85 +748,43 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Sub-Department, Batch and Year Selectors (Common Context) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200/60">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Target Sub-Department <span className="text-gray-400 font-normal">(Optional for Excel)</span>
-              </label>
-              <select
-                value={selectedSubDeptId || defaultSubDepartmentId || ""}
-                onChange={(e) => {
-                  setSelectedSubDeptId(e.target.value);
-                  handleClearFile();
-                }}
-                disabled={Boolean(defaultSubDepartmentId)}
-                className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-2xs"
-              >
-                <option value="">All Departments (Auto-detect from SSISM Group)</option>
-                {subDepartments.map((sd) => (
-                  <option key={sd._id} value={sd._id}>
-                    {sd.name} ({sd.departmentId?.name || "Dept"})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Default Batch <span className="text-gray-400 font-normal">(Auto Creates Session)</span>
-              </label>
-              <input
-                type="text"
-                value={selectedBatch}
-                onChange={(e) => handleBatchChange(e.target.value)}
-                placeholder="e.g. 2024, 2025, 2026"
-                className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Default Academic Year
-              </label>
-              <select
-                value={activeYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-              >
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-                <option value="4th Year">4th Year</option>
-              </select>
-            </div>
-          </div>
-
           {/* ═══════════ TAB 1: EXCEL BULK IMPORT ═══════════ */}
           {activeTab === "excel" && (
             <div className="space-y-4">
               {/* Information Callout Banner for Department Routing & Credentials */}
-              <div className="bg-gradient-to-r from-blue-50/90 to-indigo-50/70 border border-blue-200/80 rounded-2xl p-3.5 sm:p-4 text-xs">
+              <div className="bg-gradient-to-r from-slate-50 to-orange-50/30 border border-slate-200/90 rounded-2xl p-4 text-xs">
                 <div className="flex items-start gap-2.5">
-                  <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1.5 text-slate-700">
-                    <p className="font-bold text-blue-950 text-xs sm:text-sm">
+                  <Info size={18} className="text-orange-500 shrink-0 mt-0.5" />
+                  <div className="space-y-2 text-slate-700 flex-1">
+                    <p className="font-extrabold text-slate-900 text-xs sm:text-sm">
                       Centralized Import & Department Auto-Routing:
                     </p>
-                    <ul className="text-[11px] sm:text-xs text-slate-600 space-y-1 list-disc list-inside">
-                      <li>
-                        <b>SSISM Group = Department:</b> Excel sheet me column <b>'SSISM Group'</b> (jaise <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">ITEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">MEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">BEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">B.TECH</code>) ke according student directly respective department me save hoga.
-                      </li>
-                      <li>
-                        <b>Automatic Session Creation:</b> Har student ke <b>'Batch'</b> (e.g. 2024, 2025, 2026) ke anusar academic session automatically create aur link ho jata hai.
-                      </li>
-                      <li>
-                        <b>Year-wise Routing:</b> Excel ke <b>'Current Year'</b> (1st Year, 2nd Year, etc.) ke anusar student year-wise classify hoga.
-                      </li>
-                      <li>
-                        <b>PR Key & Password:</b> PR Key khali rakhne par system unique ID banata hai, aur Password na dene par default password <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">ssism@123</code> set hota hai.
-                      </li>
-                    </ul>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-0.5">
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                        <span className="font-bold text-gray-900 block text-[11px] uppercase tracking-wider mb-0.5">
+                          1. SSISM Group = Department
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          Auto-routes to <b className="text-gray-700">ITEG, MEG, BEG, B.TECH</b> directly from sheet.
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                        <span className="font-bold text-gray-900 block text-[11px] uppercase tracking-wider mb-0.5">
+                          2. Batch = Auto-Session
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          Batch (e.g. 2024, 2025) automatically creates and links academic session.
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                        <span className="font-bold text-gray-900 block text-[11px] uppercase tracking-wider mb-0.5">
+                          3. Academic Year & Level 1A
+                        </span>
+                        <span className="text-[11px] text-gray-500">
+                          Year is saved from sheet; all students enroll in training <b className="text-gray-700">Level 1 (1A)</b>.
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1027,9 +953,9 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 text-[11px] font-semibold text-slate-700">
-                                  <span>{r.batch || selectedBatch || "—"}</span>
+                                  <span>{r.batch || "—"}</span>
                                   <span className="text-gray-400 mx-1">•</span>
-                                  <span className="text-orange-600 font-bold">{r.year || activeYear}</span>
+                                  <span className="text-orange-600 font-bold">{r.year || "1st Year"}</span>
                                 </td>
                                 <td className="px-3 py-2 font-mono text-gray-600">{r.studentMobile || "—"}</td>
                                 <td className="px-3 py-2 text-right">
@@ -1099,7 +1025,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 enrollmentNo: "",
                 prkey: "",
                 password: "",
-                withITEG: isNaturallyITEG(allowedCourses[0] || ""),
+                withITEG: isNaturallyITEG(defaultCourses[0] || ""),
                 firstName: "",
                 lastName: "",
                 fullName: "",
@@ -1108,12 +1034,12 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 studentMobile: "",
                 fatherContactNumber: "",
                 parentMobile: "",
-                course: allowedCourses.length === 1 ? allowedCourses[0] : "",
-                subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || "",
-                year: activeYear,
-                currentYear: activeYear,
+                course: defaultCourses[0] || "",
+                subDepartmentId: defaultSubDept?._id || "",
+                year: "1st Year",
+                currentYear: "1st Year",
                 currentSemester: "",
-                batch: selectedBatch || "2025",
+                batch: new Date().getFullYear().toString(),
                 gender: "Male",
                 category: "GEN",
                 dob: "",
@@ -1126,7 +1052,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 pincode: "",
                 trackBus: "",
                 sponsorshipType: "Regular",
-                ssismGroup: "",
+                ssismGroup: defaultSubDept?.departmentId?.name || defaultSubDept?.name || "",
                 technology: "",
               }}
               validationSchema={manualStudentValidationSchema}
@@ -1216,34 +1142,41 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                           Gender
                         </label>
-                        <select
-                          name="gender"
+                        <SelectDropdown
                           value={values.gender}
-                          onChange={(e) => setFieldValue("gender", e.target.value)}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
-                        </select>
+                          onChange={(val) => setFieldValue("gender", val)}
+                          options={[
+                            { value: "Male", label: "Male" },
+                            { value: "Female", label: "Female" },
+                            { value: "Other", label: "Other" },
+                          ]}
+                          placeholder="Select Gender"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                           Category
                         </label>
-                        <select
-                          name="category"
+                        <SelectDropdown
                           value={values.category}
-                          onChange={(e) => setFieldValue("category", e.target.value)}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="GEN">GEN (General)</option>
-                          <option value="OBC">OBC</option>
-                          <option value="SC">SC</option>
-                          <option value="ST">ST</option>
-                          <option value="EWS">EWS</option>
-                          <option value="Other">Other</option>
-                        </select>
+                          onChange={(val) => setFieldValue("category", val)}
+                          align="right"
+                          options={[
+                            { value: "GEN", label: "GEN (General)" },
+                            { value: "OBC", label: "OBC" },
+                            { value: "SC", label: "SC" },
+                            { value: "ST", label: "ST" },
+                            { value: "EWS", label: "EWS" },
+                            { value: "Other", label: "Other" },
+                          ]}
+                          placeholder="Select Category"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer"
+                        />
                       </div>
                       <InputField
                         label="Date of Birth (DOB)"
@@ -1327,76 +1260,142 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                     </div>
                   </div>
 
-                  {/* Section 4: Academic, Transport & Group Details */}
+                  {/* Section 4: Academic, Transport & Department Details */}
                   <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
                       <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                      <span>4. Academic, Transport & Group Details</span>
+                      <span>4. Academic, Transport & Department Details</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                          Branch / Course *
+                          Department / Sub-Department <span className="text-rose-500">*</span>
                         </label>
-                        <select
-                          name="course"
-                          value={values.course}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFieldValue("course", val);
-                            if (isNaturallyITEG(val)) {
-                              setFieldValue("withITEG", true);
+                        <SelectDropdown
+                          value={values.subDepartmentId}
+                          disabled={Boolean(defaultSubDepartmentId)}
+                          onChange={(subId) => {
+                            setFieldValue("subDepartmentId", subId);
+                            const matched = subDepartments.find(sd => sd._id === subId);
+                            if (matched) {
+                              setFieldValue("ssismGroup", matched.departmentId?.name || matched.name);
+                              let courses = matched.allowedCourses || [];
+                              if (!courses.length && matched.departmentId?.allowedCourses) {
+                                courses = matched.departmentId.allowedCourses.map(c => typeof c === 'string' ? c : c.courseName).filter(Boolean);
+                              }
+                              const firstCourse = courses[0] || "";
+                              setFieldValue("course", firstCourse);
+                              if (isNaturallyITEG(firstCourse)) {
+                                setFieldValue("withITEG", true);
+                              } else {
+                                setFieldValue("withITEG", false);
+                              }
+                            } else {
+                              setFieldValue("course", "");
+                              setFieldValue("ssismGroup", "");
+                              setFieldValue("withITEG", false);
                             }
                           }}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="">{allowedCourses.length === 0 ? "Select Sub Department first" : "Select Course"}</option>
-                          {allowedCourses.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
+                          options={subDepartments.map((sd) => ({
+                            value: sd._id,
+                            label: `${sd.name} (${sd.departmentId?.name || "Dept"})`,
+                          }))}
+                          placeholder="Select Sub-Department"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName={`w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer ${
+                            Boolean(defaultSubDepartmentId) ? "opacity-60 !cursor-not-allowed bg-gray-100" : ""
+                          }`}
+                        />
+                        <ErrorMessage name="subDepartmentId" component="p" className="text-rose-500 text-xs mt-1 font-medium" />
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                          Current Year *
+                          Branch / Course <span className="text-rose-500">*</span>
                         </label>
-                        <select
-                          name="year"
-                          value={values.year || activeYear}
-                          onChange={(e) => {
-                            setFieldValue("year", e.target.value);
-                            setSelectedYear(e.target.value);
+                        {(() => {
+                          const matched = subDepartments.find(sd => sd._id === values.subDepartmentId);
+                          let courses = matched?.allowedCourses || [];
+                          if (!courses.length && matched?.departmentId?.allowedCourses) {
+                            courses = matched.departmentId.allowedCourses.map(c => typeof c === 'string' ? c : c.courseName).filter(Boolean);
+                          }
+                          if (!courses.length) {
+                            courses = ["BCA", "BBA", "B.com(CA)", "BSC(BT)", "BSC(Micro)", "B.Tech(CS)", "B.Tech(AIML)", "B.Tech(IT)"];
+                          }
+                          const courseOptions = courses.map((c) => ({
+                            value: c,
+                            label: c,
+                          }));
+                          return (
+                            <SelectDropdown
+                              value={values.course}
+                              onChange={(val) => {
+                                setFieldValue("course", val);
+                                if (isNaturallyITEG(val)) {
+                                  setFieldValue("withITEG", true);
+                                }
+                              }}
+                              options={courseOptions}
+                              placeholder={!values.subDepartmentId ? "Select Department first" : "Select Course"}
+                              disabled={!values.subDepartmentId}
+                              className="w-full"
+                              menuClassName="w-full"
+                              buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                            />
+                          );
+                        })()}
+                        <ErrorMessage name="course" component="p" className="text-rose-500 text-xs mt-1 font-medium" />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Academic Year <span className="text-rose-500">*</span>
+                        </label>
+                        <SelectDropdown
+                          value={values.year}
+                          align="right"
+                          onChange={(val) => {
+                            setFieldValue("year", val);
+                            setFieldValue("currentYear", val);
                           }}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="1st Year">1st Year</option>
-                          <option value="2nd Year">2nd Year</option>
-                          <option value="3rd Year">3rd Year</option>
-                          <option value="4th Year">4th Year</option>
-                        </select>
+                          options={[
+                            { value: "1st Year", label: "1st Year" },
+                            { value: "2nd Year", label: "2nd Year" },
+                            { value: "3rd Year", label: "3rd Year" },
+                            { value: "4th Year", label: "4th Year" },
+                          ]}
+                          placeholder="Select Year"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer"
+                        />
+                        <ErrorMessage name="year" component="p" className="text-rose-500 text-xs mt-1 font-medium" />
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                           Current Semester
                         </label>
-                        <select
-                          name="currentSemester"
+                        <SelectDropdown
                           value={values.currentSemester}
-                          onChange={(e) => setFieldValue("currentSemester", e.target.value)}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="">Select Semester</option>
-                          <option value="1st Sem">1st Sem</option>
-                          <option value="2nd Sem">2nd Sem</option>
-                          <option value="3rd Sem">3rd Sem</option>
-                          <option value="4th Sem">4th Sem</option>
-                          <option value="5th Sem">5th Sem</option>
-                          <option value="6th Sem">6th Sem</option>
-                          <option value="7th Sem">7th Sem</option>
-                          <option value="8th Sem">8th Sem</option>
-                        </select>
+                          onChange={(val) => setFieldValue("currentSemester", val)}
+                          options={[
+                            { value: "", label: "Select Semester (Optional)" },
+                            { value: "1st Sem", label: "1st Sem" },
+                            { value: "2nd Sem", label: "2nd Sem" },
+                            { value: "3rd Sem", label: "3rd Sem" },
+                            { value: "4th Sem", label: "4th Sem" },
+                            { value: "5th Sem", label: "5th Sem" },
+                            { value: "6th Sem", label: "6th Sem" },
+                            { value: "7th Sem", label: "7th Sem" },
+                            { value: "8th Sem", label: "8th Sem" },
+                          ]}
+                          placeholder="Select Semester"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer"
+                        />
                       </div>
 
                       <div>
@@ -1420,18 +1419,21 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                           Sponsorship Type
                         </label>
-                        <select
-                          name="sponsorshipType"
+                        <SelectDropdown
                           value={values.sponsorshipType}
-                          onChange={(e) => setFieldValue("sponsorshipType", e.target.value)}
-                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
-                        >
-                          <option value="Regular">Regular</option>
-                          <option value="Scholarship">Scholarship</option>
-                          <option value="Sponsored">Sponsored</option>
-                          <option value="TFWS">TFWS</option>
-                          <option value="Other">Other</option>
-                        </select>
+                          onChange={(val) => setFieldValue("sponsorshipType", val)}
+                          options={[
+                            { value: "Regular", label: "Regular" },
+                            { value: "Scholarship", label: "Scholarship" },
+                            { value: "Sponsored", label: "Sponsored" },
+                            { value: "TFWS", label: "TFWS" },
+                            { value: "Other", label: "Other" },
+                          ]}
+                          placeholder="Select Sponsorship"
+                          className="w-full"
+                          menuClassName="w-full"
+                          buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3 border border-gray-200 hover:border-orange-400 bg-gray-50 hover:bg-white rounded-lg text-sm text-gray-700 font-medium transition cursor-pointer"
+                        />
                       </div>
 
                       <InputField

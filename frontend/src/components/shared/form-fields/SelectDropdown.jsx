@@ -9,6 +9,7 @@ const SelectDropdown = ({
   placeholder = "Select...",
   className = "",
   buttonClassName = "",
+  menuClassName = "",
   disabled = false,
   align = "left",
 }) => {
@@ -36,7 +37,7 @@ const SelectDropdown = ({
   const widthClass = hasWidth ? "" : "w-full";
 
   return (
-    <div ref={dropdownRef} className={`relative inline-block ${widthClass} ${className}`}>
+    <div ref={dropdownRef} className={`relative inline-block ${widthClass} ${className} ${isOpen ? "z-40" : ""}`}>
       <button
         type="button"
         disabled={disabled}
@@ -55,27 +56,31 @@ const SelectDropdown = ({
       </button>
 
       {isOpen && (
-        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1.5 min-w-full w-max max-w-[calc(100vw-2rem)] max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar`}>
-          {options.map((opt) => {
-            const isSelected = (opt.value === undefined || opt.value === null ? "" : String(opt.value)) === normalizedValue;
-            return (
-              <div
-                key={String(opt.value)}
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`flex items-center justify-between px-3.5 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 ${
-                  isSelected
-                    ? "bg-[var(--primary,#FDA92D)] text-white"
-                    : "text-gray-700 hover:bg-[var(--primary,#FDA92D)] hover:text-white"
-                }`}
-              >
-                <span className="truncate">{opt.label}</span>
-                {isSelected && <MdCheck size={16} className="ml-2 shrink-0 text-white" />}
-              </div>
-            );
-          })}
+        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1.5 min-w-full max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar ${menuClassName || "w-max max-w-[calc(100vw-2rem)]"}`}>
+          {options.length === 0 ? (
+            <div className="px-3.5 py-2 text-xs text-gray-400 italic">No options available</div>
+          ) : (
+            options.map((opt, idx) => {
+              const isSelected = (opt.value === undefined || opt.value === null ? "" : String(opt.value)) === normalizedValue;
+              return (
+                <div
+                  key={`${String(opt.value)}-${idx}`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`flex items-center justify-between px-3.5 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 ${
+                    isSelected
+                      ? "bg-[var(--primary,#FDA92D)] text-white"
+                      : "text-gray-700 hover:bg-[var(--primary,#FDA92D)] hover:text-white"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <MdCheck size={16} className="ml-2 shrink-0 text-white" />}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>

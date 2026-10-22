@@ -179,9 +179,10 @@ const DepartmentManagement = () => {
                   type="button"
                   onClick={() => setIsAddStudentModalOpen(true)}
                   className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+                  title="Centralized Student Entry & Excel Bulk Import"
                 >
                   <UserPlus size={16} />
-                  <span>Add Student</span>
+                  <span>Add / Import Students</span>
                 </button>
               }
             >
@@ -274,9 +275,10 @@ const DepartmentManagement = () => {
               type="button"
               onClick={() => setIsAddStudentModalOpen(true)}
               className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+              title="Centralized Student Entry & Excel Bulk Import"
             >
               <UserPlus size={16} />
-              <span>Add Student</span>
+              <span>Add / Import Students</span>
             </button>
           }
         />

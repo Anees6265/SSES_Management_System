@@ -19,7 +19,6 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { 
   useGetAllSubdepartmentsQuery, 
-  useGetAllSessionsQuery,
   useCreateNewStudentMutation,
   useImportStudentsExcelMutation
 } from "../../../redux/api/authApi";
@@ -51,11 +50,12 @@ const manualStudentValidationSchema = Yup.object({
     .nullable()
     .email("Enter a valid email address"),
   course: Yup.string().required("Branch / Course is required"),
-  subDepartmentId: Yup.string().required("Sub-Department is required"),
-  sessionId: Yup.string().required("Academic Session is required"),
+  sessionId: Yup.string().nullable(),
   year: Yup.string().required("Academic Year is required"),
   currentSemester: Yup.string().nullable(),
-  batch: Yup.string().nullable(),
+  batch: Yup.string()
+    .trim()
+    .required("Batch is required (e.g. 2024, 2025, 2026)"),
   gender: Yup.string().nullable(),
   category: Yup.string().nullable(),
   dob: Yup.string().nullable(),
@@ -81,7 +81,7 @@ export const isNaturallyITEG = (c) => {
 const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdded }) => {
   const [activeTab, setActiveTab] = useState("excel"); // "excel" | "manual"
   const [selectedSubDeptId, setSelectedSubDeptId] = useState(defaultSubDepartmentId || "");
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState("2025");
   const [selectedYear, setSelectedYear] = useState("");
 
   useEffect(() => {
@@ -106,9 +106,6 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   const { data: subDeptsRes = {}, isLoading: isLoadingSubDepts } = useGetAllSubdepartmentsQuery();
   const subDepartments = subDeptsRes.data || [];
 
-  const { data: sessionsRes = {}, isLoading: isLoadingSessions } = useGetAllSessionsQuery(true);
-  const sessions = sessionsRes.data || [];
-
   // Mutations
   const [createNewStudent, { isLoading: isCreatingManual }] = useCreateNewStudentMutation();
   const [importStudentsExcel, { isLoading: isImportingExcel }] = useImportStudentsExcelMutation();
@@ -130,35 +127,36 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
     return deptCourses.map(c => c.courseName).filter(Boolean);
   }, [currentSubDept]);
 
-  // Active session fallback
-  const activeSessionId = useMemo(() => {
-    if (selectedSessionId) return selectedSessionId;
-    const active = sessions.find(s => s.isActive) || sessions[0];
-    return active?._id || "";
-  }, [sessions, selectedSessionId]);
+  // Handle Batch change and smart Year suggestion
+  const handleBatchChange = (newBatch) => {
+    setSelectedBatch(newBatch);
+    const match = String(newBatch).match(/\b(20\d\d)\b/);
+    if (match) {
+      const yr = parseInt(match[1], 10);
+      const curr = new Date().getFullYear();
+      const diff = curr - yr;
+      if (diff <= 0) setSelectedYear("1st Year");
+      else if (diff === 1) setSelectedYear("2nd Year");
+      else if (diff === 2) setSelectedYear("3rd Year");
+      else if (diff >= 3) setSelectedYear("4th Year");
+    }
+  };
 
-  // Active year calculation and smart fallback based on session
+  // Active year calculation and smart fallback based on batch
   const activeYear = useMemo(() => {
     if (selectedYear) return selectedYear;
-    const s = sessions.find(sess => sess._id === activeSessionId);
-    const name = s?.name || "";
-    if (name.includes("2024")) return "3rd Year";
-    if (name.includes("2025")) return "2nd Year";
-    if (name.includes("2026")) return "1st Year";
-    if (name.includes("2023")) return "4th Year";
+    const match = String(selectedBatch).match(/\b(20\d\d)\b/);
+    if (match) {
+      const yr = parseInt(match[1], 10);
+      const curr = new Date().getFullYear();
+      const diff = curr - yr;
+      if (diff <= 0) return "1st Year";
+      if (diff === 1) return "2nd Year";
+      if (diff === 2) return "3rd Year";
+      if (diff >= 3) return "4th Year";
+    }
     return "1st Year";
-  }, [selectedYear, sessions, activeSessionId]);
-
-  const handleSessionChange = (newSessionId) => {
-    setSelectedSessionId(newSessionId);
-    const s = sessions.find(sess => sess._id === newSessionId);
-    const name = s?.name || "";
-    if (name.includes("2024")) setSelectedYear("3rd Year");
-    else if (name.includes("2025")) setSelectedYear("2nd Year");
-    else if (name.includes("2026")) setSelectedYear("1st Year");
-    else if (name.includes("2023")) setSelectedYear("4th Year");
-    else setSelectedYear("1st Year");
-  };
+  }, [selectedYear, selectedBatch]);
 
   if (!isOpen) return null;
 
@@ -204,10 +202,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "Rahul",
           "Sharma",
           "Rahul Sharma",
-          coursesList[0] || "BCA",
+          "BCA",
           "1st Year",
           "1st Sem",
-          "2025-2028",
+          "2025",
           "9876543210",
           "9876543211",
           "rahul.sharma@ssism.org",
@@ -223,7 +221,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "452010",
           "Route No 12",
           "Regular",
-          "Group A"
+          "ITEG"
         ],
         [
           "STU2025002",
@@ -232,10 +230,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "Priya",
           "Patel",
           "Priya Patel",
-          coursesList[1] || coursesList[0] || "B.Tech",
+          "B.Tech",
           "2nd Year",
           "3rd Sem",
-          "2024-2027",
+          "2024",
           "9123456780",
           "9123456781",
           "priya.patel@ssism.org",
@@ -251,7 +249,63 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           "452001",
           "Route No 05",
           "Scholarship",
-          "Group B"
+          "MEG"
+        ],
+        [
+          "STU2025003",
+          "REG20250103",
+          "ENR20250047",
+          "Aman",
+          "Verma",
+          "Aman Verma",
+          "B.Tech",
+          "1st Year",
+          "1st Sem",
+          "2025",
+          "9812345670",
+          "9812345671",
+          "aman.verma@ssism.org",
+          "Rajesh Verma",
+          "Male",
+          "GEN",
+          "2005-02-14",
+          "112233445566",
+          "12 MG Road",
+          "Ujjain",
+          "Ujjain",
+          "Ujjain",
+          "456001",
+          "Route No 01",
+          "Regular",
+          "BEG"
+        ],
+        [
+          "STU2025004",
+          "REG20250104",
+          "ENR20250048",
+          "Sneha",
+          "Gupta",
+          "Sneha Gupta",
+          "B.Tech",
+          "3rd Year",
+          "5th Sem",
+          "2023",
+          "9988776655",
+          "9988776654",
+          "sneha.gupta@ssism.org",
+          "Anil Gupta",
+          "Female",
+          "GEN",
+          "2002-09-08",
+          "998877665544",
+          "78 Palasia",
+          "Indore",
+          "Indore",
+          "Indore",
+          "452001",
+          "Route No 08",
+          "Regular",
+          "B.TECH"
         ]
       ];
 
@@ -289,7 +343,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
       XLSX.utils.book_append_sheet(wb, ws, "Students");
 
       const guidelines = [
-        ["STUDENT IMPORT & EXTERNAL DATA INTEGRATION GUIDELINES"],
+        ["STUDENT IMPORT & DEPARTMENT AUTO-ROUTING GUIDELINES"],
         [""],
         ["The template contains all 26 standard student fields:"],
         ["1. Student ID            : (Optional) Unique student ID. Auto-generated if left empty."],
@@ -298,10 +352,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         ["4. First Name*           : Given name of student."],
         ["5. Last Name             : Surname of student."],
         ["6. Full Name             : Complete name (auto-built if left empty)."],
-        [`7. Branch/Course*        : Branch or degree [ ${coursesList.join(", ")} ].`],
-        ["8. Current Year          : e.g. 1st Year, 2nd Year, 3rd Year, 4th Year."],
+        ["7. Branch/Course*        : Branch or degree (e.g. BCA, B.Tech, MCA, BBA, B.Sc)."],
+        ["8. Current Year          : 1st Year, 2nd Year, 3rd Year, 4th Year (routes student data year-wise)."],
         ["9. Current Semester      : e.g. 1st Sem, 2nd Sem, 3rd Sem, etc."],
-        ["10. Batch                : e.g. 2024-2027, 2025-2029."],
+        ["10. Batch                : Admission Batch Year (e.g. 2024, 2025, 2026). Session is auto-created."],
         ["11. Mobile Number*       : 10-digit student phone number."],
         ["12. Father contact Number: 10-digit father/parent contact number."],
         ["13. email Id             : Student email address."],
@@ -317,10 +371,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         ["23. Pincode              : 6-digit postal area code."],
         ["24. Track Bus            : Bus route name or route number."],
         ["25. Sponshership Type    : Regular, Scholarship, Management, TFW, etc."],
-        ["26. SSISM Group          : Student assigned group (e.g. Group A, Group B)."],
+        ["26. SSISM Group          : Academic Department Name/Code (e.g. ITEG, MEG, BEG, B.TECH). Auto-routes to department!"],
         [""],
-        ["Department: " + deptName],
-        ["Allowed Courses: " + coursesList.join(", ")]
+        ["CENTRALIZED ROUTING NOTE:"],
+        ["Students from different departments can be in the same Excel sheet."],
+        ["The 'SSISM Group' column determines which department the student is routed into year-wise."]
       ];
 
       const wsGuide = XLSX.utils.aoa_to_sheet(guidelines);
@@ -328,7 +383,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
       XLSX.utils.book_append_sheet(wb, wsGuide, "Guidelines");
 
       const safeName = deptName.replace(/[^a-zA-Z0-9]/g, "_");
-      XLSX.writeFile(wb, `Student_Import_Template_${safeName}.xlsx`);
+      XLSX.writeFile(wb, `Student_Import_Template_Centralized.xlsx`);
       toast.info("Sample template with all 26 fields downloaded.");
     } catch (err) {
       console.error("Download sample error:", err);
@@ -395,12 +450,12 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             } else if (["branchcourse", "branch", "course", "degree", "stream"].includes(nk)) {
               normalized.branch = cleanVal;
               normalized.course = cleanVal;
-            } else if (["currentyear", "academicyear", "year", "studyingyear", "classyear"].includes(nk)) {
+            } else if (["currentyear", "academicyear", "year", "studyingyear", "classyear", "class"].includes(nk)) {
               normalized.currentYear = cleanVal;
               normalized.year = cleanVal;
             } else if (["currentsemester", "semester", "sem", "currentsem"].includes(nk)) {
               normalized.currentSemester = cleanVal;
-            } else if (["batch", "batchyear"].includes(nk)) {
+            } else if (["batch", "batchyear", "session", "batchsession"].includes(nk)) {
               normalized.batch = cleanVal;
               normalized.batchYear = cleanVal;
             } else if (["mobilenumber", "studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone", "phone"].includes(nk)) {
@@ -436,7 +491,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               normalized.trackBus = cleanVal;
             } else if (["sponshershiptype", "sponsorshiptype", "sponsorship"].includes(nk)) {
               normalized.sponsorshipType = cleanVal;
-            } else if (["ssismgroup", "group"].includes(nk)) {
+            } else if (["ssismgroup", "group", "department", "dept", "ssismdept", "division"].includes(nk)) {
               normalized.ssismGroup = cleanVal;
             } else if (["password", "pass", "pwd", "userpassword"].includes(nk)) {
               normalized.password = cleanVal;
@@ -566,15 +621,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
   // ── Submit Excel Import ─────────────────────────────────────
   const handleSubmitImport = async () => {
-    const targetSubDeptId = selectedSubDeptId || defaultSubDepartmentId;
-    if (!targetSubDeptId) {
-      toast.error("Please select a sub-department");
-      return;
-    }
-    if (!activeSessionId) {
-      toast.error("Please select an academic session");
-      return;
-    }
+    const targetSubDeptId = selectedSubDeptId || defaultSubDepartmentId || "";
     if (!excelFile && parsedRows.length === 0) {
       toast.error("Please upload an Excel file first");
       return;
@@ -585,20 +632,25 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
       if (excelFile) {
         const formData = new FormData();
         formData.append("file", excelFile);
-        formData.append("subDepartmentId", targetSubDeptId);
-        formData.append("sessionId", activeSessionId);
+        if (targetSubDeptId) {
+          formData.append("subDepartmentId", targetSubDeptId);
+        }
+        formData.append("batch", selectedBatch || "");
         formData.append("year", activeYear);
         if (parsedRows && parsedRows.length > 0) {
           formData.append("students", JSON.stringify(parsedRows));
         }
         res = await importStudentsExcel(formData).unwrap();
       } else {
-        res = await importStudentsExcel({
-          subDepartmentId: targetSubDeptId,
-          sessionId: activeSessionId,
+        const payload = {
+          batch: selectedBatch || "",
           year: activeYear,
           students: parsedRows
-        }).unwrap();
+        };
+        if (targetSubDeptId) {
+          payload.subDepartmentId = targetSubDeptId;
+        }
+        res = await importStudentsExcel(payload).unwrap();
       }
 
       setImportResult(res);
@@ -614,13 +666,14 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   const handleManualSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
       const targetSubDeptId = values.subDepartmentId || selectedSubDeptId || defaultSubDepartmentId;
-      const targetSessionId = values.sessionId || activeSessionId;
       const targetYear = values.year || values.currentYear || activeYear || "1st Year";
+      const targetBatch = values.batch?.trim() || selectedBatch || "2025";
 
       const finalPayload = {
         ...values,
         subDepartmentId: targetSubDeptId,
-        sessionId: targetSessionId,
+        batch: targetBatch,
+        batchYear: targetBatch,
         year: targetYear,
         currentYear: targetYear,
         studentId: values.studentId?.trim() || "",
@@ -633,8 +686,6 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         branch: values.course || values.branch || "",
         course: values.course || values.branch || "",
         currentSemester: values.currentSemester?.trim() || "",
-        batch: values.batch?.trim() || "",
-        batchYear: values.batch?.trim() || "",
         studentMobile: values.studentMobile?.trim() || "",
         fatherContactNumber: values.fatherContactNumber?.trim() || values.parentMobile?.trim() || "",
         parentMobile: values.fatherContactNumber?.trim() || values.parentMobile?.trim() || values.studentMobile?.trim() || "",
@@ -732,11 +783,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Sub-Department, Session and Year Selectors (Common Context) */}
+          {/* Sub-Department, Batch and Year Selectors (Common Context) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200/60">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Sub-Department <span className="text-orange-500">*</span>
+                Target Sub-Department <span className="text-gray-400 font-normal">(Optional for Excel)</span>
               </label>
               <select
                 value={selectedSubDeptId || defaultSubDepartmentId || ""}
@@ -747,7 +798,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 disabled={Boolean(defaultSubDepartmentId)}
                 className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-2xs"
               >
-                <option value="">Select Sub Department</option>
+                <option value="">All Departments (Auto-detect from SSISM Group)</option>
                 {subDepartments.map((sd) => (
                   <option key={sd._id} value={sd._id}>
                     {sd.name} ({sd.departmentId?.name || "Dept"})
@@ -758,24 +809,20 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Academic Session <span className="text-orange-500">*</span>
+                Default Batch <span className="text-gray-400 font-normal">(Auto Creates Session)</span>
               </label>
-              <select
-                value={activeSessionId}
-                onChange={(e) => handleSessionChange(e.target.value)}
+              <input
+                type="text"
+                value={selectedBatch}
+                onChange={(e) => handleBatchChange(e.target.value)}
+                placeholder="e.g. 2024, 2025, 2026"
                 className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-              >
-                {sessions.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name} {s.isActive ? " (Active)" : ""}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Academic Year <span className="text-orange-500">*</span>
+                Default Academic Year
               </label>
               <select
                 value={activeYear}
@@ -793,23 +840,26 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           {/* ═══════════ TAB 1: EXCEL BULK IMPORT ═══════════ */}
           {activeTab === "excel" && (
             <div className="space-y-4">
-              {/* Information Callout Banner for Login & PR Key */}
+              {/* Information Callout Banner for Department Routing & Credentials */}
               <div className="bg-gradient-to-r from-blue-50/90 to-indigo-50/70 border border-blue-200/80 rounded-2xl p-3.5 sm:p-4 text-xs">
                 <div className="flex items-start gap-2.5">
                   <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1 text-slate-700">
+                  <div className="space-y-1.5 text-slate-700">
                     <p className="font-bold text-blue-950 text-xs sm:text-sm">
-                      Login Credentials & PR Key Info:
+                      Centralized Import & Department Auto-Routing:
                     </p>
                     <ul className="text-[11px] sm:text-xs text-slate-600 space-y-1 list-disc list-inside">
                       <li>
-                        <b>PR Key / Roll No:</b> Aap Student ka <b>College Roll No</b>, <b>University Enrollment No</b>, ya <b>Scholar No</b> bhej sakte hain. Agar khali chodenge to system automatically unique ID generate kar dega.
+                        <b>SSISM Group = Department:</b> Excel sheet me column <b>'SSISM Group'</b> (jaise <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">ITEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">MEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">BEG</code>, <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">B.TECH</code>) ke according student directly respective department me save hoga.
                       </li>
                       <li>
-                        <b>Password:</b> Excel sheet me 'Password' column me password de sakte hain. Agar khali rakhenge to default password <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">ssism@123</code> set ho jayega.
+                        <b>Automatic Session Creation:</b> Har student ke <b>'Batch'</b> (e.g. 2024, 2025, 2026) ke anusar academic session automatically create aur link ho jata hai.
                       </li>
                       <li>
-                        <b>Student Portal Login:</b> Students apne <b>PR Key / Roll No</b>, <b>Mobile Number</b>, ya <b>Email</b> kisi se bhi login kar sakte hain.
+                        <b>Year-wise Routing:</b> Excel ke <b>'Current Year'</b> (1st Year, 2nd Year, etc.) ke anusar student year-wise classify hoga.
+                      </li>
+                      <li>
+                        <b>PR Key & Password:</b> PR Key khali rakhne par system unique ID banata hai, aur Password na dene par default password <code className="bg-blue-150/70 text-blue-900 px-1 py-0.5 rounded font-mono font-bold">ssism@123</code> set hota hai.
                       </li>
                     </ul>
                   </div>
@@ -937,11 +987,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                             <tr>
                               <th className="px-3 py-2">Row</th>
                               <th className="px-3 py-2">Student ID</th>
-                              <th className="px-3 py-2">Reg / Enr No</th>
                               <th className="px-3 py-2">Student Name</th>
+                              <th className="px-3 py-2">SSISM Group (Dept)</th>
+                              <th className="px-3 py-2">Course</th>
+                              <th className="px-3 py-2">Batch / Year</th>
                               <th className="px-3 py-2">Mobile</th>
-                              <th className="px-3 py-2">Course / Sem</th>
-                              <th className="px-3 py-2">District / Bus</th>
                               <th className="px-3 py-2 text-right">Status</th>
                             </tr>
                           </thead>
@@ -954,19 +1004,14 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                                     <span className="text-[11px] text-orange-600 font-semibold italic">{r.prkey}</span>
                                   ) : r.prkey)}
                                 </td>
-                                <td className="px-3 py-2 font-mono text-gray-700 text-[11px]">
-                                  {r.registrationNo ? (
-                                    <span className="font-semibold text-slate-800">{r.registrationNo}</span>
-                                  ) : r.enrollmentNo ? (
-                                    <span className="text-slate-600">{r.enrollmentNo}</span>
-                                  ) : (
-                                    <span className="text-gray-400">—</span>
-                                  )}
-                                </td>
                                 <td className="px-3 py-2 font-semibold text-gray-800">
                                   {r.fullName || `${r.firstName} ${r.lastName}`}
                                 </td>
-                                <td className="px-3 py-2 font-mono text-gray-600">{r.studentMobile || "—"}</td>
+                                <td className="px-3 py-2">
+                                  <span className="px-2 py-0.5 rounded-md font-black text-[10px] bg-purple-100 text-purple-800 border border-purple-200">
+                                    {r.ssismGroup || "(Auto-resolve)"}
+                                  </span>
+                                </td>
                                 <td className="px-3 py-2">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
@@ -984,10 +1029,12 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 py-2 text-gray-600 text-[11px]">
-                                  {r.district || r.fullAddress || r.village || "—"}
-                                  {r.trackBus ? ` • ${r.trackBus}` : ""}
+                                <td className="px-3 py-2 text-[11px] font-semibold text-slate-700">
+                                  <span>{r.batch || selectedBatch || "—"}</span>
+                                  <span className="text-gray-400 mx-1">•</span>
+                                  <span className="text-orange-600 font-bold">{r.year || activeYear}</span>
                                 </td>
+                                <td className="px-3 py-2 font-mono text-gray-600">{r.studentMobile || "—"}</td>
                                 <td className="px-3 py-2 text-right">
                                   {r.isValid ? (
                                     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
@@ -1066,11 +1113,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 parentMobile: "",
                 course: allowedCourses.length === 1 ? allowedCourses[0] : "",
                 subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || "",
-                sessionId: activeSessionId,
                 year: activeYear,
                 currentYear: activeYear,
                 currentSemester: "",
-                batch: "",
+                batch: selectedBatch || "2025",
                 gender: "Male",
                 category: "GEN",
                 dob: "",
@@ -1356,11 +1402,16 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         </select>
                       </div>
 
-                      <InputField
-                        label="Batch"
-                        name="batch"
-                        placeholder="e.g. 2024-2028"
-                      />
+                      <div>
+                        <InputField
+                          label="Batch *"
+                          name="batch"
+                          placeholder="e.g. 2024, 2025, 2026 (or 2024-2028)"
+                        />
+                        <span className="text-[10px] text-gray-500 font-medium block -mt-1.5 mb-1">
+                          Session will be automatically created & linked.
+                        </span>
+                      </div>
 
                       <InputField
                         label="Track Bus"

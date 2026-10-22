@@ -10,8 +10,9 @@ const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel } = require("../../services/studentService");
-const { findOrCreateSessionByName } = require("../../utils/sessionHelper");
+const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
 const { calculateBatchYear } = require("../../utils/batchHelper");
+const { resolveStudentDepartmentHierarchy, normalizeStr } = require("../../utils/departmentHelper");
 const ExcelJS = require("exceljs");
 const XLSX = require("xlsx");
 const bcrypt = require("bcrypt");
@@ -80,32 +81,22 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ message: "Student email must be a valid email address (e.g. name@ssism.org or student@gmail.com)" });
     }
 
-    // Validate subDepartment
-    const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
-    if (!subDept) return res.status(404).json({ message: "SubDepartment not found" });
+    // 1️⃣ Resolve Department Hierarchy (from ssismGroup, course, or subDepartmentId)
+    const hierarchy = await resolveStudentDepartmentHierarchy({
+      ssismGroup: req.body.ssismGroup || req.body.group,
+      course: req.body.course || req.body.branch || req.body["Branch/Course"],
+      branch: req.body.branch || req.body["Branch/Course"],
+      fallbackSubDepartmentId: subDepartmentId
+    });
+    const subDept = hierarchy.subDepartment;
+    const firstLevel = hierarchy.firstLevel;
+    const firstSubLevel = hierarchy.firstSubLevel;
+    const resolvedDeptName = hierarchy.department.name;
+    const targetSubDeptId = subDept._id;
 
-    // 1️⃣ First Level (lowest order) under this subDepartment
-    const firstLevel = await Level.findOne({ subDepartmentId, isActive: true }).sort({ order: 1 });
-    if (!firstLevel) return res.status(400).json({ message: "No active level found for this subDepartment. Please configure levels first." });
-
-    // 2️⃣ First SubLevel (lowest order) under that Level
-    const firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, isActive: true }).sort({ order: 1 });
-    if (!firstSubLevel) return res.status(400).json({ message: "No active sub-level found for this level. Please configure sub-levels first." });
-
-    // 3️⃣ Determine Session (Find or auto-create from session/year string, or fallback to latest active session)
-    let targetSessionId = null;
-    const sessionYearInput = (year && /^\d{4}$/.test(String(year).trim())) ? String(year).trim() : null;
-    const sessionInput = inputSessionId || session || sessionYearInput || (academicYear && /^\d{4}$/.test(String(academicYear).trim()) ? String(academicYear).trim() : null);
-    if (sessionInput) {
-      targetSessionId = await findOrCreateSessionByName(sessionInput);
-    }
-
-    if (!targetSessionId) {
-      const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
-      if (!latestSession) return res.status(400).json({ message: "No active session found" });
-      targetSessionId = latestSession._id;
-    }
-
+    // 3️⃣ Determine Session: Auto-created & linked based on student Batch (e.g., 2024, 2025, 2026)
+    const batchInput = req.body.batch || req.body.batchYear || req.body.session || session || year || academicYear;
+    const targetSessionId = await findOrCreateSessionFromBatch(batchInput, inputSessionId);
     const targetSession = await Session.findById(targetSessionId);
 
     // 4️⃣ Latest active SyllabusVersion for this session + level + sublevel (or fallback to any active for level+sublevel)
@@ -227,9 +218,10 @@ exports.createStudent = async (req, res) => {
       pincode: req.body.pincode || "",
       trackBus: req.body.trackBus || "",
       sponsorshipType: req.body.sponsorshipType || req.body.sponshershipType || "",
-      ssismGroup: req.body.ssismGroup || "",
+      ssismGroup: req.body.ssismGroup || resolvedDeptName,
       withITEG: resolvedWithITEG,
       sessionId: targetSessionId,
+      subDepartmentId: targetSubDeptId,
       currentLevelId: firstLevel._id,
       currentSubLevelId: firstSubLevel._id,
       syllabusVersionId: latestSyllabus ? latestSyllabus._id : null
@@ -269,67 +261,23 @@ exports.importStudentsExcel = async (req, res) => {
   try {
     const { subDepartmentId, sessionId: inputSessionId } = req.body;
 
-    if (!subDepartmentId) {
-      return res.status(400).json({ success: false, message: "subDepartmentId is required" });
-    }
 
-    // Check faculty access if applicable
-    if (req.allowedSubDeptIds && !req.allowedSubDeptIds.some(id => id.toString() === subDepartmentId.toString())) {
+
+    // Check faculty access if applicable and subDepartmentId provided
+    if (subDepartmentId && req.allowedSubDeptIds && !req.allowedSubDeptIds.some(id => id.toString() === subDepartmentId.toString())) {
       return res.status(403).json({ success: false, message: "Access denied for this sub-department" });
     }
 
-    const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId");
-    if (!subDept) return res.status(404).json({ success: false, message: "SubDepartment not found" });
+    // 1️⃣ Target Session: Auto-created & resolved based on Batch (e.g. 2024, 2025, 2026)
+    const defaultBatchInput = req.body.batch || req.body.batchYear || req.body.year || new Date().getFullYear();
+    const defaultSessionId = await findOrCreateSessionFromBatch(defaultBatchInput, inputSessionId);
+    const defaultSession = await Session.findById(defaultSessionId);
 
-    // 1️⃣ First active Level under this subDepartment
-    const firstLevel = await Level.findOne({ subDepartmentId, isActive: true }).sort({ order: 1 });
-    if (!firstLevel) {
-      return res.status(400).json({
-        success: false,
-        message: `No active Level found for ${subDept.name}. Please configure levels in Department Hierarchy first.`
-      });
-    }
+    // Caches to avoid duplicate DB lookups across rows
+    const sessionCache = new Map();
+    sessionCache.set(String(defaultBatchInput).trim(), { id: defaultSessionId, doc: defaultSession });
 
-    // 2️⃣ First active SubLevel under that Level
-    const firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, isActive: true }).sort({ order: 1 });
-    if (!firstSubLevel) {
-      return res.status(400).json({
-        success: false,
-        message: `No active SubLevel found for level ${firstLevel.name}. Please configure sub-levels first.`
-      });
-    }
-
-    // 3️⃣ Target Session
-    let targetSessionId = null;
-    if (inputSessionId) {
-      targetSessionId = await findOrCreateSessionByName(inputSessionId);
-    }
-    if (!targetSessionId) {
-      const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
-      if (!latestSession) {
-        return res.status(400).json({ success: false, message: "No active academic session found in the system" });
-      }
-      targetSessionId = latestSession._id;
-    }
-    const targetSession = await Session.findById(targetSessionId);
-
-    // 4️⃣ Latest active SyllabusVersion (optional)
-    let latestSyllabus = await SyllabusVersion.findOne({
-      sessionId: targetSessionId,
-      levelId: firstLevel._id,
-      subLevelId: firstSubLevel._id,
-      status: "active",
-      isActive: true
-    }).sort({ createdAt: -1 });
-
-    if (!latestSyllabus) {
-      latestSyllabus = await SyllabusVersion.findOne({
-        levelId: firstLevel._id,
-        subLevelId: firstSubLevel._id,
-        status: "active",
-        isActive: true
-      }).sort({ createdAt: -1 });
-    }
+    const hierarchyCache = new Map();
 
     // 5️⃣ Extract Raw Rows from req.file (Excel buffer) or req.body.students
     let rawRows = [];
@@ -404,11 +352,21 @@ exports.importStudentsExcel = async (req, res) => {
     // Helper: Normalize header keys
     const normalizeKey = (k) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-    // Allowed courses for this subdepartment
-    const allowedCourses = (subDept.allowedCourses || []).length > 0
-      ? subDept.allowedCourses
-      : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
-    const defaultCourse = allowedCourses[0] || "General";
+    // Allowed courses for this subdepartment (if subDepartmentId provided)
+    let defaultCourse = "General";
+    if (subDepartmentId) {
+      try {
+        const sDeptDoc = await SubDepartment.findById(subDepartmentId).populate("departmentId");
+        if (sDeptDoc) {
+          const allowed = (sDeptDoc.allowedCourses || []).length > 0
+            ? sDeptDoc.allowedCourses
+            : (sDeptDoc.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
+          if (allowed.length > 0) defaultCourse = allowed[0];
+        }
+      } catch (err) {
+        console.warn("SubDepartment lookup error:", err.message);
+      }
+    }
 
     // Pre-fetch all existing PR keys & student IDs in MongoDB
     const existingStudents = await Student.find({}, "prkey studentId").lean();
@@ -422,7 +380,7 @@ exports.importStudentsExcel = async (req, res) => {
     // Default Year for this import batch
     let defaultYear = req.body.year;
     if (!defaultYear || /^\d{4}$/.test(String(defaultYear).trim())) {
-      const sName = targetSession?.name || "";
+      const sName = defaultSession?.name || "";
       if (sName.includes("2024")) defaultYear = "3rd Year";
       else if (sName.includes("2025")) defaultYear = "2nd Year";
       else if (sName.includes("2026")) defaultYear = "1st Year";
@@ -501,7 +459,7 @@ exports.importStudentsExcel = async (req, res) => {
           normalizedRow.trackBus = cleanVal;
         } else if (["sponshershiptype", "sponsorshiptype", "sponsorship"].includes(nk)) {
           normalizedRow.sponsorshipType = cleanVal;
-        } else if (["ssismgroup", "group"].includes(nk)) {
+        } else if (["ssismgroup", "group", "department", "dept", "ssismdept", "division"].includes(nk)) {
           normalizedRow.ssismGroup = cleanVal;
         } else if (["password", "pass", "pwd"].includes(nk)) {
           normalizedRow.password = cleanVal;
@@ -526,12 +484,36 @@ exports.importStudentsExcel = async (req, res) => {
       const fullName = String(normalizedRow.fullName || `${firstName} ${lastName}`).trim();
       const fatherName = String(normalizedRow.fatherName || "").trim();
       const studentMobile = String(normalizedRow.studentMobile || "").trim();
-      const course = String(normalizedRow.course || normalizedRow.branch || "").trim() || defaultCourse;
+      // Resolve Department & SubDepartment hierarchy (from ssismGroup and course)
+      const rowGroup = normalizedRow.ssismGroup || normalizedRow.group || req.body.ssismGroup || "";
+      const rowCourse = normalizedRow.course || normalizedRow.branch || "";
+      const rowBranch = normalizedRow.branch || rowCourse;
+
+      const hierKey = `${normalizeStr(rowGroup)}_${normalizeStr(rowCourse)}_${normalizeStr(rowBranch)}`;
+      let hierarchy;
+      if (hierarchyCache.has(hierKey)) {
+        hierarchy = hierarchyCache.get(hierKey);
+      } else {
+        hierarchy = await resolveStudentDepartmentHierarchy({
+          ssismGroup: rowGroup,
+          course: rowCourse,
+          branch: rowBranch,
+          fallbackSubDepartmentId: subDepartmentId
+        });
+        hierarchyCache.set(hierKey, hierarchy);
+      }
+
+      const rowSubDept = hierarchy.subDepartment;
+      const rowLevel = hierarchy.firstLevel;
+      const rowSubLevel = hierarchy.firstSubLevel;
+      const resolvedDeptName = hierarchy.department.name;
+
+      const course = rowCourse || (rowSubDept.allowedCourses && rowSubDept.allowedCourses[0]) || "General";
 
       // Auto-generate PR Key if not provided in Excel row
       if (!prkey) {
         const cleanCourse = (course || "STU").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
-        const sessionYear = targetSession?.name || new Date().getFullYear().toString();
+        const sessionYear = defaultSession?.name || new Date().getFullYear().toString();
         prkey = `${cleanCourse}${sessionYear}${String(1001 + validStudentsToInsert.length).padStart(4, "0")}`;
       }
 
@@ -581,18 +563,37 @@ exports.importStudentsExcel = async (req, res) => {
       const rawPassword = String(normalizedRow.password || "").trim() || "ssism@123";
       const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
+      // Resolve Session for this row's specific batch (auto-created if not exists)
+      const rowBatchInput = normalizedRow.batch || normalizedRow.batchYear || req.body.batch || defaultBatchInput;
+      const cleanBatchKey = String(rowBatchInput || defaultBatchInput).trim();
+
+      let rowSessionId = defaultSessionId;
+      let rowSession = defaultSession;
+
+      if (cleanBatchKey && cleanBatchKey !== String(defaultBatchInput).trim()) {
+        if (sessionCache.has(cleanBatchKey)) {
+          const cached = sessionCache.get(cleanBatchKey);
+          rowSessionId = cached.id;
+          rowSession = cached.doc;
+        } else {
+          rowSessionId = await findOrCreateSessionFromBatch(cleanBatchKey);
+          rowSession = await Session.findById(rowSessionId);
+          sessionCache.set(cleanBatchKey, { id: rowSessionId, doc: rowSession });
+        }
+      }
+
       // Compute batch year
       let batchYear = normalizedRow.batch || normalizedRow.batchYear;
       if (!batchYear) {
         try {
           batchYear = await calculateBatchYear({
-            sessionId: targetSessionId,
-            session: targetSession,
+            sessionId: rowSessionId,
+            session: rowSession,
             subDepartmentId,
             course
           });
         } catch (e) {
-          batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
+          batchYear = `${rowSession?.name || "2025"}-${parseInt(rowSession?.name || "2025", 10) + 3}`;
         }
       }
 
@@ -635,24 +636,24 @@ exports.importStudentsExcel = async (req, res) => {
         pincode: normalizedRow.pincode || "",
         trackBus: normalizedRow.trackBus || "",
         sponsorshipType: normalizedRow.sponsorshipType || "",
-        ssismGroup: normalizedRow.ssismGroup || "",
+        ssismGroup: normalizedRow.ssismGroup || resolvedDeptName,
         branch: normalizedRow.branch || course,
         course,
         year: studentYear,
         currentYear: studentYear,
         currentSemester: normalizedRow.currentSemester || "",
-        batch: normalizedRow.batch || batchYear || "",
+        batch: normalizedRow.batch || cleanBatchKey || batchYear || "",
         batchYear,
         track: normalizedRow.technology || "",
         technology: normalizedRow.technology || "",
         percent12: normalizedRow.percent12 || "",
         percent10: normalizedRow.percent10 || "",
         year12: normalizedRow.year12 || "",
-        subDepartmentId,
-        sessionId: targetSessionId,
-        currentLevelId: firstLevel._id,
-        currentSubLevelId: firstSubLevel._id,
-        syllabusVersionId: latestSyllabus ? latestSyllabus._id : null,
+        subDepartmentId: rowSubDept._id,
+        sessionId: rowSessionId,
+        currentLevelId: rowLevel._id,
+        currentSubLevelId: rowSubLevel._id,
+        syllabusVersionId: null,
         withITEG: isNaturallyITEG(course) ? true : Boolean(normalizedRow.withITEG),
         status: "Active"
       };
@@ -665,7 +666,7 @@ exports.importStudentsExcel = async (req, res) => {
       insertedStudents = await Student.insertMany(validStudentsToInsert, { ordered: false });
 
       // Auto-assign tasks if syllabus exists
-      if (latestSyllabus) {
+      if (typeof latestSyllabus !== "undefined" && latestSyllabus) {
         try {
           const studentIds = insertedStudents.map(s => s._id);
           await assignTasksToMultipleStudents(studentIds, latestSyllabus._id);
@@ -687,11 +688,9 @@ exports.importStudentsExcel = async (req, res) => {
       skippedDetails,
       errorDetails,
       meta: {
-        sessionName: targetSession?.name || "N/A",
-        subDepartmentName: subDept.name,
-        levelName: firstLevel.name,
-        subLevelName: firstSubLevel.name,
-        syllabusVersion: latestSyllabus ? latestSyllabus.version : "None"
+        sessionName: defaultSession?.name || "Auto-Created",
+        subDepartmentName: subDepartmentId ? "Assigned Sub-Department" : "Auto-detected from SSISM Group",
+        totalProcessed: rawRows.length
       }
     });
 
@@ -777,7 +776,7 @@ exports.downloadSampleExcel = async (req, res) => {
       firstName: "Rahul",
       lastName: "Sharma",
       fullName: "Rahul Sharma",
-      branchCourse: sampleCourse1,
+      branchCourse: "BCA",
       currentYear: "1st Year",
       currentSemester: "1st Sem",
       batch: "2025-2028",
@@ -796,7 +795,7 @@ exports.downloadSampleExcel = async (req, res) => {
       pincode: "452010",
       trackBus: "Route No 12",
       sponsorshipType: "Regular",
-      ssismGroup: "Group A"
+      ssismGroup: "ITEG"
     });
 
     sheet.addRow({
@@ -806,7 +805,7 @@ exports.downloadSampleExcel = async (req, res) => {
       firstName: "Priya",
       lastName: "Patel",
       fullName: "Priya Patel",
-      branchCourse: sampleCourse2,
+      branchCourse: "B.Tech",
       currentYear: "2nd Year",
       currentSemester: "3rd Sem",
       batch: "2024-2027",
@@ -825,7 +824,65 @@ exports.downloadSampleExcel = async (req, res) => {
       pincode: "452001",
       trackBus: "Route No 05",
       sponsorshipType: "Scholarship",
-      ssismGroup: "Group B"
+      ssismGroup: "MEG"
+    });
+
+    sheet.addRow({
+      studentId: "STU2025003",
+      registrationNo: "REG20250103",
+      enrollmentNo: "ENR20250047",
+      firstName: "Aman",
+      lastName: "Verma",
+      fullName: "Aman Verma",
+      branchCourse: "B.Tech",
+      currentYear: "1st Year",
+      currentSemester: "1st Sem",
+      batch: "2025-2029",
+      studentMobile: "9812345670",
+      fatherContactNumber: "9812345671",
+      email: "aman.verma@ssism.org",
+      fatherName: "Rajesh Verma",
+      gender: "Male",
+      category: "GEN",
+      dob: "2005-02-14",
+      aadharNo: "112233445566",
+      fullAddress: "12 MG Road",
+      village: "Ujjain",
+      tehsil: "Ujjain",
+      district: "Ujjain",
+      pincode: "456001",
+      trackBus: "Route No 01",
+      sponsorshipType: "Regular",
+      ssismGroup: "BEG"
+    });
+
+    sheet.addRow({
+      studentId: "STU2025004",
+      registrationNo: "REG20250104",
+      enrollmentNo: "ENR20250048",
+      firstName: "Sneha",
+      lastName: "Gupta",
+      fullName: "Sneha Gupta",
+      branchCourse: "B.Tech",
+      currentYear: "3rd Year",
+      currentSemester: "5th Sem",
+      batch: "2023-2027",
+      studentMobile: "9988776655",
+      fatherContactNumber: "9988776654",
+      email: "sneha.gupta@ssism.org",
+      fatherName: "Anil Gupta",
+      gender: "Female",
+      category: "GEN",
+      dob: "2002-09-08",
+      aadharNo: "998877665544",
+      fullAddress: "78 Palasia",
+      village: "Indore",
+      tehsil: "Indore",
+      district: "Indore",
+      pincode: "452001",
+      trackBus: "Route No 08",
+      sponsorshipType: "Regular",
+      ssismGroup: "B.TECH"
     });
 
     // Instructions Sheet
@@ -851,10 +908,10 @@ exports.downloadSampleExcel = async (req, res) => {
     guideSheet.addRow({ field: "First Name", required: "YES", desc: "Student's given first name." });
     guideSheet.addRow({ field: "Last Name", required: "OPTIONAL", desc: "Student's surname." });
     guideSheet.addRow({ field: "Full Name", required: "OPTIONAL", desc: "Student's complete name (auto-built if left empty)." });
-    guideSheet.addRow({ field: "Branch/Course", required: "YES", desc: `Allowed courses for (${subDeptName}): ${allowedCourses.join(", ")}` });
-    guideSheet.addRow({ field: "Current Year", required: "NO", desc: "1st Year, 2nd Year, 3rd Year, or 4th Year." });
+    guideSheet.addRow({ field: "Branch/Course", required: "YES", desc: "Degree / Course (e.g. BCA, B.Tech, MCA, BBA, B.Sc)." });
+    guideSheet.addRow({ field: "Current Year", required: "NO", desc: "1st Year, 2nd Year, 3rd Year, or 4th Year (routes student year-wise)." });
     guideSheet.addRow({ field: "Current Semester", required: "NO", desc: "1st Sem, 2nd Sem, 3rd Sem, 4th Sem, 5th Sem, 6th Sem, etc." });
-    guideSheet.addRow({ field: "Batch", required: "NO", desc: "Batch duration (e.g. 2024-2027, 2025-2029)." });
+    guideSheet.addRow({ field: "Batch", required: "RECOMMENDED", desc: "Admission Batch Year (e.g. 2024, 2025, 2026). Session is automatically created." });
     guideSheet.addRow({ field: "Mobile Number", required: "YES", desc: "10-digit mobile number of student." });
     guideSheet.addRow({ field: "Father contact Number", required: "NO", desc: "10-digit contact number of father or parent." });
     guideSheet.addRow({ field: "email Id", required: "NO", desc: "Student email address." });
@@ -870,7 +927,7 @@ exports.downloadSampleExcel = async (req, res) => {
     guideSheet.addRow({ field: "Pincode", required: "NO", desc: "6-digit postal pincode." });
     guideSheet.addRow({ field: "Track Bus", required: "NO", desc: "Bus route name or bus number." });
     guideSheet.addRow({ field: "Sponshership Type", required: "NO", desc: "Regular, Scholarship, Management, TFW, etc." });
-    guideSheet.addRow({ field: "SSISM Group", required: "NO", desc: "Allocated student group (e.g. Group A, Group B)." });
+    guideSheet.addRow({ field: "SSISM Group", required: "RECOMMENDED", desc: "Department Name / Code (e.g. ITEG, MEG, BEG, B.TECH). Routes data to respective department!" });
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="students_import_template_${subDeptName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx"`);

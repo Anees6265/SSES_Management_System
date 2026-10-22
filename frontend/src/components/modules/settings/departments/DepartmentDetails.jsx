@@ -13,15 +13,11 @@ import SubDepartmentCard from "./SubDepartmentCard";
 import { MdAccountTree } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import EmptyState from "../../../shared/empty-state/EmptyState";
-import AddStudentModal from "../../students/AddStudentModal";
-import { UserPlus } from "lucide-react";
 
 const DepartmentDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: departmentIdParam } = useParams();
-  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
-  const [selectedSubDeptId, setSelectedSubDeptId] = useState(null);
   const [editingSubdept, setEditingSubdept] = useState(null);
   const editSubdeptFormRef = useRef(null);
 
@@ -116,19 +112,6 @@ const DepartmentDetails = () => {
                 { label: "Departments", path: "/department-management" },
                 { label: department.name }
               ]}
-              actions={
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSubDeptId(null);
-                    setIsAddStudentModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
-                >
-                  <UserPlus size={16} />
-                  <span>Add Student</span>
-                </button>
-              }
             >
               <OrangeButton
                 buttonTitle="+ Create Sub-Department"
@@ -181,19 +164,6 @@ const DepartmentDetails = () => {
             { label: "Departments", path: "/department-management" },
             { label: department.name }
           ]}
-          actions={
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSubDeptId(null);
-                setIsAddStudentModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
-            >
-              <UserPlus size={16} />
-              <span>Add Student</span>
-            </button>
-          }
         />
       )}
 
@@ -360,16 +330,6 @@ const DepartmentDetails = () => {
             </Formik>
           )
         }
-      />
-
-      <AddStudentModal
-        isOpen={isAddStudentModalOpen}
-        onClose={() => {
-          setIsAddStudentModalOpen(false);
-          setSelectedSubDeptId(null);
-        }}
-        defaultSubDepartmentId={selectedSubDeptId}
-        onStudentAdded={() => refetch()}
       />
     </>
   );

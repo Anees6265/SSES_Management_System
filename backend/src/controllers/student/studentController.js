@@ -571,14 +571,13 @@ exports.importStudentsExcel = async (req, res) => {
       // Resolve Session for this row's specific batch (auto-created if not exists)
       const rowBatchInput = normalizedRow.batch || normalizedRow.batchYear || req.body.batch || defaultBatchInput;
       const cleanBatchKey = String(rowBatchInput || defaultBatchInput).trim();
-      const rowCourse = normalizedRow.course || course || defaultCourse || "";
       const rowDeptId = hierarchy?.department?._id || departmentId;
-      const rowSubDeptId = subDept?._id || subDepartmentId;
+      const rowSubDeptId = rowSubDept?._id || subDepartmentId;
 
       const duration = await resolveCourseDuration({
         departmentId: rowDeptId,
         subDepartmentId: rowSubDeptId,
-        course: rowCourse
+        course
       });
 
       const sessionCacheKey = `${cleanBatchKey}_${duration}`;
@@ -592,7 +591,7 @@ exports.importStudentsExcel = async (req, res) => {
         rowSession = cached.doc;
       } else {
         rowSessionId = await findOrCreateSessionFromBatch(cleanBatchKey, null, {
-          course: rowCourse,
+          course,
           departmentId: rowDeptId,
           subDepartmentId: rowSubDeptId,
           duration
@@ -610,7 +609,7 @@ exports.importStudentsExcel = async (req, res) => {
             session: rowSession,
             subDepartmentId: rowSubDeptId,
             departmentId: rowDeptId,
-            course: rowCourse
+            course
           });
         } catch (e) {
           const startY = parseInt(cleanBatchKey.match(/\b(20\d\d)\b/)?.[1] || "2025", 10);

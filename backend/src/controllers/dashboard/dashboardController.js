@@ -21,14 +21,32 @@ exports.getDashboardOverview = async (req, res) => {
       }
     }
 
-    // ── Level Filter ───────────────────────────────────────────
+    // ── Level / Year Filter ────────────────────────────────────
     if (level && level !== "All" && level !== "") {
       if (mongoose.Types.ObjectId.isValid(level)) {
         base.currentLevelId = new mongoose.Types.ObjectId(level);
       } else {
+        const cleanLvl = String(level).trim().toLowerCase();
+        let targetYear = "";
+        if (cleanLvl.includes("1") || cleanLvl.includes("first")) targetYear = "1st Year";
+        else if (cleanLvl.includes("2") || cleanLvl.includes("second")) targetYear = "2nd Year";
+        else if (cleanLvl.includes("3") || cleanLvl.includes("third")) targetYear = "3rd Year";
+        else if (cleanLvl.includes("4") || cleanLvl.includes("fourth")) targetYear = "4th Year";
+
         const matchedLevels = await Level.find({ name: new RegExp(level, "i") }).select("_id").lean();
-        if (matchedLevels.length > 0) {
-          base.currentLevelId = { $in: matchedLevels.map(l => l._id) };
+        const matchedLevelIds = matchedLevels.map(l => l._id);
+
+        const orClauses = [];
+        if (matchedLevelIds.length > 0) {
+          orClauses.push({ currentLevelId: { $in: matchedLevelIds } });
+        }
+        if (targetYear) {
+          orClauses.push({ year: targetYear });
+          orClauses.push({ currentYear: targetYear });
+        }
+
+        if (orClauses.length > 0) {
+          base.$or = orClauses;
         }
       }
     }
@@ -254,12 +272,20 @@ exports.getDashboardOverview = async (req, res) => {
         levelId: item._id.levelId?.toString() || "",
         count: item.count
       })),
-      yearCounts: yearCourseAgg.map(item => ({
-        subDepartmentId: item._id.course || "",
-        course: item._id.course || "",
-        year: item._id.year || "1st Year",
-        count: item.count
-      }))
+      yearCounts: yearCourseAgg.map(item => {
+        let yr = item._id.year || "1st Year";
+        const s = String(yr).trim().toUpperCase();
+        if (s === "I" || s === "1" || s.startsWith("1ST")) yr = "1st Year";
+        else if (s === "II" || s === "2" || s.startsWith("2ND")) yr = "2nd Year";
+        else if (s === "III" || s === "3" || s.startsWith("3RD")) yr = "3rd Year";
+        else if (s === "IV" || s === "4" || s.startsWith("4TH")) yr = "4th Year";
+        return {
+          subDepartmentId: item._id.course || "",
+          course: item._id.course || "",
+          year: yr,
+          count: item.count
+        };
+      })
     };
 
     return res.status(200).json({

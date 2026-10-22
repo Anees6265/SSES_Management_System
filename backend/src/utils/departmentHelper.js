@@ -26,6 +26,7 @@ async function resolveStudentDepartmentHierarchy({
   ssismGroup,
   course,
   branch,
+  year,
   fallbackSubDepartmentId
 } = {}) {
   // Pre-fetch all active departments and subdepartments
@@ -133,38 +134,49 @@ async function resolveStudentDepartmentHierarchy({
     }
   }
 
-  // 6. Ensure Level 1 exists for this SubDepartment
-  let firstLevel = await Level.findOne({ subDepartmentId: matchedSubDept._id, isActive: true }).sort({ order: 1 });
-  if (!firstLevel) {
+  // 6. Determine Level Order from year (e.g. "1st Year" -> 1, "2nd Year" -> 2, etc.)
+  let levelOrder = 1;
+  const yrStr = String(year || "").trim().toLowerCase();
+  if (yrStr.includes("2") || yrStr.includes("ii") || yrStr.startsWith("2nd")) levelOrder = 2;
+  else if (yrStr.includes("3") || yrStr.includes("iii") || yrStr.startsWith("3rd")) levelOrder = 3;
+  else if (yrStr.includes("4") || yrStr.includes("iv") || yrStr.startsWith("4th")) levelOrder = 4;
+
+  const levelName = `Level ${levelOrder}`;
+  let targetLevel = await Level.findOne({ subDepartmentId: matchedSubDept._id, order: levelOrder });
+  if (!targetLevel) {
+    targetLevel = await Level.findOne({ subDepartmentId: matchedSubDept._id, name: levelName });
+  }
+  if (!targetLevel) {
     try {
-      firstLevel = await Level.create({
-        name: "Level 1",
-        order: 1,
+      targetLevel = await Level.create({
+        name: levelName,
+        order: levelOrder,
         subDepartmentId: matchedSubDept._id,
         isActive: true
       });
     } catch (err) {
       if (err.code === 11000) {
-        firstLevel = await Level.findOne({ subDepartmentId: matchedSubDept._id, order: 1 });
+        targetLevel = await Level.findOne({ subDepartmentId: matchedSubDept._id, order: levelOrder });
       } else {
         throw err;
       }
     }
   }
 
-  // 7. Ensure SubLevel 1A exists for this Level
-  let firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, isActive: true }).sort({ order: 1 });
-  if (!firstSubLevel) {
+  // 7. Ensure SubLevel exists for this Level (e.g. 1A, 2A, 3A, 4A)
+  const subLevelName = `${levelOrder}A`;
+  let targetSubLevel = await SubLevel.findOne({ levelId: targetLevel._id, name: subLevelName });
+  if (!targetSubLevel) {
     try {
-      firstSubLevel = await SubLevel.create({
-        name: "1A",
-        order: 1.1,
-        levelId: firstLevel._id,
+      targetSubLevel = await SubLevel.create({
+        name: subLevelName,
+        order: levelOrder + 0.1,
+        levelId: targetLevel._id,
         isActive: true
       });
     } catch (err) {
       if (err.code === 11000) {
-        firstSubLevel = await SubLevel.findOne({ levelId: firstLevel._id, order: 1.1 });
+        targetSubLevel = await SubLevel.findOne({ levelId: targetLevel._id, name: subLevelName });
       } else {
         throw err;
       }
@@ -174,8 +186,10 @@ async function resolveStudentDepartmentHierarchy({
   return {
     department: matchedDept,
     subDepartment: matchedSubDept,
-    firstLevel,
-    firstSubLevel
+    firstLevel: targetLevel,
+    firstSubLevel: targetSubLevel,
+    targetLevel,
+    targetSubLevel
   };
 }
 

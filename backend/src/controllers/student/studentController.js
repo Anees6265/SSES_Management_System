@@ -81,11 +81,13 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ message: "Student email must be a valid email address (e.g. name@ssism.org or student@gmail.com)" });
     }
 
-    // 1️⃣ Resolve Department Hierarchy (from ssismGroup, course, or subDepartmentId)
+    // 1️⃣ Resolve Department Hierarchy (from ssismGroup, course, year, or subDepartmentId)
+    const rawStudentYear = req.body.year || req.body.currentYear || "1st Year";
     const hierarchy = await resolveStudentDepartmentHierarchy({
       ssismGroup: req.body.ssismGroup || req.body.group,
       course: req.body.course || req.body.branch || req.body["Branch/Course"],
       branch: req.body.branch || req.body["Branch/Course"],
+      year: rawStudentYear,
       fallbackSubDepartmentId: subDepartmentId
     });
     const subDept = hierarchy.subDepartment;
@@ -489,12 +491,21 @@ exports.importStudentsExcel = async (req, res) => {
       const fullName = String(normalizedRow.fullName || `${firstName} ${lastName}`).trim();
       const fatherName = String(normalizedRow.fatherName || "").trim();
       const studentMobile = String(normalizedRow.studentMobile || "").trim();
-      // Resolve Department & SubDepartment hierarchy (from ssismGroup and course)
+      // Resolve student year
+      const rawYearStr = String(normalizedRow.currentYear || normalizedRow.year || defaultYear || "").trim();
+      let studentYear = "1st Year";
+      if (/^(1|1st|i)$/i.test(rawYearStr) || rawYearStr.toLowerCase().includes("1st")) studentYear = "1st Year";
+      else if (/^(2|2nd|ii)$/i.test(rawYearStr) || rawYearStr.toLowerCase().includes("2nd")) studentYear = "2nd Year";
+      else if (/^(3|3rd|iii)$/i.test(rawYearStr) || rawYearStr.toLowerCase().includes("3rd")) studentYear = "3rd Year";
+      else if (/^(4|4th|iv)$/i.test(rawYearStr) || rawYearStr.toLowerCase().includes("4th")) studentYear = "4th Year";
+      else if (rawYearStr) studentYear = rawYearStr;
+
+      // Resolve Department & SubDepartment hierarchy (from ssismGroup, course, and year)
       const rowGroup = normalizedRow.ssismGroup || normalizedRow.group || req.body.ssismGroup || "";
       const rowCourse = normalizedRow.course || normalizedRow.branch || "";
       const rowBranch = normalizedRow.branch || rowCourse;
 
-      const hierKey = `${normalizeStr(rowGroup)}_${normalizeStr(rowCourse)}_${normalizeStr(rowBranch)}`;
+      const hierKey = `${normalizeStr(rowGroup)}_${normalizeStr(rowCourse)}_${normalizeStr(rowBranch)}_${normalizeStr(studentYear)}`;
       let hierarchy;
       if (hierarchyCache.has(hierKey)) {
         hierarchy = hierarchyCache.get(hierKey);
@@ -503,6 +514,7 @@ exports.importStudentsExcel = async (req, res) => {
           ssismGroup: rowGroup,
           course: rowCourse,
           branch: rowBranch,
+          year: studentYear,
           fallbackSubDepartmentId: subDepartmentId
         });
         hierarchyCache.set(hierKey, hierarchy);
@@ -615,15 +627,6 @@ exports.importStudentsExcel = async (req, res) => {
           const startY = parseInt(cleanBatchKey.match(/\b(20\d\d)\b/)?.[1] || "2025", 10);
           batchYear = `${startY} - ${startY + duration}`;
         }
-      }
-
-      let studentYear = normalizedRow.currentYear || normalizedRow.year || defaultYear;
-      if (/^\d+$/.test(String(studentYear).trim())) {
-        const num = String(studentYear).trim();
-        if (num === "1") studentYear = "1st Year";
-        else if (num === "2") studentYear = "2nd Year";
-        else if (num === "3") studentYear = "3rd Year";
-        else if (num === "4") studentYear = "4th Year";
       }
 
       const parsedDob = parseDOB(normalizedRow.dob);

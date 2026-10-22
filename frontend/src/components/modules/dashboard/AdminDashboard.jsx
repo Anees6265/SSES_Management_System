@@ -159,28 +159,43 @@ const CourseYearMatrixTable = ({ matrix }) => {
     columns = defaultYears.map(name => ({ id: name, name }));
   }
 
+  const normalizeYearStr = (y) => {
+    if (!y) return "";
+    const s = String(y).trim().toUpperCase();
+    if (s === "I" || s === "1" || s.startsWith("1ST")) return "1st year";
+    if (s === "II" || s === "2" || s.startsWith("2ND")) return "2nd year";
+    if (s === "III" || s === "3" || s.startsWith("3RD")) return "3rd year";
+    if (s === "IV" || s === "4" || s.startsWith("4TH")) return "4th year";
+    return s.toLowerCase();
+  };
+
+  const normalizeCourseStr = (c) => String(c || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
   const getStudentCount = (courseId, colId) => {
     if (viewMode === "session") {
+      const targetCourse = normalizeCourseStr(courseId);
       const match = sessionCounts.find(
         (c) =>
-          ((c.subDepartmentId || c.course || "").toLowerCase().trim() === String(courseId || "").toLowerCase().trim()) &&
+          normalizeCourseStr(c.subDepartmentId || c.course) === targetCourse &&
           c.sessionId === colId
       );
       return match ? match.count : 0;
     } else {
       // 1. Primary: Use yearCounts directly from student's academic year
       if (yearCounts && yearCounts.length > 0) {
+        const targetCourse = normalizeCourseStr(courseId);
+        const targetYear = normalizeYearStr(colId);
+
         const match = yearCounts.find((c) => {
-          const cCourse = (c.subDepartmentId || c.course || "").toLowerCase().trim();
-          const targetCourse = String(courseId || "").toLowerCase().trim();
-          const cYear = (c.year || "").toLowerCase().trim();
-          const targetYear = String(colId || "").toLowerCase().trim();
+          const cCourse = normalizeCourseStr(c.subDepartmentId || c.course);
+          const cYear = normalizeYearStr(c.year);
           return cCourse === targetCourse && cYear === targetYear;
         });
         return match ? match.count : 0;
       }
 
       // 2. Fallback: levelCounts mapping if yearCounts is empty
+      const targetCourse = normalizeCourseStr(courseId);
       const matchingLevelIds = levels
         .filter((l) => translateLevelName(l.name) === colId)
         .map((l) => l.id);
@@ -188,7 +203,7 @@ const CourseYearMatrixTable = ({ matrix }) => {
       return levelCounts
         .filter(
           (c) =>
-            ((c.subDepartmentId || c.course || "").toLowerCase().trim() === String(courseId || "").toLowerCase().trim()) &&
+            normalizeCourseStr(c.subDepartmentId || c.course) === targetCourse &&
             matchingLevelIds.includes(c.levelId)
         )
         .reduce((sum, item) => sum + item.count, 0);
@@ -575,11 +590,11 @@ const AdminDashboard = () => {
               onChange={(val) => setSelectedLevel(val)}
               align="right"
               options={[
-                { value: "All", label: "All Levels" },
-                { value: "Level 1", label: "Level 1" },
-                { value: "Level 2", label: "Level 2" },
-                { value: "Level 3", label: "Level 3" },
-                { value: "Level 4", label: "Level 4" },
+                { value: "All", label: "All Years / Levels" },
+                { value: "Level 1", label: "1st Year (Level 1)" },
+                { value: "Level 2", label: "2nd Year (Level 2)" },
+                { value: "Level 3", label: "3rd Year (Level 3)" },
+                { value: "Level 4", label: "4th Year (Level 4)" },
               ]}
               className="w-full sm:w-auto sm:min-w-[130px]"
               buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
@@ -1024,11 +1039,11 @@ const AdminDashboard = () => {
             onChange={(val) => setSelectedLevel(val)}
             align="right"
             options={[
-              { value: "All", label: "All Levels" },
-              { value: "Level 1", label: "Level 1" },
-              { value: "Level 2", label: "Level 2" },
-              { value: "Level 3", label: "Level 3" },
-              { value: "Level 4", label: "Level 4" },
+              { value: "All", label: "All Years / Levels" },
+              { value: "Level 1", label: "1st Year (Level 1)" },
+              { value: "Level 2", label: "2nd Year (Level 2)" },
+              { value: "Level 3", label: "3rd Year (Level 3)" },
+              { value: "Level 4", label: "4th Year (Level 4)" },
             ]}
             className="w-full sm:w-auto sm:min-w-[130px]"
             buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"

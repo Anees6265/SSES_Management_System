@@ -21,32 +21,14 @@ exports.getDashboardOverview = async (req, res) => {
       }
     }
 
-    // ── Level / Year Filter ────────────────────────────────────
+    // ── Level Filter (Independent of Academic Year) ───────────
     if (level && level !== "All" && level !== "") {
       if (mongoose.Types.ObjectId.isValid(level)) {
         base.currentLevelId = new mongoose.Types.ObjectId(level);
       } else {
-        const cleanLvl = String(level).trim().toLowerCase();
-        let targetYear = "";
-        if (cleanLvl.includes("1") || cleanLvl.includes("first")) targetYear = "1st Year";
-        else if (cleanLvl.includes("2") || cleanLvl.includes("second")) targetYear = "2nd Year";
-        else if (cleanLvl.includes("3") || cleanLvl.includes("third")) targetYear = "3rd Year";
-        else if (cleanLvl.includes("4") || cleanLvl.includes("fourth")) targetYear = "4th Year";
-
         const matchedLevels = await Level.find({ name: new RegExp(level, "i") }).select("_id").lean();
-        const matchedLevelIds = matchedLevels.map(l => l._id);
-
-        const orClauses = [];
-        if (matchedLevelIds.length > 0) {
-          orClauses.push({ currentLevelId: { $in: matchedLevelIds } });
-        }
-        if (targetYear) {
-          orClauses.push({ year: targetYear });
-          orClauses.push({ currentYear: targetYear });
-        }
-
-        if (orClauses.length > 0) {
-          base.$or = orClauses;
+        if (matchedLevels.length > 0) {
+          base.currentLevelId = { $in: matchedLevels.map(l => l._id) };
         }
       }
     }

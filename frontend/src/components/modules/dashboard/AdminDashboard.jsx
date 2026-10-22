@@ -590,11 +590,11 @@ const AdminDashboard = () => {
               onChange={(val) => setSelectedLevel(val)}
               align="right"
               options={[
-                { value: "All", label: "All Years / Levels" },
-                { value: "Level 1", label: "1st Year (Level 1)" },
-                { value: "Level 2", label: "2nd Year (Level 2)" },
-                { value: "Level 3", label: "3rd Year (Level 3)" },
-                { value: "Level 4", label: "4th Year (Level 4)" },
+                { value: "All", label: "All Levels" },
+                { value: "Level 1", label: "Level 1" },
+                { value: "Level 2", label: "Level 2" },
+                { value: "Level 3", label: "Level 3" },
+                { value: "Level 4", label: "Level 4" },
               ]}
               className="w-full sm:w-auto sm:min-w-[130px]"
               buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
@@ -1039,11 +1039,11 @@ const AdminDashboard = () => {
             onChange={(val) => setSelectedLevel(val)}
             align="right"
             options={[
-              { value: "All", label: "All Years / Levels" },
-              { value: "Level 1", label: "1st Year (Level 1)" },
-              { value: "Level 2", label: "2nd Year (Level 2)" },
-              { value: "Level 3", label: "3rd Year (Level 3)" },
-              { value: "Level 4", label: "4th Year (Level 4)" },
+              { value: "All", label: "All Levels" },
+              { value: "Level 1", label: "Level 1" },
+              { value: "Level 2", label: "Level 2" },
+              { value: "Level 3", label: "Level 3" },
+              { value: "Level 4", label: "Level 4" },
             ]}
             className="w-full sm:w-auto sm:min-w-[130px]"
             buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"

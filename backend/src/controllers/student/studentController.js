@@ -505,7 +505,7 @@ exports.importStudentsExcel = async (req, res) => {
       const rowCourse = normalizedRow.course || normalizedRow.branch || "";
       const rowBranch = normalizedRow.branch || rowCourse;
 
-      const hierKey = `${normalizeStr(rowGroup)}_${normalizeStr(rowCourse)}_${normalizeStr(rowBranch)}_${normalizeStr(studentYear)}`;
+      const hierKey = `${normalizeStr(rowGroup)}_${normalizeStr(rowCourse)}_${normalizeStr(rowBranch)}`;
       let hierarchy;
       if (hierarchyCache.has(hierKey)) {
         hierarchy = hierarchyCache.get(hierKey);
@@ -514,7 +514,6 @@ exports.importStudentsExcel = async (req, res) => {
           ssismGroup: rowGroup,
           course: rowCourse,
           branch: rowBranch,
-          year: studentYear,
           fallbackSubDepartmentId: subDepartmentId
         });
         hierarchyCache.set(hierKey, hierarchy);

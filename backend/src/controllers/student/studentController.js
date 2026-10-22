@@ -11,7 +11,7 @@ const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
-const { calculateBatchYear } = require("../../utils/batchHelper");
+const { calculateBatchYear, resolveCourseDuration } = require("../../utils/batchHelper");
 const { resolveStudentDepartmentHierarchy, normalizeStr } = require("../../utils/departmentHelper");
 const ExcelJS = require("exceljs");
 const XLSX = require("xlsx");
@@ -94,9 +94,20 @@ exports.createStudent = async (req, res) => {
     const resolvedDeptName = hierarchy.department.name;
     const targetSubDeptId = subDept._id;
 
-    // 3️⃣ Determine Session: Auto-created & linked based on student Batch (e.g., 2024, 2025, 2026)
+    // Determine course default if not provided
+    const allowedCourses = (subDept.allowedCourses || []).length > 0
+      ? subDept.allowedCourses
+      : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
+    const resolvedCourse = req.body.course || req.body.branch || req.body["Branch/Course"] || allowedCourses[0] || "General";
+    const resolvedBranch = req.body.branch || req.body["Branch/Course"] || resolvedCourse;
+
+    // 3️⃣ Determine Session: Auto-created & linked based on student Batch (e.g., 2024, 2025, 2026) and Course Duration
     const batchInput = req.body.batch || req.body.batchYear || req.body.session || session || year || academicYear;
-    const targetSessionId = await findOrCreateSessionFromBatch(batchInput, inputSessionId);
+    const targetSessionId = await findOrCreateSessionFromBatch(batchInput, inputSessionId, {
+      course: resolvedCourse,
+      departmentId: hierarchy.department._id,
+      subDepartmentId: targetSubDeptId
+    });
     const targetSession = await Session.findById(targetSessionId);
 
     // 4️⃣ Latest active SyllabusVersion for this session + level + sublevel (or fallback to any active for level+sublevel)
@@ -116,13 +127,6 @@ exports.createStudent = async (req, res) => {
         isActive: true
       }).sort({ createdAt: -1 });
     }
-
-    // Determine course default if not provided
-    const allowedCourses = (subDept.allowedCourses || []).length > 0
-      ? subDept.allowedCourses
-      : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
-    const resolvedCourse = req.body.course || req.body.branch || req.body["Branch/Course"] || allowedCourses[0] || "General";
-    const resolvedBranch = req.body.branch || req.body["Branch/Course"] || resolvedCourse;
 
     // Names resolution
     const firstName = String(req.body.firstName || "").trim();
@@ -154,12 +158,13 @@ exports.createStudent = async (req, res) => {
 
     // Calculate student batch year based on session and department/course duration
     let batchYear = req.body.batchYear || req.body.batch;
-    if (!batchYear) {
+    if (!batchYear || /^\d{4}$/.test(String(batchYear).trim())) {
       try {
         batchYear = await calculateBatchYear({
           sessionId: targetSessionId,
           session: targetSession,
-          subDepartmentId,
+          subDepartmentId: targetSubDeptId,
+          departmentId: hierarchy.department._id,
           course: resolvedCourse
         });
       } catch (e) {
@@ -566,34 +571,50 @@ exports.importStudentsExcel = async (req, res) => {
       // Resolve Session for this row's specific batch (auto-created if not exists)
       const rowBatchInput = normalizedRow.batch || normalizedRow.batchYear || req.body.batch || defaultBatchInput;
       const cleanBatchKey = String(rowBatchInput || defaultBatchInput).trim();
+      const rowCourse = normalizedRow.course || course || defaultCourse || "";
+      const rowDeptId = hierarchy?.department?._id || departmentId;
+      const rowSubDeptId = subDept?._id || subDepartmentId;
+
+      const duration = await resolveCourseDuration({
+        departmentId: rowDeptId,
+        subDepartmentId: rowSubDeptId,
+        course: rowCourse
+      });
+
+      const sessionCacheKey = `${cleanBatchKey}_${duration}`;
 
       let rowSessionId = defaultSessionId;
       let rowSession = defaultSession;
 
-      if (cleanBatchKey && cleanBatchKey !== String(defaultBatchInput).trim()) {
-        if (sessionCache.has(cleanBatchKey)) {
-          const cached = sessionCache.get(cleanBatchKey);
-          rowSessionId = cached.id;
-          rowSession = cached.doc;
-        } else {
-          rowSessionId = await findOrCreateSessionFromBatch(cleanBatchKey);
-          rowSession = await Session.findById(rowSessionId);
-          sessionCache.set(cleanBatchKey, { id: rowSessionId, doc: rowSession });
-        }
+      if (sessionCache.has(sessionCacheKey)) {
+        const cached = sessionCache.get(sessionCacheKey);
+        rowSessionId = cached.id;
+        rowSession = cached.doc;
+      } else {
+        rowSessionId = await findOrCreateSessionFromBatch(cleanBatchKey, null, {
+          course: rowCourse,
+          departmentId: rowDeptId,
+          subDepartmentId: rowSubDeptId,
+          duration
+        });
+        rowSession = await Session.findById(rowSessionId);
+        sessionCache.set(sessionCacheKey, { id: rowSessionId, doc: rowSession });
       }
 
       // Compute batch year
-      let batchYear = normalizedRow.batch || normalizedRow.batchYear;
-      if (!batchYear) {
+      let batchYear = normalizedRow.batchYear || normalizedRow.batch;
+      if (!batchYear || /^\d{4}$/.test(String(batchYear).trim())) {
         try {
           batchYear = await calculateBatchYear({
             sessionId: rowSessionId,
             session: rowSession,
-            subDepartmentId,
-            course
+            subDepartmentId: rowSubDeptId,
+            departmentId: rowDeptId,
+            course: rowCourse
           });
         } catch (e) {
-          batchYear = `${rowSession?.name || "2025"}-${parseInt(rowSession?.name || "2025", 10) + 3}`;
+          const startY = parseInt(cleanBatchKey.match(/\b(20\d\d)\b/)?.[1] || "2025", 10);
+          batchYear = `${startY} - ${startY + duration}`;
         }
       }
 

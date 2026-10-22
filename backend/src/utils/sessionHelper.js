@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 const Session = require("../models/Session");
+const { resolveCourseDuration } = require("./batchHelper");
 
 /**
  * Extracts intake year (e.g. 2024, 2025, 2026) from a batch string, year, or session string.
- * Supports: "2024", 2024, "2024-2028", "2024-25", "2024-2025", "AY 2024-25", "Batch 2024", "24-25", "24", etc.
+ * Supports: "2024", 2024, "2024-2028", "2024-25", "2024-2027", "AY 2024-25", "Batch 2024", "24-25", "24", etc.
  */
 function extractIntakeYear(input) {
   if (!input) return new Date().getFullYear();
@@ -28,12 +29,19 @@ function extractIntakeYear(input) {
 }
 
 /**
- * Finds an existing Session or auto-creates a new Session from a student's batch or session input.
- * @param {string|number} batchInput - e.g. "2024", "2025", "2026", "2024-2028", "2024-25"
+ * Finds an existing Session or auto-creates a new Session from a student's batch or session input,
+ * dynamically respecting course duration (e.g., 4 years for B.Tech -> 2025-29, 3 years for BCA/BBA -> 2025-28, 2 years for Diploma -> 2025-27).
+ *
+ * @param {string|number} batchInput - e.g. "2025", "2025-2029", "2025-28", "2025-29"
  * @param {string|mongoose.Types.ObjectId} [fallbackSessionId] - Optional session ID to check first
+ * @param {Object} [options] - Additional context for duration calculation
+ * @param {string} [options.course]
+ * @param {mongoose.Types.ObjectId|string} [options.departmentId]
+ * @param {mongoose.Types.ObjectId|string} [options.subDepartmentId]
+ * @param {number} [options.duration]
  * @returns {Promise<mongoose.Types.ObjectId>} Session ObjectId
  */
-async function findOrCreateSessionFromBatch(batchInput, fallbackSessionId) {
+async function findOrCreateSessionFromBatch(batchInput, fallbackSessionId, options = {}) {
   // 1. If a valid fallback session ID was provided and exists in DB, use it
   if (fallbackSessionId && mongoose.Types.ObjectId.isValid(String(fallbackSessionId).trim())) {
     try {
@@ -54,40 +62,58 @@ async function findOrCreateSessionFromBatch(batchInput, fallbackSessionId) {
     } catch (_) {}
   }
 
-  const intakeYear = extractIntakeYear(batchInput);
-  const nextYear = intakeYear + 1;
-  const shortNextYear = String(nextYear).slice(-2); // e.g. "25" for 2025
-  const standardName = `${intakeYear}-${shortNextYear}`; // e.g. "2024-25"
-  const fullYearName = `${intakeYear}-${nextYear}`;      // e.g. "2024-2025"
+  // 2. Resolve Course Duration
+  let durationInYears = options.duration;
+  if (!durationInYears && (options.departmentId || options.subDepartmentId || options.course)) {
+    try {
+      durationInYears = await resolveCourseDuration({
+        departmentId: options.departmentId,
+        subDepartmentId: options.subDepartmentId,
+        course: options.course
+      });
+    } catch (_) {}
+  }
+  if (!durationInYears || durationInYears < 1) {
+    durationInYears = 3; // Default 3 years (UG)
+  }
 
-  // 2. Search for any existing session representing this academic intake year
+  // 3. Check if batchInput already specifies an explicit end year or range
+  // e.g. "2025-28", "2025-29", "2025-2029", "2024-2028"
+  const rangeMatch = String(batchInput || "").match(/\b(20\d\d)\s*[-/]\s*(\d{2,4})\b/);
+  let intakeYear;
+  let endYear;
+
+  if (rangeMatch) {
+    intakeYear = parseInt(rangeMatch[1], 10);
+    const rawEnd = parseInt(rangeMatch[2], 10);
+    endYear = rawEnd < 100 ? (2000 + rawEnd) : rawEnd;
+    durationInYears = Math.max(1, endYear - intakeYear);
+  } else {
+    intakeYear = extractIntakeYear(batchInput);
+    endYear = intakeYear + durationInYears;
+  }
+
+  const shortEndYear = String(endYear).slice(-2);
+  const standardName = `${intakeYear}-${shortEndYear}`; // e.g. "2025-28" for BCA, "2025-29" for B.Tech
+  const fullYearName = `${intakeYear}-${endYear}`;       // e.g. "2025-2028", "2025-2029"
+
+  // 4. Search for any existing session matching this exact duration range
   let existing = await Session.findOne({
     $or: [
       { name: standardName },
       { name: fullYearName },
-      { name: String(intakeYear) },
-      { name: { $regex: new RegExp(`^AY\\s*${intakeYear}[-/](${shortNextYear}|${nextYear})`, 'i') } },
-      { name: { $regex: new RegExp(`^${intakeYear}[-/](${shortNextYear}|${nextYear})`, 'i') } }
+      { name: { $regex: new RegExp(`^AY\\s*${intakeYear}[-/](${shortEndYear}|${endYear})`, 'i') } },
+      { name: { $regex: new RegExp(`^${intakeYear}[-/](${shortEndYear}|${endYear})`, 'i') } }
     ]
   });
-
-  if (!existing) {
-    // Check if any session exists with startDate within intake year
-    existing = await Session.findOne({
-      startDate: {
-        $gte: new Date(intakeYear, 0, 1),
-        $lte: new Date(intakeYear, 11, 31)
-      }
-    });
-  }
 
   if (existing) {
     return existing._id;
   }
 
-  // 3. Auto-create new Session for this batch intake year
+  // 5. Auto-create new Session for this exact course batch range
   const startDate = new Date(intakeYear, 6, 1); // July 1st of intake year
-  const endDate = new Date(nextYear, 5, 30);    // June 30th of next year
+  const endDate = new Date(endYear, 5, 30);      // June 30th of graduation year
 
   const now = new Date();
   let status = 'upcoming';
@@ -104,7 +130,7 @@ async function findOrCreateSessionFromBatch(batchInput, fallbackSessionId) {
       endDate,
       isActive: true,
       status,
-      description: `Academic Session for Batch ${intakeYear}`
+      description: `Academic Session for Batch ${intakeYear} (${durationInYears} Year Program: ${intakeYear}-${shortEndYear})`
     });
     return newSession._id;
   } catch (err) {
@@ -120,8 +146,8 @@ async function findOrCreateSessionFromBatch(batchInput, fallbackSessionId) {
 /**
  * Backward compatibility wrapper for findOrCreateSessionByName
  */
-async function findOrCreateSessionByName(sessionInput) {
-  return findOrCreateSessionFromBatch(sessionInput);
+async function findOrCreateSessionByName(sessionInput, fallbackSessionId, options) {
+  return findOrCreateSessionFromBatch(sessionInput, fallbackSessionId, options);
 }
 
 module.exports = {

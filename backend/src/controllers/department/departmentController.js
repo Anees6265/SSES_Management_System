@@ -243,8 +243,18 @@ exports.updateDepartment = async (req, res) => {
     }
     if (updateData.isActive !== undefined) updateData.isActive = updateData.isActive === 'true' || updateData.isActive === true;
 
-    if (updateData.allowedCourses && !validateAllowedCourses(updateData.allowedCourses)) {
-      return res.status(400).json({ success: false, message: "Invalid allowedCourses structure." });
+    if (Array.isArray(updateData.allowedCourses)) {
+      updateData.allowedCourses = updateData.allowedCourses
+        .filter(c => c && c.courseName)
+        .map(c => ({
+          courseName: String(c.courseName).trim(),
+          durationInYears: Number(c.durationInYears) || 3
+        }));
+    }
+
+    // Don't overwrite code with empty string to avoid unique index violation
+    if (!updateData.code || String(updateData.code).trim() === "") {
+      delete updateData.code;
     }
     if (req.file) {
       if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {

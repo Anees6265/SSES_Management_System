@@ -51,7 +51,7 @@ router.put(
   verifyToken,
   checkRole(allowedRoles),
   validateObjectId,
-  imageUpload.single('logo'),
+  conditionalUpload,
   validateDepartmentInput,
   departmentController.updateDepartment
 );

@@ -3,7 +3,12 @@ import { useSelector } from "react-redux";
 import { MdBusiness, MdOutlinePersonOutline, MdOutlineAddPhotoAlternate } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
 import { FiSearch, FiX } from "react-icons/fi";
-import { useGetAllDepartmentsQuery, useDeleteDepartmentMutation, useAddDepartmentMutation, useUpdateDepartmentMutation } from "../../../../redux/api/authApi";
+import {
+  useGetAllDepartmentsQuery,
+  useDeleteDepartmentMutation,
+  useAddDepartmentMutation,
+  useUpdateDepartmentMutation,
+} from "../../../../redux/api/authApi";
 import Loader from "../../../shared/loader/Loader";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -34,9 +39,11 @@ const DepartmentManagement = () => {
   const navigate = useNavigate();
   const { data: departmentsData, isLoading, refetch } = useGetAllDepartmentsQuery();
   const [deleteDepartment] = useDeleteDepartmentMutation();
-  const [addDepartment] = useAddDepartmentMutation();
-  const [updateDepartment] = useUpdateDepartmentMutation();
+  const [addDepartment, { isLoading: isAddingDept }] = useAddDepartmentMutation();
+  const [updateDepartment, { isLoading: isUpdatingDept }] = useUpdateDepartmentMutation();
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [isAddDeptDrawerOpen, setIsAddDeptDrawerOpen] = useState(false);
+  const addDeptFormRef = useRef(null);
   const editDeptFormRef = useRef(null);
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
@@ -73,66 +80,57 @@ const DepartmentManagement = () => {
   });
 
   const validationSchema = Yup.object({
-    name: Yup.string().required("Department name is required"),
-    description: Yup.string(),
+    name: Yup.string().trim().required("Department name is required"),
+    description: Yup.string().nullable(),
     universityName: Yup.string().required("University name is required"),
-    headOfDepartment: Yup.string(),
+    headOfDepartment: Yup.string().nullable(),
     allowedCourses: Yup.array().of(
       Yup.object({
-        courseName: Yup.string().required("Course name is required"),
-        durationInYears: Yup.number().required("Duration is required").positive("Must be positive")
+        courseName: Yup.string().nullable(),
+        durationInYears: Yup.mixed().nullable()
       })
-    ),
+    ).nullable(),
     isActive: Yup.boolean()
   });
 
   const buildFormData = (values) => {
     const fd = new FormData();
-    fd.append("name", values.name);
-    fd.append("description", values.description || "");
-    fd.append("universityName", values.universityName);
-    fd.append("headOfDepartment", values.headOfDepartment || "");
-    fd.append("isActive", values.isActive);
+    fd.append("name", values.name?.trim() || "");
+    fd.append("description", values.description?.trim() || "");
+    fd.append("universityName", values.universityName?.trim() || "");
+    fd.append("headOfDepartment", values.headOfDepartment?.trim() || "");
+    fd.append("isActive", Boolean(values.isActive));
+
     const courses = (values.allowedCourses || [])
-      .filter(c => c.courseName && c.durationInYears)
-      .map(c => ({ ...c, durationInYears: Number(c.durationInYears) }));
+      .filter((c) => c && c.courseName && String(c.courseName).trim())
+      .map((c) => ({
+        courseName: String(c.courseName).trim(),
+        durationInYears: Number(c.durationInYears) > 0 ? Number(c.durationInYears) : 3,
+      }));
     fd.append("allowedCourses", JSON.stringify(courses));
+
+    if (values.code && String(values.code).trim()) {
+      fd.append("code", String(values.code).trim().toUpperCase());
+    }
     if (values.reportConfig) {
       fd.append("reportConfig", JSON.stringify(values.reportConfig));
     }
-    if (values.logoFile) fd.append("logo", values.logoFile);
+    if (values.logoFile) {
+      fd.append("logo", values.logoFile);
+    }
     return fd;
   };
 
-  const handleDepartmentSubmit = async (values, { setSubmitting, resetForm }) => {
-    try {
-      const fd = buildFormData(values);
-
-      if (editingDepartment) {
-        const result = await updateDepartment({ id: editingDepartment._id, _formData: fd }).unwrap();
-        toast.success(result.message || "Department updated successfully!");
-      } else {
-        const result = await addDepartment(fd).unwrap();
-        toast.success(result.message || "Department added successfully!");
-      }
-      resetForm();
-      setEditingDepartment(null);
-      refetch();
-    } catch (error) {
-      toast.error(error?.data?.message || error?.message || "Error saving department");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleDelete = async (id, deptName) => {
-    const dept = departments.find(d => d._id === id);
+    const dept = departments.find((d) => d._id === id);
     const targetName = deptName || dept?.name || "this department";
-    if (await confirmToast(`Are you sure you want to delete ${targetName}?`, {
-      confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white",
-      title: "Delete Department",
-      itemName: targetName
-    })) {
+    if (
+      await confirmToast(`Are you sure you want to delete ${targetName}?`, {
+        confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white",
+        title: "Delete Department",
+        itemName: targetName,
+      })
+    ) {
       try {
         await deleteDepartment(id).unwrap();
         toast.success("Department deleted successfully!");
@@ -153,136 +151,33 @@ const DepartmentManagement = () => {
 
   return (
     <>
-      {canManageDepartment ? (
-        <Formik
-          key={editingDepartment?._id || 'new'}
-          initialValues={{
-            name: editingDepartment?.name || "",
-            description: editingDepartment?.description || "",
-            universityName: editingDepartment?.universityName || "",
-            headOfDepartment: editingDepartment?.headOfDepartment || "",
-            allowedCourses: editingDepartment?.allowedCourses || [{ courseName: "", durationInYears: "" }],
-            isActive: editingDepartment?.isActive !== undefined ? editingDepartment.isActive : true,
-            logoFile: null,
-            logoPreview: editingDepartment?.logo || ""
-          }}
-          validationSchema={validationSchema}
-          onSubmit={handleDepartmentSubmit}
-          enableReinitialize
-        >
-          {({ values, setFieldValue, isSubmitting, submitForm, resetForm }) => (
-            <Header
-              title="Department Management"
-              breadcrumbs={[{ label: "Departments" }]}
-              actions={
-                <button
-                  type="button"
-                  onClick={() => setIsAddStudentModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
-                  title="Centralized Student Entry & Excel Bulk Import"
-                >
-                  <UserPlus size={16} />
-                  <span>Add / Import Students</span>
-                </button>
-              }
-            >
-              <OrangeButton
-                buttonTitle="Add Department"
-                panelTitle={editingDepartment ? "Edit Department" : "Add New Department"}
-                drawerContent={
-                  <Form className="space-y-4">
-                    {/* Logo Upload */}
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Department Logo</label>
-                      <div
-                        className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
-                        onClick={() => document.getElementById('add-logo-input').click()}
-                      >
-                        {values.logoPreview ? (
-                          <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
-                            <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
-                          </div>
-                        ) : (
-                          <>
-                            <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-400">Click to upload logo</span>
-                          </>
-                        )}
-                      </div>
-                      <input
-                        id="add-logo-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            setFieldValue("logoFile", file);
-                            setFieldValue("logoPreview", URL.createObjectURL(file));
-                          }
-                        }}
-                      />
-                    </div>
-
-                    <InputField label="Department Name" name="name" placeholder="Enter department name" />
-                    <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
-                    <InputField
-                      label="University Name"
-                      name="universityName"
-                      type="select"
-                      placeholder="Select university"
-                      options={UNIVERSITY_OPTIONS}
-                    />
-                    <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Allowed Courses</label>
-                      {values.allowedCourses.map((course, index) => (
-                        <div key={index} className="flex gap-2 mb-2">
-                          <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
-                          <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
-                          {values.allowedCourses.length > 1 && (
-                            <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
-                          )}
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
-                        <Plus size={15} />
-                        <span>Add Course</span>
-                      </button>
-                    </div>
-
-                    <RadioGroup label="Status" name="isActive" required={false} />
-                  </Form>
-                }
-                leftBtnText="Cancel"
-                rightBtnText={isSubmitting ? "Saving..." : (editingDepartment ? "Update Department" : "Add Department")}
-                onLeftClick={() => {
-                  resetForm();
-                  setEditingDepartment(null);
-                }}
-                onRightClick={submitForm}
-              />
-            </Header>
-          )}
-        </Formik>
-      ) : (
-        <Header
-          title="Department Management"
-          breadcrumbs={[{ label: "Departments" }]}
-          actions={
+      <Header
+        title="Department Management"
+        breadcrumbs={[{ label: "Departments" }]}
+        actions={
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsAddStudentModalOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer shrink-0"
               title="Centralized Student Entry & Excel Bulk Import"
             >
               <UserPlus size={16} />
               <span>Add / Import Students</span>
             </button>
-          }
-        />
-      )}
+            {canManageDepartment && (
+              <button
+                type="button"
+                onClick={() => setIsAddDeptDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-3.5 sm:px-4 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase shadow-xs transition active:scale-95 cursor-pointer shrink-0"
+              >
+                <Plus size={16} />
+                <span>Add Department</span>
+              </button>
+            )}
+          </div>
+        }
+      />
 
       <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
         {/* Search & Header Stats Row */}
@@ -349,6 +244,158 @@ const DepartmentManagement = () => {
         )}
       </div>
 
+      {/* Add Department Drawer */}
+      <OrangeButton
+        isOpen={isAddDeptDrawerOpen}
+        onClose={() => setIsAddDeptDrawerOpen(false)}
+        panelTitle="Add New Department"
+        panelSubtitle="Create a new academic department"
+        leftBtnText="Cancel"
+        rightBtnText={isAddingDept ? "Adding..." : "Add Department"}
+        onLeftClick={() => setIsAddDeptDrawerOpen(false)}
+        onRightClick={async () => {
+          if (addDeptFormRef.current) {
+            const errs = await addDeptFormRef.current.validateForm();
+            if (errs && Object.keys(errs).length > 0) {
+              const firstErr = Object.values(errs)[0];
+              toast.error(typeof firstErr === "string" ? firstErr : "Please check the required fields");
+              return;
+            }
+            addDeptFormRef.current.submitForm();
+          }
+        }}
+        drawerContent={
+          <Formik
+            innerRef={addDeptFormRef}
+            initialValues={{
+              name: "",
+              description: "",
+              universityName: "",
+              headOfDepartment: "",
+              allowedCourses: [{ courseName: "", durationInYears: "" }],
+              isActive: true,
+              logoFile: null,
+              logoPreview: "",
+            }}
+            validationSchema={validationSchema}
+            onSubmit={async (values, { setSubmitting, resetForm }) => {
+              try {
+                const fd = buildFormData(values);
+                const result = await addDepartment(fd).unwrap();
+                toast.success(result?.message || "Department added successfully!");
+                resetForm();
+                setIsAddDeptDrawerOpen(false);
+                refetch();
+              } catch (error) {
+                toast.error(error?.data?.message || error?.message || "Error adding department");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {({ values, setFieldValue }) => (
+              <Form className="space-y-4">
+                {/* Logo Upload */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Department Logo</label>
+                  <div
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-orange-400 transition min-h-[100px]"
+                    onClick={() => document.getElementById("add-logo-input").click()}
+                  >
+                    {values.logoPreview ? (
+                      <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
+                        <img
+                          src={values.logoPreview}
+                          alt="logo preview"
+                          className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <MdOutlineAddPhotoAlternate size={36} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-400">Click to upload logo</span>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    id="add-logo-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setFieldValue("logoFile", file);
+                        setFieldValue("logoPreview", URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                </div>
+
+                <InputField label="Department Name" name="name" placeholder="Enter department name" />
+                <InputField label="Description" name="description" type="textarea" placeholder="Enter description" />
+                <InputField
+                  label="University Name"
+                  name="universityName"
+                  type="select"
+                  placeholder="Select university"
+                  options={UNIVERSITY_OPTIONS}
+                />
+                <InputField label="Head of Department" name="headOfDepartment" placeholder="Enter HOD name" />
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Allowed Courses</label>
+                  {values.allowedCourses.map((course, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <Field
+                        name={`allowedCourses.${index}.courseName`}
+                        placeholder="Course name"
+                        className="flex-1 border rounded px-3 py-2 text-sm"
+                      />
+                      <Field
+                        name={`allowedCourses.${index}.durationInYears`}
+                        type="number"
+                        placeholder="Years"
+                        className="w-24 border rounded px-3 py-2 text-sm"
+                      />
+                      {values.allowedCourses.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFieldValue(
+                              "allowedCourses",
+                              values.allowedCourses.filter((_, i) => i !== index)
+                            )
+                          }
+                          className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFieldValue("allowedCourses", [
+                        ...values.allowedCourses,
+                        { courseName: "", durationInYears: "" },
+                      ])
+                    }
+                    className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>Add Course</span>
+                  </button>
+                </div>
+
+                <RadioGroup label="Status" name="isActive" required={false} />
+              </Form>
+            )}
+          </Formik>
+        }
+      />
+
       {/* Edit Department Drawer */}
       <OrangeButton
         isOpen={Boolean(editingDepartment)}
@@ -356,9 +403,19 @@ const DepartmentManagement = () => {
         panelTitle="Edit Department"
         panelSubtitle={editingDepartment ? `Editing: ${editingDepartment.name}` : ""}
         leftBtnText="Cancel"
-        rightBtnText="Update Department"
+        rightBtnText={isUpdatingDept ? "Updating..." : "Update Department"}
         onLeftClick={() => setEditingDepartment(null)}
-        onRightClick={() => editDeptFormRef.current?.submitForm()}
+        onRightClick={async () => {
+          if (editDeptFormRef.current) {
+            const errs = await editDeptFormRef.current.validateForm();
+            if (errs && Object.keys(errs).length > 0) {
+              const firstErr = Object.values(errs)[0];
+              toast.error(typeof firstErr === "string" ? firstErr : "Please check the required fields");
+              return;
+            }
+            editDeptFormRef.current.submitForm();
+          }
+        }}
         drawerContent={
           editingDepartment && (
             <Formik
@@ -374,21 +431,20 @@ const DepartmentManagement = () => {
                   : [{ courseName: "", durationInYears: "" }],
                 isActive: editingDepartment.isActive ?? true,
                 logoFile: null,
-                logoPreview: editingDepartment.logo || ""
+                logoPreview: editingDepartment.logo || "",
               }}
               validationSchema={validationSchema}
               enableReinitialize
               onSubmit={async (values, { setSubmitting, resetForm }) => {
                 try {
                   const fd = buildFormData(values);
-                  fd.append("code", values.code || "");
                   const result = await updateDepartment({ id: editingDepartment._id, _formData: fd }).unwrap();
-                  toast.success(result.message || "Department updated successfully!");
+                  toast.success(result?.message || "Department updated successfully!");
                   resetForm();
                   setEditingDepartment(null);
                   refetch();
                 } catch (error) {
-                  toast.error(error?.data?.message || "Error updating department");
+                  toast.error(error?.data?.message || error?.message || "Error updating department");
                 } finally {
                   setSubmitting(false);
                 }
@@ -405,7 +461,11 @@ const DepartmentManagement = () => {
                     >
                       {values.logoPreview ? (
                         <div className="p-2 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-center">
-                          <img src={values.logoPreview} alt="logo preview" className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg" />
+                          <img
+                            src={values.logoPreview}
+                            alt="logo preview"
+                            className="h-16 sm:h-20 w-auto max-w-[220px] object-contain rounded-lg"
+                          />
                         </div>
                       ) : (
                         <>
@@ -443,14 +503,43 @@ const DepartmentManagement = () => {
                     <label className="block text-sm font-medium mb-2">Allowed Courses</label>
                     {values.allowedCourses.map((course, index) => (
                       <div key={index} className="flex gap-2 mb-2">
-                        <Field name={`allowedCourses.${index}.courseName`} placeholder="Course name" className="flex-1 border rounded px-3 py-2" />
-                        <Field name={`allowedCourses.${index}.durationInYears`} type="number" placeholder="Years" className="w-24 border rounded px-3 py-2" />
+                        <Field
+                          name={`allowedCourses.${index}.courseName`}
+                          placeholder="Course name"
+                          className="flex-1 border rounded px-3 py-2 text-sm"
+                        />
+                        <Field
+                          name={`allowedCourses.${index}.durationInYears`}
+                          type="number"
+                          placeholder="Years"
+                          className="w-24 border rounded px-3 py-2 text-sm"
+                        />
                         {values.allowedCourses.length > 1 && (
-                          <button type="button" onClick={() => setFieldValue('allowedCourses', values.allowedCourses.filter((_, i) => i !== index))} className="px-3 py-2 bg-red-500 text-white rounded">✕</button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFieldValue(
+                                "allowedCourses",
+                                values.allowedCourses.filter((_, i) => i !== index)
+                              )
+                            }
+                            className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-xs font-bold cursor-pointer"
+                          >
+                            ✕
+                          </button>
                         )}
                       </div>
                     ))}
-                    <button type="button" onClick={() => setFieldValue('allowedCourses', [...values.allowedCourses, { courseName: '', durationInYears: '' }])} className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFieldValue("allowedCourses", [
+                          ...values.allowedCourses,
+                          { courseName: "", durationInYears: "" },
+                        ])
+                      }
+                      className="text-sm font-semibold text-orange-500 hover:text-orange-600 inline-flex items-center gap-1 cursor-pointer"
+                    >
                       <Plus size={15} />
                       <span>Add Course</span>
                     </button>

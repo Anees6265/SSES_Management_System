@@ -24,26 +24,14 @@ const validateDepartmentInput = (req, res, next) => {
     }
   }
 
-  if (allowedCourses && Array.isArray(allowedCourses) && allowedCourses.length > 0) {
-    // FormData strings ko number mein convert karo
-    allowedCourses.forEach(c => {
-      if (typeof c.durationInYears === 'string') c.durationInYears = Number(c.durationInYears);
-    });
-    req.body.allowedCourses = allowedCourses;
-
-    const isValidCourses = allowedCourses.every(course =>
-      course.courseName &&
-      typeof course.courseName === 'string' &&
-      course.durationInYears &&
-      typeof course.durationInYears === 'number' &&
-      course.durationInYears > 0
-    );
-    if (!isValidCourses) {
-      return res.status(400).json({
-        success: false,
-        message: "Each course must have courseName (string) and durationInYears (positive number)"
-      });
-    }
+  if (allowedCourses && Array.isArray(allowedCourses)) {
+    const validList = allowedCourses
+      .filter(c => c && c.courseName && String(c.courseName).trim())
+      .map(c => ({
+        courseName: String(c.courseName).trim(),
+        durationInYears: Math.max(1, Number(c.durationInYears) || 3)
+      }));
+    req.body.allowedCourses = validList;
   }
 
   next();

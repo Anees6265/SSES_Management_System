@@ -4,6 +4,74 @@ const SubDepartment = require("../models/department/SubDepartment");
 const Department = require("../models/department/Department");
 
 /**
+ * Resolves the course duration in years based on department allowedCourses or standard heuristics.
+ * - B.Tech / Engineering -> 4 Years
+ * - BCA / BBA / B.Com / B.Sc -> 3 Years
+ * - Diploma / Polytechnic -> 2 Years (or as defined in Department allowedCourses)
+ * - MCA / MBA / M.Tech / M.Sc -> 2 Years
+ *
+ * @param {Object} params
+ * @param {mongoose.Types.ObjectId|string} [params.departmentId]
+ * @param {mongoose.Types.ObjectId|string} [params.subDepartmentId]
+ * @param {string} [params.course]
+ * @returns {Promise<number>} duration in years (e.g. 4 for B.Tech, 3 for BCA)
+ */
+async function resolveCourseDuration({
+  departmentId,
+  subDepartmentId,
+  course = ""
+} = {}) {
+  let durationInYears = null;
+  let resolvedDept = null;
+
+  if (departmentId) {
+    try {
+      resolvedDept = await Department.findById(departmentId).lean();
+    } catch (e) {}
+  } else if (subDepartmentId) {
+    try {
+      const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId").lean();
+      if (subDept?.departmentId) {
+        resolvedDept = subDept.departmentId;
+      }
+    } catch (e) {}
+  }
+
+  const courseClean = String(course || "").trim().toLowerCase();
+
+  // 1. Try matching inside resolved department's allowedCourses
+  if (resolvedDept?.allowedCourses?.length && courseClean) {
+    const matched = resolvedDept.allowedCourses.find((c) => {
+      const cName = String(c.courseName || "").trim().toLowerCase();
+      return cName === courseClean || courseClean.includes(cName) || cName.includes(courseClean);
+    });
+    if (matched && Number(matched.durationInYears) > 0) {
+      durationInYears = Number(matched.durationInYears);
+    }
+  }
+
+  // 2. Heuristic fallbacks if department lookup did not find duration
+  if (!durationInYears) {
+    if (resolvedDept?.name && /b\.?tech|engineering/i.test(resolvedDept.name)) {
+      durationInYears = 4;
+    } else if (/b\.?tech|engineering|b\.?e\b/i.test(courseClean)) {
+      durationInYears = 4;
+    } else if (/mca|mba|m\.?tech|m\.?sc|master/i.test(courseClean)) {
+      durationInYears = 2;
+    } else if (/diploma|polytechnic/i.test(courseClean)) {
+      durationInYears = 2;
+    } else if (/phd|doctorate/i.test(courseClean)) {
+      durationInYears = 4;
+    } else {
+      // Default duration for standard undergraduate degrees (BCA, BBA, B.Sc, B.Com)
+      durationInYears = 3;
+    }
+  }
+
+  return durationInYears || 3;
+}
+
+/**
  * Calculates student batch year string (e.g. "2025 - 2029" for 4-year B.Tech, "2025 - 2028" for 3-year BCA)
  * based on session intake year and department/course durationInYears.
  *
@@ -70,57 +138,17 @@ async function calculateBatchYear({
   }
 
   // 2. Determine Course Duration (durationInYears)
-  let durationInYears = null;
-  let resolvedDept = null;
-
-  if (departmentId) {
-    try {
-      resolvedDept = await Department.findById(departmentId).lean();
-    } catch (e) {}
-  } else if (subDepartmentId) {
-    try {
-      const subDept = await SubDepartment.findById(subDepartmentId).populate("departmentId").lean();
-      if (subDept?.departmentId) {
-        resolvedDept = subDept.departmentId;
-      }
-    } catch (e) {}
-  }
-
-  const courseClean = String(course || "").trim().toLowerCase();
-
-  // Try matching inside resolved department's allowedCourses
-  if (resolvedDept?.allowedCourses?.length && courseClean) {
-    const matched = resolvedDept.allowedCourses.find((c) => {
-      const cName = String(c.courseName || "").trim().toLowerCase();
-      return cName === courseClean || courseClean.includes(cName) || cName.includes(courseClean);
-    });
-    if (matched && Number(matched.durationInYears) > 0) {
-      durationInYears = Number(matched.durationInYears);
-    }
-  }
-
-  // Heuristic fallbacks if department lookup did not find duration
-  if (!durationInYears) {
-    if (resolvedDept?.name && /b\.?tech|engineering/i.test(resolvedDept.name)) {
-      durationInYears = 4;
-    } else if (/b\.?tech|engineering|b\.?e\b/i.test(courseClean)) {
-      durationInYears = 4;
-    } else if (/mca|mba|m\.?tech|m\.?sc|master/i.test(courseClean)) {
-      durationInYears = 2;
-    } else if (/diploma|polytechnic/i.test(courseClean)) {
-      durationInYears = 3;
-    } else if (/phd|doctorate/i.test(courseClean)) {
-      durationInYears = 4;
-    } else {
-      // Default duration for standard undergraduate degrees (BCA, BBA, B.Sc, B.Com)
-      durationInYears = 3;
-    }
-  }
+  const durationInYears = await resolveCourseDuration({
+    departmentId,
+    subDepartmentId,
+    course
+  });
 
   const endYear = startYear + durationInYears;
   return `${startYear} - ${endYear}`;
 }
 
 module.exports = {
-  calculateBatchYear
+  calculateBatchYear,
+  resolveCourseDuration
 };

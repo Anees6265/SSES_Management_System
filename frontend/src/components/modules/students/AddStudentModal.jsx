@@ -28,35 +28,47 @@ import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import Loader from "../../shared/loader/Loader";
 
 const manualStudentValidationSchema = Yup.object({
+  studentId: Yup.string().nullable(),
+  registrationNo: Yup.string().nullable(),
+  enrollmentNo: Yup.string().nullable(),
   prkey: Yup.string().nullable(),
   password: Yup.string().min(6, "Password must be at least 6 characters").nullable(),
   firstName: Yup.string().required("First Name is required"),
-  lastName: Yup.string().required("Last Name is required"),
-  fatherName: Yup.string().required("Father's Name is required"),
+  lastName: Yup.string().nullable(),
+  fullName: Yup.string().nullable(),
+  fatherName: Yup.string().nullable(),
   studentMobile: Yup.string()
     .trim()
     .required("Student Mobile is required")
     .matches(/^[0-9]{10}$/, "Student mobile number must be exactly 10 digits"),
-  parentMobile: Yup.string()
+  fatherContactNumber: Yup.string()
     .trim()
-    .required("Parent Mobile is required")
-    .matches(/^[0-9]{10}$/, "Parent mobile number must be exactly 10 digits"),
+    .nullable()
+    .test("digits", "Father contact number must be 10 digits", (val) => !val || /^[0-9]{10}$/.test(val)),
+  parentMobile: Yup.string().nullable(),
   email: Yup.string()
     .trim()
-    .required("Student Email is required")
-    .matches(
-      /^[a-zA-Z0-9._%+-]+@ssism\.org$/i,
-      "Email must be a valid @ssism.org address (e.g. name@ssism.org)"
-    ),
-  course: Yup.string().required("Course is required"),
+    .nullable()
+    .email("Enter a valid email address"),
+  course: Yup.string().required("Branch / Course is required"),
   subDepartmentId: Yup.string().required("Sub-Department is required"),
   sessionId: Yup.string().required("Academic Session is required"),
   year: Yup.string().required("Academic Year is required"),
-  gender: Yup.string(),
-  address: Yup.string(),
-  village: Yup.string(),
-  category: Yup.string(),
-  technology: Yup.string(),
+  currentSemester: Yup.string().nullable(),
+  batch: Yup.string().nullable(),
+  gender: Yup.string().nullable(),
+  category: Yup.string().nullable(),
+  dob: Yup.string().nullable(),
+  aadharNo: Yup.string().nullable(),
+  fullAddress: Yup.string().nullable(),
+  village: Yup.string().nullable(),
+  tehsil: Yup.string().nullable(),
+  district: Yup.string().nullable(),
+  pincode: Yup.string().nullable(),
+  trackBus: Yup.string().nullable(),
+  sponsorshipType: Yup.string().nullable(),
+  ssismGroup: Yup.string().nullable(),
+  technology: Yup.string().nullable(),
 });
 
 const normalizeKey = (k) => String(k || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -150,120 +162,162 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
   if (!isOpen) return null;
 
-  // ── Download Sample Excel Template ──────────────────────────
+  // ── Download Sample Excel Template (26 Requested Fields) ──────────────────────────
   const handleDownloadSample = () => {
     try {
-      const coursesList = allowedCourses.length > 0 ? allowedCourses : ["BCA", "B.Tech", "MCA", "BBA"];
+      const coursesList = allowedCourses.length > 0 ? allowedCourses : ["BCA", "B.Tech", "MCA", "BBA", "B.Sc"];
       const deptName = currentSubDept?.name || "Department";
 
       const sampleData = [
         [
-          "PR Key / Roll No (Optional)",
-          "Password (Default: ssism@123)",
-          "First Name*",
-          "Last Name*",
-          "Father Name*",
-          "Student Mobile*",
-          "Parent Mobile",
-          "Course*",
-          "Academic Year (1st Year / 2nd Year / 3rd Year)",
-          "Gender",
-          "Email",
-          "Address",
-          "Village/City",
-          "Aadhar Card",
-          "Category",
-          "12th Percentage",
-          "10th Percentage"
+          "Student ID",
+          "Registration No.",
+          "Enrollment no.",
+          "First Name",
+          "Last Name",
+          "Full Name",
+          "Branch/Course",
+          "Current Year",
+          "Current Semester",
+          "Batch",
+          "Mobile Number",
+          "Father contact Number",
+          "email Id",
+          "father Name",
+          "gender",
+          "category",
+          "DOB",
+          "Aadhar No.",
+          "Full Address",
+          "Village",
+          "Tehsil",
+          "District",
+          "Pincode",
+          "Track Bus",
+          "Sponshership Type",
+          "SSISM Group"
         ],
         [
-          "0827CS241001",
-          "Student@123",
+          "STU2025001",
+          "REG20250101",
+          "ENR20250045",
           "Rahul",
           "Sharma",
-          "Suresh Sharma",
+          "Rahul Sharma",
+          coursesList[0] || "BCA",
+          "1st Year",
+          "1st Sem",
+          "2025-2028",
           "9876543210",
           "9876543211",
-          coursesList[0] || "BCA",
-          "2nd Year",
+          "rahul.sharma@ssism.org",
+          "Suresh Sharma",
           "Male",
-          "rahul.sharma@example.com",
-          "123 Vijay Nagar",
-          "Indore",
-          "123456789012",
           "GEN",
-          "82.5%",
-          "88.0%"
+          "2004-05-15",
+          "123456789012",
+          "123 Vijay Nagar, Near Main Market",
+          "Indore",
+          "Indore",
+          "Indore",
+          "452010",
+          "Route No 12",
+          "Regular",
+          "Group A"
         ],
         [
-          "",
-          "",
+          "STU2025002",
+          "REG20250102",
+          "ENR20250046",
           "Priya",
           "Patel",
-          "Ramesh Patel",
+          "Priya Patel",
+          coursesList[1] || coursesList[0] || "B.Tech",
+          "2nd Year",
+          "3rd Sem",
+          "2024-2027",
           "9123456780",
           "9123456781",
-          coursesList[1] || coursesList[0] || "B.Tech",
-          "3rd Year",
+          "priya.patel@ssism.org",
+          "Ramesh Patel",
           "Female",
-          "priya.patel@example.com",
-          "45 Navlakha",
-          "Indore",
-          "987654321098",
           "OBC",
-          "85.0%",
-          "90.2%"
+          "2003-11-20",
+          "987654321098",
+          "45 Navlakha, AB Road",
+          "Indore",
+          "Indore",
+          "Indore",
+          "452001",
+          "Route No 05",
+          "Scholarship",
+          "Group B"
         ]
       ];
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(sampleData);
       ws["!cols"] = [
-        { wch: 25 }, // PR Key / Roll No
-        { wch: 25 }, // Password
-        { wch: 15 }, // First Name
-        { wch: 15 }, // Last Name
-        { wch: 22 }, // Father Name
-        { wch: 18 }, // Student Mobile
-        { wch: 18 }, // Parent Mobile
-        { wch: 15 }, // Course
-        { wch: 12 }, // Gender
-        { wch: 25 }, // Email
-        { wch: 25 }, // Address
-        { wch: 16 }, // Village/City
-        { wch: 18 }, // Aadhar
-        { wch: 12 }, // Category
-        { wch: 16 }, // 12th %
-        { wch: 16 }, // 10th %
+        { wch: 18 }, // Student ID
+        { wch: 20 }, // Registration No.
+        { wch: 20 }, // Enrollment no.
+        { wch: 16 }, // First Name
+        { wch: 16 }, // Last Name
+        { wch: 22 }, // Full Name
+        { wch: 18 }, // Branch/Course
+        { wch: 16 }, // Current Year
+        { wch: 18 }, // Current Semester
+        { wch: 16 }, // Batch
+        { wch: 18 }, // Mobile Number
+        { wch: 22 }, // Father contact Number
+        { wch: 25 }, // email Id
+        { wch: 22 }, // father Name
+        { wch: 12 }, // gender
+        { wch: 14 }, // category
+        { wch: 16 }, // DOB
+        { wch: 18 }, // Aadhar No.
+        { wch: 30 }, // Full Address
+        { wch: 18 }, // Village
+        { wch: 16 }, // Tehsil
+        { wch: 16 }, // District
+        { wch: 14 }, // Pincode
+        { wch: 16 }, // Track Bus
+        { wch: 20 }, // Sponshership Type
+        { wch: 16 }, // SSISM Group
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, "Students");
 
       const guidelines = [
-        ["STUDENT IMPORT & PORTAL LOGIN GUIDELINES"],
+        ["STUDENT IMPORT & EXTERNAL DATA INTEGRATION GUIDELINES"],
         [""],
-        ["Columns marked with (*) are MANDATORY:"],
-        ["1. First Name*     : Given name of the student."],
-        ["2. Last Name*      : Surname of the student."],
-        ["3. Father Name*    : Father or guardian's full name."],
-        ["4. Student Mobile* : 10-digit mobile phone number (can also be used for login)."],
-        [`5. Course*         : Must match department courses: [ ${coursesList.join(", ")} ]`],
-        [""],
-        ["LOGIN CREDENTIALS & SPECIAL OPTIONS:"],
-        ["- PR Key / Roll No : (OPTIONAL) You can enter College Roll No, University Enrollment No,"],
-        ["                     Scholar No, or leave BLANK. If blank, system will auto-generate a unique PR Key."],
-        ["- Password          : (OPTIONAL) Initial password for student portal login."],
-        ["                     If left blank, default password 'ssism@123' will be assigned."],
-        ["- Student Login     : Students can log in at the portal using:"],
-        ["                     (1) PR Key / Roll Number, OR"],
-        ["                     (2) 10-digit Student Mobile Number, OR"],
-        ["                     (3) Student Email,"],
-        ["                     along with their set password."],
-        [""],
-        ["- Optional Columns:"],
-        ["- Parent Mobile     : Defaults to Student Mobile if left empty."],
-        ["- Address & Village : Defaults to 'Local' if left empty."],
-        ["- Gender, Email, Aadhar Card, Category, 12th/10th Percentage"],
+        ["The template contains all 26 standard student fields:"],
+        ["1. Student ID            : (Optional) Unique student ID. Auto-generated if left empty."],
+        ["2. Registration No.      : (Optional) College/Admission Registration Number."],
+        ["3. Enrollment no.        : (Optional) University Enrollment Number."],
+        ["4. First Name*           : Given name of student."],
+        ["5. Last Name             : Surname of student."],
+        ["6. Full Name             : Complete name (auto-built if left empty)."],
+        [`7. Branch/Course*        : Branch or degree [ ${coursesList.join(", ")} ].`],
+        ["8. Current Year          : e.g. 1st Year, 2nd Year, 3rd Year, 4th Year."],
+        ["9. Current Semester      : e.g. 1st Sem, 2nd Sem, 3rd Sem, etc."],
+        ["10. Batch                : e.g. 2024-2027, 2025-2029."],
+        ["11. Mobile Number*       : 10-digit student phone number."],
+        ["12. Father contact Number: 10-digit father/parent contact number."],
+        ["13. email Id             : Student email address."],
+        ["14. father Name          : Father or guardian's full name."],
+        ["15. gender               : Male, Female, or Other."],
+        ["16. category             : GEN, OBC, SC, ST, etc."],
+        ["17. DOB                  : Date of Birth (YYYY-MM-DD or DD/MM/YYYY)."],
+        ["18. Aadhar No.           : 12-digit Aadhar number."],
+        ["19. Full Address         : Complete residential address."],
+        ["20. Village              : Village, town, or city name."],
+        ["21. Tehsil               : Tehsil or taluka name."],
+        ["22. District             : District name."],
+        ["23. Pincode              : 6-digit postal area code."],
+        ["24. Track Bus            : Bus route name or route number."],
+        ["25. Sponshership Type    : Regular, Scholarship, Management, TFW, etc."],
+        ["26. SSISM Group          : Student assigned group (e.g. Group A, Group B)."],
         [""],
         ["Department: " + deptName],
         ["Allowed Courses: " + coursesList.join(", ")]
@@ -275,7 +329,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
       const safeName = deptName.replace(/[^a-zA-Z0-9]/g, "_");
       XLSX.writeFile(wb, `Student_Import_Template_${safeName}.xlsx`);
-      toast.info("Sample template downloaded. Fill student records and upload.");
+      toast.info("Sample template with all 26 fields downloaded.");
     } catch (err) {
       console.error("Download sample error:", err);
       toast.error("Failed to generate sample template");
@@ -323,28 +377,71 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
           for (const [key, val] of Object.entries(row)) {
             const nk = normalizeKey(key);
-            if (["prkey", "rollno", "enrollmentno", "prn", "studentid", "scholarno", "admissionno"].includes(nk)) normalized.prkey = val;
-            else if (["password", "pass", "pwd", "userpassword"].includes(nk)) normalized.password = val;
-            else if (["firstname", "first", "fname"].includes(nk)) normalized.firstName = val;
-            else if (["lastname", "last", "lname", "surname"].includes(nk)) normalized.lastName = val;
-            else if (["fullname", "name", "studentname"].includes(nk)) normalized.fullName = val;
-            else if (["fathername", "father", "guardianname"].includes(nk)) normalized.fatherName = val;
-            else if (["studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone"].includes(nk)) normalized.studentMobile = val;
-            else if (["parentmobile", "fatherphone", "fathermobile", "parentphone", "guardianmobile"].includes(nk)) normalized.parentMobile = val;
-            else if (["course", "degree", "branch", "stream"].includes(nk)) normalized.course = val;
-            else if (["gender", "sex"].includes(nk)) normalized.gender = val;
-            else if (["email", "emailid"].includes(nk)) normalized.email = val;
-            else if (["address", "residentialaddress"].includes(nk)) normalized.address = val;
-            else if (["village", "city", "town"].includes(nk)) normalized.village = val;
-            else if (["aadhar", "aadharcard", "aadharno"].includes(nk)) normalized.aadharCard = val;
-            else if (["category", "caste"].includes(nk)) normalized.category = val;
-            else if (["track", "techno", "technology"].includes(nk)) normalized.technology = val;
-            else if (["percent12", "12thpercent", "12percentage", "12thpercentage"].includes(nk)) normalized.percent12 = val;
-            else if (["percent10", "10thpercent", "10percentage", "10thpercentage"].includes(nk)) normalized.percent10 = val;
-            else if (["year12", "12thyear", "12passoutyear"].includes(nk)) normalized.year12 = val;
-            else if (["year", "academicyear", "currentyear", "classyear"].includes(nk)) normalized.year = val;
-            else if (["withiteg", "iteg", "with_iteg", "isiteg"].includes(nk)) {
-              const v = String(val || "").toLowerCase().trim();
+            const cleanVal = val !== undefined && val !== null ? String(val).trim() : "";
+
+            if (["studentid", "prkey", "rollno", "admissionno", "scholarno"].includes(nk)) {
+              normalized.studentId = cleanVal;
+              if (!normalized.prkey) normalized.prkey = cleanVal;
+            } else if (["registrationno", "regno", "registrationnumber"].includes(nk)) {
+              normalized.registrationNo = cleanVal;
+            } else if (["enrollmentno", "enrollmentnumber", "enrno", "prn"].includes(nk)) {
+              normalized.enrollmentNo = cleanVal;
+            } else if (["firstname", "first", "fname"].includes(nk)) {
+              normalized.firstName = cleanVal;
+            } else if (["lastname", "last", "lname", "surname"].includes(nk)) {
+              normalized.lastName = cleanVal;
+            } else if (["fullname", "studentname", "name"].includes(nk)) {
+              normalized.fullName = cleanVal;
+            } else if (["branchcourse", "branch", "course", "degree", "stream"].includes(nk)) {
+              normalized.branch = cleanVal;
+              normalized.course = cleanVal;
+            } else if (["currentyear", "academicyear", "year", "studyingyear", "classyear"].includes(nk)) {
+              normalized.currentYear = cleanVal;
+              normalized.year = cleanVal;
+            } else if (["currentsemester", "semester", "sem", "currentsem"].includes(nk)) {
+              normalized.currentSemester = cleanVal;
+            } else if (["batch", "batchyear"].includes(nk)) {
+              normalized.batch = cleanVal;
+              normalized.batchYear = cleanVal;
+            } else if (["mobilenumber", "studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone", "phone"].includes(nk)) {
+              normalized.studentMobile = cleanVal;
+            } else if (["fathercontactnumber", "fathermobile", "parentmobile", "fatherphone", "parentphone", "guardianmobile"].includes(nk)) {
+              normalized.fatherContactNumber = cleanVal;
+              normalized.parentMobile = cleanVal;
+            } else if (["emailid", "email", "emailaddress", "mailid"].includes(nk)) {
+              normalized.email = cleanVal;
+            } else if (["fathername", "father", "guardianname"].includes(nk)) {
+              normalized.fatherName = cleanVal;
+            } else if (["gender", "sex"].includes(nk)) {
+              normalized.gender = cleanVal;
+            } else if (["category", "caste"].includes(nk)) {
+              normalized.category = cleanVal;
+            } else if (["dob", "dateofbirth", "birthdate"].includes(nk)) {
+              normalized.dob = cleanVal;
+            } else if (["aadharno", "aadhar", "aadharcard", "aadharnumber"].includes(nk)) {
+              normalized.aadharNo = cleanVal;
+              normalized.aadharCard = cleanVal;
+            } else if (["fulladdress", "address", "residentialaddress"].includes(nk)) {
+              normalized.fullAddress = cleanVal;
+              normalized.address = cleanVal;
+            } else if (["village", "city", "town"].includes(nk)) {
+              normalized.village = cleanVal;
+            } else if (["tehsil", "taluka"].includes(nk)) {
+              normalized.tehsil = cleanVal;
+            } else if (["district", "dist"].includes(nk)) {
+              normalized.district = cleanVal;
+            } else if (["pincode", "postalcode", "zipcode", "pin"].includes(nk)) {
+              normalized.pincode = cleanVal;
+            } else if (["trackbus", "busroute", "busno", "transport", "bus"].includes(nk)) {
+              normalized.trackBus = cleanVal;
+            } else if (["sponshershiptype", "sponsorshiptype", "sponsorship"].includes(nk)) {
+              normalized.sponsorshipType = cleanVal;
+            } else if (["ssismgroup", "group"].includes(nk)) {
+              normalized.ssismGroup = cleanVal;
+            } else if (["password", "pass", "pwd", "userpassword"].includes(nk)) {
+              normalized.password = cleanVal;
+            } else if (["withiteg", "iteg", "with_iteg", "isiteg"].includes(nk)) {
+              const v = String(cleanVal || "").toLowerCase().trim();
               normalized.withITEG = ["yes", "y", "true", "1", "iteg", "with iteg"].includes(v);
             }
           }
@@ -352,21 +449,23 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           if (!normalized.firstName && normalized.fullName) {
             const parts = String(normalized.fullName).trim().split(/\s+/);
             normalized.firstName = parts[0] || "";
-            normalized.lastName = parts.slice(1).join(" ") || parts[0];
+            normalized.lastName = parts.slice(1).join(" ") || "";
+          } else if (normalized.firstName && !normalized.fullName) {
+            normalized.fullName = `${normalized.firstName} ${normalized.lastName || ""}`.trim();
           }
 
-          const prkey = String(normalized.prkey || "").trim();
+          const studentId = String(normalized.studentId || normalized.prkey || "").trim();
+          const prkey = studentId;
           const rawPassword = String(normalized.password || "").trim();
           const firstName = String(normalized.firstName || "").trim();
-          const lastName = String(normalized.lastName || "").trim() || firstName;
+          const lastName = String(normalized.lastName || "").trim();
+          const fullName = String(normalized.fullName || `${firstName} ${lastName}`).trim();
           const fatherName = String(normalized.fatherName || "").trim();
           const studentMobile = String(normalized.studentMobile || "").trim();
-          const course = String(normalized.course || "").trim() || allowedCourses[0] || "General";
+          const course = String(normalized.course || normalized.branch || "").trim() || allowedCourses[0] || "General";
 
           const missing = [];
-          // PR Key is optional (auto-generated if empty)
-          if (!firstName) missing.push("First Name");
-          if (!fatherName) missing.push("Father Name");
+          if (!firstName && !fullName) missing.push("First / Full Name");
           if (!studentMobile) missing.push("Mobile");
 
           const lowerPr = prkey ? prkey.toLowerCase() : "";
@@ -383,28 +482,47 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
 
           let errorMsg = "";
           if (missing.length > 0) errorMsg = `Missing: ${missing.join(", ")}`;
-          else if (isDuplicateInFile) errorMsg = "Duplicate PR Key in file";
+          else if (isDuplicateInFile) errorMsg = "Duplicate Student ID in file";
 
           return {
             _rowNumber: rowNum,
+            studentId: studentId || "(Auto)",
             prkey: prkey || "(Auto)",
             rawPrkey: prkey,
+            registrationNo: normalized.registrationNo || "",
+            enrollmentNo: normalized.enrollmentNo || "",
             password: rawPassword ? rawPassword : "ssism@123 (Default)",
             rawPassword: rawPassword,
             firstName,
             lastName,
+            fullName,
             fatherName,
             studentMobile,
-            parentMobile: normalized.parentMobile || studentMobile,
+            fatherContactNumber: normalized.fatherContactNumber || normalized.parentMobile || "",
+            parentMobile: normalized.fatherContactNumber || normalized.parentMobile || studentMobile,
             course,
-            year: normalized.year || selectedYear || "1st Year",
+            branch: normalized.branch || course,
+            year: normalized.currentYear || normalized.year || selectedYear || "1st Year",
+            currentYear: normalized.currentYear || normalized.year || selectedYear || "1st Year",
+            currentSemester: normalized.currentSemester || "",
+            batch: normalized.batch || normalized.batchYear || "",
+            batchYear: normalized.batch || normalized.batchYear || "",
             gender: normalized.gender || "Other",
-            address: normalized.address || normalized.village || "Local",
+            category: normalized.category || "",
+            dob: normalized.dob || "",
+            aadharNo: normalized.aadharNo || normalized.aadharCard || "",
+            aadharCard: normalized.aadharNo || normalized.aadharCard || "",
+            fullAddress: normalized.fullAddress || normalized.address || normalized.village || "Local",
+            address: normalized.fullAddress || normalized.address || normalized.village || "Local",
             village: normalized.village || normalized.address || "Local",
+            tehsil: normalized.tehsil || "",
+            district: normalized.district || "",
+            pincode: normalized.pincode || "",
+            trackBus: normalized.trackBus || "",
+            sponsorshipType: normalized.sponsorshipType || "",
+            ssismGroup: normalized.ssismGroup || "",
             email: normalized.email || "",
             technology: normalized.technology || "",
-            aadharCard: normalized.aadharCard || "",
-            category: normalized.category || "",
             percent12: normalized.percent12 || "",
             percent10: normalized.percent10 || "",
             withITEG: isNaturallyITEG(course) ? true : Boolean(normalized.withITEG),
@@ -495,15 +613,53 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
   // ── Submit Single Student Manual Form ───────────────────────
   const handleManualSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
+      const targetSubDeptId = values.subDepartmentId || selectedSubDeptId || defaultSubDepartmentId;
+      const targetSessionId = values.sessionId || activeSessionId;
+      const targetYear = values.year || values.currentYear || activeYear || "1st Year";
+
       const finalPayload = {
         ...values,
-        email: values.email?.trim().toLowerCase(),
-        studentMobile: values.studentMobile?.trim(),
-        parentMobile: values.parentMobile?.trim(),
+        subDepartmentId: targetSubDeptId,
+        sessionId: targetSessionId,
+        year: targetYear,
+        currentYear: targetYear,
+        studentId: values.studentId?.trim() || "",
+        registrationNo: values.registrationNo?.trim() || "",
+        enrollmentNo: values.enrollmentNo?.trim() || "",
+        prkey: values.prkey?.trim() || values.studentId?.trim() || values.registrationNo?.trim() || values.enrollmentNo?.trim() || "",
+        firstName: values.firstName?.trim() || "",
+        lastName: values.lastName?.trim() || "",
+        fullName: values.fullName?.trim() || `${values.firstName || ""} ${values.lastName || ""}`.trim(),
+        branch: values.course || values.branch || "",
+        course: values.course || values.branch || "",
+        currentSemester: values.currentSemester?.trim() || "",
+        batch: values.batch?.trim() || "",
+        batchYear: values.batch?.trim() || "",
+        studentMobile: values.studentMobile?.trim() || "",
+        fatherContactNumber: values.fatherContactNumber?.trim() || values.parentMobile?.trim() || "",
+        parentMobile: values.fatherContactNumber?.trim() || values.parentMobile?.trim() || values.studentMobile?.trim() || "",
+        email: values.email?.trim().toLowerCase() || "",
+        fatherName: values.fatherName?.trim() || "",
+        gender: values.gender || "Male",
+        category: values.category || "GEN",
+        dob: values.dob || "",
+        dobString: values.dob || "",
+        aadharNo: values.aadharNo?.trim() || "",
+        aadharCard: values.aadharNo?.trim() || "",
+        fullAddress: values.fullAddress?.trim() || values.address?.trim() || "",
+        address: values.fullAddress?.trim() || values.address?.trim() || "",
+        village: values.village?.trim() || "",
+        tehsil: values.tehsil?.trim() || "",
+        district: values.district?.trim() || "",
+        pincode: values.pincode?.trim() || "",
+        trackBus: values.trackBus?.trim() || "",
+        sponsorshipType: values.sponsorshipType?.trim() || "Regular",
+        ssismGroup: values.ssismGroup?.trim() || "",
         withITEG: isNaturallyITEG(values.course) ? true : Boolean(values.withITEG)
       };
+
       await createNewStudent(finalPayload).unwrap();
-      toast.success(`Student ${values.firstName} ${values.lastName} added successfully!`);
+      toast.success(`Student ${finalPayload.fullName || finalPayload.firstName} added successfully!`);
       resetForm();
       if (onStudentAdded) onStudentAdded();
       onClose();
@@ -776,15 +932,16 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                       </div>
 
                       <div className="overflow-x-auto max-h-56">
-                        <table className="w-full text-left text-xs">
+                        <table className="w-full text-left text-xs min-w-[760px]">
                           <thead className="bg-gray-100/80 text-gray-600 font-bold border-b border-gray-200 sticky top-0">
                             <tr>
                               <th className="px-3 py-2">Row</th>
-                              <th className="px-3 py-2">PR Key / Roll No</th>
+                              <th className="px-3 py-2">Student ID</th>
+                              <th className="px-3 py-2">Reg / Enr No</th>
                               <th className="px-3 py-2">Student Name</th>
-                              <th className="px-3 py-2">Mobile (Login)</th>
-                              <th className="px-3 py-2">Password</th>
-                              <th className="px-3 py-2">Course</th>
+                              <th className="px-3 py-2">Mobile</th>
+                              <th className="px-3 py-2">Course / Sem</th>
+                              <th className="px-3 py-2">District / Bus</th>
                               <th className="px-3 py-2 text-right">Status</th>
                             </tr>
                           </thead>
@@ -793,32 +950,43 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                               <tr key={r._rowNumber} className={r.isValid ? "hover:bg-gray-50" : "bg-rose-50/50"}>
                                 <td className="px-3 py-2 font-mono text-gray-400">#{r._rowNumber}</td>
                                 <td className="px-3 py-2 font-mono font-bold text-gray-900">
-                                  {r.prkey.startsWith("(") ? (
+                                  {r.studentId || (r.prkey?.startsWith("(") ? (
                                     <span className="text-[11px] text-orange-600 font-semibold italic">{r.prkey}</span>
+                                  ) : r.prkey)}
+                                </td>
+                                <td className="px-3 py-2 font-mono text-gray-700 text-[11px]">
+                                  {r.registrationNo ? (
+                                    <span className="font-semibold text-slate-800">{r.registrationNo}</span>
+                                  ) : r.enrollmentNo ? (
+                                    <span className="text-slate-600">{r.enrollmentNo}</span>
                                   ) : (
-                                    r.prkey
+                                    <span className="text-gray-400">—</span>
                                   )}
                                 </td>
-                                <td className="px-3 py-2 font-semibold text-gray-800">{r.firstName} {r.lastName}</td>
+                                <td className="px-3 py-2 font-semibold text-gray-800">
+                                  {r.fullName || `${r.firstName} ${r.lastName}`}
+                                </td>
                                 <td className="px-3 py-2 font-mono text-gray-600">{r.studentMobile || "—"}</td>
-                                <td className="px-3 py-2 font-mono text-gray-500 text-[11px]">
-                                  {r.password.includes("(Default)") ? (
-                                    <span className="text-gray-400">{r.password}</span>
-                                  ) : (
-                                    <span className="text-emerald-700 font-bold font-mono">•••• ({r.password})</span>
-                                  )}
-                                </td>
                                 <td className="px-3 py-2">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
-                                      {r.course}
+                                      {r.course || r.branch}
                                     </span>
+                                    {r.currentSemester && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                                        {r.currentSemester}
+                                      </span>
+                                    )}
                                     {r.withITEG && !isNaturallyITEG(r.course) && (
                                       <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
                                         + ITEG
                                       </span>
                                     )}
                                   </div>
+                                </td>
+                                <td className="px-3 py-2 text-gray-600 text-[11px]">
+                                  {r.district || r.fullAddress || r.village || "—"}
+                                  {r.trackBus ? ` • ${r.trackBus}` : ""}
                                 </td>
                                 <td className="px-3 py-2 text-right">
                                   {r.isValid ? (
@@ -878,27 +1046,44 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             </div>
           )}
 
-          {/* ═══════════ TAB 2: MANUAL SINGLE ENTRY ═══════════ */}
+          {/* ═══════════ TAB 2: MANUAL SINGLE ENTRY (26 FIELDS) ═══════════ */}
           {activeTab === "manual" && (
             <Formik
               initialValues={{
+                studentId: "",
+                registrationNo: "",
+                enrollmentNo: "",
                 prkey: "",
                 password: "",
                 withITEG: isNaturallyITEG(allowedCourses[0] || ""),
                 firstName: "",
                 lastName: "",
+                fullName: "",
                 fatherName: "",
                 email: "",
                 studentMobile: "",
+                fatherContactNumber: "",
                 parentMobile: "",
                 course: allowedCourses.length === 1 ? allowedCourses[0] : "",
                 subDepartmentId: selectedSubDeptId || defaultSubDepartmentId || "",
                 sessionId: activeSessionId,
                 year: activeYear,
+                currentYear: activeYear,
+                currentSemester: "",
+                batch: "",
                 gender: "Male",
+                category: "GEN",
+                dob: "",
+                aadharNo: "",
+                fullAddress: "",
                 address: "",
                 village: "",
-                category: "GEN",
+                tehsil: "",
+                district: "",
+                pincode: "",
+                trackBus: "",
+                sponsorshipType: "Regular",
+                ssismGroup: "",
                 technology: "",
               }}
               validationSchema={manualStudentValidationSchema}
@@ -906,136 +1091,307 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               enableReinitialize
             >
               {({ values, setFieldValue, isSubmitting }) => (
-                <Form className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <InputField
-                      label="PR Key / Roll No / Enrollment No (Optional)"
-                      name="prkey"
-                      placeholder="e.g. 0827CS241001 (auto-generated if empty)"
-                    />
+                <Form className="space-y-6">
+                  {/* Section 1: Identification & Portal Credentials */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                      <span>1. Student Identification & Login</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <InputField
+                        label="Student ID"
+                        name="studentId"
+                        placeholder="e.g. STU2025001"
+                      />
+                      <InputField
+                        label="Registration No."
+                        name="registrationNo"
+                        placeholder="e.g. REG20250101"
+                      />
+                      <InputField
+                        label="Enrollment No."
+                        name="enrollmentNo"
+                        placeholder="e.g. ENR20250045"
+                      />
+                      <InputField
+                        label="PR Key / Roll No (Optional)"
+                        name="prkey"
+                        placeholder="Auto-generated if empty"
+                      />
+                      <InputField
+                        label="Portal Password (Optional)"
+                        name="password"
+                        type="password"
+                        placeholder="Default: ssism@123"
+                      />
+                    </div>
+                  </div>
 
-                    <InputField
-                      label="Portal Password (Optional)"
-                      name="password"
-                      type="password"
-                      placeholder="Default: ssism@123"
-                    />
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Course *
-                      </label>
-                      <select
-                        name="course"
-                        value={values.course}
+                  {/* Section 2: Personal Information */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span>2. Personal Information</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <InputField
+                        label="First Name *"
+                        name="firstName"
+                        placeholder="e.g. Rahul"
                         onChange={(e) => {
-                          const val = e.target.value;
-                          setFieldValue("course", val);
-                          if (isNaturallyITEG(val)) {
-                            setFieldValue("withITEG", true);
+                          const fName = e.target.value;
+                          setFieldValue("firstName", fName);
+                          if (!values.fullName || values.fullName === `${values.firstName} ${values.lastName}`.trim()) {
+                            setFieldValue("fullName", `${fName} ${values.lastName || ""}`.trim());
                           }
                         }}
-                        className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-                      >
-                        <option value="">{allowedCourses.length === 0 ? "Select Sub Department first" : "Select Course"}</option>
-                        {allowedCourses.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Academic Year *
-                      </label>
-                      <select
-                        name="year"
-                        value={values.year || activeYear}
+                      />
+                      <InputField
+                        label="Last Name"
+                        name="lastName"
+                        placeholder="e.g. Sharma"
                         onChange={(e) => {
-                          setFieldValue("year", e.target.value);
-                          setSelectedYear(e.target.value);
+                          const lName = e.target.value;
+                          setFieldValue("lastName", lName);
+                          if (!values.fullName || values.fullName === `${values.firstName} ${values.lastName}`.trim()) {
+                            setFieldValue("fullName", `${values.firstName || ""} ${lName}`.trim());
+                          }
                         }}
-                        className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-                      >
-                        <option value="1st Year">1st Year</option>
-                        <option value="2nd Year">2nd Year</option>
-                        <option value="3rd Year">3rd Year</option>
-                        <option value="4th Year">4th Year</option>
-                      </select>
+                      />
+                      <InputField
+                        label="Full Name"
+                        name="fullName"
+                        placeholder="e.g. Rahul Sharma"
+                      />
+                      <InputField
+                        label="Father's Name"
+                        name="fatherName"
+                        placeholder="e.g. Suresh Sharma"
+                      />
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Gender
+                        </label>
+                        <select
+                          name="gender"
+                          value={values.gender}
+                          onChange={(e) => setFieldValue("gender", e.target.value)}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Category
+                        </label>
+                        <select
+                          name="category"
+                          value={values.category}
+                          onChange={(e) => setFieldValue("category", e.target.value)}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="GEN">GEN (General)</option>
+                          <option value="OBC">OBC</option>
+                          <option value="SC">SC</option>
+                          <option value="ST">ST</option>
+                          <option value="EWS">EWS</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <InputField
+                        label="Date of Birth (DOB)"
+                        name="dob"
+                        type="date"
+                      />
+                      <InputField
+                        label="Aadhar No."
+                        name="aadharNo"
+                        placeholder="12-digit Aadhar number"
+                        maxLength={12}
+                        onInput={(e) => {
+                          e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 12);
+                        }}
+                      />
                     </div>
+                  </div>
 
-                    <InputField
-                      label="First Name *"
-                      name="firstName"
-                      placeholder="e.g. Rahul"
-                    />
-
-                    <InputField
-                      label="Last Name *"
-                      name="lastName"
-                      placeholder="e.g. Sharma"
-                    />
-
-                    <InputField
-                      label="Father's Name *"
-                      name="fatherName"
-                      placeholder="e.g. Suresh Sharma"
-                    />
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Gender
-                      </label>
-                      <select
-                        name="gender"
-                        value={values.gender}
-                        onChange={(e) => setFieldValue("gender", e.target.value)}
-                        className="w-full h-10 px-3 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-800 font-semibold focus:outline-none focus:border-orange-500 shadow-2xs"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
+                  {/* Section 3: Contact & Address */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>3. Contact & Address Details</span>
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <InputField
+                        label="Mobile Number *"
+                        name="studentMobile"
+                        placeholder="10-digit mobile number"
+                        maxLength={10}
+                        onInput={(e) => {
+                          e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                        }}
+                      />
+                      <InputField
+                        label="Father Contact Number"
+                        name="fatherContactNumber"
+                        placeholder="10-digit mobile number"
+                        maxLength={10}
+                        onInput={(e) => {
+                          e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
+                        }}
+                      />
+                      <InputField
+                        label="Email ID"
+                        name="email"
+                        type="email"
+                        placeholder="e.g. student@ssism.org"
+                      />
+                      <div className="sm:col-span-3">
+                        <InputField
+                          label="Full Address"
+                          name="fullAddress"
+                          placeholder="e.g. 123 Vijay Nagar, Near Main Market"
+                        />
+                      </div>
+                      <InputField
+                        label="Village"
+                        name="village"
+                        placeholder="e.g. Indore"
+                      />
+                      <InputField
+                        label="Tehsil"
+                        name="tehsil"
+                        placeholder="e.g. Indore"
+                      />
+                      <InputField
+                        label="District"
+                        name="district"
+                        placeholder="e.g. Indore"
+                      />
+                      <InputField
+                        label="Pincode"
+                        name="pincode"
+                        placeholder="e.g. 452010"
+                        maxLength={6}
+                        onInput={(e) => {
+                          e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                        }}
+                      />
+                    </div>
+                  </div>
 
-                    <InputField
-                      label="Student Mobile *"
-                      name="studentMobile"
-                      placeholder="10-digit mobile number"
-                      maxLength={10}
-                      onInput={(e) => {
-                        e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
-                      }}
-                    />
+                  {/* Section 4: Academic, Transport & Group Details */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      <span>4. Academic, Transport & Group Details</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Branch / Course *
+                        </label>
+                        <select
+                          name="course"
+                          value={values.course}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFieldValue("course", val);
+                            if (isNaturallyITEG(val)) {
+                              setFieldValue("withITEG", true);
+                            }
+                          }}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="">{allowedCourses.length === 0 ? "Select Sub Department first" : "Select Course"}</option>
+                          {allowedCourses.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <InputField
-                      label="Student Email (Login ID) *"
-                      name="email"
-                      type="email"
-                      placeholder="e.g. rahul@ssism.org"
-                    />
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Current Year *
+                        </label>
+                        <select
+                          name="year"
+                          value={values.year || activeYear}
+                          onChange={(e) => {
+                            setFieldValue("year", e.target.value);
+                            setSelectedYear(e.target.value);
+                          }}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="1st Year">1st Year</option>
+                          <option value="2nd Year">2nd Year</option>
+                          <option value="3rd Year">3rd Year</option>
+                          <option value="4th Year">4th Year</option>
+                        </select>
+                      </div>
 
-                    <InputField
-                      label="Parent Mobile *"
-                      name="parentMobile"
-                      placeholder="10-digit mobile number"
-                      maxLength={10}
-                      onInput={(e) => {
-                        e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 10);
-                      }}
-                    />
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Current Semester
+                        </label>
+                        <select
+                          name="currentSemester"
+                          value={values.currentSemester}
+                          onChange={(e) => setFieldValue("currentSemester", e.target.value)}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="">Select Semester</option>
+                          <option value="1st Sem">1st Sem</option>
+                          <option value="2nd Sem">2nd Sem</option>
+                          <option value="3rd Sem">3rd Sem</option>
+                          <option value="4th Sem">4th Sem</option>
+                          <option value="5th Sem">5th Sem</option>
+                          <option value="6th Sem">6th Sem</option>
+                          <option value="7th Sem">7th Sem</option>
+                          <option value="8th Sem">8th Sem</option>
+                        </select>
+                      </div>
 
-                    <InputField
-                      label="City / Village"
-                      name="village"
-                      placeholder="e.g. Indore"
-                    />
+                      <InputField
+                        label="Batch"
+                        name="batch"
+                        placeholder="e.g. 2024-2028"
+                      />
 
-                    <InputField
-                      label="Address"
-                      name="address"
-                      placeholder="e.g. Vijay Nagar, Indore"
-                    />
+                      <InputField
+                        label="Track Bus"
+                        name="trackBus"
+                        placeholder="e.g. Route No 12 / Stop Name"
+                      />
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                          Sponsorship Type
+                        </label>
+                        <select
+                          name="sponsorshipType"
+                          value={values.sponsorshipType}
+                          onChange={(e) => setFieldValue("sponsorshipType", e.target.value)}
+                          className="w-full h-11 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 focus:outline-none focus:border-orange-400 focus:bg-white transition"
+                        >
+                          <option value="Regular">Regular</option>
+                          <option value="Scholarship">Scholarship</option>
+                          <option value="Sponsored">Sponsored</option>
+                          <option value="TFWS">TFWS</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <InputField
+                        label="SSISM Group"
+                        name="ssismGroup"
+                        placeholder="e.g. Group A / Group B"
+                      />
+                    </div>
                   </div>
 
                   {/* Form Actions */}

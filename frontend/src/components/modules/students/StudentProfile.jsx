@@ -471,9 +471,31 @@ export default function StudentProfile() {
                   />
                 </div>
                 <div className="flex-1 text-center sm:text-left">
-                  <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 text-white">
-                    {studentData.firstName} {studentData.lastName}
+                  <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 text-white">
+                    {studentData.fullName || `${studentData.firstName} ${studentData.lastName}`}
                   </h2>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                    {studentData.studentId && (
+                      <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
+                        ID: {studentData.studentId}
+                      </span>
+                    )}
+                    {studentData.registrationNo && (
+                      <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
+                        Reg: {studentData.registrationNo}
+                      </span>
+                    )}
+                    {studentData.enrollmentNo && (
+                      <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
+                        Enr: {studentData.enrollmentNo}
+                      </span>
+                    )}
+                    {studentData.prkey && (
+                      <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
+                        PR: {studentData.prkey}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-gray-300 mb-3 sm:mb-4 text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                     <span>
                       Course:{" "}
@@ -1361,16 +1383,31 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
             </div>
           </div>
 
-          {/* Personal & Contact Information */}
+          {/* Personal & Contact Information (All 26 Fields) */}
           <div className="mt-6 bg-gray-50 rounded-lg p-6">
             <h5 className="font-semibold text-gray-700 mb-4">👤 Personal Information</h5>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div><span className="font-medium text-gray-600">Father's Name:</span> <br />{studentData.fatherName || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Mother's Name:</span> <br />{studentData.motherName || 'N/A'}</div>
-              <div><span className="font-medium text-gray-600">Date of Birth:</span> <br />{studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Father Contact:</span> <br />{studentData.fatherContactNumber || studentData.parentMobile || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Date of Birth:</span> <br />{studentData.dobString || (studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toLocaleDateString('en-GB') : (studentData.dob ? new Date(studentData.dob).toLocaleDateString('en-GB') : 'N/A'))}</div>
               <div><span className="font-medium text-gray-600">Gender:</span> <br />{studentData.gender || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Category:</span> <br />{studentData.category || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Aadhar No:</span> <br />{studentData.aadharNo || studentData.aadharCard || 'N/A'}</div>
               <div><span className="font-medium text-gray-600">Blood Group:</span> <br />{studentData.bloodGroup || 'N/A'}</div>
               <div><span className="font-medium text-gray-600">Emergency Contact:</span> <br />{studentData.emergencyContact || studentData.parentMobile || 'N/A'}</div>
+            </div>
+
+            {/* Address & Group Details */}
+            <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="col-span-2 md:col-span-2"><span className="font-medium text-gray-600">Full Address:</span> <br />{studentData.fullAddress || studentData.address || studentData.village || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Village / City:</span> <br />{studentData.village || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Tehsil:</span> <br />{studentData.tehsil || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">District:</span> <br />{studentData.district || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Pincode:</span> <br />{studentData.pincode || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Track Bus:</span> <br />{studentData.trackBus || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Sponsorship Type:</span> <br />{studentData.sponsorshipType || 'Regular'}</div>
+              <div><span className="font-medium text-gray-600">SSISM Group:</span> <br />{studentData.ssismGroup || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Semester / Batch:</span> <br />{studentData.currentSemester || 'N/A'} {studentData.batch ? `(${studentData.batch})` : ''}</div>
             </div>
           </div>
 

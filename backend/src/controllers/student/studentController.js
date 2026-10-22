@@ -25,27 +25,59 @@ const isNaturallyITEG = (course) => {
   return c.includes("bca") || c.includes("diploma");
 };
 
+// 🗓️ Helper to robustly parse date of birth from strings, numbers, or dates
+const parseDOB = (val) => {
+  if (!val) return null;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  const s = String(val).trim();
+  if (!s) return null;
+
+  // Handle Excel numeric date serial (e.g., 38000)
+  if (/^\d{4,6}$/.test(s)) {
+    const num = parseInt(s, 10);
+    const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // Handle DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // Standard Date parse (YYYY-MM-DD etc.)
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+};
+
 // ✅ Create Student
 exports.createStudent = async (req, res) => {
   try {
     const { subDepartmentId, session, year, academicYear, sessionId: inputSessionId } = req.body;
 
     // Validate Student Mobile (Strict 10 digits)
-    const cleanStudentMobile = String(req.body.studentMobile || "").trim();
+    const cleanStudentMobile = String(req.body.studentMobile || req.body.mobileNumber || "").trim();
     if (!/^[0-9]{10}$/.test(cleanStudentMobile)) {
       return res.status(400).json({ message: "Student mobile number must be exactly 10 digits" });
     }
 
-    // Validate Parent Mobile (Required, Strict 10 digits)
-    const cleanParentMobile = String(req.body.parentMobile || "").trim();
-    if (!/^[0-9]{10}$/.test(cleanParentMobile)) {
-      return res.status(400).json({ message: "Parent mobile number is required and must be exactly 10 digits" });
+    // Parent Mobile / Father Contact Number (fallback to studentMobile if not provided)
+    let cleanParentMobile = String(req.body.parentMobile || req.body.fatherContactNumber || "").trim();
+    if (!cleanParentMobile) {
+      cleanParentMobile = cleanStudentMobile;
+    } else if (!/^[0-9]{10}$/.test(cleanParentMobile)) {
+      return res.status(400).json({ message: "Father / Parent contact number must be exactly 10 digits" });
     }
 
-    // Validate Student Email (Required, strictly @ssism.org)
-    const cleanEmail = String(req.body.email || "").trim().toLowerCase();
-    if (!cleanEmail || !/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(cleanEmail)) {
-      return res.status(400).json({ message: "Student email is required and must end with @ssism.org (e.g. name@ssism.org)" });
+    // Validate Student Email (Flexible format to support external connections)
+    const cleanEmail = String(req.body.email || req.body.emailId || "").trim().toLowerCase();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ message: "Student email must be a valid email address (e.g. name@ssism.org or student@gmail.com)" });
     }
 
     // Validate subDepartment
@@ -98,26 +130,39 @@ exports.createStudent = async (req, res) => {
     const allowedCourses = (subDept.allowedCourses || []).length > 0
       ? subDept.allowedCourses
       : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
-    const resolvedCourse = req.body.course || allowedCourses[0] || "General";
+    const resolvedCourse = req.body.course || req.body.branch || req.body["Branch/Course"] || allowedCourses[0] || "General";
+    const resolvedBranch = req.body.branch || req.body["Branch/Course"] || resolvedCourse;
 
-    // Auto-generate PR Key if not provided
-    let prkey = req.body.prkey ? String(req.body.prkey).trim() : "";
+    // Names resolution
+    const firstName = String(req.body.firstName || "").trim();
+    const lastName = String(req.body.lastName || "").trim();
+    let fullName = String(req.body.fullName || "").trim();
+    if (!fullName && firstName) {
+      fullName = `${firstName} ${lastName}`.trim();
+    }
+
+    // Auto-generate or resolve PR Key / Student ID
+    let studentId = req.body.studentId ? String(req.body.studentId).trim() : "";
+    let prkey = req.body.prkey ? String(req.body.prkey).trim() : studentId;
     if (!prkey) {
       const cleanCourse = (resolvedCourse || "STU").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
       const sessionYear = targetSession?.name || new Date().getFullYear().toString();
       prkey = `${cleanCourse}${sessionYear}${Date.now().toString().slice(-4)}`;
     }
+    if (!studentId) {
+      studentId = prkey;
+    }
 
-    // Duplicate check
+    // Duplicate check on prkey
     const existing = await Student.findOne({ prkey });
-    if (existing) return res.status(409).json({ message: `Student with PR Key / Roll Number '${prkey}' already exists` });
+    if (existing) return res.status(409).json({ message: `Student with PR Key / Roll Number / Student ID '${prkey}' already exists` });
 
     // Hash password (use provided or default ssism@123)
     const rawPassword = req.body.password ? String(req.body.password).trim() : "ssism@123";
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     // Calculate student batch year based on session and department/course duration
-    let batchYear = req.body.batchYear;
+    let batchYear = req.body.batchYear || req.body.batch;
     if (!batchYear) {
       try {
         batchYear = await calculateBatchYear({
@@ -132,7 +177,7 @@ exports.createStudent = async (req, res) => {
     }
 
     // Determine Year (e.g. 1st Year, 2nd Year, 3rd Year, 4th Year)
-    let resolvedYear = req.body.year;
+    let resolvedYear = req.body.year || req.body.currentYear;
     if (!resolvedYear || /^\d{4}$/.test(String(resolvedYear).trim())) {
       const sName = targetSession?.name || "";
       if (sName.includes("2024")) resolvedYear = "3rd Year";
@@ -143,19 +188,46 @@ exports.createStudent = async (req, res) => {
     }
 
     const resolvedWithITEG = isNaturallyITEG(resolvedCourse) ? true : Boolean(req.body.withITEG);
+    const parsedDob = parseDOB(req.body.dob);
+    const dobString = req.body.dobString || (req.body.dob ? String(req.body.dob) : "");
 
     const student = new Student({
       ...req.body,
       prkey,
+      studentId,
+      registrationNo: req.body.registrationNo || "",
+      enrollmentNo: req.body.enrollmentNo || "",
+      firstName,
+      lastName,
+      fullName,
+      fatherName: req.body.fatherName || "",
       email: cleanEmail,
       studentMobile: cleanStudentMobile,
       parentMobile: cleanParentMobile,
+      fatherContactNumber: cleanParentMobile,
       password: hashedPassword,
+      branch: resolvedBranch,
       course: resolvedCourse,
-      address: req.body.address || req.body.village || "Local",
-      village: req.body.village || req.body.address || "Local",
-      batchYear,
       year: resolvedYear,
+      currentYear: req.body.currentYear || resolvedYear,
+      currentSemester: req.body.currentSemester || "",
+      batch: req.body.batch || batchYear || "",
+      batchYear,
+      gender: req.body.gender || "",
+      category: req.body.category || "",
+      dob: parsedDob,
+      dobString,
+      aadharNo: req.body.aadharNo || req.body.aadharCard || "",
+      aadharCard: req.body.aadharNo || req.body.aadharCard || "",
+      fullAddress: req.body.fullAddress || req.body.address || req.body.village || "Local",
+      address: req.body.fullAddress || req.body.address || req.body.village || "Local",
+      village: req.body.village || req.body.fullAddress || req.body.address || "Local",
+      tehsil: req.body.tehsil || "",
+      district: req.body.district || "",
+      pincode: req.body.pincode || "",
+      trackBus: req.body.trackBus || "",
+      sponsorshipType: req.body.sponsorshipType || req.body.sponshershipType || "",
+      ssismGroup: req.body.ssismGroup || "",
       withITEG: resolvedWithITEG,
       sessionId: targetSessionId,
       currentLevelId: firstLevel._id,
@@ -338,9 +410,14 @@ exports.importStudentsExcel = async (req, res) => {
       : (subDept.departmentId?.allowedCourses || []).map(c => c.courseName).filter(Boolean);
     const defaultCourse = allowedCourses[0] || "General";
 
-    // Pre-fetch all existing PR keys in MongoDB
-    const existingStudents = await Student.find({}, "prkey").lean();
-    const existingPrkeySet = new Set(existingStudents.map(s => String(s.prkey || "").toLowerCase()));
+    // Pre-fetch all existing PR keys & student IDs in MongoDB
+    const existingStudents = await Student.find({}, "prkey studentId").lean();
+    const existingPrkeySet = new Set(
+      existingStudents.flatMap(s => [
+        s.prkey ? String(s.prkey).toLowerCase() : null,
+        s.studentId ? String(s.studentId).toLowerCase() : null
+      ]).filter(Boolean)
+    );
 
     // Default Year for this import batch
     let defaultYear = req.body.year;
@@ -365,28 +442,71 @@ exports.importStudentsExcel = async (req, res) => {
       for (const [key, val] of Object.entries(raw)) {
         if (key.startsWith("_")) continue;
         const nk = normalizeKey(key);
-        if (["prkey", "rollno", "enrollmentno", "prn", "studentid", "admissionno", "scholarno"].includes(nk)) normalizedRow.prkey = val;
-        else if (["password", "pass", "pwd"].includes(nk)) normalizedRow.password = val;
-        else if (["firstname", "first", "fname"].includes(nk)) normalizedRow.firstName = val;
-        else if (["lastname", "last", "lname", "surname"].includes(nk)) normalizedRow.lastName = val;
-        else if (["fullname", "name", "studentname"].includes(nk)) normalizedRow.fullName = val;
-        else if (["fathername", "father", "guardianname"].includes(nk)) normalizedRow.fatherName = val;
-        else if (["studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone"].includes(nk)) normalizedRow.studentMobile = val;
-        else if (["parentmobile", "fatherphone", "fathermobile", "parentphone", "guardianmobile"].includes(nk)) normalizedRow.parentMobile = val;
-        else if (["course", "degree", "branch", "stream"].includes(nk)) normalizedRow.course = val;
-        else if (["gender", "sex"].includes(nk)) normalizedRow.gender = val;
-        else if (["email", "emailid"].includes(nk)) normalizedRow.email = val;
-        else if (["address", "residentialaddress"].includes(nk)) normalizedRow.address = val;
-        else if (["village", "city", "town"].includes(nk)) normalizedRow.village = val;
-        else if (["aadhar", "aadharcard", "aadharno"].includes(nk)) normalizedRow.aadharCard = val;
-        else if (["category", "caste"].includes(nk)) normalizedRow.category = val;
-        else if (["track", "techno", "technology"].includes(nk)) normalizedRow.technology = val;
-        else if (["percent12", "12thpercent", "12percentage", "12thpercentage"].includes(nk)) normalizedRow.percent12 = val;
-        else if (["percent10", "10thpercent", "10percentage", "10thpercentage"].includes(nk)) normalizedRow.percent10 = val;
-        else if (["year12", "12thyear", "12passoutyear"].includes(nk)) normalizedRow.year12 = val;
-        else if (["year", "academicyear", "currentyear", "classyear", "studyingyear"].includes(nk)) normalizedRow.year = val;
-        else if (["withiteg", "iteg", "with_iteg", "isiteg", "withitegyesno"].includes(nk) || nk.includes("iteg")) {
-          const v = String(val || "").toLowerCase().trim();
+        const cleanVal = val !== undefined && val !== null ? String(val).trim() : "";
+
+        if (["studentid", "prkey", "rollno", "admissionno", "scholarno"].includes(nk)) {
+          normalizedRow.studentId = cleanVal;
+          if (!normalizedRow.prkey) normalizedRow.prkey = cleanVal;
+        } else if (["registrationno", "regno", "registrationnumber"].includes(nk)) {
+          normalizedRow.registrationNo = cleanVal;
+        } else if (["enrollmentno", "enrollmentnumber", "enrno", "prn"].includes(nk)) {
+          normalizedRow.enrollmentNo = cleanVal;
+        } else if (["firstname", "first", "fname"].includes(nk)) {
+          normalizedRow.firstName = cleanVal;
+        } else if (["lastname", "last", "lname", "surname"].includes(nk)) {
+          normalizedRow.lastName = cleanVal;
+        } else if (["fullname", "studentname", "name"].includes(nk)) {
+          normalizedRow.fullName = cleanVal;
+        } else if (["branchcourse", "branch", "course", "degree", "stream"].includes(nk)) {
+          normalizedRow.branch = cleanVal;
+          normalizedRow.course = cleanVal;
+        } else if (["currentyear", "academicyear", "year", "studyingyear", "classyear"].includes(nk)) {
+          normalizedRow.currentYear = cleanVal;
+          normalizedRow.year = cleanVal;
+        } else if (["currentsemester", "semester", "sem", "currentsem"].includes(nk)) {
+          normalizedRow.currentSemester = cleanVal;
+        } else if (["batch", "batchyear"].includes(nk)) {
+          normalizedRow.batch = cleanVal;
+          normalizedRow.batchYear = cleanVal;
+        } else if (["mobilenumber", "studentmobile", "mobile", "mobileno", "phoneno", "contact", "studentphone", "phone"].includes(nk)) {
+          normalizedRow.studentMobile = cleanVal;
+        } else if (["fathercontactnumber", "fathermobile", "parentmobile", "fatherphone", "parentphone", "guardianmobile"].includes(nk)) {
+          normalizedRow.fatherContactNumber = cleanVal;
+          normalizedRow.parentMobile = cleanVal;
+        } else if (["emailid", "email", "emailaddress", "mailid"].includes(nk)) {
+          normalizedRow.email = cleanVal;
+        } else if (["fathername", "father", "guardianname"].includes(nk)) {
+          normalizedRow.fatherName = cleanVal;
+        } else if (["gender", "sex"].includes(nk)) {
+          normalizedRow.gender = cleanVal;
+        } else if (["category", "caste"].includes(nk)) {
+          normalizedRow.category = cleanVal;
+        } else if (["dob", "dateofbirth", "birthdate"].includes(nk)) {
+          normalizedRow.dob = cleanVal;
+        } else if (["aadharno", "aadhar", "aadharcard", "aadharnumber"].includes(nk)) {
+          normalizedRow.aadharNo = cleanVal;
+          normalizedRow.aadharCard = cleanVal;
+        } else if (["fulladdress", "address", "residentialaddress"].includes(nk)) {
+          normalizedRow.fullAddress = cleanVal;
+          normalizedRow.address = cleanVal;
+        } else if (["village", "city", "town"].includes(nk)) {
+          normalizedRow.village = cleanVal;
+        } else if (["tehsil", "taluka"].includes(nk)) {
+          normalizedRow.tehsil = cleanVal;
+        } else if (["district", "dist"].includes(nk)) {
+          normalizedRow.district = cleanVal;
+        } else if (["pincode", "postalcode", "zipcode", "pin"].includes(nk)) {
+          normalizedRow.pincode = cleanVal;
+        } else if (["trackbus", "busroute", "busno", "transport", "bus"].includes(nk)) {
+          normalizedRow.trackBus = cleanVal;
+        } else if (["sponshershiptype", "sponsorshiptype", "sponsorship"].includes(nk)) {
+          normalizedRow.sponsorshipType = cleanVal;
+        } else if (["ssismgroup", "group"].includes(nk)) {
+          normalizedRow.ssismGroup = cleanVal;
+        } else if (["password", "pass", "pwd"].includes(nk)) {
+          normalizedRow.password = cleanVal;
+        } else if (["withiteg", "iteg", "with_iteg", "isiteg", "withitegyesno"].includes(nk) || nk.includes("iteg")) {
+          const v = String(cleanVal || "").toLowerCase().trim();
           normalizedRow.withITEG = ["yes", "y", "true", "1", "iteg", "with iteg"].includes(v);
         }
       }
@@ -395,15 +515,18 @@ exports.importStudentsExcel = async (req, res) => {
       if (!normalizedRow.firstName && normalizedRow.fullName) {
         const parts = String(normalizedRow.fullName).trim().split(/\s+/);
         normalizedRow.firstName = parts[0] || "";
-        normalizedRow.lastName = parts.slice(1).join(" ") || parts[0];
+        normalizedRow.lastName = parts.slice(1).join(" ") || "";
+      } else if (normalizedRow.firstName && !normalizedRow.fullName) {
+        normalizedRow.fullName = `${normalizedRow.firstName} ${normalizedRow.lastName || ""}`.trim();
       }
 
-      let prkey = String(normalizedRow.prkey || "").trim();
+      let prkey = String(normalizedRow.prkey || normalizedRow.studentId || "").trim();
       const firstName = String(normalizedRow.firstName || "").trim();
-      const lastName = String(normalizedRow.lastName || "").trim() || firstName;
+      const lastName = String(normalizedRow.lastName || "").trim();
+      const fullName = String(normalizedRow.fullName || `${firstName} ${lastName}`).trim();
       const fatherName = String(normalizedRow.fatherName || "").trim();
       const studentMobile = String(normalizedRow.studentMobile || "").trim();
-      const course = String(normalizedRow.course || "").trim() || defaultCourse;
+      const course = String(normalizedRow.course || normalizedRow.branch || "").trim() || defaultCourse;
 
       // Auto-generate PR Key if not provided in Excel row
       if (!prkey) {
@@ -412,17 +535,18 @@ exports.importStudentsExcel = async (req, res) => {
         prkey = `${cleanCourse}${sessionYear}${String(1001 + validStudentsToInsert.length).padStart(4, "0")}`;
       }
 
+      const studentId = normalizedRow.studentId || prkey;
+
       // Validation
       const missingFields = [];
-      if (!firstName) missingFields.push("First Name");
-      if (!fatherName) missingFields.push("Father Name");
-      if (!studentMobile) missingFields.push("Student Mobile");
+      if (!firstName && !fullName) missingFields.push("First Name / Full Name");
+      if (!studentMobile) missingFields.push("Mobile Number");
 
       if (missingFields.length > 0) {
         errorDetails.push({
           row: rowNumber,
           prkey: prkey || "N/A",
-          name: `${firstName} ${lastName}`.trim() || "N/A",
+          name: fullName || `${firstName} ${lastName}`.trim() || "N/A",
           reason: `Missing mandatory field(s): ${missingFields.join(", ")}`
         });
         continue;
@@ -435,8 +559,8 @@ exports.importStudentsExcel = async (req, res) => {
         skippedDetails.push({
           row: rowNumber,
           prkey,
-          name: `${firstName} ${lastName}`,
-          reason: "Duplicate PR Key / Roll Number inside uploaded Excel sheet"
+          name: fullName || `${firstName} ${lastName}`,
+          reason: "Duplicate Student ID / PR Key inside uploaded Excel sheet"
         });
         continue;
       }
@@ -447,8 +571,8 @@ exports.importStudentsExcel = async (req, res) => {
         skippedDetails.push({
           row: rowNumber,
           prkey,
-          name: `${firstName} ${lastName}`,
-          reason: "Student with this PR Key / Roll Number already exists in database"
+          name: fullName || `${firstName} ${lastName}`,
+          reason: "Student with this Student ID / PR Key already exists in database"
         });
         continue;
       }
@@ -458,19 +582,21 @@ exports.importStudentsExcel = async (req, res) => {
       const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
       // Compute batch year
-      let batchYear = null;
-      try {
-        batchYear = await calculateBatchYear({
-          sessionId: targetSessionId,
-          session: targetSession,
-          subDepartmentId,
-          course
-        });
-      } catch (e) {
-        batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
+      let batchYear = normalizedRow.batch || normalizedRow.batchYear;
+      if (!batchYear) {
+        try {
+          batchYear = await calculateBatchYear({
+            sessionId: targetSessionId,
+            session: targetSession,
+            subDepartmentId,
+            course
+          });
+        } catch (e) {
+          batchYear = `${targetSession?.name || "2025"}-${parseInt(targetSession?.name || "2025", 10) + 3}`;
+        }
       }
 
-      let studentYear = normalizedRow.year || defaultYear;
+      let studentYear = normalizedRow.currentYear || normalizedRow.year || defaultYear;
       if (/^\d+$/.test(String(studentYear).trim())) {
         const num = String(studentYear).trim();
         if (num === "1") studentYear = "1st Year";
@@ -479,34 +605,55 @@ exports.importStudentsExcel = async (req, res) => {
         else if (num === "4") studentYear = "4th Year";
       }
 
+      const parsedDob = parseDOB(normalizedRow.dob);
+
       const newStudentDoc = {
         prkey,
+        studentId,
+        registrationNo: normalizedRow.registrationNo || "",
+        enrollmentNo: normalizedRow.enrollmentNo || "",
         password: hashedPassword,
         firstName,
         lastName,
+        fullName,
         fatherName,
         studentMobile,
-        parentMobile: normalizedRow.parentMobile || studentMobile,
+        parentMobile: normalizedRow.fatherContactNumber || normalizedRow.parentMobile || studentMobile,
+        fatherContactNumber: normalizedRow.fatherContactNumber || normalizedRow.parentMobile || "",
         email: normalizedRow.email || "",
         gender: normalizedRow.gender || "Other",
-        address: normalizedRow.address || normalizedRow.village || "Local",
+        category: normalizedRow.category || "",
+        dob: parsedDob,
+        dobString: String(normalizedRow.dob || ""),
+        aadharCard: normalizedRow.aadharNo || normalizedRow.aadharCard || "",
+        aadharNo: normalizedRow.aadharNo || normalizedRow.aadharCard || "",
+        address: normalizedRow.fullAddress || normalizedRow.address || normalizedRow.village || "Local",
+        fullAddress: normalizedRow.fullAddress || normalizedRow.address || normalizedRow.village || "Local",
         village: normalizedRow.village || normalizedRow.address || "Local",
+        tehsil: normalizedRow.tehsil || "",
+        district: normalizedRow.district || "",
+        pincode: normalizedRow.pincode || "",
+        trackBus: normalizedRow.trackBus || "",
+        sponsorshipType: normalizedRow.sponsorshipType || "",
+        ssismGroup: normalizedRow.ssismGroup || "",
+        branch: normalizedRow.branch || course,
         course,
         year: studentYear,
+        currentYear: studentYear,
+        currentSemester: normalizedRow.currentSemester || "",
+        batch: normalizedRow.batch || batchYear || "",
+        batchYear,
         track: normalizedRow.technology || "",
         technology: normalizedRow.technology || "",
-        aadharCard: normalizedRow.aadharCard || "",
-        category: normalizedRow.category || "",
         percent12: normalizedRow.percent12 || "",
         percent10: normalizedRow.percent10 || "",
         year12: normalizedRow.year12 || "",
         subDepartmentId,
         sessionId: targetSessionId,
-        batchYear,
         currentLevelId: firstLevel._id,
         currentSubLevelId: firstSubLevel._id,
         syllabusVersionId: latestSyllabus ? latestSyllabus._id : null,
-        withITEG: isNaturallyITEG(normalizedRow.course) ? true : Boolean(normalizedRow.withITEG),
+        withITEG: isNaturallyITEG(course) ? true : Boolean(normalizedRow.withITEG),
         status: "Active"
       };
 
@@ -555,7 +702,7 @@ exports.importStudentsExcel = async (req, res) => {
 };
 
 
-// ✅ Download Sample Excel Template for Students
+// ✅ Download Sample Excel Template for Students (26 Requested Fields)
 exports.downloadSampleExcel = async (req, res) => {
   try {
     const { subDepartmentId } = req.query;
@@ -580,23 +727,32 @@ exports.downloadSampleExcel = async (req, res) => {
 
     const sheet = workbook.addWorksheet("Students");
     sheet.columns = [
-      { header: "PR Key / Roll No / Enrollment No", key: "prkey", width: 22 },
-      { header: "Password (Default: ssism@123)", key: "password", width: 22 },
-      { header: "First Name*", key: "firstName", width: 16 },
-      { header: "Last Name*", key: "lastName", width: 16 },
-      { header: "Father Name*", key: "fatherName", width: 22 },
-      { header: "Student Mobile*", key: "studentMobile", width: 18 },
-      { header: "Parent Mobile", key: "parentMobile", width: 18 },
-      { header: "Course*", key: "course", width: 16 },
-      { header: "Academic Year (1st Year / 2nd Year / 3rd Year)", key: "year", width: 25 },
-      { header: "Gender", key: "gender", width: 12 },
-      { header: "Email", key: "email", width: 24 },
-      { header: "Address", key: "address", width: 26 },
-      { header: "Village/City", key: "village", width: 16 },
-      { header: "Aadhar Card", key: "aadharCard", width: 18 },
-      { header: "Category", key: "category", width: 12 },
-      { header: "12th Percentage", key: "percent12", width: 16 },
-      { header: "10th Percentage", key: "percent10", width: 16 },
+      { header: "Student ID", key: "studentId", width: 18 },
+      { header: "Registration No.", key: "registrationNo", width: 20 },
+      { header: "Enrollment no.", key: "enrollmentNo", width: 20 },
+      { header: "First Name", key: "firstName", width: 16 },
+      { header: "Last Name", key: "lastName", width: 16 },
+      { header: "Full Name", key: "fullName", width: 22 },
+      { header: "Branch/Course", key: "branchCourse", width: 18 },
+      { header: "Current Year", key: "currentYear", width: 16 },
+      { header: "Current Semester", key: "currentSemester", width: 18 },
+      { header: "Batch", key: "batch", width: 16 },
+      { header: "Mobile Number", key: "studentMobile", width: 18 },
+      { header: "Father contact Number", key: "fatherContactNumber", width: 22 },
+      { header: "email Id", key: "email", width: 25 },
+      { header: "father Name", key: "fatherName", width: 22 },
+      { header: "gender", key: "gender", width: 12 },
+      { header: "category", key: "category", width: 14 },
+      { header: "DOB", key: "dob", width: 16 },
+      { header: "Aadhar No.", key: "aadharNo", width: 18 },
+      { header: "Full Address", key: "fullAddress", width: 30 },
+      { header: "Village", key: "village", width: 18 },
+      { header: "Tehsil", key: "tehsil", width: 16 },
+      { header: "District", key: "district", width: 16 },
+      { header: "Pincode", key: "pincode", width: 14 },
+      { header: "Track Bus", key: "trackBus", width: 16 },
+      { header: "Sponshership Type", key: "sponsorshipType", width: 20 },
+      { header: "SSISM Group", key: "ssismGroup", width: 16 },
     ];
 
     // Style Header Row
@@ -615,42 +771,61 @@ exports.downloadSampleExcel = async (req, res) => {
     const sampleCourse2 = allowedCourses[1] || allowedCourses[0] || "B.Tech";
 
     sheet.addRow({
-      prkey: "0827CS241001",
-      password: "Student@123",
+      studentId: "STU2025001",
+      registrationNo: "REG20250101",
+      enrollmentNo: "ENR20250045",
       firstName: "Rahul",
       lastName: "Sharma",
-      fatherName: "Suresh Sharma",
+      fullName: "Rahul Sharma",
+      branchCourse: sampleCourse1,
+      currentYear: "1st Year",
+      currentSemester: "1st Sem",
+      batch: "2025-2028",
       studentMobile: "9876543210",
-      parentMobile: "9876543211",
-      course: sampleCourse1,
-      year: "2nd Year",
+      fatherContactNumber: "9876543211",
+      email: "rahul.sharma@ssism.org",
+      fatherName: "Suresh Sharma",
       gender: "Male",
-      email: "rahul.sharma@example.com",
-      address: "123 Vijay Nagar",
-      village: "Indore",
-      aadharCard: "123456789012",
       category: "GEN",
-      percent12: "82.5%",
-      percent10: "88.0%"
+      dob: "2004-05-15",
+      aadharNo: "123456789012",
+      fullAddress: "123 Vijay Nagar, Near Main Market",
+      village: "Indore",
+      tehsil: "Indore",
+      district: "Indore",
+      pincode: "452010",
+      trackBus: "Route No 12",
+      sponsorshipType: "Regular",
+      ssismGroup: "Group A"
     });
 
     sheet.addRow({
-      prkey: "0827CS241002",
-      password: "",
+      studentId: "STU2025002",
+      registrationNo: "REG20250102",
+      enrollmentNo: "ENR20250046",
       firstName: "Priya",
       lastName: "Patel",
-      fatherName: "Ramesh Patel",
+      fullName: "Priya Patel",
+      branchCourse: sampleCourse2,
+      currentYear: "2nd Year",
+      currentSemester: "3rd Sem",
+      batch: "2024-2027",
       studentMobile: "9123456780",
-      parentMobile: "9123456781",
-      course: sampleCourse2,
+      fatherContactNumber: "9123456781",
+      email: "priya.patel@ssism.org",
+      fatherName: "Ramesh Patel",
       gender: "Female",
-      email: "priya.patel@example.com",
-      address: "45 Navlakha",
-      village: "Indore",
-      aadharCard: "987654321098",
       category: "OBC",
-      percent12: "85.0%",
-      percent10: "90.2%"
+      dob: "2003-11-20",
+      aadharNo: "987654321098",
+      fullAddress: "45 Navlakha, AB Road",
+      village: "Indore",
+      tehsil: "Indore",
+      district: "Indore",
+      pincode: "452001",
+      trackBus: "Route No 05",
+      sponsorshipType: "Scholarship",
+      ssismGroup: "Group B"
     });
 
     // Instructions Sheet
@@ -670,20 +845,32 @@ exports.downloadSampleExcel = async (req, res) => {
     };
     guideHeader.height = 26;
 
-    guideSheet.addRow({ field: "PR Key / Roll No / Enrollment No", required: "OPTIONAL", desc: "Unique student identifier. Can be College Roll No or Enrollment No. If left empty, system auto-generates." });
-    guideSheet.addRow({ field: "Password", required: "OPTIONAL", desc: "Portal login password. If left blank, defaults to 'ssism@123'." });
-    guideSheet.addRow({ field: "First Name*", required: "YES", desc: "Student's given name." });
-    guideSheet.addRow({ field: "Last Name*", required: "YES", desc: "Student's surname (or leave as first name)." });
-    guideSheet.addRow({ field: "Father Name*", required: "YES", desc: "Father's or guardian's name." });
-    guideSheet.addRow({ field: "Student Mobile*", required: "YES", desc: "10-digit mobile number of student." });
-    guideSheet.addRow({ field: "Parent Mobile", required: "NO", desc: "Parent mobile number. Defaults to student mobile if left empty." });
-    guideSheet.addRow({ field: "Course*", required: "YES", desc: `Allowed courses for this department (${subDeptName}): ${allowedCourses.join(", ")}` });
-    guideSheet.addRow({ field: "Academic Year", required: "NO", desc: "1st Year, 2nd Year, 3rd Year, or 4th Year. If left empty, calculated from session." });
-    guideSheet.addRow({ field: "Gender", required: "NO", desc: "Male, Female, or Other." });
-    guideSheet.addRow({ field: "Address", required: "NO", desc: "Residential address." });
-    guideSheet.addRow({ field: "Village/City", required: "NO", desc: "Village or city name." });
-    guideSheet.addRow({ field: "Aadhar Card", required: "NO", desc: "12-digit Aadhar number." });
-    guideSheet.addRow({ field: "Category", required: "NO", desc: "GEN, OBC, SC, ST, etc." });
+    guideSheet.addRow({ field: "Student ID", required: "OPTIONAL", desc: "Unique student identifier. If left empty, system auto-generates." });
+    guideSheet.addRow({ field: "Registration No.", required: "OPTIONAL", desc: "College/Admission Registration Number." });
+    guideSheet.addRow({ field: "Enrollment no.", required: "OPTIONAL", desc: "University Enrollment Number." });
+    guideSheet.addRow({ field: "First Name", required: "YES", desc: "Student's given first name." });
+    guideSheet.addRow({ field: "Last Name", required: "OPTIONAL", desc: "Student's surname." });
+    guideSheet.addRow({ field: "Full Name", required: "OPTIONAL", desc: "Student's complete name (auto-built if left empty)." });
+    guideSheet.addRow({ field: "Branch/Course", required: "YES", desc: `Allowed courses for (${subDeptName}): ${allowedCourses.join(", ")}` });
+    guideSheet.addRow({ field: "Current Year", required: "NO", desc: "1st Year, 2nd Year, 3rd Year, or 4th Year." });
+    guideSheet.addRow({ field: "Current Semester", required: "NO", desc: "1st Sem, 2nd Sem, 3rd Sem, 4th Sem, 5th Sem, 6th Sem, etc." });
+    guideSheet.addRow({ field: "Batch", required: "NO", desc: "Batch duration (e.g. 2024-2027, 2025-2029)." });
+    guideSheet.addRow({ field: "Mobile Number", required: "YES", desc: "10-digit mobile number of student." });
+    guideSheet.addRow({ field: "Father contact Number", required: "NO", desc: "10-digit contact number of father or parent." });
+    guideSheet.addRow({ field: "email Id", required: "NO", desc: "Student email address." });
+    guideSheet.addRow({ field: "father Name", required: "NO", desc: "Father or guardian's full name." });
+    guideSheet.addRow({ field: "gender", required: "NO", desc: "Male, Female, or Other." });
+    guideSheet.addRow({ field: "category", required: "NO", desc: "GEN, OBC, SC, ST, etc." });
+    guideSheet.addRow({ field: "DOB", required: "NO", desc: "Date of Birth (YYYY-MM-DD or DD/MM/YYYY)." });
+    guideSheet.addRow({ field: "Aadhar No.", required: "NO", desc: "12-digit Aadhar card number." });
+    guideSheet.addRow({ field: "Full Address", required: "NO", desc: "Full residential address." });
+    guideSheet.addRow({ field: "Village", required: "NO", desc: "Village or city name." });
+    guideSheet.addRow({ field: "Tehsil", required: "NO", desc: "Tehsil / Taluka name." });
+    guideSheet.addRow({ field: "District", required: "NO", desc: "District name." });
+    guideSheet.addRow({ field: "Pincode", required: "NO", desc: "6-digit postal pincode." });
+    guideSheet.addRow({ field: "Track Bus", required: "NO", desc: "Bus route name or bus number." });
+    guideSheet.addRow({ field: "Sponshership Type", required: "NO", desc: "Regular, Scholarship, Management, TFW, etc." });
+    guideSheet.addRow({ field: "SSISM Group", required: "NO", desc: "Allocated student group (e.g. Group A, Group B)." });
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="students_import_template_${subDeptName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx"`);
@@ -875,13 +1062,21 @@ exports.updateStudent = async (req, res) => {
     if (!existingStudent) return res.status(404).json({ message: "Student not found" });
 
     const allowedFields = [
-      "firstName", "lastName", "fatherName", "email", "studentMobile",
-      "parentMobile", "gender", "dob", "aadharCard", "address", "track",
-      "village", "stream", "course", "category", "subject12", "year12",
-      "percent12", "percent10", "status", "isFTP", "batchYear", "year", "withITEG"
+      "studentId", "registrationNo", "enrollmentNo", "firstName", "lastName", "fullName",
+      "branch", "course", "currentYear", "year", "currentSemester", "batch", "batchYear",
+      "studentMobile", "fatherContactNumber", "parentMobile", "email", "fatherName",
+      "gender", "category", "dob", "dobString", "aadharNo", "aadharCard",
+      "fullAddress", "address", "village", "tehsil", "district", "pincode",
+      "trackBus", "sponsorshipType", "ssismGroup", "track", "techno", "technology",
+      "status", "isFTP", "withITEG", "percent12", "percent10", "year12"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });
+
+    // Sync names
+    if (updateData.firstName && updateData.lastName && !updateData.fullName) {
+      updateData.fullName = `${updateData.firstName} ${updateData.lastName}`.trim();
+    }
 
     if (updateData.studentMobile !== undefined) {
       const clean = String(updateData.studentMobile).trim();
@@ -891,20 +1086,60 @@ exports.updateStudent = async (req, res) => {
       updateData.studentMobile = clean;
     }
 
-    if (updateData.parentMobile !== undefined) {
-      const clean = String(updateData.parentMobile).trim();
-      if (!/^[0-9]{10}$/.test(clean)) {
-        return res.status(400).json({ message: "Parent mobile number must be exactly 10 digits" });
+    if (updateData.fatherContactNumber !== undefined || updateData.parentMobile !== undefined) {
+      const clean = String(updateData.fatherContactNumber || updateData.parentMobile || "").trim();
+      if (clean && !/^[0-9]{10}$/.test(clean)) {
+        return res.status(400).json({ message: "Father / Parent contact number must be exactly 10 digits" });
       }
-      updateData.parentMobile = clean;
+      if (clean) {
+        updateData.parentMobile = clean;
+        updateData.fatherContactNumber = clean;
+      }
     }
 
     if (updateData.email !== undefined) {
       const clean = String(updateData.email).trim().toLowerCase();
-      if (clean && !/^[a-zA-Z0-9._%+-]+@ssism\.org$/i.test(clean)) {
-        return res.status(400).json({ message: "Student email must end with @ssism.org (e.g. name@ssism.org)" });
+      if (clean && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+        return res.status(400).json({ message: "Student email must be a valid email address (e.g. name@ssism.org or name@gmail.com)" });
       }
       updateData.email = clean;
+    }
+
+    if (updateData.dob !== undefined) {
+      updateData.dob = parseDOB(updateData.dob);
+      updateData.dobString = req.body.dobString || (req.body.dob ? String(req.body.dob) : "");
+    }
+
+    if (updateData.fullAddress !== undefined) {
+      updateData.address = updateData.fullAddress;
+    } else if (updateData.address !== undefined) {
+      updateData.fullAddress = updateData.address;
+    }
+
+    if (updateData.aadharNo !== undefined) {
+      updateData.aadharCard = updateData.aadharNo;
+    } else if (updateData.aadharCard !== undefined) {
+      updateData.aadharNo = updateData.aadharCard;
+    }
+
+    if (updateData.currentYear !== undefined) {
+      updateData.year = updateData.currentYear;
+    } else if (updateData.year !== undefined) {
+      updateData.currentYear = updateData.year;
+    }
+
+    if (updateData.batch !== undefined) {
+      updateData.batchYear = updateData.batch;
+    } else if (updateData.batchYear !== undefined) {
+      updateData.batch = updateData.batchYear;
+    }
+
+    if (updateData.branch !== undefined && !updateData.course) {
+      updateData.course = updateData.branch;
+    }
+
+    if (updateData.studentId !== undefined && !existingStudent.prkey) {
+      updateData.prkey = updateData.studentId;
     }
 
     if (isNaturallyITEG(updateData.course || existingStudent.course)) {
@@ -926,6 +1161,7 @@ exports.updateStudent = async (req, res) => {
         subDepartmentId: existingStudent.subDepartmentId,
         course: updateData.course || existingStudent.course
       });
+      updateData.batch = updateData.batchYear;
     }
 
     if (updateData.status && updateData.status !== "Dummy") {

@@ -101,11 +101,17 @@ const StudentDetailTable = () => {
       const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
       const stdTech = (s.track || s.course || "General").toLowerCase();
       const matchTech = selectedTech === "All" || stdTech.includes(selectedTech.toLowerCase());
-      const name = `${s.firstName} ${s.lastName}`.toLowerCase();
+      const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const searchLower = searchTerm.toLowerCase();
       const matchSearch = !searchTerm ||
-        name.includes(searchTerm.toLowerCase()) ||
-        s.prkey?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.studentMobile?.includes(searchTerm);
+        name.includes(searchLower) ||
+        s.fullName?.toLowerCase().includes(searchLower) ||
+        s.prkey?.toLowerCase().includes(searchLower) ||
+        s.studentId?.toLowerCase().includes(searchLower) ||
+        s.registrationNo?.toLowerCase().includes(searchLower) ||
+        s.enrollmentNo?.toLowerCase().includes(searchLower) ||
+        s.studentMobile?.includes(searchTerm) ||
+        s.district?.toLowerCase().includes(searchLower);
       return matchTab && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
   }, [students, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
@@ -148,8 +154,11 @@ const StudentDetailTable = () => {
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
           <div>
-            <p className="font-medium text-gray-800">{toTitle(`${row.firstName} ${row.lastName}`)}</p>
-            <p className="text-xs text-gray-400">{row.prkey}</p>
+            <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
+            <p className="text-xs text-gray-400">
+              {row.studentId || row.prkey}
+              {row.registrationNo && (row.studentId || row.prkey) !== row.registrationNo ? ` • Reg: ${row.registrationNo}` : ""}
+            </p>
           </div>
         </div>
       ),

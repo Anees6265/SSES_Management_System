@@ -637,9 +637,6 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         }
         formData.append("batch", selectedBatch || "");
         formData.append("year", activeYear);
-        if (parsedRows && parsedRows.length > 0) {
-          formData.append("students", JSON.stringify(parsedRows));
-        }
         res = await importStudentsExcel(formData).unwrap();
       } else {
         const payload = {

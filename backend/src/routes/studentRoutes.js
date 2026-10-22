@@ -11,7 +11,10 @@ const upload = require("../config/multerConfig");
 const multer = require("multer");
 const excelUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+    fieldSize: 50 * 1024 * 1024,
+  },
   fileFilter: (req, file, cb) => {
     const ext = file.originalname.split(".").pop().toLowerCase();
     if (["xlsx", "xls", "csv"].includes(ext) ||

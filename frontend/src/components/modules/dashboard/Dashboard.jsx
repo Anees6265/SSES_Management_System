@@ -45,9 +45,9 @@ const Dashboard = () => {
       {hasPermission('Page_Dashboard') && (
         <Route path="/" element={<AdmissionDashboard />} />
       )}
-      {hasPermission('Page_AttendanceDetails') && (
+      {/* {hasPermission('Page_AttendanceDetails') && (
         <Route path="/attendance-details" element={<AttendanceDetails />} />
-      )}
+      )} */}
       
       {/* User Management - Superadmin only */}
       {hasPermission('Page_UserManagement') && (

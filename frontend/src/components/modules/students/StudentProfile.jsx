@@ -578,9 +578,9 @@ export default function StudentProfile() {
 
 
         {/* Analytics Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8 pr-2 sm:pr-0">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8 pr-2 sm:pr-0">
           {/* Attendance Analytics */}
-          <div className="lg:col-span-2">
+          {/* <div className="lg:col-span-2">
             <div className={`transition-all duration-500 ${isYearView ? 'hidden' : 'block'}`}>
               <AnalyticsCard
                 title="Attendance Analytics"
@@ -627,29 +627,24 @@ export default function StudentProfile() {
                 <div className="h-48 sm:h-80 flex items-center justify-center gap-8">
                   <div className="relative w-80 h-80">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200" opacity={0.7}>
-                      {/* 2022 - Innermost ring */}
                       <circle cx="100" cy="100" r="40" fill="none" stroke="#F8F9FA" strokeWidth="8" />
                       <circle cx="100" cy="100" r="40" fill="none" stroke="#B66816" strokeWidth="8"
                         strokeDasharray={`${92 * 2.51} 251`} strokeLinecap="round" />
 
-                      {/* 2023 - Middle ring */}
                       <circle cx="100" cy="100" r="60" fill="none" stroke="#F8F9FA" strokeWidth="8" />
                       <circle cx="100" cy="100" r="60" fill="none" stroke="#FDA92D" strokeWidth="8"
                         strokeDasharray={`${88 * 3.77} 377`} strokeLinecap="round" />
 
-                      {/* 2024 - Outermost ring */}
                       <circle cx="100" cy="100" r="80" fill="none" stroke="#F8F9FA" strokeWidth="8" />
                       <circle cx="100" cy="100" r="80" fill="none" stroke="#ED9A21" strokeWidth="8"
                         strokeDasharray={`${65 * 5.03} 503`} strokeLinecap="round" />
                     </svg>
 
-                    {/* Center Text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div className="text-2xl font-bold text-gray-800">82%</div>
                       <div className="text-xs text-gray-500">Average</div>
                     </div>
 
-                    {/* Year Labels */}
                     <div className="absolute inset-0">
                       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600">2024</div>
                       <div className="absolute top-12 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600">2023</div>
@@ -657,7 +652,6 @@ export default function StudentProfile() {
                     </div>
                   </div>
 
-                  {/* Progress Rate Indicator */}
                   <div className="bg-white rounded-lg p-4" style={{ boxShadow: '0 0 18px 5px rgba(0, 0, 0, 0.08)' }}>
                     <h4 className="text-sm font-semibold text-gray-800 mb-4">Progress Rate</h4>
                     <div className="space-y-4">
@@ -699,7 +693,7 @@ export default function StudentProfile() {
                 </div>
               </AnalyticsCard>
             </div>
-          </div>
+          </div> */}
 
           {/* Progress Overview */}
           <div>
@@ -1320,14 +1314,14 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
             </div>
 
             {/* Attendance Summary */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            {/* <div className="bg-gray-50 rounded-lg p-4">
               <h5 className="font-semibold text-gray-700 mb-3">📅 Attendance Record</h5>
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-600 mb-2">N/A</div>
                 <div className="text-lg font-semibold text-gray-500">Attendance data not available</div>
                 <p className="text-xs text-gray-400 mt-2">Attendance module coming soon</p>
               </div>
-            </div>
+            </div> */}
 
             {/* Skills & Certifications */}
             <div className="bg-gray-50 rounded-lg p-4">
@@ -1365,11 +1359,11 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 <div className="text-2xl font-bold text-blue-600">{studentData?.currentLevelId?.name || '—'}</div>
                 <div className="text-xs text-gray-500">{studentData?.currentSubLevelId?.name || '—'} {daysInSubLevel ? `• ${daysInSubLevel}` : ''}</div>
               </div>
-              <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+              {/* <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                 <div className="text-sm text-gray-600 mb-1">Attendance</div>
                 <div className="text-2xl font-bold text-gray-400">N/A</div>
                 <div className="text-xs text-gray-500">Coming soon</div>
-              </div>
+              </div> */}
               <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                 <div className="text-sm text-gray-600 mb-1">Status</div>
                 <div className={`text-lg font-bold ${studentData.placedInfo?.companyName ? 'text-green-600' : 'text-yellow-600'

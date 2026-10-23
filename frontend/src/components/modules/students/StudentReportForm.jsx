@@ -15,6 +15,7 @@ import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus } from "react-icons/fa
 import { MdDelete } from "react-icons/md";
 import { taskAPI } from "../../../services/taskService";
 import { detectDepartment, DEPARTMENT_CONFIGS } from "./reportCardDepartmentConfig";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const deepClone = (obj) => {
   // Use structuredClone when available (preserves types), fallback to JSON
@@ -24,77 +25,23 @@ const deepClone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-const SimpleDropdown = ({ label, value, onChange, options }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const dropdownRef = useRef(null);
-
-  const hasValue = value !== "";
-  const selectedOption = options.find(opt => opt.value === value);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
+const SimpleDropdown = ({ label, value, onChange, options, placeholder = "Select Status" }) => {
   return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        className={`
-          peer h-12 w-full border border-gray-300 rounded-md
-          px-3 py-2 leading-tight bg-white text-left
-          focus:outline-none focus:border-orange-400 
-          focus:ring-0 appearance-none flex items-center justify-between
-          cursor-pointer
-          ${isOpen ? "border-orange-400" : ""}
-          transition-all duration-200
-        `}
-      >
-        <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
-          {selectedOption ? selectedOption.label : 'Select'}
-        </span>
-        <span className={`ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
-      </button>
-
-      <label
-        className={`
-          absolute left-3 bg-white px-1 transition-all duration-200
-          pointer-events-none
-          ${isFocused || hasValue || isOpen
-            ? "text-xs -top-2 text-black"
-            : "text-gray-500 top-3"}
-        `}
-      >
-        {label}
-      </label>
-
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-full rounded-xl shadow-lg z-50 overflow-hidden border bg-white">
-          {options.map((option) => (
-            <div
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setIsOpen(false);
-              }}
-              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-left transition-colors duration-150"
-            >
-              {option.label}
-            </div>
-          ))}
-        </div>
+    <div className="w-full">
+      {label && (
+        <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+          {label}
+        </label>
       )}
+      <SelectDropdown
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        className="w-full"
+        menuClassName="w-full"
+        buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 hover:border-orange-400 bg-white rounded-xl text-slate-800 font-medium transition-all shadow-xs focus:outline-none cursor-pointer"
+      />
     </div>
   );
 };
@@ -1084,11 +1031,11 @@ export default function StudentReportForm() {
       <Header
         title={existingReportData?.data ? 'Edit Student Report' : 'Create Student Report'}
         showBack={true}
+        onBack={() => navigate(`/student-profile/${id}`)}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },
           { label: 'Student Progress', path: '/student-detail-table' },
           { label: 'Profile', path: `/student-profile/${id}` },
-          { label: 'Report Card', path: `/student/${id}/report` },
           { label: existingReportData?.data ? 'Edit' : 'Create' }
         ]}
       />
@@ -1604,19 +1551,23 @@ export default function StudentReportForm() {
                   {section.sectionType === "CareerStatus" && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                       {section.items.map((item, idx) => (
-                        <div key={idx} className="flex flex-col gap-1 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                        <div key={idx} className="flex flex-col gap-1.5 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                           <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">{item.itemName}</label>
-                          <select
+                          <SelectDropdown
                             value={item.value || "Not Ready"}
-                            onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-bold text-slate-700"
-                          >
-                            <option value="Created">Created</option>
-                            <option value="Not created">Not created</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Not Ready">Not Ready</option>
-                            <option value="Ready">Ready</option>
-                          </select>
+                            onChange={(val) => setDynamicItemField(sIdx, idx, "value", val)}
+                            options={[
+                              { value: "Created", label: "Created" },
+                              { value: "Not created", label: "Not created" },
+                              { value: "In Progress", label: "In Progress" },
+                              { value: "Not Ready", label: "Not Ready" },
+                              { value: "Ready", label: "Ready" },
+                            ]}
+                            placeholder="Select Status"
+                            className="w-full"
+                            menuClassName="w-full"
+                            buttonClassName="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 border border-slate-200 hover:border-orange-400 rounded-lg text-xs bg-white font-bold text-slate-700 transition cursor-pointer shadow-2xs"
+                          />
                         </div>
                       ))}
                     </div>
@@ -1624,7 +1575,7 @@ export default function StudentReportForm() {
 
                   {section.sectionType === "AttendanceDiscipline" && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                      {section.items.map((item, idx) => (
+                      {section.items.filter(item => !item.itemName.toLowerCase().includes('attendance')).map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                           <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
                           <input
@@ -1664,17 +1615,21 @@ export default function StudentReportForm() {
                             <span className="font-semibold text-slate-700 text-xs sm:text-sm truncate pr-2">{item.itemName}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               {item.itemName === "Overall Rating" && (
-                                <select
+                                <SelectDropdown
                                   value={item.remark || "Excellent"}
-                                  onChange={(e) => setDynamicItemField(sIdx, idx, "remark", e.target.value)}
-                                  className="px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white font-semibold text-slate-700"
-                                >
-                                  <option value="Outstanding">Outstanding</option>
-                                  <option value="Excellent">Excellent</option>
-                                  <option value="Very Good">Very Good</option>
-                                  <option value="Good">Good</option>
-                                  <option value="Average">Average</option>
-                                </select>
+                                  onChange={(val) => setDynamicItemField(sIdx, idx, "remark", val)}
+                                  options={[
+                                    { value: "Outstanding", label: "Outstanding" },
+                                    { value: "Excellent", label: "Excellent" },
+                                    { value: "Very Good", label: "Very Good" },
+                                    { value: "Good", label: "Good" },
+                                    { value: "Average", label: "Average" },
+                                  ]}
+                                  placeholder="Select Rating"
+                                  className="w-36"
+                                  menuClassName="w-36"
+                                  buttonClassName="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 border border-slate-200 hover:border-orange-400 rounded-lg text-xs bg-white font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
+                                />
                               )}
                               {item.itemName !== "Performance Level" ? (
                                 <div className="flex items-center gap-1">
@@ -2005,19 +1960,21 @@ export default function StudentReportForm() {
                 <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
                   Overall Grade <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <SelectDropdown
                   value={formData.overallGrade}
-                  onChange={(e) => setFormData(prev => ({ ...prev, overallGrade: e.target.value }))}
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                >
-                  <option value="">Select Grade</option>
-                  <option value="A+">A+</option>
-                  <option value="A">A</option>
-                  <option value="B+">B+</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                </select>
+                  onChange={(val) => setFormData(prev => ({ ...prev, overallGrade: val }))}
+                  options={[
+                    { value: "A+", label: "A+" },
+                    { value: "A", label: "A" },
+                    { value: "B+", label: "B+" },
+                    { value: "B", label: "B" },
+                    { value: "C", label: "C" },
+                  ]}
+                  placeholder="Select Grade"
+                  className="w-full"
+                  menuClassName="w-full"
+                  buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3.5 py-2.5 border border-slate-200 hover:border-orange-400 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-800 transition cursor-pointer shadow-xs"
+                />
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">Faculty Remark</label>
@@ -2036,7 +1993,7 @@ export default function StudentReportForm() {
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-2 pb-6">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate(`/student-profile/${id}`)}
               className="w-full sm:w-auto px-6 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer text-xs sm:text-sm text-center"
             >
               Cancel

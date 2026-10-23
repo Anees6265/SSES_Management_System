@@ -274,7 +274,7 @@ const Sidebar = ({ children }) => {
       permission: "Page_Dashboard",
       subMenu: [
         { name: "Dashboard", path: "/", permission: "Page_Dashboard" },
-        { name: "Attendance Details", path: "/attendance-details", permission: "Page_AttendanceDetails" },
+        // { name: "Attendance Details", path: "/attendance-details", permission: "Page_AttendanceDetails" },
       ],
     },
     {

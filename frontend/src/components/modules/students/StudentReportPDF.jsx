@@ -776,7 +776,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 )}
 
                 {/* 9. Attendance & Discipline */}
-                {attendanceDiscipline && (
+                {/* {attendanceDiscipline && (
                   <View style={styles.section} wrap={false}>
                     <Text style={styles.sectionTitle}>9. Attendance & Discipline</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -788,7 +788,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                       ))}
                     </View>
                   </View>
-                )}
+                )} */}
 
                 {/* 10. Co-Curricular Activities */}
                 <View style={styles.section} wrap={false}>

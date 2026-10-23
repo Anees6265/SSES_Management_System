@@ -458,7 +458,7 @@ export default function StudentReportCard() {
                 </span>
               </div>
               <p className="text-[10px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
-                Conduct & Attendance
+                Conduct & Discipline
               </p>
             </div>
 

@@ -454,7 +454,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                 </div>
             )
         },
-        {
+        /* {
             key: "attendance",
             label: "ATTENDANCE",
             align: "center",
@@ -465,7 +465,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                     </span>
                 </div>
             )
-        },
+        }, */
         {
             key: "taskProgress",
             label: "TASK PROGRESS",
@@ -680,7 +680,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                     </div>
 
                                     {/* 3. Attendance Rate */}
-                                    <div>
+                                    {/* <div>
                                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
                                             Attendance Rate
                                         </label>
@@ -713,7 +713,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                                 );
                                             })}
                                         </div>
-                                    </div>
+                                    </div> */}
                                 </div>
 
                                 {/* Dropdown Footer */}
@@ -773,7 +773,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                             </button>
                         </span>
                     )}
-                    {attendanceFilter !== "all" && (
+                    {/* {attendanceFilter !== "all" && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
                             Attendance:{" "}
                             <strong>
@@ -792,7 +792,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                 <MdClose size={13} />
                             </button>
                         </span>
-                    )}
+                    )} */}
                     <button
                         type="button"
                         onClick={handleClearFilters}
@@ -876,9 +876,9 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
                                                 {status}
                                             </span>
-                                            <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                            {/* <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
                                                 {row.attendanceRate ?? 100}% Att.
-                                            </span>
+                                            </span> */}
                                         </div>
                                     </div>
 

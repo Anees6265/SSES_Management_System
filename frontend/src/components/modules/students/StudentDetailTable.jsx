@@ -155,10 +155,10 @@ const StudentDetailTable = () => {
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
           <div>
             <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
-            <p className="text-xs text-gray-400">
+            {/* <p className="text-xs text-gray-400">
               {row.studentId || row.prkey}
               {row.registrationNo && (row.studentId || row.prkey) !== row.registrationNo ? ` • Reg: ${row.registrationNo}` : ""}
-            </p>
+            </p> */}
           </div>
         </div>
       ),
@@ -320,8 +320,8 @@ const StudentDetailTable = () => {
 
             {/* Dropdown Filters Container */}
             <div className={`${showMobileFilters ? "grid" : "hidden"} md:flex grid-cols-1 sm:grid-cols-3 md:items-center gap-2.5 w-full md:w-auto`}>
-              {/* Technology Dropdown */}
-              <SelectDropdown
+              {/* Technology Dropdown (Hidden/Commented) */}
+              {/* <SelectDropdown
                 value={selectedTech}
                 onChange={(val) => setSelectedTech(val)}
                 options={[
@@ -337,7 +337,7 @@ const StudentDetailTable = () => {
                 ]}
                 className="w-full md:w-auto md:min-w-[145px]"
                 buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
-              />
+              /> */}
 
               {/* Status Dropdown */}
               <SelectDropdown
@@ -506,9 +506,9 @@ const StudentDetailTable = () => {
                         <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
                           {toTitle(`${row.firstName} ${row.lastName}`)}
                         </h4>
-                        <span className="text-[11px] font-mono font-medium text-gray-400 block mt-0.5">
+                        {/* <span className="text-[11px] font-mono font-medium text-gray-400 block mt-0.5">
                           {row.prkey || "ID N/A"}
-                        </span>
+                        </span> */}
                       </div>
                     </div>
                     <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0 ${STATUS_COLORS[row.status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>

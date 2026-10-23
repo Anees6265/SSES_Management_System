@@ -1532,7 +1532,7 @@ const StudentProfilePage = () => {
         if (!raw) return [];
         const list = [];
 
-        // 1. Attendance Alert
+        /* // 1. Attendance Alert
         const attendance = raw.attendanceRate !== undefined && raw.attendanceRate !== null ? Number(raw.attendanceRate) : null;
         if (attendance !== null && attendance < 75) {
             list.push({
@@ -1550,7 +1550,7 @@ const StudentProfilePage = () => {
                 time: "Attendance Verified",
                 type: "success",
             });
-        }
+        } */
 
         // 2. Tasks Status
         if (overdueTasks > 0) {
@@ -1883,8 +1883,6 @@ const StudentProfilePage = () => {
                 onBack={() => {
                     if (location.state?.from && !location.state.from.includes('/report')) {
                         navigate(location.state.from);
-                    } else if (window.history.state && window.history.state.idx > 0) {
-                        navigate(-1);
                     } else {
                         navigate("/student-detail-table");
                     }
@@ -1899,8 +1897,6 @@ const StudentProfilePage = () => {
                             onClick={() => {
                                 if (location.state?.from && !location.state.from.includes('/report')) {
                                     navigate(location.state.from);
-                                } else if (window.history.state && window.history.state.idx > 0) {
-                                    navigate(-1);
                                 } else {
                                     navigate("/student-detail-table");
                                 }
@@ -2221,8 +2217,8 @@ const StudentProfilePage = () => {
                 )}
 
 
-                        {/* 4 STAT CARDS ROW (2x2 on mobile) */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                        {/* STAT CARDS ROW */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
                             {/* Card 1: LEVEL HISTORY */}
                             <div
                                 onClick={() => setHistoryDrawerOpen(true)}
@@ -2264,7 +2260,7 @@ const StudentProfilePage = () => {
                             </div>
 
                             {/* Card 3: ATTENDANCE RATE */}
-                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
+                            {/* <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ATTENDANCE RATE</p>
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-base sm:text-xl font-black text-slate-900">{raw.attendanceRate ? `${raw.attendanceRate}%` : "100%"}</h3>
@@ -2273,7 +2269,7 @@ const StudentProfilePage = () => {
                                     </span>
                                 </div>
                                 <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Monthly attendance</p>
-                            </div>
+                            </div> */}
 
                             {/* Card 4: OVERALL PERFORMANCE */}
                             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">

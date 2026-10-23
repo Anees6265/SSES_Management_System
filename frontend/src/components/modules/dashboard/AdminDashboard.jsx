@@ -629,13 +629,13 @@ const AdminDashboard = () => {
 
             {/* Quick Jump Buttons inside Banner */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
+              {/* <button
                 onClick={() => navigate("/attendance-details")}
                 className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <ClipboardList className="w-3.5 h-3.5" />
                 Take Attendance
-              </button>
+              </button> */}
               <button
                 onClick={() => navigate("/student-detail-table")}
                 className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs border border-gray-200 transition flex items-center gap-1.5 cursor-pointer"
@@ -896,13 +896,13 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <CleanQuickActionButton
+              {/* <CleanQuickActionButton
                 icon={ClipboardList}
                 title="Mark / View Attendance"
                 description="Daily logs, punch-ins, and subject attendance"
                 badge="Daily"
                 onClick={() => navigate("/attendance-details")}
-              />
+              /> */}
               <CleanQuickActionButton
                 icon={Users}
                 title="Student Roster"

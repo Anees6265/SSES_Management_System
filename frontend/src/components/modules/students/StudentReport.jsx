@@ -340,11 +340,7 @@ export default function StudentReport() {
         title="Student Performance Report"
         showBack={true}
         onBack={() => {
-          if (window.history.state && window.history.state.idx > 0) {
-            navigate(-1);
-          } else {
-            navigate(`/student-profile/${id}`, { replace: true });
-          }
+          navigate(`/student-profile/${id}`);
         }}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },
@@ -508,8 +504,8 @@ export default function StudentReport() {
           </div>
         </div>
 
-        {/* ── Executive KPI Metric Cards (2x2 Grid on Mobile) ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {/* ── Executive KPI Metric Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
           {/* Metric 1: Overall Grade */}
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-orange-200 transition">
             <div className="flex items-center justify-between">
@@ -551,7 +547,7 @@ export default function StudentReport() {
           </div>
 
           {/* Metric 3: Attendance & Discipline */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-emerald-200 transition">
+          {/* <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-emerald-200 transition">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ATTENDANCE RATE</p>
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 text-emerald-500 border border-emerald-100 flex items-center justify-center shrink-0">
@@ -569,7 +565,7 @@ export default function StudentReport() {
             <p className="text-[11px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
               Regular classroom attendance
             </p>
-          </div>
+          </div> */}
 
           {/* Metric 4: Placement Readiness */}
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-violet-200 transition">
@@ -1067,19 +1063,19 @@ export default function StudentReport() {
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
                 <FaClipboardCheck size={15} />
               </div>
-              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Attendance & Conduct</h4>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Conduct & Discipline</h4>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               {(attendanceDisciplineSection?.items?.length > 0
                 ? attendanceDisciplineSection.items
                 : [
-                  { itemName: "Attendance", value: "92%" },
+                  // { itemName: "Attendance", value: "92%" },
                   { itemName: "Punctuality", value: "Good" },
                   { itemName: "Discipline", value: "Excellent" },
                   { itemName: "Class Conduct", value: "Active" }
                 ]
-              ).map((item, idx) => (
+              ).filter(item => !/attendance/i.test(item.itemName)).map((item, idx) => (
                 <div key={idx} className="bg-slate-50/70 rounded-xl p-2.5 sm:p-3 border border-slate-100 text-center">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">{item.itemName}</p>
                   <p className="text-sm sm:text-base font-black text-slate-800 mt-0.5 sm:mt-1 truncate">{item.value}</p>

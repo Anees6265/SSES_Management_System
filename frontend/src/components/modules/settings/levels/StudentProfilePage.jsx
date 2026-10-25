@@ -9,7 +9,7 @@ import {
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
-    MdPerson, MdArrowBack, MdNotInterested
+    MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -1242,6 +1242,7 @@ const StudentProfilePage = () => {
     const [editLoading, setEditLoading] = useState(false);
     const [dropLoading, setDropLoading] = useState(false);
     const [dummyLoading, setDummyLoading] = useState(false);
+    const [mobileTab, setMobileTab] = useState("overview"); // "overview" | "academics" | "placement" | "documents" | "all"
 
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
@@ -1891,7 +1892,7 @@ const StudentProfilePage = () => {
 
             {/* TOP TITLE BAR WITH SEARCH, BACK BUTTON & ID */}
             <div className="bg-[#F8F9FA] min-h-screen p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-12">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="flex items-center gap-2.5 sm:gap-3">
                         <button
                             onClick={() => {
@@ -1901,17 +1902,20 @@ const StudentProfilePage = () => {
                                     navigate("/student-detail-table");
                                 }
                             }}
-                            className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition flex items-center gap-1.5 text-xs font-bold shrink-0"
+                            className="hidden sm:flex p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer"
                             title="Back to Student Records"
                         >
                             <MdArrowBack size={18} />
-                            <span className="hidden sm:inline">Back</span>
+                            <span>Back</span>
                         </button>
+                        <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex sm:hidden items-center justify-center font-bold text-xs shrink-0">
+                            <MdSchool size={16} />
+                        </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Student Record</h1>
+                                <h1 className="text-sm sm:text-lg font-bold text-slate-900 tracking-tight">Student Record</h1>
                                 {raw.prkey && (
-                                    <span className="bg-slate-100 text-slate-700 text-[11px] font-bold px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200 shrink-0">
+                                    <span className="bg-slate-100 text-slate-700 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
                                         ID: {raw.prkey}
                                     </span>
                                 )}
@@ -1920,9 +1924,9 @@ const StudentProfilePage = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        {/* Search Bar Flex Container */}
-                        <div className="flex items-center h-9 sm:h-10 w-full sm:w-72 bg-slate-50 border border-slate-200 rounded-xl px-3 shadow-xs focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
+                    <div className="flex items-center gap-2">
+                        {/* Search Bar Flex Container - Hidden on mobile screen, visible on sm+ */}
+                        <div className="hidden sm:flex items-center h-9 sm:h-10 w-56 md:w-72 bg-slate-50 border border-slate-200 rounded-xl px-3 shadow-xs focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
                             <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={16} />
                             <input
                                 type="text"
@@ -2068,13 +2072,13 @@ const StudentProfilePage = () => {
                             </div>
                         </div>
 
-                        {/* Right Buttons */}
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+                        {/* Right Buttons: 2-column grid on mobile, flex on desktop */}
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
                             {isLevel2ACompleted && !isDummy && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
                                 <button
                                     onClick={handleMoveToReadyForPlacement}
                                     disabled={movingToReady}
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm disabled:opacity-50"
+                                    className="col-span-2 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm disabled:opacity-50 active:scale-[0.98] cursor-pointer"
                                 >
                                     <MdCheckCircle size={16} /> {movingToReady ? "Moving..." : "Move to Ready"}
                                 </button>
@@ -2083,7 +2087,7 @@ const StudentProfilePage = () => {
                             <button
                                 onClick={goToTaskBoard}
                                 disabled={isDummy}
-                                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 border-2 font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm ${
+                                className={`flex items-center justify-center gap-1.5 sm:gap-2 border-2 font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm active:scale-[0.98] ${
                                     isDummy
                                         ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
                                         : "border-orange-400 text-orange-500 hover:bg-orange-50 cursor-pointer"
@@ -2094,18 +2098,19 @@ const StudentProfilePage = () => {
                             </button>
                             <button
                                 onClick={() => setEditModal(true)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs transition shadow-sm"
+                                className="flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm active:scale-[0.98] cursor-pointer"
                             >
                                 <MdEdit size={16} /> Edit Profile
                             </button>
 
                             {/* Actions Dropdown */}
-                            <div className="relative">
+                            <div className="relative col-span-2 sm:col-span-1">
                                 <button
                                     onClick={() => setMoreOpen(p => !p)}
-                                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition flex items-center gap-1 text-xs font-bold"
+                                    className="w-full sm:w-auto py-2.5 px-3 sm:px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1 text-xs font-bold cursor-pointer active:scale-[0.98]"
                                 >
-                                    Actions <MdMoreVert size={18} />
+                                    <span>Actions</span>
+                                    <MdMoreVert size={18} />
                                 </button>
                                 {moreOpen && (
                                     <>
@@ -2166,44 +2171,77 @@ const StudentProfilePage = () => {
                         </div>
                     </div>
 
+                    {/* Quick Contact Bar for Mobile Devices */}
+                    {(raw.studentMobile || raw.parentMobile || raw.email) && (
+                        <div className="sm:hidden mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                            {raw.studentMobile && (
+                                <a
+                                    href={`tel:+91${raw.studentMobile}`}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 font-bold text-xs active:scale-95 transition"
+                                >
+                                    <MdPhone size={15} className="text-orange-500" />
+                                    <span>Call Student</span>
+                                </a>
+                            )}
+                            {raw.parentMobile && (
+                                <a
+                                    href={`tel:+91${raw.parentMobile}`}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs active:scale-95 transition"
+                                >
+                                    <MdPhone size={15} className="text-emerald-500" />
+                                    <span>Call Parent</span>
+                                </a>
+                            )}
+                            {raw.email && (
+                                <a
+                                    href={`mailto:${raw.email}`}
+                                    className="inline-flex items-center justify-center p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs active:scale-95 transition"
+                                    title="Send Email"
+                                >
+                                    <MdEmail size={16} />
+                                </a>
+                            )}
+                        </div>
+                    )}
+
                     {/* Full Contact & Student Personal Info Row */}
-                    <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap gap-2.5 sm:gap-4 lg:gap-6 text-xs font-semibold text-slate-700">
+                    <div className="mt-3 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap gap-2 sm:gap-4 lg:gap-6 text-xs font-semibold text-slate-700">
                         {raw.email && (
-                            <a href={`mailto:${raw.email}`} className="flex items-center gap-2 hover:text-orange-600 truncate">
+                            <a href={`mailto:${raw.email}`} className="hidden sm:flex items-center gap-2 hover:text-orange-600 truncate">
                                 <MdEmail className="text-orange-500 shrink-0" size={16} />
                                 <span className="truncate">{raw.email}</span>
                             </a>
                         )}
                         {raw.studentMobile && (
-                            <a href={`tel:+91${raw.studentMobile}`} className="flex items-center gap-2 hover:text-orange-600">
+                            <a href={`tel:+91${raw.studentMobile}`} className="hidden sm:flex items-center gap-2 hover:text-orange-600">
                                 <MdPhone className="text-orange-500 shrink-0" size={16} />
                                 <span>{raw.studentMobile}</span>
                             </a>
                         )}
                         {raw.parentMobile && (
-                            <a href={`tel:+91${raw.parentMobile}`} className="flex items-center gap-2 hover:text-emerald-600">
+                            <a href={`tel:+91${raw.parentMobile}`} className="hidden sm:flex items-center gap-2 hover:text-emerald-600">
                                 <MdPhone className="text-emerald-500 shrink-0" size={16} />
                                 <span>Parent: {raw.parentMobile}</span>
                             </a>
                         )}
                         {raw.fatherName && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
                                 <MdPerson className="text-orange-500 shrink-0" size={16} />
                                 <span className="truncate">Father: {raw.fatherName}</span>
                             </div>
                         )}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
                             <MdBusiness className="text-orange-500 shrink-0" size={16} />
                             <span className="truncate">Dept: {raw.subDepartmentId?.departmentId?.name || "Dept"} / {subdepartment?.name || raw.subDepartmentId?.name || "Sub Dept"}</span>
                         </div>
                         {raw.sessionId?.name && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
                                 <MdCalendarToday className="text-orange-500 shrink-0" size={16} />
                                 <span>Session: {raw.sessionId.name} <span className="text-emerald-600 font-bold">(Active)</span></span>
                             </div>
                         )}
                         {raw.village && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
                                 <MdLocationOn className="text-orange-500 shrink-0" size={16} />
                                 <span className="truncate">Village: {raw.village}</span>
                             </div>
@@ -2211,14 +2249,47 @@ const StudentProfilePage = () => {
                     </div>
                 </div>
 
+                {/* MOBILE SEGMENTED TABS (Sticky tab navigation on small screens) */}
+                <div className="lg:hidden sticky top-[57px] z-20 bg-[#F8F9FA]/95 backdrop-blur-md py-2 -mx-3.5 px-3.5 border-b border-slate-200/80">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth [-webkit-overflow-scrolling:touch]">
+                        {[
+                            { id: "overview", label: "Overview", icon: MdDashboard },
+                            { id: "academics", label: "Academics", icon: MdSchool },
+                            { id: "placement", label: "Placement", icon: MdWork },
+                            { id: "documents", label: "Documents", icon: MdBadge },
+                            { id: "all", label: "View All", icon: MdList },
+                        ].map((tab) => {
+                            const Icon = tab.icon;
+                            const isActive = mobileTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setMobileTab(tab.id)}
+                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                                        isActive
+                                            ? "bg-orange-500 text-white shadow-xs shadow-orange-500/30 scale-[1.02]"
+                                            : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 active:scale-95"
+                                    }`}
+                                >
+                                    <Icon size={15} />
+                                    <span>{tab.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {/* PLACEMENT JOURNEY & TIMELINE */}
                 {isPlacementReady && (
-                    <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
+                    <div className={mobileTab === "overview" || mobileTab === "placement" || mobileTab === "all" ? "block" : "hidden lg:block"}>
+                        <StudentPlacementTimeline student={raw} placement={raw.studentPlacement || raw} />
+                    </div>
                 )}
 
 
                         {/* STAT CARDS ROW */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
+                        <div className={`${mobileTab === "overview" || mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-5`}>
                             {/* Card 1: LEVEL HISTORY */}
                             <div
                                 onClick={() => setHistoryDrawerOpen(true)}
@@ -2285,7 +2356,7 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* MIDDLE ROW (ATTENDANCE & TASK TREND + TASK COMPLETION) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className={`${mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6`}>
                             {/* Left Box: Attendance & Task Trend Chart (2 Cols) */}
                             <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -2386,7 +2457,7 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* BOTTOM ROW (TECHNOLOGIES + PROJECTS) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div className={`${mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6`}>
                             {/* Left Box: Technologies */}
                             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
@@ -2404,7 +2475,7 @@ const StudentProfilePage = () => {
                                             <div className="space-y-3.5 sm:space-y-4">
                                                 {subjects.map((sub, idx) => (
                                                     <div key={sub.name} className="flex items-center gap-3 sm:gap-4">
-                                                        <span className="w-32 sm:w-44 text-xs font-bold text-slate-700 truncate">{sub.name}</span>
+                                                        <span className="w-24 sm:w-44 text-xs font-bold text-slate-700 truncate shrink-0">{sub.name}</span>
                                                         <div className="flex-1 bg-slate-100 rounded-full h-2.5 sm:h-3">
                                                             <div
                                                                 className={`h-2.5 sm:h-3 rounded-full ${idx % 2 === 0 ? "bg-orange-500" : "bg-blue-500"}`}
@@ -2457,7 +2528,7 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* PLACEMENT STAGE INFO & RESUME SECTION */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className={`${mobileTab === "overview" || mobileTab === "placement" || mobileTab === "documents" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6`}>
                             {/* Placement Stage Info Card */}
                             <div className="lg:col-span-1 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
                                 <div>
@@ -2541,10 +2612,12 @@ const StudentProfilePage = () => {
                         </div>
 
                         {/* PLACEMENT HISTORY & COMPANY DRIVES SECTION */}
-                        <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} isDummy={isDummy} />
+                        <div className={mobileTab === "placement" || mobileTab === "all" ? "block" : "hidden lg:block"}>
+                            <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} isDummy={isDummy} />
+                        </div>
 
                         {/* BOTTOM QUICK ACCESS MODULE CARDS */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-2 pb-6">
+                        <div className={`${mobileTab === "overview" || mobileTab === "documents" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-2 pb-6`}>
                             <div
                                 onClick={() => setSectionModal("documents")}
                                 className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"

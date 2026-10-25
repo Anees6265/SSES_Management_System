@@ -399,6 +399,17 @@ const StudentDetailTable = () => {
                   <span>Reset</span>
                 </button>
               )}
+
+              {/* Mobile Close/Apply Filters Button */}
+              {showMobileFilters && (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(false)}
+                  className="md:hidden w-full h-10 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-xs active:scale-95 transition"
+                >
+                  <span>Apply Filters</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -585,7 +596,7 @@ const StudentDetailTable = () => {
                               },
                             });
                           }}
-                          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition shadow-2xs ${
+                          className={`flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition shadow-2xs ${
                             isDummy
                               ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
                               : "border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95 cursor-pointer"
@@ -601,7 +612,7 @@ const StudentDetailTable = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/student-profile/${row._id}`)}
-                      className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition active:scale-95 cursor-pointer shadow-2xs"
+                      className="flex-1 min-h-[42px] inline-flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition active:scale-95 cursor-pointer shadow-2xs"
                     >
                       <span>Profile</span>
                       <ChevronRight size={14} className="text-gray-400" />

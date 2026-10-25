@@ -87,19 +87,22 @@ const SettingsModal = ({ user, isOpen, onClose }) => {
     if (!isMounted) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+            onClick={onClose}
+        >
             {/* BACKDROP */}
             <div
-                onClick={onClose}
-                className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
-                    isDrawerOpen ? "opacity-100" : "opacity-0"
+                className={`fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200 ${
+                    isDrawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
             />
 
-            {/* DRAWER PANEL */}
+            {/* POPUP MODAL PANEL */}
             <div
-                className={`relative w-full max-w-md h-full bg-white shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-                    isDrawerOpen ? "translate-x-0" : "translate-x-full"
+                onClick={(e) => e.stopPropagation()}
+                className={`relative w-full max-w-full sm:max-w-lg max-h-[90vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden z-10 transform transition-all duration-200 ease-out ${
+                    isDrawerOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2 pointer-events-none"
                 }`}
             >
                 {/* HEADER */}
@@ -220,12 +223,12 @@ const SettingsModal = ({ user, isOpen, onClose }) => {
                 </div>
 
                 {/* FOOTER BUTTONS */}
-                <div className="px-4 sm:px-6 py-4 sm:py-5 border-t bg-white">
-                    <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-4">
+                <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-gray-150 bg-white">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition shadow-2xs hover:shadow-xs text-xs sm:text-sm inline-flex items-center justify-center cursor-pointer shrink-0"
+                            className="w-full sm:w-auto px-5 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center text-center shrink-0"
                         >
                             <span>Cancel</span>
                         </button>
@@ -233,7 +236,7 @@ const SettingsModal = ({ user, isOpen, onClose }) => {
                             type="button"
                             onClick={handleSubmit}
                             disabled={isLoading}
-                            className="w-full sm:flex-1 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#FDA92D] to-[#FDB84D] text-white font-semibold shadow-xs hover:shadow-md transition text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+                            className="w-full sm:w-auto px-5 py-2 sm:py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2 text-center shrink-0 disabled:opacity-50"
                         >
                             <Check size={16} />
                             <span>{isLoading ? "Saving..." : "Save"}</span>

@@ -65,19 +65,22 @@ const NotificationDrawer = ({
   if (!isMounted) return null;
 
   return createPortal(
-    <div className="drawer-no-blur fixed inset-0 z-[100] flex justify-end">
+    <div
+      className="drawer-no-blur fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+      onClick={onClose}
+    >
       {/* Backdrop */}
       <div
-        onClick={onClose}
-        className={`fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200 ${
           animatedOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       />
 
-      {/* Sidebar Shutter Panel */}
+      {/* Popup Modal Panel */}
       <div
-        className={`relative w-full sm:max-w-md md:max-w-lg h-full bg-white shadow-2xl flex flex-col z-10 transform transition-transform duration-300 ease-in-out ${
-          animatedOpen ? "translate-x-0" : "translate-x-full"
+        onClick={(e) => e.stopPropagation()}
+        className={`relative w-full max-w-full sm:max-w-lg md:max-w-xl max-h-[90vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col z-10 overflow-hidden transform transition-all duration-200 ease-out ${
+          animatedOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2 pointer-events-none"
         }`}
       >
         {/* Header matching Website Theme */}

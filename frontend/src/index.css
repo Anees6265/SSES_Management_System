@@ -314,9 +314,9 @@ select option:active {
 }
 
 /* ─── MODAL / DRAWER ──────────────────────────────────── */
-/* Full width on mobile, max-w-md on desktop */
+/* Full width on mobile, max-w-xl on desktop */
 .drawer-panel {
-  @apply w-full max-w-full sm:max-w-md;
+  @apply w-full max-w-full sm:max-w-xl;
 }
 
 /* Blur entire page when OrangeButton drawer is open */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   MdClose,
   MdDeleteForever,
@@ -94,9 +95,9 @@ export const DeleteConfirmModal = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3.5 sm:p-5 overflow-y-auto"
+      className="drawer-no-blur fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3.5 sm:p-5 overflow-y-auto"
       onClick={onClose}
     >
       <div
@@ -215,7 +216,8 @@ export const DeleteConfirmModal = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

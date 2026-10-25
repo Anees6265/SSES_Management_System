@@ -40,7 +40,7 @@ const OrangeButton = ({
   onClose: controlledOnClose,
   showFooter = true,
   customFooter,
-  maxWidth = "sm:max-w-md",
+  maxWidth = "sm:max-w-xl",
   bodyClassName = "p-3.5 sm:p-6",
 }) => {
   const isControlled = controlledIsOpen !== undefined;
@@ -101,6 +101,19 @@ const OrangeButton = ({
     }
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        closeDrawer();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleLeftClick = () => {
     if (onLeftClick) onLeftClick();
     closeDrawer();
@@ -128,58 +141,62 @@ const OrangeButton = ({
 
       {isMounted &&
         createPortal(
-          <div className="drawer-no-blur fixed inset-0 z-[60] flex justify-end">
+          <div
+            className="drawer-no-blur fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+            onClick={closeDrawer}
+          >
             {/* BACKDROP */}
             <div
-              onClick={closeDrawer}
-              className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
+              className={`fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200 ${
                 isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               style={{ zIndex: 0 }}
             />
 
-            {/* PANEL */}
+            {/* POPUP MODAL PANEL */}
             <div
-              className={`relative w-full ${maxWidth} h-full bg-white shadow-xl flex flex-col
-              transform transition-transform duration-300 ease-in-out z-10
-              ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative w-full max-w-full ${maxWidth || "sm:max-w-xl"} max-h-[92vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden z-10
+              transform transition-all duration-200 ease-out
+              ${isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2 pointer-events-none"}`}
             >
               {/* HEADER */}
-              <div className="flex items-start justify-between px-4 sm:px-6 py-3.5 sm:py-5 border-b bg-gray-50/50 gap-3">
-                <div className="min-w-0">
+              <div className="flex items-start justify-between px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-150 bg-slate-50/70 gap-3 shrink-0">
+                <div className="min-w-0 flex-1">
                   {panelTitle && (
-                    <h2 className="text-base sm:text-xl font-bold text-gray-900 truncate sm:whitespace-normal">{panelTitle}</h2>
+                    <h2 className="text-base sm:text-xl font-bold text-gray-900 truncate sm:whitespace-normal leading-tight">{panelTitle}</h2>
                   )}
                   {panelSubtitle && (
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">{panelSubtitle}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">{panelSubtitle}</p>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={closeDrawer}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
+                  className="text-gray-400 hover:text-gray-700 p-1.5 rounded-xl hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
+                  title="Close"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               {/* CONTENT */}
-              <div className={`flex-1 overflow-y-auto ${bodyClassName}`}>
+              <div className={`flex-1 overflow-y-auto custom-scrollbar ${bodyClassName}`}>
                 {typeof drawerContent === "function" ? drawerContent({ closeDrawer }) : (drawerContent || children)}
               </div>
 
               {/* FOOTER */}
               {showFooter && (
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-t bg-white">
+                <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-gray-150 bg-white shrink-0">
                   {customFooter ? (
                     customFooter
                   ) : (
-                    <div className="flex gap-2.5 sm:gap-4">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
                       {leftBtnText && (
                         <button
                           type="button"
                           onClick={handleLeftClick}
-                          className="flex-1 py-2 sm:py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
+                          className="w-full sm:w-auto px-5 py-2 sm:py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center text-center shrink-0"
                         >
                           <span>{leftBtnText}</span>
                         </button>
@@ -188,7 +205,7 @@ const OrangeButton = ({
                         <button
                           type="button"
                           onClick={onRightClick}
-                          className="flex-1 py-2 sm:py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 text-center"
+                          className="w-full sm:w-auto px-5 py-2 sm:py-2.5 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2 text-center shrink-0"
                         >
                           {getFooterRightIcon(rightBtnText)}
                           <span>{rightBtnText}</span>

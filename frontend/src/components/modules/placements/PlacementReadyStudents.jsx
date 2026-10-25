@@ -68,9 +68,14 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
   const placed = candidate.placedInfo;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in">
-      <div className="fixed inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col z-10 overflow-hidden animate-in slide-in-from-right duration-200">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in overflow-y-auto"
+      onClick={onClose}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl bg-white max-h-[92vh] rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
         
         {/* Drawer Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">

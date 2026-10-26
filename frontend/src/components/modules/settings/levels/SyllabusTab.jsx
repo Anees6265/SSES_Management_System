@@ -2077,7 +2077,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search tasks by title, topic..."
+                placeholder="Search tasks..."
                 className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
                 style={{ paddingLeft: '2.75rem' }}
               />
@@ -2327,7 +2327,7 @@ const SyllabusTab = ({ level, subLevel }) => {
           </span>
           <input
             type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search topic or subtopic..."
+            placeholder="Search topics..."
             className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
             style={{ paddingLeft: '2.75rem' }}
           />

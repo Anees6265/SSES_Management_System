@@ -377,7 +377,7 @@ const AttendanceDetails = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by student name, father name, phone, PR key..."
+                placeholder="Search students..."
                 className="w-full h-10 pl-9 pr-8 bg-gray-50/80 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition"
               />
               {searchTerm && (

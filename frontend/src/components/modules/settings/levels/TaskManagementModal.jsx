@@ -828,7 +828,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                   type="text"
                   value={manageSearch}
                   onChange={(e) => setManageSearch(e.target.value)}
-                  placeholder="Search tasks by title, subject, topic, type..."
+                  placeholder="Search tasks..."
                   className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-slate-400 shadow-2xs transition"
                 />
                 {manageSearch && (

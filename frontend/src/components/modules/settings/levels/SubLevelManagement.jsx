@@ -76,7 +76,7 @@ const SubLevelManagement = () => {
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
                 <div className="w-full sm:flex-1">
-                  <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                  <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search students..." />
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
                   <button className="flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm border border-gray-200 rounded-xl bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">

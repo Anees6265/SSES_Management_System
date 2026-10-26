@@ -214,7 +214,7 @@ const ResumeSharingScreen = () => {
                 <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={18} />
                 <input
                   type="text"
-                  placeholder="Search shortlisted candidates..."
+                  placeholder="Search students..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"

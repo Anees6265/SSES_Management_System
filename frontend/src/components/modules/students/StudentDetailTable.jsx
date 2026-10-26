@@ -266,7 +266,7 @@ const StudentDetailTable = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search student, PR key, or mobile..."
+                placeholder="Search students..."
                 className="w-full h-10 pl-9 pr-9 text-xs sm:text-sm bg-gray-50/70 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10 transition placeholder:text-gray-400 font-medium text-gray-800"
               />
               {searchTerm && (

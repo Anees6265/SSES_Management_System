@@ -1069,7 +1069,7 @@ export default function StudentPermissions() {
                                 <input
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search reason or faculty..."
+                                    placeholder="Search permissions..."
                                     className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
                                 />
                                 {search && (

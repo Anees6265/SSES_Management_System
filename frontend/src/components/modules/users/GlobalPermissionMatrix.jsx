@@ -227,7 +227,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search page or feature name (e.g. Placement, Report, Attendance)..."
+                        placeholder="Search permissions..."
                         className="w-full pl-10 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white transition-all placeholder:text-gray-400"
                     />
                     {searchQuery && (

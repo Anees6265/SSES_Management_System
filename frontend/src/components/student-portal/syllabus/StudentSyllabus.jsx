@@ -244,7 +244,7 @@ export default function StudentSyllabus() {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search topic or unit..."
+                                placeholder="Search topics..."
                                 className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition-colors shadow-2xs"
                             />
                             {searchQuery && (

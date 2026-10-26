@@ -244,7 +244,7 @@ const CourseYearMatrixTable = ({ matrix }) => {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search course..."
+              placeholder="Search courses..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition w-full sm:w-44"
@@ -1307,7 +1307,7 @@ const AdminDashboard = () => {
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search department..."
+                    placeholder="Search departments..."
                     value={deptSearch}
                     onChange={(e) => setDeptSearch(e.target.value)}
                     className="pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition w-full sm:w-48"

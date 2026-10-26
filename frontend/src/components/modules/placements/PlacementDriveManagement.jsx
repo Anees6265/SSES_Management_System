@@ -128,7 +128,7 @@ const PlacementDriveManagement = () => {
             <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={18} />
             <input
               type="text"
-              placeholder="Search company or job role..."
+              placeholder="Search drives..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"
@@ -498,7 +498,7 @@ const ShortlistCandidatesModal = ({ drive, readyStudents, onClose }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
             <input
               type="text"
-              placeholder="Search candidate by name, PRKey, technology..."
+              placeholder="Search students..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-400 bg-white"

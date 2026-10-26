@@ -497,7 +497,7 @@ const UsersManagement = () => {
                     <TabsCommon tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
                 <div className="flex-shrink-0 self-end sm:self-auto">
-                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search users..." />
                 </div>
             </div>
 

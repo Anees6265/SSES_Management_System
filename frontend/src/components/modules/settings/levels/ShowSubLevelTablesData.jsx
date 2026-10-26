@@ -161,7 +161,7 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
         <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
                 <div className="w-full sm:flex-1">
-                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search students..." />
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
                     <div className="flex-1 sm:flex-initial min-w-[135px] sm:min-w-[145px]">
@@ -554,7 +554,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                         type="text"
                         value={progressSearch}
                         onChange={(e) => setProgressSearch(e.target.value)}
-                        placeholder="Search by name or ID..."
+                        placeholder="Search students..."
                         className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
                         style={{ paddingLeft: '2.75rem' }}
                     />

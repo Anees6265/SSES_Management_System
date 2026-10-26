@@ -204,6 +204,7 @@ const RolesPermissions = () => {
                         <SearchBox
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
+                            placeholder="Search users..."
                         />
                     </div>
                     

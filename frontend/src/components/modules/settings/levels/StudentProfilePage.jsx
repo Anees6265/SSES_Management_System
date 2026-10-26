@@ -1930,7 +1930,7 @@ const StudentProfilePage = () => {
                             <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={16} />
                             <input
                                 type="text"
-                                placeholder="Search student records..."
+                                placeholder="Search students..."
                                 className="w-full h-full bg-transparent border-none outline-none ring-0 text-xs font-medium text-slate-800 placeholder-slate-400 p-0"
                             />
                         </div>

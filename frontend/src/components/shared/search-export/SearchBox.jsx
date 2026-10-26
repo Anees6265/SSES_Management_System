@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 
-const SearchBox = ({ searchTerm = "", setSearchTerm = () => {} }) => {
+const SearchBox = ({ searchTerm = "", setSearchTerm = () => {}, placeholder = "Search..." }) => {
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
@@ -39,7 +39,7 @@ const SearchBox = ({ searchTerm = "", setSearchTerm = () => {} }) => {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search..."
+              placeholder={placeholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 text-sm outline-none border-none bg-transparent min-w-0"
@@ -63,7 +63,7 @@ const SearchBox = ({ searchTerm = "", setSearchTerm = () => {} }) => {
         <Search size={15} className="text-gray-400 flex-shrink-0" />
         <input
           type="text"
-          placeholder="Search..."
+          placeholder={placeholder}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 text-sm outline-none border-none bg-transparent"

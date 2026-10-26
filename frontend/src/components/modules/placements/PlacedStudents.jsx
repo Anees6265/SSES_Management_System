@@ -233,7 +233,7 @@ const PlacedStudents = () => {
             <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
             <input
               type="text"
-              placeholder="Search name, role, stream..."
+              placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);

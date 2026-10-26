@@ -299,7 +299,7 @@ const DepartmentPlacementOverview = () => {
               <input
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                placeholder="Search placed students..."
+                placeholder="Search students..."
                 className="pl-9 pr-4 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 w-full sm:w-56 transition bg-gray-50 font-medium"
               />
             </div>

@@ -45,7 +45,7 @@ const DepartmentTable = ({ data = [], loading }) => {
           <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
           <input
             type="text"
-            placeholder="Search department..."
+            placeholder="Search departments..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 w-full sm:w-52 transition"

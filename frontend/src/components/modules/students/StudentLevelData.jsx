@@ -200,7 +200,7 @@ const StudentLevelData = () => {
           
           {/* Search and Filters */}
           <div className="flex justify-between items-center flex-wrap gap-4">
-            <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search students..." />
           </div>
         </div>
         

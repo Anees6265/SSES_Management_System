@@ -533,7 +533,7 @@ const LeaveRequests = () => {
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search student, PR key, reason..."
+              placeholder="Search students..."
               className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/70 pl-9 pr-9 text-xs sm:text-sm font-medium text-gray-800 outline-none transition-all duration-200 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10"
             />
             {searchTerm && (

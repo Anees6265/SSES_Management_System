@@ -231,18 +231,16 @@ const StudentDetailTable = () => {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${
-              activeTab === tab
+            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${activeTab === tab
                 ? "border-orange-500 text-orange-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+              }`}
           >
             <span>{tab}</span>
-            <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
-              activeTab === tab
+            <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === tab
                 ? "bg-orange-100 text-orange-700"
                 : "bg-gray-100 text-gray-500"
-            }`}>
+              }`}>
               {tab === "All"
                 ? students.length
                 : students.filter((s) => s.currentSubLevelId?.name === tab).length}
@@ -282,11 +280,10 @@ const StudentDetailTable = () => {
               <button
                 type="button"
                 onClick={() => setShowMobileFilters((prev) => !prev)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                  showMobileFilters || activeFilterCount > 0
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${showMobileFilters || activeFilterCount > 0
                     ? "bg-orange-50 border-orange-200 text-orange-600"
                     : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <Filter size={14} />
                 <span>Filters</span>
@@ -340,7 +337,7 @@ const StudentDetailTable = () => {
                 value={selectedStatus[0] || ""}
                 onChange={(val) => setSelectedStatus(val ? [val] : [])}
                 options={[
-                  { value: "", label: "All Statuses" },
+                  { value: "", label: "All Status" },
                   { value: "Active", label: "Active" },
                   { value: "Placed", label: "Placed" },
                   { value: "Dropped", label: "Dropped" },
@@ -358,8 +355,8 @@ const StudentDetailTable = () => {
                 options={[
                   { value: "", label: "All Sessions" },
                   ...sessions.map((s) => {
-                    const statusText = s.status 
-                       ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
+                    const statusText = s.status
+                      ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
                       : (s.isActive ? 'Active' : 'Inactive');
                     return { value: s._id, label: `${s.name} (${statusText})` };
                   })
@@ -468,11 +465,10 @@ const StudentDetailTable = () => {
                         },
                       });
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                      isDummy
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${isDummy
                         ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
                         : "border-orange-200 bg-orange-50 text-orange-500 hover:bg-orange-100 cursor-pointer"
-                    }`}
+                      }`}
                     title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
                   >
                     <MdTableChart size={14} /> Task Board
@@ -589,11 +585,10 @@ const StudentDetailTable = () => {
                               },
                             });
                           }}
-                          className={`flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition shadow-2xs ${
-                            isDummy
+                          className={`flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition shadow-2xs ${isDummy
                               ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
                               : "border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95 cursor-pointer"
-                          }`}
+                            }`}
                           title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
                         >
                           <MdTableChart size={15} />

@@ -340,7 +340,7 @@ export default function StudentReport() {
         title="Student Performance Report"
         showBack={true}
         onBack={() => {
-          navigate(`/student-profile/${id}`);
+          navigate(-1);
         }}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },

@@ -1031,7 +1031,7 @@ export default function StudentReportForm() {
       <Header
         title={existingReportData?.data ? 'Edit Student Report' : 'Create Student Report'}
         showBack={true}
-        onBack={() => navigate(`/student-profile/${id}`)}
+        onBack={() => navigate(-1)}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },
           { label: 'Student Progress', path: '/student-detail-table' },

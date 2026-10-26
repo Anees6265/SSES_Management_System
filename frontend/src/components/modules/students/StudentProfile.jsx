@@ -343,13 +343,7 @@ export default function StudentProfile() {
         title="Student Profile"
         showBack={true}
         onBack={() => {
-          if (location.state?.from && !location.state.from.includes('/report')) {
-            navigate(location.state.from);
-          } else if (window.history.state && window.history.state.idx > 0) {
-            navigate(-1);
-          } else {
-            navigate('/student-detail-table');
-          }
+          navigate(-1);
         }}
         breadcrumbs={[
           { label: 'Academics', path: '/student-detail-table' },

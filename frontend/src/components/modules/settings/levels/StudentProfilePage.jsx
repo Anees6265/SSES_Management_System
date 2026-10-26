@@ -1881,11 +1881,7 @@ const StudentProfilePage = () => {
                 ]}
                 showBack={true}
                 onBack={() => {
-                    if (location.state?.from && !location.state.from.includes('/report')) {
-                        navigate(location.state.from);
-                    } else {
-                        navigate("/student-detail-table");
-                    }
+                    navigate(-1);
                 }}
             />
 
@@ -1895,14 +1891,10 @@ const StudentProfilePage = () => {
                     <div className="flex items-center gap-2.5 sm:gap-3">
                         <button
                             onClick={() => {
-                                if (location.state?.from && !location.state.from.includes('/report')) {
-                                    navigate(location.state.from);
-                                } else {
-                                    navigate("/student-detail-table");
-                                }
+                                navigate(-1);
                             }}
                             className="hidden sm:flex p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer"
-                            title="Back to Student Records"
+                            title="Back"
                         >
                             <MdArrowBack size={18} />
                             <span>Back</span>

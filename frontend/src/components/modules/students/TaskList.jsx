@@ -304,7 +304,7 @@ export default function TaskList() {
           ...(studentInfo ? [{ label: `${studentInfo.firstName} ${studentInfo.lastName}`, path: `/student-profile/${id}` }] : []),
           { label: "Task List" },
         ]}
-        onBackClick={() => navigate(`/student-profile/${id}`)}
+        onBackClick={() => navigate(-1)}
         actions={
           <div className="flex items-center gap-2 sm:gap-3">
             <button

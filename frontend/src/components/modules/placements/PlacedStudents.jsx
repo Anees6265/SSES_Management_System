@@ -148,9 +148,9 @@ const PlacedStudents = () => {
             <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => navigate("/company-details")}
-                  className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition"
-                  title="Back to Company Details"
+                  onClick={() => navigate(-1)}
+                  className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition cursor-pointer"
+                  title="Back"
                 >
                   <MdArrowBack className="text-lg sm:text-xl" />
                 </button>
@@ -209,9 +209,9 @@ const PlacedStudents = () => {
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
-              onClick={() => navigate("/company-details")}
-              className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0"
-              title="Back to Company Details"
+              onClick={() => navigate(-1)}
+              className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0 cursor-pointer"
+              title="Back"
             >
               <MdArrowBack className="text-lg sm:text-xl" />
             </button>

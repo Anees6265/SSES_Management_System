@@ -65,7 +65,7 @@ const InterviewRoundsHistory = () => {
           { label: "Interview History", path: `/interview-history/${studentId}` },
           { label: "Rounds History" },
         ]}
-        onBackClick={() => navigate(`/interview-history/${studentId}`)}
+        onBackClick={() => navigate(-1)}
       />
 
       <div className="min-h-screen bg-white">

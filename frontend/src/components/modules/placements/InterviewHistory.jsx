@@ -685,11 +685,7 @@ const InterviewHistory = () => {
           { label: "Candidates Readiness", path: "/readiness-status" },
           { label: "Interview History" },
         ]}
-        onBackClick={() => {
-          const activeTab = localStorage.getItem("placementActiveTab") || "Ongoing Interviews";
-          localStorage.setItem("placementActiveTab", activeTab);
-          navigate("/readiness-status");
-        }}
+        onBackClick={() => navigate(-1)}
       />
 
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 pt-2">

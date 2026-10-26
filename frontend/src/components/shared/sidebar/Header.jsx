@@ -63,13 +63,6 @@ const Header = ({
       onBackClick();
     } else if (backPath) {
       navigate(backPath);
-    } else if (breadcrumbs.length > 1 && breadcrumbs[breadcrumbs.length - 2]?.path) {
-      const parentCrumb = breadcrumbs[breadcrumbs.length - 2];
-      if (typeof parentCrumb.path === "number") {
-        navigate(parentCrumb.path);
-      } else {
-        navigate(parentCrumb.path, { state: parentCrumb.state });
-      }
     } else {
       navigate(-1);
     }

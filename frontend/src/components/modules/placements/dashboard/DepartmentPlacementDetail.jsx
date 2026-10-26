@@ -442,7 +442,7 @@ const DepartmentPlacementDetail = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-gray-800 truncate">{s.name}</p>
-                        <p className="text-[10px] text-gray-400">{s.prkey} • {s.levelName || "Ready"}</p>
+                        <p className="text-[10px] text-gray-400">{s.levelName || "Ready"}</p>
                       </div>
                     </div>
                     <button 
@@ -523,7 +523,6 @@ const DepartmentPlacementDetail = () => {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800 group-hover:text-orange-600 transition">{s.name}</p>
-                            <p className="text-[10px] text-gray-400 font-medium">{s.prkey}</p>
                           </div>
                         </div>
                       </td>
@@ -607,7 +606,6 @@ const DepartmentPlacementDetail = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-gray-800 truncate">{p.studentName}</p>
-                        <p className="text-[10px] text-gray-400">{p.prkey}</p>
                       </div>
                     </div>
                     <span className="font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md text-[11px] shrink-0 border border-emerald-100">
@@ -657,7 +655,6 @@ const DepartmentPlacementDetail = () => {
                           </div>
                           <div>
                             <p className="font-semibold text-gray-800 group-hover:text-emerald-600 transition">{p.studentName}</p>
-                            <p className="text-[10px] text-gray-400 font-medium">{p.prkey}</p>
                           </div>
                         </div>
                       </td>

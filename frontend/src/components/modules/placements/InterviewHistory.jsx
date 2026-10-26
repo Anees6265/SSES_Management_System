@@ -722,11 +722,6 @@ const InterviewHistory = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-                  {student?.prkey && (
-                    <span className="flex items-center gap-1 font-mono text-slate-700">
-                      <strong>PRN:</strong> {student.prkey}
-                    </span>
-                  )}
                   {(student?.course || student?.stream) && (
                     <span className="flex items-center gap-1 text-slate-600">
                       <GraduationCap className="w-3.5 h-3.5 text-slate-400" />

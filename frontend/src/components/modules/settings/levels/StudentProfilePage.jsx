@@ -948,7 +948,7 @@ const DummyDetailsModal = ({ raw, name, onCancel, onMarkActive }) => {
                                     Dummy
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{name} {raw.prkey ? `• PR: ${raw.prkey}` : ""}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{name}</p>
                         </div>
                     </div>
                     <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition cursor-pointer">
@@ -1874,7 +1874,6 @@ const StudentProfilePage = () => {
             {/* MAIN HEADER WITH SIDEBAR TOGGLE & BREADCRUMBS */}
             <Header
                 title={`${name} — Profile`}
-                badge={raw.prkey ? `ID: ${raw.prkey}` : undefined}
                 breadcrumbs={[
                     { label: "Academics", path: "/student-detail-table" },
                     { label: "Student Records", path: "/student-detail-table" },
@@ -1914,11 +1913,6 @@ const StudentProfilePage = () => {
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-sm sm:text-lg font-bold text-slate-900 tracking-tight">Student Record</h1>
-                                {raw.prkey && (
-                                    <span className="bg-slate-100 text-slate-700 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
-                                        ID: {raw.prkey}
-                                    </span>
-                                )}
                             </div>
                             <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Detailed academic progress & placement portfolio</p>
                         </div>

@@ -46,7 +46,6 @@ const STUDENT_COLUMNS = [
                 <Avatar firstName={row.raw.firstName} lastName={row.raw.lastName} imageUrl={row.raw.image} size="sm" />
                 <div>
                     <span className="font-semibold text-sm text-gray-805">{row.fullName}</span>
-                    <span className="block text-[10px] text-gray-400 font-medium">PR Key: {row.prkey}</span>
                 </div>
             </div>
         )
@@ -218,9 +217,6 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                                         <Avatar firstName={st.raw.firstName} lastName={st.raw.lastName} imageUrl={st.raw.image} size="sm" />
                                         <div className="min-w-0 flex-1">
                                             <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{st.fullName}</h4>
-                                            <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
-                                                PR Key: <strong className="text-gray-700 font-semibold">{st.prkey}</strong>
-                                            </span>
                                         </div>
                                     </div>
                                     <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${st.status === "Active" ? "bg-green-100 text-green-700" :
@@ -446,9 +442,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                             className="font-bold text-sm text-orange-500 hover:text-orange-600 transition-colors cursor-pointer"
                         >
                             {row.name}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase mt-0.5">
-                            PR Key: {row.prkey}
                         </span>
                     </div>
                 </div>
@@ -867,9 +860,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                             <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
                                             <div className="min-w-0 flex-1">
                                                 <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{row.name}</h4>
-                                                <span className="text-[10.5px] text-gray-400 font-medium block mt-0.5">
-                                                    PR Key: <strong className="text-gray-700 font-semibold">{row.prkey}</strong>
-                                                </span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0">

@@ -179,7 +179,7 @@ export default function StudentPortalLayout() {
                 {name}
               </p>
               <p className="text-[10px] font-semibold text-gray-400 truncate mt-0.5">
-                {studentData.prkey || "Student Portal"}
+                {studentData.course || "Student Portal"}
               </p>
             </div>
           </button>

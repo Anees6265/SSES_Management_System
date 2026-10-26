@@ -527,7 +527,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
               {[
                 { label: "Student Name", value: `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A" },
-                { label: "PR Key / Enrollment No.", value: studentData?.admissionNo || studentData?.enrollmentNo || "N/A" },
+                { label: "Enrollment No.", value: studentData?.enrollmentNo || studentData?.admissionNo || "N/A" },
                 { label: "Father's Name", value: studentData?.fatherName || "N/A" },
                 { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || "ITEG" },
                 { label: "Course", value: studentData?.course || "N/A" },

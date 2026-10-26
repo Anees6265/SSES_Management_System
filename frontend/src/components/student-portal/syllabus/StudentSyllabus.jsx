@@ -92,7 +92,6 @@ export default function StudentSyllabus() {
                         <p className="font-bold text-gray-900">
                             {student.fullName || (student.firstName ? `${student.firstName} ${student.lastName || ""}`.trim() : student.name || "Student")}
                         </p>
-                        <p>PR Key: <span className="font-mono font-semibold">{student.prKey || ""}</span></p>
                         <p>{student.course || ""} · {student.sessionName || ""}</p>
                     </div>
                 </div>

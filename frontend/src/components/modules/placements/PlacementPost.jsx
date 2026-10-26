@@ -580,7 +580,6 @@ const PlacementPost = () => {
                         </h3>
                         <p className="text-xs font-semibold text-slate-500 mt-0.5">
                           {student.course || "Degree Stream"}
-                          {student.prkey ? ` • ${student.prkey}` : ""}
                         </p>
                         {student.village && (
                           <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
@@ -696,7 +695,7 @@ const PlacementPost = () => {
                                     {toTitleCase(student.firstName)} {toTitleCase(student.lastName)}
                                   </p>
                                   <span className="text-[11px] text-slate-400 font-medium">
-                                    {student.course || "Course"} {student.prkey ? `• ${student.prkey}` : ""}
+                                    {student.course || "Course"}
                                   </span>
                                 </div>
                               </div>
@@ -802,7 +801,7 @@ const PlacementPost = () => {
                             {toTitleCase(student.firstName)} {toTitleCase(student.lastName)}
                           </p>
                           <p className="text-[11px] text-slate-400 font-medium truncate">
-                            {student.course || "Course"} {student.prkey ? `• ${student.prkey}` : ""}
+                            {student.course || "Course"}
                           </p>
                         </div>
                       </div>

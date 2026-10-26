@@ -285,8 +285,10 @@ const ResumeSharingScreen = () => {
                               >
                                 {candidate.firstName} {candidate.lastName}
                               </p>
-                              <p className="text-[10px] text-slate-400">PRKey: {candidate.prkey || "—"}</p>
-                            </div>
+                                {candidate.course && (
+                                  <p className="text-[10px] text-slate-400">{candidate.course}</p>
+                                )}
+                              </div>
                           </div>
 
                           <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 truncate max-w-[130px]">
@@ -410,7 +412,9 @@ const ResumeSharingScreen = () => {
                                 >
                                   {candidate.firstName} {candidate.lastName}
                                 </p>
-                                <p className="text-[11px] text-slate-400">PRKey: {candidate.prkey || "—"}</p>
+                                {candidate.course && (
+                                  <p className="text-[11px] text-slate-400">{candidate.course}</p>
+                                )}
                               </div>
                             </td>
                             <td className="p-4">

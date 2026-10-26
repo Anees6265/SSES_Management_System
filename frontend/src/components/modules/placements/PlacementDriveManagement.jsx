@@ -534,7 +534,7 @@ const ShortlistCandidatesModal = ({ drive, readyStudents, onClose }) => {
                       />
                       <div className="min-w-0">
                         <h4 className="text-xs font-bold text-slate-800 truncate">{candidate.firstName} {candidate.lastName}</h4>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">ID: {candidate.prkey || "—"} • Tech: {candidate.technology || candidate.track || "General"}</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">Tech: {candidate.technology || candidate.track || "General"}</p>
                       </div>
                     </div>
                     <span className="text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">

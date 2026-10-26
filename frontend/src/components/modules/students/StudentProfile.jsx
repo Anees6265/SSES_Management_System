@@ -490,11 +490,6 @@ export default function StudentProfile() {
                         Enr: {studentData.enrollmentNo}
                       </span>
                     )}
-                    {studentData.prkey && (
-                      <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
-                        PR: {studentData.prkey}
-                      </span>
-                    )}
                   </div>
                   <div className="text-gray-300 mb-3 sm:mb-4 text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                     <span>
@@ -1260,7 +1255,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 {studentData.firstName} {studentData.lastName}
               </h3>
               <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
-                <div><span className="font-medium text-gray-600">Student ID:</span> <br /><span className="font-semibold">{studentData._id?.slice(-8) || 'N/A'}</span></div>
+                <div><span className="font-medium text-gray-600">Registration No:</span> <br /><span className="font-semibold">{studentData.registrationNo || 'N/A'}</span></div>
                 <div>
                   <span className="font-medium text-gray-600">Course:</span> <br />
                   <span className="font-semibold inline-flex items-center gap-1.5 flex-wrap">

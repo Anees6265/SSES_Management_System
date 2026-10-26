@@ -232,12 +232,13 @@ const LeaveRequests = () => {
                 {toTitleCase(`${student.firstName || ""} ${student.lastName || ""}`)}
               </p>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 tracking-wider">
-                  {student.prkey || "NO PR"}
-                </span>
-                {student.studentMobile && (
-                  <span className="text-[10px] text-gray-400 font-medium">
-                    • {student.studentMobile}
+                {student.studentMobile ? (
+                  <span className="text-xs text-gray-500 font-medium">
+                    {student.studentMobile}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-500 font-medium">
+                    {student.course || "Student"}
                   </span>
                 )}
               </div>
@@ -618,9 +619,6 @@ const LeaveRequests = () => {
                             {studentName || "Unnamed Student"}
                           </h4>
                           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                            <span className="text-[10.5px] font-mono font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
-                              {student.prkey || "NO PR"}
-                            </span>
                             {student.studentMobile && (
                               <a
                                 href={`tel:${student.studentMobile}`}

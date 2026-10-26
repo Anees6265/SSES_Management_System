@@ -650,7 +650,7 @@ const StudentTaskBoard = () => {
         list.push({
             id: "tb-board-info",
             title: subLevelName ? `Task Board: ${levelName} - ${subLevelName}` : `Task Board: ${levelName}`,
-            message: `Active practical task progression board for ${studentName} (ID: ${student.prkey || "N/A"}). Total tasks: ${total}.`,
+            message: `Active practical task progression board for ${studentName}. Total tasks: ${total}.`,
             time: "Active Level",
             type: "info",
         });
@@ -826,11 +826,6 @@ const StudentTaskBoard = () => {
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight truncate">Student Record</h1>
-                                {student.prkey && (
-                                    <span className="bg-slate-100 text-slate-700 text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200 shrink-0">
-                                        ID: {student.prkey}
-                                    </span>
-                                )}
                             </div>
                         </div>
                     </div>

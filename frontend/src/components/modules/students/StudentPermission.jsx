@@ -93,7 +93,7 @@ const StudentPermission = () => {
             <p className="font-semibold text-gray-900 text-sm">
               {toTitleCase(`${row.firstName || ""} ${row.lastName || ""}`)}
             </p>
-            <p className="text-xs text-gray-500 font-mono">{row.prkey || row.studentMobile || "N/A"}</p>
+            <p className="text-xs text-gray-500">{row.studentMobile || row.course || "Student"}</p>
           </div>
         </div>
       ),
@@ -296,9 +296,6 @@ const StudentPermission = () => {
                             {studentName || "Student"}
                           </h4>
                           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                            <span className="text-[10.5px] font-mono font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
-                              {student.prkey || "NO PR"}
-                            </span>
                             {student.studentMobile && (
                               <a
                                 href={`tel:${student.studentMobile}`}

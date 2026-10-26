@@ -247,7 +247,7 @@ export default function StudentProfile() {
     }
 
     const personalFields = [
-        { label: "PR Key", value: raw.prkey },
+        { label: "Registration No", value: raw.registrationNo || raw.enrollmentNo },
         { label: "Gender", value: raw.gender },
         { label: "First Name", value: raw.firstName },
         { label: "Last Name", value: raw.lastName },
@@ -296,7 +296,7 @@ export default function StudentProfile() {
                             <div className="flex items-center gap-2">
                                 <h2 className="text-base sm:text-lg font-bold text-gray-900">My Profile</h2>
                                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                                    {raw.prkey || "Student"}
+                                    {raw.course || "Student"}
                                 </span>
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
@@ -394,9 +394,7 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 text-xs text-gray-500 flex-wrap">
-                        <span className="font-semibold text-gray-700">Roll: {raw.prkey || "—"}</span>
-                        <span>•</span>
-                        <span>{raw.course || "BCA"}</span>
+                        <span className="font-semibold text-gray-700">{raw.course || "BCA"}</span>
                         <span>•</span>
                         <span>{raw.subDepartmentId?.name || "ITEG"}</span>
                     </div>

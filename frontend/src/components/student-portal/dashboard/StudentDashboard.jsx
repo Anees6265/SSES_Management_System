@@ -114,7 +114,7 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                 {/* Info grid */}
                 <div className="w-full lg:flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-x-4 sm:gap-y-3 bg-gray-50/80 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-gray-100 sm:border-none">
                     {[
-                        { icon: <MdBadge size={11} />, label: "PR Key",       value: raw.prkey },
+                        { icon: <MdBadge size={11} />, label: "Course",       value: raw.course },
                         { icon: <MdEmail size={11} />, label: "Email",         value: raw.email },
                         { icon: <MdPhone size={11} />, label: "Mobile",        value: raw.studentMobile },
                         { icon: <MdBusiness size={11} />, label: "Department",  value: raw.departmentId?.name || raw.subDepartmentId?.departmentId?.name },

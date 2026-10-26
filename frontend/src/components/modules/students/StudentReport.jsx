@@ -465,9 +465,11 @@ export default function StudentReport() {
                   </p>
 
                   <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
-                    <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
-                      PR Key: <strong className="text-slate-800">{prkey}</strong>
-                    </span>
+                    {studentData.enrollmentNo && (
+                      <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
+                        Enrollment: <strong className="text-slate-800">{studentData.enrollmentNo}</strong>
+                      </span>
+                    )}
                     {studentData.fatherName && (
                       <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
                         Father: <strong className="text-slate-800">{studentData.fatherName}</strong>
@@ -1225,8 +1227,6 @@ export default function StudentReport() {
           <p>© {new Date().getFullYear()} {collegeName}. All rights reserved.</p>
           <div className="flex items-center gap-3">
             <span>Official Academic Document</span>
-            <span>·</span>
-            <span>PR Key: {prkey}</span>
           </div>
         </div>
 

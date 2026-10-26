@@ -155,10 +155,6 @@ const StudentDetailTable = () => {
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
           <div>
             <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
-            {/* <p className="text-xs text-gray-400">
-              {row.studentId || row.prkey}
-              {row.registrationNo && (row.studentId || row.prkey) !== row.registrationNo ? ` • Reg: ${row.registrationNo}` : ""}
-            </p> */}
           </div>
         </div>
       ),
@@ -517,9 +513,6 @@ const StudentDetailTable = () => {
                         <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
                           {toTitle(`${row.firstName} ${row.lastName}`)}
                         </h4>
-                        {/* <span className="text-[11px] font-mono font-medium text-gray-400 block mt-0.5">
-                          {row.prkey || "ID N/A"}
-                        </span> */}
                       </div>
                     </div>
                     <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0 ${STATUS_COLORS[row.status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>

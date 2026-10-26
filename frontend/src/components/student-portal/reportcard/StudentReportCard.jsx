@@ -360,14 +360,6 @@ export default function StudentReportCard() {
                 <p className="text-[11px] sm:text-xs font-medium text-slate-500 mt-0.5 truncate">
                   {raw.course || "BCA"} · {departmentName} · {currentYear}
                 </p>
-
-                {raw.prkey && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.2 rounded bg-slate-50 text-slate-600 border border-slate-100">
-                      PR: <strong className="text-slate-800">{raw.prkey}</strong>
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 

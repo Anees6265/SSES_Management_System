@@ -85,7 +85,7 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 leading-tight">Candidate Profile</h3>
-              <p className="text-[11px] text-slate-400 font-mono">ID: {candidate.prkey || "PR-KEY"}</p>
+              <p className="text-[11px] text-slate-400">{candidate.course || "Student"}</p>
             </div>
           </div>
           <button
@@ -780,7 +780,9 @@ const PlacementReadyStudents = () => {
                             <h4 className="font-extrabold text-xs text-slate-900 truncate">
                               {toTitle(`${candidate.firstName || ""} ${candidate.lastName || ""}`)}
                             </h4>
-                            <p className="text-[10px] text-slate-400 font-mono">{candidate.prkey || "PR-KEY"}</p>
+                            {candidate.course && (
+                              <p className="text-[10px] text-slate-400">{candidate.course}</p>
+                            )}
                           </div>
                         </div>
 
@@ -945,12 +947,10 @@ const PlacementReadyStudents = () => {
                                   {toTitle(`${candidate.firstName || ""} ${candidate.lastName || ""}`)}
                                 </p>
                                 <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5">
-                                  <span className="font-mono">{candidate.prkey || "PR-KEY"}</span>
-                                  {candidate.studentMobile && (
-                                    <>
-                                      <span>•</span>
-                                      <span>+91 {candidate.studentMobile}</span>
-                                    </>
+                                  {candidate.studentMobile ? (
+                                    <span>+91 {candidate.studentMobile}</span>
+                                  ) : (
+                                    <span>{candidate.course || "Student"}</span>
                                   )}
                                 </div>
                               </div>

@@ -168,8 +168,8 @@ const GatePassModal = ({ item, student, onClose }) => {
                             <span className="font-bold text-gray-900 truncate block text-[11px] sm:text-xs">{student?.name || "Student"}</span>
                         </div>
                         <div>
-                            <span className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">PR Key / Roll No</span>
-                            <span className="font-mono font-bold text-orange-600 text-[11px] sm:text-xs">{student?.prkey || "—"}</span>
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Session</span>
+                            <span className="font-bold text-gray-800 truncate block text-[11px] sm:text-xs">{student?.sessionName || "Active Session"}</span>
                         </div>
                         <div>
                             <span className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Course / Dept</span>

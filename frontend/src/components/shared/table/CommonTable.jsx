@@ -23,6 +23,9 @@ const CommonTable = ({
   extraColumn,
   onRowClick,
   emptyMessage = "No data found",
+  minRows = 0,
+  className = "",
+  wrapperClassName = "",
 }) => {
 
   const [globalFilter, setGlobalFilter] = useState("");
@@ -79,12 +82,18 @@ const CommonTable = ({
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = table.getPageCount();
 
+  const currentRows = table.getRowModel().rows;
+  const currentRowsCount = currentRows.length;
+  const emptyRowsCount = (minRows && currentRowsCount > 0 && currentRowsCount < minRows)
+    ? minRows - currentRowsCount
+    : 0;
+
   return (
-    <div className="w-full">
-      <div className="rounded-2xl border border-gray-200 shadow-sm">
+    <div className={`w-full ${className}`}>
+      <div className={`rounded-2xl border border-gray-200 shadow-sm ${wrapperClassName}`}>
 
         {/* ================= TABLE ================= */}
-        <div className="overflow-x-auto w-full rounded-t-2xl">
+        <div className="overflow-x-auto w-full rounded-t-2xl flex-1 bg-white">
           <table className="min-w-[700px] w-full text-sm">
 
             <thead className="border-b border-gray-50">
@@ -132,53 +141,67 @@ const CommonTable = ({
             </thead>
 
             <tbody className="bg-white">
-              {table.getRowModel().rows.length === 0 ? (
+              {currentRowsCount === 0 ? (
                 <tr>
                   <td colSpan={tableColumns.length} className="p-4 sm:p-8 bg-white text-center">
-                    <EmptyState
-                      title={typeof emptyMessage === "string" ? emptyMessage : "No Data Found"}
-                      subtitle={
-                        searchTerm
-                          ? `No records matching "${searchTerm}". Try checking your spelling or clear your search filter.`
-                          : "There are no records available in this table right now."
-                      }
-                      actionText={searchTerm ? "Clear Search" : undefined}
-                      onAction={searchTerm ? () => setGlobalFilter("") : undefined}
-                      compact
-                    />
+                    <div className="min-h-[350px] flex items-center justify-center">
+                      <EmptyState
+                        title={typeof emptyMessage === "string" ? emptyMessage : "No Data Found"}
+                        subtitle={
+                          searchTerm
+                            ? `No records matching "${searchTerm}". Try checking your spelling or clear your search filter.`
+                            : "There are no records available in this table right now."
+                        }
+                        actionText={searchTerm ? "Clear Search" : undefined}
+                        onAction={searchTerm ? () => setGlobalFilter("") : undefined}
+                        compact
+                      />
+                    </div>
                   </td>
                 </tr>
               ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
-                    onClick={() => onRowClick?.(row.original)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 ${
-                          cell.column.columnDef.verticalAlign || "align-middle"
-                        } ${
-                          cell.column.columnDef.cellClassName ||
-                          (cell.column.columnDef.wrap ? "whitespace-normal break-words" : "whitespace-nowrap")
-                        } ${
-                          cell.column.columnDef.align === "center"
-                            ? "text-center"
-                            : cell.column.columnDef.align === "right"
-                            ? "text-right"
-                            : "text-left"
-                        }`}
-                        onClick={(e) => {
-                          if (cell.column.id === "action") e.stopPropagation();
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                <>
+                  {currentRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
+                      onClick={() => onRowClick?.(row.original)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className={`px-3 sm:px-6 py-3 sm:py-4 text-gray-700 ${
+                            cell.column.columnDef.verticalAlign || "align-middle"
+                          } ${
+                            cell.column.columnDef.cellClassName ||
+                            (cell.column.columnDef.wrap ? "whitespace-normal break-words" : "whitespace-nowrap")
+                          } ${
+                            cell.column.columnDef.align === "center"
+                              ? "text-center"
+                              : cell.column.columnDef.align === "right"
+                              ? "text-right"
+                              : "text-left"
+                          }`}
+                          onClick={(e) => {
+                            if (cell.column.id === "action") e.stopPropagation();
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {Array.from({ length: emptyRowsCount }).map((_, idx) => (
+                    <tr
+                      key={`empty-row-${idx}`}
+                      className="border-b border-gray-100/60 h-[58px] select-none pointer-events-none"
+                    >
+                      {tableColumns.map((col, cIdx) => (
+                        <td key={col.id || col.accessorKey || cIdx} className="px-3 sm:px-6 py-3.5">&nbsp;</td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
               )}
             </tbody>
 
@@ -187,7 +210,7 @@ const CommonTable = ({
 
         {/* ================= PAGINATION ================= */}
         {pagination && (
-          <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl">
+          <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl mt-auto">
             <Pagination
               totalItems={table.getFilteredRowModel().rows.length}
               currentPage={pageIndex + 1}

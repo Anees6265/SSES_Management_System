@@ -6,7 +6,6 @@ import {
   Search,
   XCircle,
   Clock,
-  Inbox,
   Check,
   Calendar,
   RotateCcw,
@@ -442,30 +441,22 @@ const LeaveRequests = () => {
                 label: "Total Requests",
                 value: counts.total,
                 statusKey: "all",
-                icon: <Inbox className="text-indigo-500" size={18} />,
-                activeBorder: "border-indigo-500 ring-2 ring-indigo-500/10",
               },
               {
                 label: "Pending",
                 value: counts.pending,
                 statusKey: "pending",
-                icon: <Clock className="text-amber-500" size={18} />,
                 pulse: counts.pending > 0,
-                activeBorder: "border-amber-500 ring-2 ring-amber-500/10",
               },
               {
                 label: "Approved",
                 value: counts.approved,
                 statusKey: "approved",
-                icon: <CheckCircle className="text-emerald-500" size={18} />,
-                activeBorder: "border-emerald-500 ring-2 ring-emerald-500/10",
               },
               {
                 label: "Rejected",
                 value: counts.rejected,
                 statusKey: "rejected",
-                icon: <XCircle className="text-rose-500" size={18} />,
-                activeBorder: "border-rose-500 ring-2 ring-rose-500/10",
               },
             ].map((item) => {
               const isSelected = activeTab === item.statusKey;
@@ -473,24 +464,35 @@ const LeaveRequests = () => {
                 <div
                   key={item.label}
                   onClick={() => setActiveTab(item.statusKey)}
-                  className={`relative overflow-hidden rounded-2xl border bg-white p-3 sm:p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer ${
-                    isSelected ? (item.activeBorder || "border-orange-500 ring-2 ring-orange-500/10") : "border-gray-200 hover:border-gray-300"
+                  className={`relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer select-none ${
+                    isSelected ? "shadow-md -translate-y-0.5" : "hover:bg-gray-50/70"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xl sm:text-2xl font-black tracking-tight text-gray-900">{item.value}</p>
-                      <p className="mt-1 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider truncate">{item.label}</p>
-                    </div>
-                    <div className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gray-50 border border-gray-100 shrink-0">
-                      {item.icon}
+                  {/* Active Indicator Top Accent Bar (Theme Orange, No border) */}
+                  {isSelected && (
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600" />
+                  )}
+
+                  <div className="flex flex-col justify-between h-full space-y-2">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <p className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider truncate transition-colors ${
+                        isSelected ? "text-orange-600" : "text-gray-400"
+                      }`}>
+                        {item.label}
+                      </p>
                       {item.pulse && (
-                        <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700">
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+                          </span>
+                          <span>Review</span>
                         </span>
                       )}
                     </div>
+                    <p className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">
+                      {item.value}
+                    </p>
                   </div>
                 </div>
               );
@@ -550,7 +552,7 @@ const LeaveRequests = () => {
         </div>
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
-        <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden p-1">
+        <div className="hidden md:flex flex-col flex-1 min-h-[520px]">
           <CommonTable
             data={filteredRequests}
             columns={columns}
@@ -558,6 +560,14 @@ const LeaveRequests = () => {
             actionButton={actionButton}
             pagination
             rowsPerPage={10}
+            minRows={10}
+            className="flex-1 flex flex-col h-full"
+            wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
+            emptyMessage={
+              searchTerm
+                ? `No leave requests matching "${searchTerm}"`
+                : `No ${activeTab === "all" ? "" : activeTab} leave requests available`
+            }
           />
         </div>
 

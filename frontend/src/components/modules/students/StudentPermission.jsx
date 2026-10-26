@@ -185,7 +185,7 @@ const StudentPermission = () => {
   }
 
   return (
-    <>
+    <div className="min-h-[calc(100vh-1px)] flex flex-col">
       <Header
         title="Dummy Students"
         showBack={false}
@@ -196,9 +196,9 @@ const StudentPermission = () => {
         ]}
       />
 
-      <div className="p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
+      <div className="p-3.5 sm:p-5 flex-1 flex flex-col space-y-3.5 sm:space-y-4">
         {/* Search and Quick Header Bar */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-xs">
+        <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-xs shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Search Input */}
             <div className="relative flex-1 max-w-full sm:max-w-md">
@@ -242,7 +242,7 @@ const StudentPermission = () => {
         </div>
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
-        <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden p-1">
+        <div className="hidden md:flex flex-col flex-1 min-h-[580px]">
           <CommonTable
             data={filteredData}
             columns={columns}
@@ -251,6 +251,14 @@ const StudentPermission = () => {
             onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
             pagination
             rowsPerPage={10}
+            minRows={10}
+            className="flex-1 flex flex-col h-full"
+            wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
+            emptyMessage={
+              searchTerm
+                ? `No dummy students matching "${searchTerm}"`
+                : "No students are currently marked as dummy"
+            }
           />
         </div>
 
@@ -459,7 +467,7 @@ const StudentPermission = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

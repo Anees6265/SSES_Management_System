@@ -33,6 +33,7 @@ import {
   FiCheckCircle 
 } from "react-icons/fi";
 import Header from "../../shared/sidebar/Header";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import { toast } from 'react-toastify';
 import { useState, useRef, useMemo, useEffect } from 'react';
 
@@ -894,6 +895,22 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
 
   const [errors, setErrors] = useState({});
 
+  const departmentSelectOptions = useMemo(() => {
+    const validDepts = (departments || [])
+      .map((d) => (typeof d === "object" ? d.name || d._id : d))
+      .filter((d) => typeof d === "string" && d.trim() !== "");
+    const uniqueDepts = Array.from(new Set(validDepts));
+
+    if (formData.department && !uniqueDepts.includes(formData.department)) {
+      uniqueDepts.push(formData.department);
+    }
+
+    return [
+      { value: "", label: "Select Department" },
+      ...uniqueDepts.map((dept) => ({ value: dept, label: dept })),
+    ];
+  }, [departments, formData.department]);
+
   const validate = () => {
     const errs = {};
     if (!formData.name.trim()) errs.name = "Full Name is required";
@@ -991,7 +1008,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
               />
             </div>
 
-            <div>
+            <div className="relative z-20">
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Department
               </label>
@@ -1001,19 +1018,17 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                   SSISM (Institution Wide)
                 </div>
               ) : (
-                <select
+                <SelectDropdown
                   value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition cursor-pointer"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept, i) => (
-                    <option key={i} value={dept}>{dept}</option>
-                  ))}
-                  {formData.department && !departments.includes(formData.department) && (
-                    <option value={formData.department}>{formData.department}</option>
-                  )}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, department: val })}
+                  options={departmentSelectOptions}
+                  placeholder="Select Department"
+                  className="w-full"
+                  menuClassName="w-full shadow-2xl border border-slate-100"
+                  buttonClassName={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 hover:bg-white focus:bg-white hover:border-orange-500 focus:border-orange-500 focus:outline-none transition cursor-pointer font-medium ${
+                    formData.department ? 'text-slate-800' : 'text-slate-400'
+                  }`}
+                />
               )}
             </div>
           </div>

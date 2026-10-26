@@ -42,9 +42,9 @@ const SelectDropdown = ({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={buttonClassName || `w-full flex items-center justify-between gap-2 px-3.5 py-2 text-sm border border-gray-200 hover:border-[var(--primary,#FDA92D)] bg-white rounded-xl text-gray-800 font-medium transition-all shadow-xs focus:outline-none ${
+        className={`${buttonClassName || `w-full flex items-center justify-between gap-2 px-3.5 py-2 text-sm border border-gray-200 hover:border-[var(--primary,#FDA92D)] bg-white rounded-xl text-gray-800 font-medium transition-all shadow-xs focus:outline-none ${
           disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-        }`}
+        }`} ${isOpen ? "!border-[var(--primary,#FDA92D)] ring-2 ring-[var(--primary,#FDA92D)]/20 !bg-white" : ""}`}
       >
         <span className="truncate">{displayLabel}</span>
         <MdExpandMore

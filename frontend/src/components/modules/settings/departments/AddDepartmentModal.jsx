@@ -7,7 +7,7 @@ import PropTypes from "prop-types";
 import InputField from "../../../shared/form-fields/InputField";
 import { useAddDepartmentMutation, useUpdateDepartmentMutation } from "../../../../redux/api/authApi";
 
-const PRIMARY_COLOR = "#FDA92D";
+const PRIMARY_COLOR = "#F97316";
 
 const UNIVERSITY_OPTIONS = [
   {
@@ -144,7 +144,7 @@ const AddDepartmentModal = ({ isOpen, onClose, onSuccess, editData }) => {
                     name="isActive"
                     checked={values.isActive === true}
                     onChange={() => setFieldValue('isActive', true)}
-                    className="w-4 h-4 text-[#FDA92D] focus:ring-[#FDA92D]"
+                    className="w-4 h-4 text-orange-500 focus:ring-orange-500"
                   />
                   <span className="text-sm text-gray-700">Active</span>
                 </label>
@@ -154,7 +154,7 @@ const AddDepartmentModal = ({ isOpen, onClose, onSuccess, editData }) => {
                     name="isActive"
                     checked={values.isActive === false}
                     onChange={() => setFieldValue('isActive', false)}
-                    className="w-4 h-4 text-[#FDA92D] focus:ring-[#FDA92D]"
+                    className="w-4 h-4 text-orange-500 focus:ring-orange-500"
                   />
                   <span className="text-sm text-gray-700">Inactive</span>
                 </label>

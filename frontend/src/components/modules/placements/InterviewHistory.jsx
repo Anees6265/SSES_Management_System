@@ -269,7 +269,7 @@ const InterviewHistory = () => {
       icon: CheckCircle,
       iconColor: "text-orange-600 bg-orange-50 border-orange-200",
       confirmText: "Yes, Mark Conducted",
-      confirmBtnStyle: "bg-orange-600 hover:bg-orange-700 text-white",
+      confirmBtnStyle: "bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white",
       details: [
         { label: "Candidate", value: studentName },
         { label: "Company", value: selectedInterview?.company?.companyName || "Company" },
@@ -523,7 +523,7 @@ const InterviewHistory = () => {
       icon: RotateCcw,
       iconColor: "text-amber-600 bg-amber-50 border-amber-200",
       confirmText: "Yes, Confirm Reschedule",
-      confirmBtnStyle: "bg-amber-600 hover:bg-amber-700 text-white",
+      confirmBtnStyle: "bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white",
       details: [
         { label: "Candidate", value: studentName },
         { label: "Company", value: selectedInterview?.company?.companyName || "Company" },

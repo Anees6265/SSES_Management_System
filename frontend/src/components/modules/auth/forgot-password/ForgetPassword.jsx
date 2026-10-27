@@ -39,7 +39,7 @@ export default function ForgetPassword() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="peer h-12 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                className="peer h-12 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:border-orange-500 transition-all duration-200"
                 placeholder=" "
               />
               <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${email ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
@@ -53,7 +53,7 @@ export default function ForgetPassword() {
             )}
             <button
               type="submit"
-              className="w-full bg-[#FDA92D]  text-white py-3 rounded-full mt-2 hover:bg-[#ED9A21] active:bg-[#B66816] transition"
+              className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-full mt-2 font-bold transition shadow-xs cursor-pointer"
               disabled={isLoading}
             >
               {isLoading ? "Sending..." : "Get Link"}

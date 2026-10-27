@@ -70,7 +70,7 @@ const SessionSelector = ({
         align={align}
         buttonClassName={
           buttonClassName ||
-          "h-10 w-full flex items-center justify-between gap-2 px-3.5 border border-gray-200 hover:border-[var(--primary,#FDA92D)] bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer shadow-2xs focus:outline-none"
+          "h-10 w-full flex items-center justify-between gap-2 px-3.5 border border-gray-200 hover:border-[var(--primary,#F97316)] bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer shadow-2xs focus:outline-none"
         }
       />
       {displaySessions.length === 0 && (

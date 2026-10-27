@@ -827,7 +827,7 @@ const PlacementPost = () => {
                         <button
                           onClick={() => downloadPost(student)}
                           disabled={isDownloading}
-                          className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold py-2 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold py-2 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           <MdFileDownload size={15} />
                           <span>{isDownloading ? "..." : "Poster PDF"}</span>

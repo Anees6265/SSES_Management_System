@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import InputField from "../../../shared/form-fields/InputField";
 import { useAddLevelMutation, useUpdateLevelMutation } from "../../../../redux/api/authApi";
 
-const PRIMARY_COLOR = "#FDA92D";
+const PRIMARY_COLOR = "#F97316";
 
 const AddLevelModal = ({ isOpen, onClose, onSuccess, subdepartmentId, editData }) => {
   const [addLevel] = useAddLevelMutation();
@@ -108,7 +108,7 @@ const AddLevelModal = ({ isOpen, onClose, onSuccess, subdepartmentId, editData }
                     type="radio"
                     checked={values.isActive === true}
                     onChange={() => setFieldValue('isActive', true)}
-                    className="w-4 h-4 text-[#FDA92D] focus:ring-[#FDA92D]"
+                    className="w-4 h-4 text-orange-500 focus:ring-orange-500 accent-orange-500"
                   />
                   <span className="text-sm text-gray-700">Active</span>
                 </label>
@@ -117,7 +117,7 @@ const AddLevelModal = ({ isOpen, onClose, onSuccess, subdepartmentId, editData }
                     type="radio"
                     checked={values.isActive === false}
                     onChange={() => setFieldValue('isActive', false)}
-                    className="w-4 h-4 text-[#FDA92D] focus:ring-[#FDA92D]"
+                    className="w-4 h-4 text-orange-500 focus:ring-orange-500 accent-orange-500"
                   />
                   <span className="text-sm text-gray-700">Inactive</span>
                 </label>

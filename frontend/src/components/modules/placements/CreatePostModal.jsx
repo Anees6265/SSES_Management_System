@@ -208,7 +208,7 @@ const ImageUploadField = ({ label, file, existingUrl, onChange, onClear }) => {
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
         />
         <div className={`h-11 border-2 border-dashed rounded-xl flex items-center px-3 transition-colors ${
-          file ? "border-green-400 bg-green-50" : "border-gray-300 hover:border-[#FDA92D] hover:bg-orange-50"
+          file ? "border-green-400 bg-green-50" : "border-gray-300 hover:border-orange-400 hover:bg-orange-50"
         }`}>
           <div className="flex items-center gap-2 w-full">
             {file ? (

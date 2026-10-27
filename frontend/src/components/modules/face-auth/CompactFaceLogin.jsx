@@ -423,7 +423,7 @@ const CompactFaceLogin = ({ onLoginSuccess, onClose, onNoFaceRegistered }) => {
               <button
                 type="button"
                 onClick={startFaceScan}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-[#FDA92D] hover:from-orange-600 hover:to-orange-500 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.98] cursor-pointer"
               >
                 <ScanFace className="w-5 h-5" />
                 <span>Start Face ID Scan</span>
@@ -456,7 +456,7 @@ const CompactFaceLogin = ({ onLoginSuccess, onClose, onNoFaceRegistered }) => {
               <button
                 type="button"
                 onClick={!modelsLoaded ? loadModels : startFaceScan}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-[#FDA92D] hover:from-orange-600 hover:to-orange-500 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.98] cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>{!modelsLoaded ? 'Retry Loading AI Models' : 'Retry Face ID Scan'}</span>

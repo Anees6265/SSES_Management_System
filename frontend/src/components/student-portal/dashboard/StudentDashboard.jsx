@@ -47,7 +47,7 @@ const readinessBadge = (s = "") => {
 };
 
 // ── Circular Progress ─────────────────────────────────────────────────────────
-const CircleProgress = ({ pct, size = 56, stroke = 4, color = "#FDA92D" }) => {
+const CircleProgress = ({ pct, size = 56, stroke = 4, color = "#F97316" }) => {
     const r = (size - stroke) / 2;
     const circ = 2 * Math.PI * r;
     const isLarge = size >= 50;
@@ -137,7 +137,7 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                 {/* Overall progress ring */}
                 <div className="w-full lg:w-auto flex sm:flex-col items-center justify-between sm:justify-center gap-2.5 sm:gap-1 pt-2 sm:pt-0 border-t lg:border-t-0 sm:border-t-0 border-gray-100 flex-shrink-0">
                     <div className="flex items-center sm:flex-col gap-2.5 sm:gap-1">
-                        <CircleProgress pct={overallPct} size={52} stroke={4} color="#FDA92D" />
+                        <CircleProgress pct={overallPct} size={52} stroke={4} color="#F97316" />
                         <div className="text-left sm:text-center">
                             <p className="text-xs sm:text-[10px] font-bold text-gray-700 sm:text-gray-400">Overall Progress</p>
                             <p className="text-[10px] text-gray-400 sm:hidden">Continuous evaluation</p>
@@ -302,7 +302,7 @@ export default function StudentDashboard() {
                             <h3 className="text-sm font-bold text-gray-800">Task Progress</h3>
                             <p className="text-xs text-gray-400 mt-0.5 truncate">{raw.currentLevelId?.name || "—"} · {raw.currentSubLevelId?.name || "—"}</p>
                         </div>
-                        <CircleProgress pct={taskPct} size={44} stroke={4} color="#FDA92D" />
+                        <CircleProgress pct={taskPct} size={44} stroke={4} color="#F97316" />
                     </div>
 
                     {/* Donut + Legend */}
@@ -312,7 +312,7 @@ export default function StudentDashboard() {
                                 <circle cx="60" cy="60" r="48" fill="none" stroke="#f3f4f6" strokeWidth="16" />
                                 <circle cx="60" cy="60" r="48" fill="none" stroke="#22c55e" strokeWidth="16"
                                     strokeDasharray={`${totalTasks > 0 ? (completedTasks / totalTasks) * 301.6 : 0} 301.6`} strokeLinecap="butt" />
-                                <circle cx="60" cy="60" r="48" fill="none" stroke="#FDA92D" strokeWidth="16"
+                                <circle cx="60" cy="60" r="48" fill="none" stroke="#F97316" strokeWidth="16"
                                     strokeDasharray={`${totalTasks > 0 ? (pendingTasks / totalTasks) * 301.6 : 0} 301.6`}
                                     strokeDashoffset={`-${totalTasks > 0 ? (completedTasks / totalTasks) * 301.6 : 0}`} strokeLinecap="butt" />
                             </svg>

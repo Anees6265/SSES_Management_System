@@ -79,14 +79,14 @@
 
 /* Selected Day */
 .react-datepicker__day--selected {
-  background: #FDA92D !important;
+  background: #F97316 !important;
   color: white !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 12px rgba(253, 169, 45, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3) !important;
 }
 
 .react-datepicker__day--selected:hover {
-  background: #ED9A21 !important;
+  background: #EA580C !important;
   transform: scale(1.05) !important;
 }
 
@@ -118,9 +118,9 @@
 .react-datepicker__month-dropdown,
 .react-datepicker__year-dropdown {
   background: white !important;
-  border: 2px solid #FDA92D !important;
+  border: 2px solid #F97316 !important;
   border-radius: 8px !important;
-  box-shadow: 0 8px 25px rgba(253, 169, 45, 0.15) !important;
+  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.15) !important;
 }
 
 .react-datepicker__month-option,
@@ -131,13 +131,13 @@
 
 .react-datepicker__month-option:hover,
 .react-datepicker__year-option:hover {
-  background: #FFF5E6 !important;
-  color: #FDA92D !important;
+  background: #FFF7ED !important;
+  color: #F97316 !important;
 }
 
 .react-datepicker__month-option--selected,
 .react-datepicker__year-option--selected {
-  background: #FDA92D !important;
+  background: #F97316 !important;
   color: white !important;
   font-weight: 600 !important;
 }
@@ -153,23 +153,23 @@
 
 /* Triangle Arrow */
 .react-datepicker__triangle {
-  border-bottom-color: #FDA92D !important;
+  border-bottom-color: #F97316 !important;
 }
 
 .react-datepicker__triangle::before {
-  border-bottom-color: #FDA92D !important;
+  border-bottom-color: #F97316 !important;
 }
 
 /* Week Numbers */
 .react-datepicker__week-number {
-  color: #FDA92D !important;
+  color: #F97316 !important;
   font-weight: 600 !important;
 }
 
 /* Input Focus State Enhancement */
 .react-datepicker__input-container input:focus {
-  border-color: #FDA92D !important;
-  box-shadow: 0 0 0 3px rgba(253, 169, 45, 0.1) !important;
+  border-color: #F97316 !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
 }
 
 /* Responsive Design */
@@ -210,7 +210,7 @@
 
 .react-datepicker__month-dropdown::-webkit-scrollbar-thumb,
 .react-datepicker__year-dropdown::-webkit-scrollbar-thumb {
-  background-color: #FDA92D;
+  background-color: #F97316;
   border-radius: 3px;
 }
 

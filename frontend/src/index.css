@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root, [data-theme="orange"] {
-  --primary: #FDA92D;
-  --primary-light: #FED7AA;
-  --primary-dark: #F97316;
-  --primary-darker: #EA580C;
+  --primary: #F97316;
+  --primary-light: #FB923C;
+  --primary-dark: #EA580C;
+  --primary-darker: #C2410C;
   --primary-50: #FFF7ED;
   --primary-100: #FFEDD5;
-  --ring: #FDA92D;
+  --ring: #F97316;
   --background: #F8F7F5;
   --backgroundColor: #FCFDFD;
   --text-color: #1C252E;
@@ -19,12 +19,12 @@
   --success: #22C55E;
   --success-light: #77ED8B;
   --success-dark: #118D57;
-  --warning: #FDA92D;
-  --warning-light: #FFD666;
-  --warning-dark: #FDA92D;
-  --error: #FDA92D;
-  --error-light: #FFCEC3;
-  --error-dark: #B71D18;
+  --warning: #F59E0B;
+  --warning-light: #FDE68A;
+  --warning-dark: #D97706;
+  --error: #EF4444;
+  --error-light: #FEE2E2;
+  --error-dark: #B91C1C;
   --info: #00B8D9;
   --info-light: #61F3F3;
   --info-dark: #006C9C;
@@ -110,41 +110,46 @@ body, html {
 .bg-orange-200 { background-color: var(--primary-light) !important; }
 .bg-orange-300 { background-color: var(--primary-light) !important; }
 .bg-orange-400 { background-color: var(--primary) !important; }
-.bg-orange-500 { background-color: var(--primary) !important; }
-.bg-orange-600 { background-color: var(--primary-dark) !important; }
-.bg-orange-700 { background-color: var(--primary-darker) !important; }
-.bg-orange-800 { background-color: var(--primary-darker) !important; }
+.bg-orange-500, .\!bg-orange-500 { background-color: var(--primary) !important; }
+.bg-orange-600, .\!bg-orange-600 { background-color: var(--primary-dark) !important; }
+.bg-orange-700, .\!bg-orange-700 { background-color: var(--primary-darker) !important; }
+.bg-orange-800, .\!bg-orange-800 { background-color: var(--primary-darker) !important; }
 
 .text-orange-400 { color: var(--primary) !important; }
-.text-orange-500 { color: var(--primary) !important; }
-.text-orange-600 { color: var(--primary-dark) !important; }
-.text-orange-700 { color: var(--primary-darker) !important; }
+.text-orange-500, .\!text-orange-500 { color: var(--primary) !important; }
+.text-orange-600, .\!text-orange-600 { color: var(--primary-dark) !important; }
+.text-orange-700, .\!text-orange-700 { color: var(--primary-darker) !important; }
 
 .border-orange-100 { border-color: var(--primary-100) !important; }
 .border-orange-200 { border-color: var(--primary-light) !important; }
 .border-orange-400 { border-color: var(--primary) !important; }
-.border-orange-500 { border-color: var(--primary) !important; }
-.border-orange-600 { border-color: var(--primary-dark) !important; }
+.border-orange-500, .\!border-orange-500 { border-color: var(--primary) !important; }
+.border-orange-600, .\!border-orange-600 { border-color: var(--primary-dark) !important; }
 
 .ring-orange-400 { --tw-ring-color: var(--primary) !important; }
-.ring-orange-500 { --tw-ring-color: var(--primary) !important; }
+.ring-orange-500, .\!ring-orange-500 { --tw-ring-color: var(--primary) !important; }
 
 .focus\:border-orange-400:focus { border-color: var(--primary) !important; }
+.focus\:border-orange-500:focus { border-color: var(--primary) !important; }
 .focus\:ring-orange-400:focus { --tw-ring-color: var(--primary) !important; }
 .focus\:ring-orange-500:focus { --tw-ring-color: var(--primary) !important; }
 
 .hover\:bg-orange-50:hover  { background-color: var(--primary-50) !important; }
 .hover\:bg-orange-100:hover { background-color: var(--primary-100) !important; }
-.hover\:bg-orange-500:hover { background-color: var(--primary) !important; }
-.hover\:bg-orange-600:hover { background-color: var(--primary-dark) !important; }
+.hover\:bg-orange-500:hover, .\!hover\:bg-orange-500:hover { background-color: var(--primary) !important; }
+.hover\:bg-orange-600:hover, .\!hover\:bg-orange-600:hover { background-color: var(--primary-dark) !important; }
+.hover\:bg-orange-700:hover, .\!hover\:bg-orange-700:hover { background-color: var(--primary-darker) !important; }
+
+.active\:bg-orange-600:active, .\!active\:bg-orange-600:active { background-color: var(--primary-dark) !important; }
+.active\:bg-orange-700:active, .\!active\:bg-orange-700:active { background-color: var(--primary-darker) !important; }
 
 .hover\:text-orange-500:hover { color: var(--primary) !important; }
 .hover\:text-orange-600:hover { color: var(--primary-dark) !important; }
 
 .hover\:text-white:hover { color: #ffffff !important; }
 
-.from-\[\#FDA92D\] { --tw-gradient-from: var(--primary) !important; }
-.to-\[\#FDB84D\]   { --tw-gradient-to: var(--primary-light) !important; }
+.from-\[\#FDA92D\], .from-orange-500 { --tw-gradient-from: var(--primary) !important; }
+.to-\[\#FDB84D\], .to-orange-400     { --tw-gradient-to: var(--primary-light) !important; }
 
 /* ─── GLOBAL MODAL/DRAWER BACKDROP BLUR ──────────────── */
 .modal-overlay {
@@ -226,11 +231,11 @@ input:active, select:active, textarea:active, button:active {
 
 /* Ensure no black border on focus or hover globally for inputs, search boxes, and filter dropdowns */
 input:focus, select:focus, textarea:focus {
-  border-color: var(--primary, #FDA92D) !important;
+  border-color: var(--primary, #F97316) !important;
 }
 
 input:hover, select:hover, textarea:hover {
-  border-color: var(--primary-light, #FED7AA) !important;
+  border-color: var(--primary-light, #FB923C) !important;
 }
 
 /* Search inputs and filter select boxes */
@@ -240,13 +245,13 @@ input[type="search"]:hover,
 .search-input:hover,
 .filter-input:focus,
 .filter-input:hover {
-  border-color: var(--primary, #FDA92D) !important;
+  border-color: var(--primary, #F97316) !important;
   outline: none !important;
 }
 
 /* ─── DYNAMIC THEME ACCENT & OPTION STYLING FOR DROPDOWNS ─── */
 select, input[type="radio"], input[type="checkbox"] {
-  accent-color: var(--primary, #FDA92D) !important;
+  accent-color: var(--primary, #F97316) !important;
 }
 
 select option {
@@ -255,17 +260,17 @@ select option {
 }
 
 select option:checked {
-  background-color: var(--primary, #FDA92D) !important;
+  background-color: var(--primary, #F97316) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 10px 100px var(--primary, #FDA92D) inset !important;
+  box-shadow: 0 0 10px 100px var(--primary, #F97316) inset !important;
 }
 
 select option:hover,
 select option:focus,
 select option:active {
-  background-color: var(--primary, #FDA92D) !important;
+  background-color: var(--primary, #F97316) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 10px 100px var(--primary, #FDA92D) inset !important;
+  box-shadow: 0 0 10px 100px var(--primary, #F97316) inset !important;
 }
 
 /* ─── ANIMATIONS ──────────────────────────────────────── */

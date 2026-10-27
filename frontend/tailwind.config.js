@@ -7,8 +7,8 @@ export default {
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
-        brandYellow: '#FDA92D',
-        brandYellowOpacity: 'rgba(253, 169, 45, 0.0784)',
+        brandYellow: '#F97316',
+        brandYellowOpacity: 'rgba(249, 115, 22, 0.08)',
         customGreenText: '#118D57',
         customGreenBg: 'rgba(34, 197, 94, 0.2)',
       },

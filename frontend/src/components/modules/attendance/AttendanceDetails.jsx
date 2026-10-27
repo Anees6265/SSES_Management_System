@@ -449,7 +449,7 @@ const AttendanceDetails = () => {
                   options={subDepts.map((sd) => ({ value: sd._id, label: sd.name }))}
                   placeholder="Select Sub-Dept"
                   className="w-full"
-                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-2xs cursor-pointer"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#F97316)] focus:border-[var(--primary,#F97316)] focus:outline-none shadow-2xs cursor-pointer"
                 />
                 <label className="absolute -top-2 left-3 bg-white px-1 text-[11px] text-gray-700 font-medium z-10 pointer-events-none">
                   Sub-Department
@@ -464,7 +464,7 @@ const AttendanceDetails = () => {
                   options={years}
                   placeholder="Select Year"
                   className="w-full"
-                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-2xs cursor-pointer"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#F97316)] focus:border-[var(--primary,#F97316)] focus:outline-none shadow-2xs cursor-pointer"
                 />
                 <label className="absolute -top-2 left-3 bg-white px-1 text-[11px] text-gray-700 font-medium z-10 pointer-events-none">
                   Year
@@ -479,7 +479,7 @@ const AttendanceDetails = () => {
                   options={filteredSubLevels}
                   placeholder="Select Sub-Level"
                   className="w-full"
-                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-2xs cursor-pointer"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#F97316)] focus:border-[var(--primary,#F97316)] focus:outline-none shadow-2xs cursor-pointer"
                 />
                 <label className="absolute -top-2 left-3 bg-white px-1 text-[11px] text-gray-700 font-medium z-10 pointer-events-none">
                   Sub-Level
@@ -498,7 +498,7 @@ const AttendanceDetails = () => {
                   ]}
                   placeholder="Select Gender"
                   className="w-full"
-                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#FDA92D)] focus:border-[var(--primary,#FDA92D)] focus:outline-none shadow-2xs cursor-pointer"
+                  buttonClassName="h-[42px] w-full flex items-center justify-between gap-2 px-3 border border-gray-300 bg-white rounded-lg text-xs sm:text-sm text-gray-700 font-medium transition-all hover:border-[var(--primary,#F97316)] focus:border-[var(--primary,#F97316)] focus:outline-none shadow-2xs cursor-pointer"
                 />
                 <label className="absolute -top-2 left-3 bg-white px-1 text-[11px] text-gray-700 font-medium z-10 pointer-events-none">
                   Gender

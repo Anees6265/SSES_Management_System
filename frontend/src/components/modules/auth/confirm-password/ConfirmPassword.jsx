@@ -95,7 +95,7 @@ const ConfirmPassword = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#FDA92D]  text-white py-3 rounded-full mt-4 hover:bg-orange-600 transition"
+                className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-full mt-4 font-bold transition shadow-xs cursor-pointer"
               >
                 {isLoading ? "Updating..." : "Update"}
               </button>

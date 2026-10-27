@@ -5,7 +5,7 @@ import EmptyState from "../../shared/empty-state/EmptyState";
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 // ── Circular Progress ─────────────────────────────────────────────────────────
-const CircleProgress = ({ pct, size = 44, stroke = 3, color = "#FDA92D" }) => {
+const CircleProgress = ({ pct, size = 44, stroke = 3, color = "#F97316" }) => {
     // Correct SVG circle radius so stroke fits cleanly inside size without clipping
     const r = (size - stroke) / 2;
     const circ = 2 * Math.PI * r;
@@ -74,7 +74,7 @@ export default function StudentLevelHistory() {
                             <h2 className="text-base font-bold text-gray-900">Level History</h2>
                             <p className="text-xs text-gray-400 mt-0.5">{history.length} levels tracked · {completedLevels} completed</p>
                         </div>
-                        <CircleProgress pct={overallPct} size={52} stroke={5} color="#FDA92D" />
+                        <CircleProgress pct={overallPct} size={52} stroke={5} color="#F97316" />
                     </div>
 
                     {/* Stat pills */}
@@ -177,7 +177,7 @@ export default function StudentLevelHistory() {
                                                             }
                                                             {item.totalTasks > 0 && (
                                                                 <CircleProgress pct={pct} size={40} stroke={2.8}
-                                                                    color={isCurrent ? "#FDA92D" : "#22c55e"} />
+                                                                    color={isCurrent ? "#F97316" : "#22c55e"} />
                                                             )}
                                                         </div>
                                                     </div>
@@ -235,7 +235,7 @@ export default function StudentLevelHistory() {
                                         : 0;
                                     return (
                                         <div key={snap._id || i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-orange-100 transition-colors">
-                                            <CircleProgress pct={pct} size={36} stroke={3} color="#FDA92D" />
+                                            <CircleProgress pct={pct} size={36} stroke={3} color="#F97316" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-gray-800 truncate">
                                                     {snap.levelName} – {snap.subLevelName}

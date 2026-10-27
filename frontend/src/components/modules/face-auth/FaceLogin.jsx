@@ -250,8 +250,8 @@ const FaceLogin = ({ onLoginSuccess, onClose }) => {
           {!modelsLoaded ? (
             <div className="text-center py-12">
               <div className="relative">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#FDA92D] border-t-transparent mx-auto mb-4"></div>
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#FDA92D] to-[#FED680] opacity-20 animate-pulse"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mx-auto mb-4"></div>
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-300 opacity-20 animate-pulse"></div>
               </div>
               <p className="text-gray-600 font-medium">Initializing Face Recognition...</p>
               <p className="text-sm text-gray-500 mt-2">Please wait while AI models load</p>
@@ -302,7 +302,7 @@ const FaceLogin = ({ onLoginSuccess, onClose }) => {
                   <button
                     type="button"
                     onClick={startCamera}
-                    className="w-full bg-[#FDA92D] text-white py-3 rounded-xl hover:bg-orange-600 font-semibold transition"
+                    className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition cursor-pointer"
                   >
                     Start Camera
                   </button>
@@ -316,7 +316,7 @@ const FaceLogin = ({ onLoginSuccess, onClose }) => {
                         type="button"
                         onClick={captureAndLogin}
                         disabled={isLoading || !faceDetected || attempts >= 3}
-                        className="flex-1 bg-[#FDA92D] text-white py-3 rounded-xl hover:bg-orange-600 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {isLoading ? 'Processing...' : countdown > 0 ? `📸 ${countdown}` : 'Authenticate'}
                       </button>

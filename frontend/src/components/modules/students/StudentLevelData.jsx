@@ -191,7 +191,7 @@ const StudentLevelData = () => {
             {/* Task Upload Button */}
             <button
               onClick={() => setIsTaskUploadModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FDA92D] hover:bg-[#E6941A] text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition active:scale-95 cursor-pointer shrink-0"
             >
               <FaUpload className="text-sm" />
               Upload Tasks for {activeTab}

@@ -115,7 +115,7 @@ const Pagination = ({
               aria-current={safeCurrentPage === p ? "page" : undefined}
               className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center ${
                 safeCurrentPage === p
-                  ? "bg-[#FDA92D] text-white border border-[#FDA92D] shadow-2xs"
+                  ? "bg-orange-500 text-white border border-orange-500 shadow-2xs"
                   : "bg-white text-slate-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-2xs"
               }`}
             >

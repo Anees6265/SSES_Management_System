@@ -42,15 +42,15 @@ const SelectDropdown = ({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`${buttonClassName || `w-full flex items-center justify-between gap-2 px-3.5 py-2 text-sm border border-gray-200 hover:border-[var(--primary,#FDA92D)] bg-white rounded-xl text-gray-800 font-medium transition-all shadow-xs focus:outline-none ${
+        className={`${buttonClassName || `w-full flex items-center justify-between gap-2 px-3.5 py-2 text-sm border border-gray-200 hover:border-[var(--primary,#F97316)] bg-white rounded-xl text-gray-800 font-medium transition-all shadow-xs focus:outline-none ${
           disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-        }`} ${isOpen ? "!border-[var(--primary,#FDA92D)] ring-2 ring-[var(--primary,#FDA92D)]/20 !bg-white" : ""}`}
+        }`} ${isOpen ? "!border-[var(--primary,#F97316)] ring-2 ring-[var(--primary,#F97316)]/20 !bg-white" : ""}`}
       >
         <span className="truncate">{displayLabel}</span>
         <MdExpandMore
           size={18}
           className={`text-gray-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-[var(--primary,#FDA92D)]" : ""
+            isOpen ? "rotate-180 text-[var(--primary,#F97316)]" : ""
           }`}
         />
       </button>
@@ -71,8 +71,8 @@ const SelectDropdown = ({
                   }}
                   className={`flex items-center justify-between px-3.5 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 ${
                     isSelected
-                      ? "bg-[var(--primary,#FDA92D)] text-white"
-                      : "text-gray-700 hover:bg-[var(--primary,#FDA92D)] hover:text-white"
+                      ? "bg-[var(--primary,#F97316)] text-white"
+                      : "text-gray-700 hover:bg-[var(--primary,#F97316)] hover:text-white"
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>

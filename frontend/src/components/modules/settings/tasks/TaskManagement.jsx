@@ -1167,7 +1167,7 @@ const TaskManagement = () => {
                                                     { value: 100, label: "100" },
                                                 ]}
                                                 className="w-20"
-                                                buttonClassName="h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-700 hover:border-[#FDA92D] flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer"
+                                                buttonClassName="h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-slate-700 hover:border-orange-500 flex items-center justify-between gap-1 shadow-2xs transition cursor-pointer"
                                             />
                                         </div>
                                     }

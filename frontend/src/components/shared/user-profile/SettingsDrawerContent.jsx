@@ -177,7 +177,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                         value={formData.name}
                         onChange={handleChange}
                         placeholder=" "
-                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-orange-500 transition-all duration-200"
                     />
                     <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.name ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
                         Name
@@ -190,7 +190,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                         value={formData.position}
                         onChange={handleChange}
                         placeholder=" "
-                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-orange-500 transition-all duration-200"
                     />
                     <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.position ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
                         Position
@@ -203,7 +203,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                         value={formData.role}
                         onChange={handleChange}
                         placeholder=" "
-                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                        className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-orange-500 transition-all duration-200"
                     />
                     <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.role ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
                         Role
@@ -227,7 +227,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                             value={formData.department}
                             onChange={handleChange}
                             placeholder=" "
-                            className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-[#FDA92D] transition-all duration-200"
+                            className="peer h-12 w-full border border-gray-300 px-3 rounded-md focus:outline-none focus:border-orange-500 transition-all duration-200"
                         />
                         <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${formData.department ? 'text-xs -top-2 text-black' : 'text-gray-500 top-3'}`}>
                             Department

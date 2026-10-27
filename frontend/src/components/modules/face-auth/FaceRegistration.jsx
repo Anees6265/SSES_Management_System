@@ -245,12 +245,12 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
         <div className="space-y-6 py-2">
           {!modelsLoaded ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#FDA92D] border-t-transparent mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mx-auto mb-4"></div>
               <p className="text-gray-600 font-medium">Loading Face Recognition AI...</p>
             </div>
           ) : (
             <>
-              <div className="relative overflow-hidden rounded-xl border-4 border-[#FDA92D] shadow-lg">
+              <div className="relative overflow-hidden rounded-xl border-4 border-orange-500 shadow-lg">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -274,7 +274,7 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
                   )}
                 </div>
                 
-                <div className="absolute top-3 right-3 bg-[#FDA92D] text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
                   {capturedFaces.length}/3 Captured
                 </div>
               </div>
@@ -284,7 +284,7 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
                   <button
                     type="button"
                     onClick={startCamera}
-                    className="w-full bg-[#FDA92D] text-white py-3 rounded-xl hover:bg-orange-600 font-semibold transition"
+                    className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition cursor-pointer"
                   >
                     Start Camera
                   </button>
@@ -298,7 +298,7 @@ const FaceRegistration = ({ email, onRegistrationSuccess, onClose }) => {
                         type="button"
                         onClick={captureFace}
                         disabled={isLoading || !faceDetected || capturedFaces.length >= 3}
-                        className="flex-1 bg-[#FDA92D] text-white py-3 rounded-xl hover:bg-orange-600 font-semibold transition disabled:opacity-50"
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-xl font-bold tracking-wider uppercase text-xs sm:text-sm shadow-xs hover:shadow-md transition disabled:opacity-50 cursor-pointer"
                       >
                         {isLoading ? 'Capturing...' : 'Capture Face'}
                       </button>

@@ -60,7 +60,7 @@ const OtpVeriFication = () => {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-[#FDA92D]  text-white py-3 rounded-full mt-4 hover:bg-[#ED9A21] active:bg-[#B66816] transition relative"
+                        className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-3 rounded-full mt-4 font-bold transition shadow-xs cursor-pointer relative"
                     >
                         {isLoading ? "Sending OTP..." : "Send OTP"}
                     </button>

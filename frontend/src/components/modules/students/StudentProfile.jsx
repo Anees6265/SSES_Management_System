@@ -370,8 +370,8 @@ export default function StudentProfile() {
                   }
                 }}
                 disabled={!canChooseElective()}
-                className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg ${canChooseElective()
-                  ? 'bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white font-extrabold cursor-pointer'
+                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${canChooseElective()
+                  ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer hover:shadow-md'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                   }`}
                 title={canChooseElective() ? 'Choose your elective technology' : 'Complete Level 2A/2B/2C to unlock electives'}
@@ -394,10 +394,10 @@ export default function StudentProfile() {
                     },
                   });
                 }}
-                className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg ${
+                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${
                   isDummy
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
-                    : 'bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white cursor-pointer'
+                    : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer hover:shadow-md'
                 }`}
                 title={isDummy ? "Task board is disabled for dummy students" : "Manage student tasks and assignments"}
               >
@@ -406,14 +406,14 @@ export default function StudentProfile() {
               </button>
               <button
                 onClick={() => setEmailModalOpen(true)}
-                className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white disabled:opacity-50"
+                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white disabled:opacity-50 cursor-pointer"
               >
                 <span className="hidden sm:inline">Update Email</span>
                 <span className="sm:hidden">Email</span>
               </button>
               <button
                 onClick={() => setSetPasswordOpen(true)}
-                className="px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 shadow-lg bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white"
+                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer"
               >
                 <span className="hidden sm:inline">Set Password</span>
                 <span className="sm:hidden">Password</span>
@@ -533,7 +533,7 @@ export default function StudentProfile() {
             icon={attendence}
             title="Report"
             value="View"
-            bgColor="#FDA92D"
+            bgColor="#F97316"
             description="Student report"
             onClick={() => navigate(`/student/${id}/report`)}
           />
@@ -790,7 +790,7 @@ export default function StudentProfile() {
                 <button
                   onClick={() => document.getElementById('resume-upload-profile').click()}
                   disabled={isResumeUploading}
-                  className="px-2 sm:px-3 py-1.5 sm:py-2 bg-[#FDA92D] hover:bg-[#E6941A] hover:shadow-xl hover:scale-105 text-white text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 shadow-lg disabled:opacity-50"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs sm:text-sm font-bold tracking-wider uppercase rounded-xl transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   <span className="hidden sm:inline">{isResumeUploading ? 'Uploading...' : 'Upload Resume'}</span>
                   <span className="sm:hidden">{isResumeUploading ? 'Upload...' : 'Upload'}</span>
@@ -1124,7 +1124,7 @@ const DynamicProgressOverview = ({ studentData, reportCardData, reportLoading })
 
   return (
     <div className="h-48 sm:h-80 flex flex-col justify-center space-y-6">
-      <ProgressMetric title="Task Completion" value={completionRate} total="100" color="#FDA92D" suffix="%" />
+      <ProgressMetric title="Task Completion" value={completionRate} total="100" color="#F97316" suffix="%" />
       <ProgressMetric title="Tasks Completed" value={completed} total={total || 1} color="#22C55E" />
       <ProgressMetric title="Tasks Pending" value={pending} total={total || 1} color="#EF4444" />
       {total > 0 && (
@@ -1318,7 +1318,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
               <div className="space-y-3">
                 <div className="bg-white p-3 rounded border">
                   <div className="text-sm font-medium text-gray-700">Technical Skills</div>
-                  <div className="text-xs text-[#FDA92D] mt-1">{studentData.techno || 'Not Selected'}</div>
+                  <div className="text-xs text-orange-500 mt-1">{studentData.techno || 'Not Selected'}</div>
                 </div>
                 <div className="bg-white p-3 rounded border">
                   <div className="text-sm font-medium text-gray-700">Certifications</div>
@@ -1418,12 +1418,12 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
             <h5 className="font-semibold text-gray-700 mb-4">💼 Career & Placement</h5>
             {studentData.placedInfo?.companyName ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="font-medium text-gray-600">Company:</span> <br /><span className="font-semibold text-[#E6941A]">{studentData.placedInfo.companyName}</span></div>
+                <div><span className="font-medium text-gray-600">Company:</span> <br /><span className="font-semibold text-orange-600">{studentData.placedInfo.companyName}</span></div>
                 <div><span className="font-medium text-gray-600">Position:</span> <br /><span className="font-semibold">{studentData.placedInfo.jobProfile}</span></div>
                 <div><span className="font-medium text-gray-600">Package:</span> <br /><span className="font-semibold">{studentData.placedInfo.package || 'N/A'}</span></div>
                 <div><span className="font-medium text-gray-600">Location:</span> <br /><span className="font-semibold">{studentData.placedInfo.location}</span></div>
                 <div><span className="font-medium text-gray-600">Joining Date:</span> <br /><span className="font-semibold">{studentData.placedInfo.joiningDate ? new Date(studentData.placedInfo.joiningDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span></div>
-                <div><span className="font-medium text-gray-600">Offer Letter:</span> <br /><span className={`font-semibold ${studentData.placedInfo.offerLetterURL ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.placedInfo.offerLetterURL ? '✓ Available' : '✗ Pending'}</span></div>
+                <div><span className="font-medium text-gray-600">Offer Letter:</span> <br /><span className={`font-semibold ${studentData.placedInfo.offerLetterURL ? 'text-orange-500' : 'text-red-600'}`}>{studentData.placedInfo.offerLetterURL ? '✓ Available' : '✗ Pending'}</span></div>
               </div>
             ) : (
               <div className="text-center py-8">
@@ -1431,7 +1431,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
                 <div className="text-lg font-medium text-gray-700">Placement In Progress</div>
                 <div className="text-sm text-gray-500 mt-1">Student is actively seeking placement opportunities</div>
                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="font-medium text-gray-600">Resume Status:</span> <br /><span className={`font-semibold ${studentData.resumeURL || studentData.resume ? 'text-[#FDA92D]' : 'text-red-600'}`}>{studentData.resumeURL || studentData.resume ? '✓ Ready' : '✗ Pending'}</span></div>
+                  <div><span className="font-medium text-gray-600">Resume Status:</span> <br /><span className={`font-semibold ${studentData.resumeURL || studentData.resume ? 'text-orange-500' : 'text-red-600'}`}>{studentData.resumeURL || studentData.resume ? '✓ Ready' : '✗ Pending'}</span></div>
                   <div><span className="font-medium text-gray-600">Eligibility:</span> <br /><span className={`font-semibold ${studentData?.status === 'Placed' ? 'text-green-600' : 'text-yellow-600'}`}>{studentData?.status === 'Placed' ? '✓ Placed' : '⚠ In Progress'}</span></div>
                 </div>
               </div>
@@ -1501,7 +1501,7 @@ const SetPasswordModal = ({ isOpen, onClose, studentId, onSetPassword }) => {
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl py-4 px-4 sm:px-6 w-full max-w-sm relative">
         <button onClick={onClose} className="absolute top-3 right-3 text-xl text-gray-400 hover:text-gray-700">&times;</button>
-        <h2 className="text-lg font-semibold text-center mb-4 text-[#FDA92D]">Set Student Password</h2>
+        <h2 className="text-lg font-semibold text-center mb-4 text-orange-500">Set Student Password</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="relative">
             <label className="block text-xs text-gray-500 mb-1">New Password</label>

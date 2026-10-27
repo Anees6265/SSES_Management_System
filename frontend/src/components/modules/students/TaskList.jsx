@@ -280,7 +280,7 @@ export default function TaskList() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FDA92D] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading tasks...</p>
         </div>
       </div>
@@ -706,7 +706,7 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
               type="text"
               value={task.title}
               onChange={(e) => setTask({ ...task, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500"
               placeholder="Enter task title"
             />
           </div>
@@ -716,7 +716,7 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
             <textarea
               value={task.description}
               onChange={(e) => setTask({ ...task, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500"
               rows="3"
               placeholder="Enter task description"
             />
@@ -736,7 +736,7 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
                 type="text"
                 value={task.customSubject || ''}
                 onChange={(e) => setTask({ ...task, customSubject: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D] mt-2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 mt-2"
                 placeholder="Enter custom subject"
               />
             )}
@@ -759,7 +759,7 @@ const TaskModal = ({ isOpen, onClose, task, setTask, onSave, isEditing }) => {
               type="date"
               value={task.dueDate}
               onChange={(e) => setTask({ ...task, dueDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#FDA92D]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500"
             />
           </div>
         </div>
@@ -790,7 +790,7 @@ const BulkUploadModal = ({ isOpen, onClose, onUpload, onDownloadTemplate, fileIn
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-[#FDA92D] hover:bg-[#E6941A] text-white rounded-lg text-sm font-medium"
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition active:scale-95 cursor-pointer"
             >
               Choose File
             </button>

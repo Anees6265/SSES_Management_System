@@ -117,7 +117,7 @@ const DatePicker = ({ value, onChange, label, min, max, className = "", align = 
         </label>
         <FiCalendar 
           className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 cursor-pointer ${
-            className.includes('black-calendar-icon') ? 'text-gray-600' : 'text-[#FDA92D]'
+            className.includes('black-calendar-icon') ? 'text-gray-600' : 'text-orange-500'
           }`}
           onClick={() => setIsOpen(!isOpen)}
         />
@@ -167,9 +167,9 @@ const DatePicker = ({ value, onChange, label, min, max, className = "", align = 
                   ${!date ? 'invisible' : ''}
                   ${isDateDisabled(date) 
                     ? 'text-gray-300 cursor-not-allowed' 
-                    : 'text-gray-700 hover:bg-[#FDA92D] hover:text-white cursor-pointer'
+                    : 'text-gray-700 hover:bg-orange-500 hover:text-white cursor-pointer'
                   }
-                  ${isSelected(date) ? 'bg-[#FDA92D] text-white' : ''}
+                  ${isSelected(date) ? 'bg-orange-500 text-white' : ''}
                   ${isToday(date) && !isSelected(date) ? 'bg-blue-100 text-blue-600' : ''}
                 `}
               >

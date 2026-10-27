@@ -1264,6 +1264,8 @@ const StudentProfilePage = () => {
     const [dropLoading, setDropLoading] = useState(false);
     const [dummyLoading, setDummyLoading] = useState(false);
     const [mobileTab, setMobileTab] = useState("overview"); // "overview" | "academics" | "placement" | "documents" | "all"
+    const [taskTrendView, setTaskTrendView] = useState("subjects"); // "subjects" | "milestones"
+    const [hoveredTrendPoint, setHoveredTrendPoint] = useState(null);
 
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
@@ -1518,6 +1520,72 @@ const StudentProfilePage = () => {
     ], []);
 
     const effectiveLevelHistory = levelHistoryResponse?.data || [];
+
+    // Dynamic Task Completion Trend Points based on actual task data
+    const taskTrendPoints = useMemo(() => {
+        // Mode 1: Milestones across levels in student history
+        if (taskTrendView === "milestones" && effectiveLevelHistory.length > 0) {
+            return effectiveLevelHistory.map((h, i) => {
+                const isCurrent = h.status === "in_progress" || i === effectiveLevelHistory.length - 1;
+                const hTotal = h.totalTasks || (isCurrent ? totalTasks : 10);
+                const hDone = h.completedTasksCount || (isCurrent ? completedTasks : (h.status === "completed" ? hTotal : 0));
+                const pct = hTotal > 0 ? Math.round((hDone / hTotal) * 100) : (h.status === "completed" ? 100 : 0);
+                const rawName = h.subLevelId?.name || h.levelId?.name || `L${i + 1}`;
+                return {
+                    id: h._id || `lvl-${i}`,
+                    label: rawName,
+                    shortLabel: rawName.replace("Level ", "L"),
+                    pct: Math.min(100, Math.max(0, pct)),
+                    completed: hDone,
+                    total: hTotal,
+                    isCurrent
+                };
+            });
+        }
+
+        // Mode 2: Subject-wise task completion trend for current level
+        if (subjects.length > 0) {
+            return [
+                {
+                    id: "start",
+                    label: "Level Start",
+                    shortLabel: "Start",
+                    pct: 0,
+                    completed: 0,
+                    total: totalTasks,
+                    isStart: true
+                },
+                ...subjects.map((s, idx) => ({
+                    id: `subj-${idx}`,
+                    label: s.name,
+                    shortLabel: s.name.length > 12 ? s.name.slice(0, 10) + "…" : s.name,
+                    pct: s.pct,
+                    completed: s.completedCount,
+                    total: s.tasksCount
+                })),
+                {
+                    id: "current",
+                    label: `Current (${currentSubLevelName})`,
+                    shortLabel: "Current",
+                    pct: completionRate,
+                    completed: completedTasks,
+                    total: totalTasks,
+                    isCurrent: true
+                }
+            ];
+        }
+
+        // Mode 3: Fallback if tasks exist but not grouped into subjects
+        if (totalTasks > 0) {
+            return [
+                { id: "p0", label: "Level Start", shortLabel: "Start", pct: 0, completed: 0, total: totalTasks, isStart: true },
+                { id: "p1", label: "Mid Progress", shortLabel: "Midway", pct: Math.round(completionRate * 0.5), completed: Math.round(completedTasks * 0.5), total: totalTasks },
+                { id: "p2", label: `Current (${currentSubLevelName})`, shortLabel: "Current", pct: completionRate, completed: completedTasks, total: totalTasks, isCurrent: true }
+            ];
+        }
+
+        return [];
+    }, [taskTrendView, effectiveLevelHistory, subjects, totalTasks, completedTasks, completionRate, currentSubLevelName]);
 
     const isLevel2ACompleted = useMemo(() => {
         const history = effectiveLevelHistory;
@@ -2361,45 +2429,244 @@ const StudentProfilePage = () => {
                             </div>
                         </div>
 
-                        {/* MIDDLE ROW (ATTENDANCE & TASK TREND + TASK COMPLETION) */}
+                        {/* MIDDLE ROW (TASK COMPLETION TREND + TASK COMPLETION) */}
+                        {/* Attendance Trend commented out as per user request — only Task Completion Trend is active */}
                         <div className={`${mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6`}>
-                            {/* Left Box: Attendance & Task Trend Chart (2 Cols) */}
+                            {/* Left Box: Task Completion Trend Chart (2 Cols) */}
                             <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                                     <div>
-                                        <h3 className="text-base font-black text-slate-900">Task & Attendance Trend</h3>
-                                        <p className="text-xs text-slate-400 font-medium">Monthly progress across assigned subjects</p>
+                                        <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                                            Task Completion Trend
+                                            {/* Attendance trend commented out as per request */}
+                                        </h3>
+                                        <p className="text-xs text-slate-400 font-medium">Real-time task completion progress across syllabus & subjects</p>
                                     </div>
-                                    <span className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-                                        Active Level Progress
-                                    </span>
+                                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                                        {effectiveLevelHistory.length > 1 && (
+                                            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTaskTrendView("subjects")}
+                                                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${taskTrendView === "subjects" ? "bg-white text-orange-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"}`}
+                                                >
+                                                    Subjects
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTaskTrendView("milestones")}
+                                                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${taskTrendView === "milestones" ? "bg-white text-orange-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"}`}
+                                                >
+                                                    Level History
+                                                </button>
+                                            </div>
+                                        )}
+                                        <span className="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                                            <MdTrendingUp size={14} className="text-orange-500" />
+                                            {completionRate}% Completed
+                                        </span>
+                                    </div>
                                 </div>
 
-                                {/* Line Area Chart SVG */}
-                                <div className="relative h-44 sm:h-56 w-full pt-2 sm:pt-4">
-                                    <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
-                                        <defs>
-                                            <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#f97316" stopOpacity="0.35" />
-                                                <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-                                            </linearGradient>
-                                        </defs>
-                                        <path
-                                            d="M 0 120 Q 80 80, 160 110 T 320 60 T 500 30 L 500 160 L 0 160 Z"
-                                            fill="url(#orangeGrad)"
-                                        />
-                                        <path
-                                            d="M 0 120 Q 80 80, 160 110 T 320 60 T 500 30"
-                                            fill="none"
-                                            stroke="#f97316"
-                                            strokeWidth="4"
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                    <div className="flex justify-between text-[10px] sm:text-[11px] font-bold text-slate-400 mt-2 px-1 sm:px-2">
-                                        <span>Level Start</span>
-                                        <span>Mid Progress</span>
-                                        <span>Current Level</span>
+                                {/* Dynamic Working Line Area Chart SVG */}
+                                {(() => {
+                                    const padLeft = 36;
+                                    const padRight = 24;
+                                    const padTop = 22;
+                                    const padBottom = 30;
+                                    const chartW = 500 - padLeft - padRight;
+                                    const chartH = 160 - padTop - padBottom;
+                                    const baseY = padTop + chartH;
+
+                                    if (taskTrendPoints.length === 0) {
+                                        return (
+                                            <div className="h-44 sm:h-56 flex flex-col items-center justify-center text-center p-4">
+                                                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2">
+                                                    <MdTrendingUp size={20} />
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-800">No Tasks Assigned Yet</p>
+                                                <p className="text-[11px] text-slate-400 max-w-xs mt-0.5">Tasks assigned to this student in {currentSubLevelName} will plot real-time progress here.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    const coords = taskTrendPoints.map((pt, i) => {
+                                        const x = taskTrendPoints.length > 1
+                                            ? padLeft + (i / (taskTrendPoints.length - 1)) * chartW
+                                            : padLeft + chartW / 2;
+                                        const y = padTop + (1 - Math.min(100, Math.max(0, pt.pct)) / 100) * chartH;
+                                        return { ...pt, x, y };
+                                    });
+
+                                    let linePath = "";
+                                    if (coords.length === 1) {
+                                        linePath = `M ${coords[0].x} ${coords[0].y}`;
+                                    } else if (coords.length === 2) {
+                                        linePath = `M ${coords[0].x} ${coords[0].y} L ${coords[1].x} ${coords[1].y}`;
+                                    } else if (coords.length > 2) {
+                                        linePath = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+                                        for (let i = 0; i < coords.length - 1; i++) {
+                                            const p0 = i > 0 ? coords[i - 1] : coords[i];
+                                            const p1 = coords[i];
+                                            const p2 = coords[i + 1];
+                                            const p3 = i < coords.length - 2 ? coords[i + 2] : p2;
+                                            const cp1x = p1.x + (p2.x - p0.x) / 6;
+                                            const cp1y = p1.y + (p2.y - p0.y) / 6;
+                                            const cp2x = p2.x - (p3.x - p1.x) / 6;
+                                            const cp2y = p2.y - (p3.y - p1.y) / 6;
+                                            linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+                                        }
+                                    }
+
+                                    const firstX = coords[0].x.toFixed(1);
+                                    const lastX = coords[coords.length - 1].x.toFixed(1);
+                                    const areaPath = coords.length > 1 ? `${linePath} L ${lastX} ${baseY} L ${firstX} ${baseY} Z` : "";
+
+                                    return (
+                                        <div className="relative h-44 sm:h-56 w-full pt-1">
+                                            {/* Hover info badge */}
+                                            {hoveredTrendPoint && (
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xs text-white text-[11px] font-semibold py-1 px-3 rounded-full shadow-lg pointer-events-none flex items-center gap-1.5 z-10 whitespace-nowrap animate-fadeIn">
+                                                    <span className="font-black text-orange-400">{hoveredTrendPoint.label}:</span>
+                                                    <span>{hoveredTrendPoint.completed}/{hoveredTrendPoint.total} tasks completed ({hoveredTrendPoint.pct}%)</span>
+                                                </div>
+                                            )}
+
+                                            <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
+                                                <defs>
+                                                    <linearGradient id="taskOrangeGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#f97316" stopOpacity="0.38" />
+                                                        <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                                    </linearGradient>
+                                                </defs>
+
+                                                {/* Horizontal Gridlines & Y-Axis Labels */}
+                                                {[100, 50, 0].map((gridPct) => {
+                                                    const gridY = padTop + (1 - gridPct / 100) * chartH;
+                                                    return (
+                                                        <g key={gridPct}>
+                                                            <line
+                                                                x1={padLeft}
+                                                                y1={gridY}
+                                                                x2={padLeft + chartW}
+                                                                y2={gridY}
+                                                                stroke="#f1f5f9"
+                                                                strokeDasharray="3 3"
+                                                            />
+                                                            <text
+                                                                x={padLeft - 6}
+                                                                y={gridY + 3}
+                                                                textAnchor="end"
+                                                                className="text-[8.5px] fill-slate-300 font-bold select-none"
+                                                            >
+                                                                {gridPct}%
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                })}
+
+                                                {/* Area Fill */}
+                                                {areaPath && (
+                                                    <path
+                                                        d={areaPath}
+                                                        fill="url(#taskOrangeGrad)"
+                                                    />
+                                                )}
+
+                                                {/* Main Line */}
+                                                {linePath && (
+                                                    <path
+                                                        d={linePath}
+                                                        fill="none"
+                                                        stroke="#f97316"
+                                                        strokeWidth="3.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                )}
+
+                                                {/* Data Points */}
+                                                {coords.map((pt) => {
+                                                    const isHovered = hoveredTrendPoint?.id === pt.id;
+                                                    return (
+                                                        <g key={pt.id}>
+                                                            {/* Percentage label above dot */}
+                                                            <text
+                                                                x={pt.x}
+                                                                y={pt.y - 7}
+                                                                textAnchor="middle"
+                                                                className="text-[9.5px] font-black fill-slate-700 select-none"
+                                                            >
+                                                                {pt.pct}%
+                                                            </text>
+
+                                                            {/* Hover ring glow */}
+                                                            {isHovered && (
+                                                                <circle
+                                                                    cx={pt.x}
+                                                                    cy={pt.y}
+                                                                    r={9}
+                                                                    fill="#f97316"
+                                                                    fillOpacity={0.25}
+                                                                />
+                                                            )}
+
+                                                            {/* Point Circle */}
+                                                            <circle
+                                                                cx={pt.x}
+                                                                cy={pt.y}
+                                                                r={isHovered ? 5.5 : 4}
+                                                                fill={pt.isCurrent ? "#ea580c" : "#f97316"}
+                                                                stroke="#ffffff"
+                                                                strokeWidth={2.5}
+                                                                className="transition-all duration-150"
+                                                            />
+
+                                                            {/* X-axis Label below baseline */}
+                                                            <text
+                                                                x={pt.x}
+                                                                y={152}
+                                                                textAnchor="middle"
+                                                                className={`text-[9.5px] select-none ${isHovered ? "font-black fill-orange-600" : "font-bold fill-slate-400"}`}
+                                                            >
+                                                                {pt.shortLabel}
+                                                            </text>
+
+                                                            {/* Invisible large hover hit area */}
+                                                            <circle
+                                                                cx={pt.x}
+                                                                cy={pt.y}
+                                                                r={18}
+                                                                fill="transparent"
+                                                                className="cursor-pointer"
+                                                                onMouseEnter={() => setHoveredTrendPoint(pt)}
+                                                                onMouseLeave={() => setHoveredTrendPoint(null)}
+                                                            />
+                                                        </g>
+                                                    );
+                                                })}
+                                            </svg>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Micro-stats summary footer */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 mt-2">
+                                    <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5 border border-slate-100">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Tasks</span>
+                                        <span className="text-xs sm:text-sm font-black text-slate-800">{totalTasks}</span>
+                                    </div>
+                                    <div className="bg-emerald-50/60 rounded-xl px-2.5 py-1.5 border border-emerald-100/80">
+                                        <span className="text-[10px] font-bold uppercase text-emerald-600 block">Completed</span>
+                                        <span className="text-xs sm:text-sm font-black text-emerald-700">{completedTasks}</span>
+                                    </div>
+                                    <div className="bg-orange-50/60 rounded-xl px-2.5 py-1.5 border border-orange-100/80">
+                                        <span className="text-[10px] font-bold uppercase text-orange-600 block">Pending</span>
+                                        <span className="text-xs sm:text-sm font-black text-orange-700">{pendingTasks}</span>
+                                    </div>
+                                    <div className="bg-rose-50/60 rounded-xl px-2.5 py-1.5 border border-rose-100/80">
+                                        <span className="text-[10px] font-bold uppercase text-rose-600 block">Overdue</span>
+                                        <span className="text-xs sm:text-sm font-black text-rose-700">{overdueTasks}</span>
                                     </div>
                                 </div>
                             </div>

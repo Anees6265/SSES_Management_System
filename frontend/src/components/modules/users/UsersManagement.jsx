@@ -332,20 +332,41 @@ const UsersManagement = () => {
                             <div className="border-b border-slate-100 pb-1.5 mb-3">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Credentials & Access</span>
                             </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Account Status</label>
-                                    <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Activate or deactivate user platform access</p>
+                                    <p className="text-[11px] text-gray-500 font-medium mt-0.5">Activate or deactivate user platform access</p>
                                 </div>
-                                <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <div className="flex items-center self-start sm:self-auto">
                                     <button
                                         type="button"
+                                        role="switch"
+                                        aria-checked={values.isActive}
                                         onClick={() => setFieldValue('isActive', !values.isActive)}
-                                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 focus:outline-none ${values.isActive ? 'bg-orange-500' : 'bg-slate-350'}`}
+                                        className={`relative inline-flex items-center h-8 w-16 rounded-full transition-colors duration-200 ease-in-out cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                            values.isActive
+                                                ? 'bg-orange-500 focus:ring-orange-500 shadow-sm'
+                                                : 'bg-slate-300 hover:bg-slate-400 focus:ring-slate-400 shadow-inner'
+                                        }`}
                                     >
-                                        <span className={`inline-block w-4.5 h-4.5 transform bg-white rounded-full shadow-md transition-transform duration-300 ${values.isActive ? 'translate-x-5.5' : 'translate-x-1'}`} />
+                                        {/* Inner ON / OFF text on toggle track */}
+                                        <span
+                                            className={`absolute text-[10px] font-extrabold uppercase tracking-wider select-none transition-all duration-200 ${
+                                                values.isActive
+                                                    ? 'left-2.5 text-white'
+                                                    : 'right-2.5 text-slate-600'
+                                            }`}
+                                        >
+                                            {values.isActive ? 'ON' : 'OFF'}
+                                        </span>
+
+                                        {/* Sliding Thumb Knob */}
+                                        <span
+                                            className={`inline-block w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                                                values.isActive ? 'translate-x-[36px]' : 'translate-x-[4px]'
+                                            }`}
+                                        />
                                     </button>
-                                    <span className={`text-xs font-bold ${values.isActive ? 'text-orange-500' : 'text-slate-400'}`}>{values.isActive ? 'Active' : 'Inactive'}</span>
                                 </div>
                             </div>
 
@@ -778,20 +799,41 @@ const UsersManagement = () => {
                                     </div>
 
                                     {/* Account Status Switch Box */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 sm:px-5 sm:py-4 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Account Status</label>
-                                            <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Activate or deactivate user platform access</p>
+                                            <p className="text-[11px] text-gray-500 font-medium mt-0.5">Activate or deactivate user platform access</p>
                                         </div>
-                                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                                        <div className="flex items-center self-start sm:self-auto">
                                             <button
                                                 type="button"
+                                                role="switch"
+                                                aria-checked={values.isActive}
                                                 onClick={() => setFieldValue('isActive', !values.isActive)}
-                                                className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 focus:outline-none ${values.isActive ? 'bg-orange-500' : 'bg-slate-350'}`}
+                                                className={`relative inline-flex items-center h-8 w-16 rounded-full transition-colors duration-200 ease-in-out cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                                    values.isActive
+                                                        ? 'bg-orange-500 focus:ring-orange-500 shadow-sm'
+                                                        : 'bg-slate-300 hover:bg-slate-400 focus:ring-slate-400 shadow-inner'
+                                                }`}
                                             >
-                                                <span className={`inline-block w-4.5 h-4.5 transform bg-white rounded-full shadow-md transition-transform duration-300 ${values.isActive ? 'translate-x-5.5' : 'translate-x-1'}`} />
+                                                {/* Inner ON / OFF text on toggle track */}
+                                                <span
+                                                    className={`absolute text-[10px] font-extrabold uppercase tracking-wider select-none transition-all duration-200 ${
+                                                        values.isActive
+                                                            ? 'left-2.5 text-white'
+                                                            : 'right-2.5 text-slate-600'
+                                                    }`}
+                                                >
+                                                    {values.isActive ? 'ON' : 'OFF'}
+                                                </span>
+
+                                                {/* Sliding Thumb Knob */}
+                                                <span
+                                                    className={`inline-block w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                                                        values.isActive ? 'translate-x-[36px]' : 'translate-x-[4px]'
+                                                    }`}
+                                                />
                                             </button>
-                                            <span className={`text-xs font-bold ${values.isActive ? 'text-orange-500' : 'text-slate-400'}`}>{values.isActive ? 'Active' : 'Inactive'}</span>
                                         </div>
                                     </div>
                                 </div>

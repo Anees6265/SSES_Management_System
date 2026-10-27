@@ -1114,6 +1114,24 @@ const ShowSubLevelTablesData = () => {
         { label: level?.name || "Level" },
     ];
 
+    const handleStudentRowClick = (studentObj) => {
+        const studentRaw = studentObj?.raw || studentObj;
+        const studentId = studentRaw?._id || studentObj?._id || studentRaw?.id;
+        const targetPath = studentId ? `/student-profile/${studentId}` : "/setting/student-profile";
+        navigate(targetPath, {
+            state: {
+                student: studentRaw,
+                level,
+                subdepartment,
+                departmentId,
+                departmentName,
+                from: `${location.pathname}${location.search}`,
+                fromState: location.state,
+                origin: "department",
+            }
+        });
+    };
+
     return (
         <>
             <Header
@@ -1121,6 +1139,17 @@ const ShowSubLevelTablesData = () => {
                 badge={session || undefined}
                 subtitle={subdepartment?.name ? `Sub-Department: ${subdepartment.name}` : undefined}
                 showBack={true}
+                onBack={() => {
+                    if (window.history.length > 1) {
+                        navigate(-1);
+                    } else if (subdepartment?._id) {
+                        navigate(`/subdepartment/${subdepartment._id}/levels`, {
+                            state: { subdepartment, departmentId, departmentName }
+                        });
+                    } else {
+                        navigate("/department-management");
+                    }
+                }}
                 breadcrumbs={breadcrumbs}
                 bottomRow={
                     subLevels.length > 0 ? (
@@ -1322,8 +1351,19 @@ const ShowSubLevelTablesData = () => {
                                 subdepartmentId={subdepartment?._id || querySubdeptId || level?.subDepartmentId?._id || level?.subDepartmentId}
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
-                                onRowClick={(row) => navigate("/setting/student-profile", { state: { student: row.raw, level, subdepartment } })}
-                                onTaskBoard={(row) => navigate("/student/task-board", { state: { student: row.raw, level, subdepartment } })}
+                                onRowClick={handleStudentRowClick}
+                                onTaskBoard={(row) => navigate("/student/task-board", {
+                                    state: {
+                                        student: row.raw || row,
+                                        level,
+                                        subdepartment,
+                                        departmentId,
+                                        departmentName,
+                                        from: `${location.pathname}${location.search}`,
+                                        fromState: location.state,
+                                        origin: "department",
+                                    }
+                                })}
                             />
                         )}
                         {activeSection === "Tasks" && (
@@ -1335,7 +1375,7 @@ const ShowSubLevelTablesData = () => {
                         {activeSection === "Progress" && (
                             <ProgressTab
                                 subLevel={activeTab}
-                                onRowClick={(row) => navigate("/setting/student-profile", { state: { student: { _id: row._id }, level, subdepartment } })}
+                                onRowClick={handleStudentRowClick}
                             />
                         )}
                     </div>

@@ -1221,7 +1221,16 @@ const StudentProfilePage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { id } = useParams();
-    const { student, level, subdepartment } = location.state || {};
+    const {
+        student,
+        level,
+        subdepartment,
+        departmentId: stateDeptId,
+        departmentName: stateDeptName,
+        from: stateFrom,
+        fromState: stateFromState,
+        origin: stateOrigin,
+    } = location.state || {};
     const studentId = id || student?._id || student?.raw?._id;
 
     const [moreOpen, setMoreOpen] = useState(false);
@@ -1361,6 +1370,115 @@ const StudentProfilePage = () => {
             ""
         );
     }, [raw]);
+
+    const departmentId = stateDeptId
+        || subdepartment?.departmentId?._id
+        || (typeof subdepartment?.departmentId === "string" ? subdepartment.departmentId : "")
+        || raw?.subDepartmentId?.departmentId?._id
+        || (typeof raw?.subDepartmentId?.departmentId === "string" ? raw.subDepartmentId.departmentId : "")
+        || "";
+
+    const departmentName = stateDeptName
+        || subdepartment?.departmentId?.name
+        || raw?.subDepartmentId?.departmentId?.name
+        || "";
+
+    const origin = stateOrigin || (
+        Boolean(level) || Boolean(stateDeptId) || stateFrom?.includes("/show-sublevel-tables") || stateFrom?.includes("/department") || stateFrom?.includes("/subdepartment")
+            ? "department"
+            : stateFrom?.includes("/student-permission")
+                ? "student-permission"
+                : stateFrom?.includes("/placement") || stateFrom?.includes("/readiness") || stateFrom?.includes("/company") || stateFrom?.includes("/interview")
+                    ? "placements"
+                    : "student-progress"
+    );
+
+    const handleBack = () => {
+        if (stateFrom && !stateFrom.includes("/report") && stateFrom !== location.pathname) {
+            navigate(stateFrom, { state: stateFromState });
+            return;
+        }
+        if (window.history.length > 1) {
+            navigate(-1);
+            return;
+        }
+        if (origin === "department") {
+            if (level?._id && subdepartment?._id) {
+                navigate(`/show-sublevel-tables?levelId=${level._id}&subdeptId=${subdepartment._id}&deptId=${departmentId}`);
+            } else {
+                navigate("/department-management");
+            }
+        } else if (origin === "student-permission") {
+            navigate("/student-permission");
+        } else if (origin === "placements") {
+            navigate("/placements/dashboard");
+        } else {
+            const subDeptId = raw?.subDepartmentId?._id || (typeof raw?.subDepartmentId === "string" ? raw.subDepartmentId : null);
+            if (subDeptId) {
+                navigate(`/student-detail-table/${subDeptId}`);
+            } else {
+                navigate("/student-detail-table");
+            }
+        }
+    };
+
+    const breadcrumbs = useMemo(() => {
+        if (origin === "department") {
+            const crumbs = [
+                { label: "Departments", path: "/department-management" },
+            ];
+            if (departmentId) {
+                crumbs.push({
+                    label: departmentName || "Department",
+                    path: `/department-details/${departmentId}`,
+                    state: { department: subdepartment?.departmentId || departmentId }
+                });
+            }
+            if (subdepartment?._id) {
+                crumbs.push({
+                    label: subdepartment?.name || "Subdepartment",
+                    path: `/subdepartment/${subdepartment._id}/levels`,
+                    state: { subdepartment, departmentId, departmentName }
+                });
+            }
+            if (level?.name) {
+                crumbs.push({
+                    label: level.name,
+                    path: stateFrom || `/show-sublevel-tables?levelId=${level._id}&subdeptId=${subdepartment?._id || ''}&deptId=${departmentId || ''}`,
+                    state: stateFromState
+                });
+            }
+            crumbs.push({ label: name || "Profile" });
+            return crumbs;
+        }
+
+        if (origin === "student-permission") {
+            return [
+                { label: "Academics", path: "/student-permission" },
+                { label: "Dummy Students", path: "/student-permission" },
+                { label: name || "Profile" },
+            ];
+        }
+
+        if (origin === "placements") {
+            return [
+                { label: "Placements", path: "/placements/dashboard" },
+                { label: "Students", path: stateFrom || "/placements/dashboard" },
+                { label: name || "Profile" },
+            ];
+        }
+
+        const subDeptId = raw?.subDepartmentId?._id || (typeof raw?.subDepartmentId === "string" ? raw.subDepartmentId : null);
+        return [
+            { label: "Academics", path: "/student-detail-table" },
+            {
+                label: "Student Progress",
+                path: stateFrom || (subDeptId ? `/student-detail-table/${subDeptId}` : "/student-detail-table"),
+                state: stateFromState
+            },
+            { label: name || "Profile" },
+        ];
+    }, [origin, departmentId, departmentName, subdepartment, level, stateFrom, stateFromState, name, raw]);
 
     const dummyTaskData = useMemo(() => ({
         totalTasks: 20,
@@ -1653,6 +1771,11 @@ const StudentProfilePage = () => {
                 student: raw,
                 level: level || raw.currentLevelId,
                 subdepartment: subdepartment || raw.subDepartmentId,
+                departmentId,
+                departmentName,
+                from: `${location.pathname}${location.search}`,
+                fromState: location.state,
+                origin,
             },
         });
     };
@@ -1874,15 +1997,9 @@ const StudentProfilePage = () => {
             {/* MAIN HEADER WITH SIDEBAR TOGGLE & BREADCRUMBS */}
             <Header
                 title={`${name} — Profile`}
-                breadcrumbs={[
-                    { label: "Academics", path: "/student-detail-table" },
-                    { label: "Student Records", path: "/student-detail-table" },
-                    { label: name || "Profile" },
-                ]}
+                breadcrumbs={breadcrumbs}
                 showBack={true}
-                onBack={() => {
-                    navigate(-1);
-                }}
+                onBack={handleBack}
             />
 
             {/* TOP TITLE BAR WITH SEARCH, BACK BUTTON & ID */}
@@ -1890,11 +2007,9 @@ const StudentProfilePage = () => {
                 <div className="flex items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="flex items-center gap-2.5 sm:gap-3">
                         <button
-                            onClick={() => {
-                                navigate(-1);
-                            }}
+                            onClick={handleBack}
                             className="hidden sm:flex p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer"
-                            title="Back"
+                            title={origin === "department" ? "Back to Level Students" : "Back"}
                         >
                             <MdArrowBack size={18} />
                             <span>Back</span>
@@ -2132,7 +2247,16 @@ const StudentProfilePage = () => {
                                                     <MdWarning size={14} /> View Dummy Details
                                                 </button>
                                             )}
-                                            <button onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/report`); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
+                                            <button onClick={() => {
+                                                setMoreOpen(false);
+                                                navigate(`/student/${raw._id}/report`, {
+                                                    state: {
+                                                        from: `${location.pathname}${location.search}`,
+                                                        profileState: location.state,
+                                                        origin,
+                                                    }
+                                                });
+                                            }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
                                                 <MdBarChart size={14} /> View Report Card
                                             </button>
                                             <div className="border-t border-slate-100 my-1" />
@@ -2303,7 +2427,13 @@ const StudentProfilePage = () => {
 
                             {/* Card 2: REPORT */}
                             <div
-                                onClick={() => navigate(`/student/${raw._id}/report`)}
+                                onClick={() => navigate(`/student/${raw._id}/report`, {
+                                    state: {
+                                        from: `${location.pathname}${location.search}`,
+                                        profileState: location.state,
+                                        origin,
+                                    }
+                                })}
                                 className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 cursor-pointer hover:border-orange-200 transition group"
                             >
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">REPORT</p>

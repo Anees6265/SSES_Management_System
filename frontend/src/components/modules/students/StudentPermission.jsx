@@ -248,7 +248,14 @@ const StudentPermission = () => {
             columns={columns}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
+            onRowClick={(row) => navigate(`/student-profile/${row._id}`, {
+              state: {
+                student: row,
+                from: `${location.pathname}${location.search}`,
+                fromState: location.state,
+                origin: "student-permission",
+              },
+            })}
             pagination
             rowsPerPage={10}
             minRows={10}
@@ -284,7 +291,14 @@ const StudentPermission = () => {
                 return (
                   <div
                     key={student._id}
-                    onClick={() => navigate(`/student-profile/${student._id}`)}
+                    onClick={() => navigate(`/student-profile/${student._id}`, {
+                      state: {
+                        student,
+                        from: `${location.pathname}${location.search}`,
+                        fromState: location.state,
+                        origin: "student-permission",
+                      },
+                    })}
                     className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs hover:shadow-sm hover:border-orange-200 transition-all duration-200 active:scale-[0.99] cursor-pointer space-y-3"
                   >
                     {/* Top Row: Avatar, Student Name, PR Key, Status Badge */}
@@ -376,7 +390,14 @@ const StudentPermission = () => {
 
                       <button
                         type="button"
-                        onClick={() => navigate(`/student-profile/${student._id}`)}
+                        onClick={() => navigate(`/student-profile/${student._id}`, {
+                          state: {
+                            student,
+                            from: `${location.pathname}${location.search}`,
+                            fromState: location.state,
+                            origin: "student-permission",
+                          },
+                        })}
                         className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition active:scale-95 cursor-pointer shadow-2xs"
                       >
                         <span>Profile</span>

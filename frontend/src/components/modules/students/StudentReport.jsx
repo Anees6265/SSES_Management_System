@@ -340,12 +340,21 @@ export default function StudentReport() {
         title="Student Performance Report"
         showBack={true}
         onBack={() => {
-          navigate(-1);
+          if (location.state?.profileState) {
+            navigate(`/student-profile/${id}`, { state: location.state.profileState });
+          } else {
+            navigate(-1);
+          }
         }}
         breadcrumbs={[
-          { label: 'Academics', path: '/student-detail-table' },
-          { label: 'Student Progress', path: '/student-detail-table' },
-          { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}` },
+          ...(location.state?.origin === "department"
+            ? [{ label: 'Departments', path: '/department-management' }]
+            : [
+                { label: 'Academics', path: '/student-detail-table' },
+                { label: 'Student Progress', path: '/student-detail-table' }
+              ]
+          ),
+          { label: `${studentData.firstName || 'Student'} Profile`, path: `/student-profile/${id}`, state: location.state?.profileState },
           { label: 'Report Card' }
         ]}
       >

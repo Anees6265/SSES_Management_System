@@ -263,7 +263,14 @@ const PlacedStudents = () => {
             data={filteredStudents}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
+            onRowClick={(row) => navigate(`/student-profile/${row._id}`, {
+              state: {
+                student: row,
+                from: `${location.pathname}${location.search}`,
+                fromState: location.state,
+                origin: "placements",
+              },
+            })}
             pagination
             rowsPerPage={10}
           />
@@ -284,7 +291,14 @@ const PlacedStudents = () => {
             paginatedStudents.map((row) => (
               <div
                 key={row._id}
-                onClick={() => navigate(`/student-profile/${row._id}`)}
+                onClick={() => navigate(`/student-profile/${row._id}`, {
+                  state: {
+                    student: row,
+                    from: `${location.pathname}${location.search}`,
+                    fromState: location.state,
+                    origin: "placements",
+                  },
+                })}
                 className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm space-y-3 active:scale-[0.99] transition-transform cursor-pointer"
               >
                 {/* Student Avatar + Name + Link */}

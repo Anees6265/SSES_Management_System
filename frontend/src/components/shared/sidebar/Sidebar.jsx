@@ -122,6 +122,20 @@ const Sidebar = ({ children }) => {
     if (path === "/" || path.startsWith("/attendance-")) {
       return ["Dashboard"];
     }
+
+    const origin = location.state?.origin;
+    const fromPath = location.state?.from || "";
+    const isFromPlacement =
+      origin === "placements" ||
+      fromPath.startsWith("/readiness-status") ||
+      fromPath.startsWith("/placement") ||
+      fromPath.startsWith("/company-") ||
+      fromPath.startsWith("/interview-");
+
+    if (isFromPlacement) {
+      return ["Placements"];
+    }
+
     if (
       path.startsWith("/student") ||
       path.startsWith("/department") ||
@@ -157,7 +171,7 @@ const Sidebar = ({ children }) => {
     const newMenus = getActiveMenus(location.pathname);
     setOpenMenus(newMenus);
     closeMobileSidebar?.();
-  }, [location.pathname]);
+  }, [location.pathname, location.state]);
 
 
   const toggleMenu = (name) => {
@@ -169,6 +183,32 @@ const Sidebar = ({ children }) => {
 
   const isSubMenuActive = (subPath) => {
     const path = location.pathname;
+    const origin = location.state?.origin;
+    const fromPath = location.state?.from || "";
+    const hasLevel = Boolean(location.state?.level);
+
+    const isStudentProfile =
+      path.startsWith("/student-profile/") ||
+      path === "/setting/student-profile" ||
+      (path.startsWith("/student/") && path.includes("/report"));
+
+    const isFromDept =
+      origin === "department" ||
+      hasLevel ||
+      fromPath.startsWith("/department") ||
+      fromPath.startsWith("/subdepartment") ||
+      fromPath.startsWith("/show-sublevel-tables");
+
+    const isFromDummy =
+      origin === "student-permission" ||
+      fromPath.startsWith("/student-permission");
+
+    const isFromPlacement =
+      origin === "placements" ||
+      fromPath.startsWith("/readiness-status") ||
+      fromPath.startsWith("/placement") ||
+      fromPath.startsWith("/company-") ||
+      fromPath.startsWith("/interview-");
 
     if (subPath === "/") return path === "/";
     if (subPath === "/attendance-details") return path === "/attendance-details" || path.startsWith("/attendance-");
@@ -182,7 +222,55 @@ const Sidebar = ({ children }) => {
       );
     }
 
+    if (subPath === "/department-management") {
+      if (isStudentProfile && isFromDept) return true;
+      return (
+        path === "/department-management" ||
+        path.startsWith("/department-details/") ||
+        path === "/subdepartment-details" ||
+        path.startsWith("/subdepartment/") ||
+        path.startsWith("/show-sublevel-tables") ||
+        path === "/subdepartments" ||
+        path.startsWith("/levels")
+      );
+    }
+
+    if (subPath === "/student-permission") {
+      if (isStudentProfile && isFromDummy) return true;
+      return path === "/student-permission";
+    }
+
+    if (subPath === "/readiness-status") {
+      if (isStudentProfile && isFromPlacement && fromPath.startsWith("/readiness-status")) return true;
+      return (
+        path === "/readiness-status" ||
+        path.startsWith("/interview-history/") ||
+        path.startsWith("/interview-rounds-history/") ||
+        path === "/placement-interview-record"
+      );
+    }
+
+    if (subPath === "/placements/dashboard") {
+      if (isStudentProfile && isFromPlacement && fromPath.startsWith("/placements/dashboard")) return true;
+      return (
+        path === "/placements/dashboard" ||
+        path.startsWith("/placements/department")
+      );
+    }
+
+    if (subPath === "/company-details") {
+      if (isStudentProfile && isFromPlacement && (fromPath.startsWith("/company-details") || fromPath.startsWith("/placement/company"))) return true;
+      return (
+        path === "/company-details" ||
+        path.startsWith("/company-details/") ||
+        path.startsWith("/placement/company/")
+      );
+    }
+
     if (subPath === "/student-detail-table") {
+      if (isStudentProfile && (isFromDept || isFromDummy || isFromPlacement)) {
+        return false;
+      }
       return (
         path === "/student-detail-table" ||
         path.startsWith("/student-detail-table/") ||
@@ -195,58 +283,21 @@ const Sidebar = ({ children }) => {
       );
     }
 
-    if (subPath === "/department-management") {
-      return (
-        path === "/department-management" ||
-        path.startsWith("/department-details/") ||
-        path === "/subdepartment-details" ||
-        path.startsWith("/subdepartment/") ||
-        path.startsWith("/show-sublevel-tables") ||
-        path === "/subdepartments" ||
-        path.startsWith("/levels")
-      );
-    }
-
     if (subPath === "/task-management") {
       return path === "/task-management" || path.startsWith("/student/task-board");
     }
 
     if (subPath === "/curriculum-management") return path === "/curriculum-management" || path.startsWith("/curriculum-");
 
-    if (subPath === "/student-permission") return path === "/student-permission";
     if (subPath === "/leave-requests") return path === "/leave-requests" || path.startsWith("/leave-requests");
 
     // Placements
-    if (subPath === "/placements/dashboard") {
-      return (
-        path === "/placements/dashboard" ||
-        path.startsWith("/placements/department")
-      );
-    }
-
     if (subPath === "/placements/drives") {
       return path === "/placements/drives" || path.startsWith("/placements/drives");
     }
 
     if (subPath === "/placements/resume-sharing") {
       return path === "/placements/resume-sharing" || path.startsWith("/placements/resume-sharing");
-    }
-
-    if (subPath === "/readiness-status") {
-      return (
-        path === "/readiness-status" ||
-        path.startsWith("/interview-history/") ||
-        path.startsWith("/interview-rounds-history/") ||
-        path === "/placement-interview-record"
-      );
-    }
-
-    if (subPath === "/company-details") {
-      return (
-        path === "/company-details" ||
-        path.startsWith("/company-details/") ||
-        path.startsWith("/placement/company/")
-      );
     }
 
     if (subPath === "/placement-post") {

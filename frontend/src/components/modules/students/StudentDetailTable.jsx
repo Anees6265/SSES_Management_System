@@ -476,7 +476,14 @@ const StudentDetailTable = () => {
                 );
               },
             }}
-            onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
+            onRowClick={(row) => navigate(`/student-profile/${row._id}`, {
+              state: {
+                student: row,
+                from: `${location.pathname}${location.search}`,
+                fromState: location.state,
+                origin: "student-progress",
+              },
+            })}
           />
         </div>
 
@@ -498,7 +505,14 @@ const StudentDetailTable = () => {
               {paginatedMobileData.map((row) => (
                 <div
                   key={row._id}
-                  onClick={() => navigate(`/student-profile/${row._id}`)}
+                  onClick={() => navigate(`/student-profile/${row._id}`, {
+                    state: {
+                      student: row,
+                      from: `${location.pathname}${location.search}`,
+                      fromState: location.state,
+                      origin: "student-progress",
+                    },
+                  })}
                   className="bg-white border border-gray-200 rounded-2xl p-3.5 shadow-xs hover:shadow-sm hover:border-orange-200 transition-all duration-200 active:scale-[0.99] cursor-pointer space-y-3"
                 >
                   {/* Top Row: Avatar, Student Name, PR Key, Status Badge */}
@@ -599,7 +613,14 @@ const StudentDetailTable = () => {
 
                     <button
                       type="button"
-                      onClick={() => navigate(`/student-profile/${row._id}`)}
+                      onClick={() => navigate(`/student-profile/${row._id}`, {
+                        state: {
+                          student: row,
+                          from: `${location.pathname}${location.search}`,
+                          fromState: location.state,
+                          origin: "student-progress",
+                        },
+                      })}
                       className="flex-1 min-h-[42px] inline-flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition active:scale-95 cursor-pointer shadow-2xs"
                     >
                       <span>Profile</span>

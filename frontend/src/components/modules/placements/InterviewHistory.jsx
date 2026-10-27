@@ -679,7 +679,6 @@ const InterviewHistory = () => {
     <div className="min-h-screen bg-slate-50/40 pb-16">
       <Header
         title="Candidate Interview History"
-        subtitle="Manage interview rounds, mark interviews conducted, and record selection results"
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Candidates Readiness", path: "/readiness-status" },

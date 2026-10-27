@@ -658,7 +658,6 @@ const TaskManagement = () => {
         <>
             <Header
                 title="Task Management"
-                subtitle="Manage and monitor sub-level tasks across departments and sessions"
                 badge={`${taskRows.length} tasks`}
                 breadcrumbs={[
                     { label: "Academics" },

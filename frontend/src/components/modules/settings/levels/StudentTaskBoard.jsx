@@ -825,7 +825,9 @@ const StudentTaskBoard = () => {
 
                         <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight truncate">Student Record</h1>
+                                <h1 className="text-base sm:text-xl font-bold text-slate-900 tracking-tight truncate">
+                                    {studentName ? `${studentName} — Task Board` : "Task Board"}
+                                </h1>
                             </div>
                         </div>
                     </div>
@@ -890,9 +892,7 @@ const StudentTaskBoard = () => {
             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xs p-3.5 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
                 {/* Breadcrumb Row */}
                 <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-400 flex-wrap">
-                    <button onClick={() => navigate(-1)} className="hover:text-slate-700 transition flex items-center gap-1 cursor-pointer">
-                        ← Student Record
-                    </button>
+                    <span className="text-slate-500">Student Record</span>
                     <span>/</span>
                     <span className="text-slate-600 font-bold truncate max-w-[150px] sm:max-w-none">{studentName}</span>
                     <span>/</span>

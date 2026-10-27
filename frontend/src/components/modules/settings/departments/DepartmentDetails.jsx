@@ -95,7 +95,6 @@ const DepartmentDetails = () => {
     <>
       <Header
         title={department?.name || "Department Details"}
-        subtitle={department?.universityName || ""}
         breadcrumbs={[
           { label: "Departments", path: "/department-management" },
           { label: department?.name || "Details" },

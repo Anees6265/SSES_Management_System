@@ -16,7 +16,6 @@ const DepartmentSelector = () => {
     <>
       <Header
         title="Student Progress"
-        subtitle="Select a department to view students"
         breadcrumbs={[{ label: "Academics" }, { label: "Student Progress" }]}
       />
 

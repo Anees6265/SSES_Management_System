@@ -1221,8 +1221,29 @@ const StudentProfilePage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { id } = useParams();
-    const { student, level, subdepartment } = location.state || {};
+    const {
+        student,
+        level,
+        subdepartment,
+        departmentId: stateDeptId,
+        departmentName: stateDeptName,
+        from: stateFrom,
+        fromState: stateFromState,
+        origin: stateOrigin,
+    } = location.state || {};
     const studentId = id || student?._id || student?.raw?._id;
+
+    const origin = stateOrigin || (stateFrom ? (stateFrom.includes("sublevel") ? "department" : stateFrom.includes("student-permission") ? "student-permission" : "student-progress") : "student-progress");
+
+    const handleBack = () => {
+        if (stateFrom) {
+            navigate(stateFrom, { state: stateFromState, replace: true });
+        } else if (window.history.length > 1) {
+            navigate(-1);
+        } else {
+            navigate("/department-management");
+        }
+    };
 
     const [moreOpen, setMoreOpen] = useState(false);
     const [promoteModal, setPromoteModal] = useState(false);
@@ -1643,6 +1664,41 @@ const StudentProfilePage = () => {
 
     const activeNotifications = userNotifications ?? defaultStudentNotifications;
 
+    const breadcrumbs = useMemo(() => {
+        if (origin === "department" || stateDeptId || stateDeptName) {
+            const list = [{ label: "Departments", path: "/department-management" }];
+            if (stateDeptName && stateDeptId) {
+                list.push({ label: stateDeptName, path: `/department-details/${stateDeptId}` });
+            }
+            if (subdepartment?.name) {
+                list.push({
+                    label: subdepartment.name,
+                    path: stateFrom || "/department-management",
+                    state: stateFromState,
+                });
+            }
+            if (level?.name) {
+                list.push({ label: level.name });
+            }
+            list.push({ label: name || "Profile" });
+            return list;
+        }
+
+        if (origin === "student-permission") {
+            return [
+                { label: "Academics", path: "/student-permission" },
+                { label: "Dummy Students", path: "/student-permission" },
+                { label: name || "Profile" },
+            ];
+        }
+
+        return [
+            { label: "Academics", path: "/student-detail-table" },
+            { label: "Student Progress", path: "/student-detail-table" },
+            { label: name || "Profile" },
+        ];
+    }, [origin, stateDeptId, stateDeptName, subdepartment, level, name, stateFrom, stateFromState]);
+
     const goToTaskBoard = () => {
         if (isDummy) {
             toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
@@ -1653,6 +1709,11 @@ const StudentProfilePage = () => {
                 student: raw,
                 level: level || raw.currentLevelId,
                 subdepartment: subdepartment || raw.subDepartmentId,
+                departmentId: stateDeptId,
+                departmentName: stateDeptName,
+                from: location.pathname + location.search,
+                fromState: location.state,
+                origin,
             },
         });
     };
@@ -1874,69 +1935,28 @@ const StudentProfilePage = () => {
             {/* MAIN HEADER WITH SIDEBAR TOGGLE & BREADCRUMBS */}
             <Header
                 title={`${name} — Profile`}
-                breadcrumbs={[
-                    { label: "Academics", path: "/student-detail-table" },
-                    { label: "Student Records", path: "/student-detail-table" },
-                    { label: name || "Profile" },
-                ]}
+                breadcrumbs={breadcrumbs}
                 showBack={true}
-                onBack={() => {
-                    navigate(-1);
-                }}
+                onBack={handleBack}
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => setShowNotifications(true)}
+                        className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 shadow-xs transition-all relative flex-shrink-0 cursor-pointer active:scale-95"
+                        title="Notifications & Alerts"
+                    >
+                        <MdNotificationsNone size={19} />
+                        {activeNotifications.length > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
+                                {activeNotifications.length}
+                            </span>
+                        )}
+                    </button>
+                }
             />
 
-            {/* TOP TITLE BAR WITH SEARCH, BACK BUTTON & ID */}
+            {/* MAIN CONTENT AREA */}
             <div className="bg-[#F8F9FA] min-h-screen p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-12">
-                <div className="flex items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-2.5 sm:gap-3">
-                        <button
-                            onClick={() => {
-                                navigate(-1);
-                            }}
-                            className="hidden sm:flex p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer"
-                            title="Back"
-                        >
-                            <MdArrowBack size={18} />
-                            <span>Back</span>
-                        </button>
-                        <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex sm:hidden items-center justify-center font-bold text-xs shrink-0">
-                            <MdSchool size={16} />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-sm sm:text-lg font-bold text-slate-900 tracking-tight">Student Record</h1>
-                            </div>
-                            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Detailed academic progress & placement portfolio</p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* Search Bar Flex Container - Hidden on mobile screen, visible on sm+ */}
-                        <div className="hidden sm:flex items-center h-9 sm:h-10 w-56 md:w-72 bg-slate-50 border border-slate-200 rounded-xl px-3 shadow-xs focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
-                            <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={16} />
-                            <input
-                                type="text"
-                                placeholder="Search students..."
-                                className="w-full h-full bg-transparent border-none outline-none ring-0 text-xs font-medium text-slate-800 placeholder-slate-400 p-0"
-                            />
-                        </div>
-
-                        {/* Notification Button */}
-                        <button
-                            type="button"
-                            onClick={() => setShowNotifications(true)}
-                            className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-300 shadow-xs transition-all relative flex-shrink-0 cursor-pointer active:scale-95"
-                            title="Notifications & Alerts"
-                        >
-                            <MdNotificationsNone size={19} />
-                            {activeNotifications.length > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
-                                    {activeNotifications.length}
-                                </span>
-                            )}
-                        </button>
-                    </div>
-                </div>
 
                 {/* HERO CARD */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6">

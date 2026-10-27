@@ -5,7 +5,6 @@ const UserPermission = () => {
     <>
       <Header
         title="Permission Management"
-        subtitle="User Permission Management Content"
         showBack={false}
       />
       <div className="p-6">

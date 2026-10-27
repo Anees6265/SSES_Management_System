@@ -295,10 +295,6 @@ export default function TaskList() {
     <>
       <Header
         title="Task List"
-        subtitle={studentInfo ? 
-          `Manage tasks for ${studentInfo.firstName} ${studentInfo.lastName} (Level ${studentInfo.currentLevel})` : 
-          'Manage student tasks and assignments'
-        }
         breadcrumbs={[
           { label: "Students", path: "/student-detail-table" },
           ...(studentInfo ? [{ label: `${studentInfo.firstName} ${studentInfo.lastName}`, path: `/student-profile/${id}` }] : []),

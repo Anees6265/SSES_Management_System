@@ -220,20 +220,22 @@ const StudentEditPage = () => {
             />
           </div>
         </div>
-        <button
-          onClick={handlePlacementSubmit}
-          className="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded"
-        >
-          Update Placement
-        </button>
+        <div className="flex items-center gap-3 mt-5">
+          <button
+            onClick={handlePlacementSubmit}
+            className="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded font-semibold cursor-pointer transition shadow-xs"
+          >
+            Update Placement
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-5 rounded font-semibold cursor-pointer transition"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-
-      <button
-        onClick={() => navigate(-1)}
-        className="mt-6 bg-gray-500 text-white py-2 px-6 rounded hover:bg-gray-600"
-      >
-        Go Back
-      </button>
     </div>
     </>
   );

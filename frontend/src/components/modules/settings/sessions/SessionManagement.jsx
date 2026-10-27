@@ -307,7 +307,6 @@ const SessionManagement = () => {
     <>
       <Header
         title="Session Management"
-        subtitle="Academic year lifecycle, calendar schedules & session statuses"
         badge={`${sessions.length} total sessions`}
         breadcrumbs={[{ label: "Settings" }, { label: "Sessions", path: "/session-management" }]}
       />

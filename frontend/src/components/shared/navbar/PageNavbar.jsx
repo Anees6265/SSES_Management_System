@@ -58,7 +58,6 @@ const PageNavbar = ({
             {shouldShowBack && <div className="h-8 w-px bg-gray-300"></div>}
             <div>
               <h1 className="text-2xl font-bold text-black">{title}</h1>
-              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
             </div>
           </div>
           {rightContent && (

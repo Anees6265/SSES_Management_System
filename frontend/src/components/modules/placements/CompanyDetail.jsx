@@ -261,7 +261,6 @@ const CompanyDetail = () => {
     <>
       <Header
         title="Company Details"
-        subtitle="Manage corporate recruiting partners, placement drive eligibility, and HR liaisons"
         badge={`${companies.length} Companies`}
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Company Details" }]}
       />

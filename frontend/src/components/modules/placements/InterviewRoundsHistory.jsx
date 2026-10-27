@@ -59,7 +59,6 @@ const InterviewRoundsHistory = () => {
       {/* Professional Header */}
       <Header
         title="Interview Rounds History"
-        subtitle={`Detailed rounds breakdown for ${selectedInterview.company?.companyName || 'Company'}`}
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Interview History", path: `/interview-history/${studentId}` },

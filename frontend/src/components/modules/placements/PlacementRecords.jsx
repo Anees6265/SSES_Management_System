@@ -84,7 +84,6 @@ const PlacementRecords = () => {
     <>
       <Header
         title="Placement Interview Records"
-        subtitle="Manage and track student interview records and placement status"
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Interview Records" },

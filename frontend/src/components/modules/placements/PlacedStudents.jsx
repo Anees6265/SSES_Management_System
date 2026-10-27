@@ -147,13 +147,9 @@ const PlacedStudents = () => {
           <div className="p-3.5 sm:p-5 lg:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition cursor-pointer"
-                  title="Back"
-                >
-                  <MdArrowBack className="text-lg sm:text-xl" />
-                </button>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-amber-500 text-white font-extrabold rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-xs shrink-0">
+                  {apiCompanyName.charAt(0)}
+                </div>
                 <div>
                   <h1 className="text-lg sm:text-xl font-extrabold text-gray-800">{apiCompanyName}</h1>
                   <p className="text-xs text-gray-500">Recruiting Partner Placements</p>
@@ -208,13 +204,6 @@ const PlacedStudents = () => {
         {/* ── Company Header Banner Card ── */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 sm:p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition shrink-0 cursor-pointer"
-              title="Back"
-            >
-              <MdArrowBack className="text-lg sm:text-xl" />
-            </button>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-amber-500 text-white font-extrabold rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-xs shrink-0">
               {apiCompanyName.charAt(0)}
             </div>

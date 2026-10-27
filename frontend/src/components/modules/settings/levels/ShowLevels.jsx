@@ -71,7 +71,6 @@ const ShowLevels = () => {
     <>
       <Header
         title="All Levels"
-        subtitle="View all levels across departments and subdepartments"
         showBack={false}
       />
       <div className="mt-1 border border-slate-200/80 bg-white shadow-xs rounded-xl sm:rounded-2xl">

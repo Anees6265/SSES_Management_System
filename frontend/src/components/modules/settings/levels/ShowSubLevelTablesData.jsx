@@ -1119,7 +1119,6 @@ const ShowSubLevelTablesData = () => {
             <Header
                 title={level?.name || "Level"}
                 badge={session || undefined}
-                subtitle={subdepartment?.name ? `Sub-Department: ${subdepartment.name}` : undefined}
                 showBack={true}
                 breadcrumbs={breadcrumbs}
                 bottomRow={

@@ -311,7 +311,6 @@ const AttendanceDetails = () => {
     <>
       <Header
         title={titleText}
-        subtitle="Detailed student attendance records and analytics"
         badge={`${filteredData.length} Students`}
         breadcrumbs={[
           { label: "Academics" },

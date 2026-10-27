@@ -314,7 +314,6 @@ const SettingFIle = () => {
         <>
             <Header
                 title="Settings"
-                subtitle="System configuration, academic lifecycles & personalization"
                 breadcrumbs={[
                     { label: "Administration" },
                     { label: "Settings", path: "/settings" }

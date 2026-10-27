@@ -1216,7 +1216,6 @@ const CurriculumManagement = () => {
     <>
       <Header
         title="Curriculum Management"
-        subtitle="Manage syllabus hierarchy and task lists across departments, sessions, and levels"
         badge={`${curriculumRows.length} curricula`}
         breadcrumbs={[{ label: "Academics" }, { label: "Curriculum Management" }]}
       />

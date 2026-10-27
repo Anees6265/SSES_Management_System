@@ -429,7 +429,6 @@ const LeaveRequests = () => {
     <>
       <Header
         title="Leave Requests"
-        subtitle="Review student leave requests for your department"
         badge={`${counts.total} shown`}
       />
 

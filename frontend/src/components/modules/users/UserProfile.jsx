@@ -284,7 +284,6 @@ const UserProfile = () => {
       {/* Full-width sticky Top Header */}
       <Header 
         title="Professional Profile" 
-        subtitle="Employee information, organizational hierarchy & access controls" 
         showBack={true}
       />
 

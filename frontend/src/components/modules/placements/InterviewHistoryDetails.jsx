@@ -126,7 +126,6 @@ const InterviewHistoryDetails = () => {
     <>
       <Header 
         title={`${decodeURIComponent(companyName)} - All Rounds History`}
-        subtitle="View interview rounds history for this company"
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Interview History" },

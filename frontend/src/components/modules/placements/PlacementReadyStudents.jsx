@@ -552,7 +552,6 @@ const PlacementReadyStudents = () => {
     <>
       <Header
         title="Placement Candidates"
-        subtitle="Manage placement readiness pipeline: ready talent pool, interview tracking, and offers"
         badge={`${allPool.length} Candidates`}
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Placement Candidates" }]}
       />

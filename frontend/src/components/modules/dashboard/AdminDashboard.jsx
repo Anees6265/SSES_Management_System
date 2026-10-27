@@ -537,9 +537,7 @@ const AdminDashboard = () => {
       <>
         {/* Header Bar */}
         <Header
-          title="Department Dashboard"
-          subtitle={`${departmentName} · ${departmentSubtext}`}
-          badge={departmentName}
+          title="Dashboard"
           showBack={false}
           actions={
             <div className="flex items-center gap-2">
@@ -986,9 +984,7 @@ const AdminDashboard = () => {
     <>
       {/* Header Section */}
       <Header
-        title={role === "superadmin" ? "Super Admin Dashboard" : "Admin Dashboard"}
-        subtitle="SSES INSTITUTIONAL MANAGEMENT SYSTEM · GOVERNANCE OVERVIEW"
-        badge={role === "superadmin" ? "SUPER ADMIN" : "ADMIN"}
+        title="Dashboard"
         showBack={false}
         actions={
           <div className="flex items-center gap-2">

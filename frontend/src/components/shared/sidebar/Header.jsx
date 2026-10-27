@@ -28,6 +28,26 @@ const SIDEBAR_ROOT_PATHS = [
   "/levels"
 ];
 
+const ROLE_NAMES = new Set([
+  "superadmin",
+  "super admin",
+  "super_admin",
+  "admin",
+  "administrator",
+  "faculty",
+  "teacher",
+  "hod",
+  "head of department",
+  "placement_officer",
+  "placement officer",
+  "student",
+]);
+
+const isRoleBadge = (badgeValue) => {
+  if (!badgeValue || typeof badgeValue !== "string") return false;
+  return ROLE_NAMES.has(badgeValue.trim().toLowerCase());
+};
+
 const Header = ({
   title,
   badge,
@@ -97,15 +117,12 @@ const Header = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-bold text-gray-800 truncate">{title}</h1>
-                {badge && (
+                {badge && !isRoleBadge(badge) && (
                   <span className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-semibold whitespace-nowrap shrink-0">
                     {badge}
                   </span>
                 )}
               </div>
-              {subtitle && (
-                <p className="text-[11px] text-gray-400 font-medium truncate mt-0.5">{subtitle}</p>
-              )}
             </div>
           </div>
 
@@ -141,15 +158,12 @@ const Header = ({
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-gray-800 truncate">{title}</h1>
-                {badge && (
+                {badge && !isRoleBadge(badge) && (
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-medium whitespace-nowrap flex-shrink-0">
                     {badge}
                   </span>
                 )}
               </div>
-              {subtitle && (
-                <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-2.5 flex-shrink-0">

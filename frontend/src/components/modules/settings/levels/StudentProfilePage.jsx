@@ -2245,79 +2245,144 @@ const StudentProfilePage = () => {
                         </div>
                     </div>
 
-                    {/* Quick Contact Bar for Mobile Devices */}
-                    {(raw.studentMobile || raw.parentMobile || raw.email) && (
-                        <div className="sm:hidden mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
-                            {raw.studentMobile && (
-                                <a
-                                    href={`tel:+91${raw.studentMobile}`}
-                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 font-bold text-xs active:scale-95 transition"
-                                >
-                                    <MdPhone size={15} className="text-orange-500" />
-                                    <span>Call Student</span>
-                                </a>
-                            )}
-                            {raw.parentMobile && (
-                                <a
-                                    href={`tel:+91${raw.parentMobile}`}
-                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs active:scale-95 transition"
-                                >
-                                    <MdPhone size={15} className="text-emerald-500" />
-                                    <span>Call Parent</span>
-                                </a>
-                            )}
-                            {raw.email && (
-                                <a
-                                    href={`mailto:${raw.email}`}
-                                    className="inline-flex items-center justify-center p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs active:scale-95 transition"
-                                    title="Send Email"
-                                >
-                                    <MdEmail size={16} />
-                                </a>
-                            )}
-                        </div>
-                    )}
+                </div>
 
-                    {/* Full Contact & Student Personal Info Row */}
-                    <div className="mt-3 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap gap-2 sm:gap-4 lg:gap-6 text-xs font-semibold text-slate-700">
-                        {raw.email && (
-                            <a href={`mailto:${raw.email}`} className="hidden sm:flex items-center gap-2 hover:text-orange-600 truncate">
-                                <MdEmail className="text-orange-500 shrink-0" size={16} />
-                                <span className="truncate">{raw.email}</span>
-                            </a>
-                        )}
-                        {raw.studentMobile && (
-                            <a href={`tel:+91${raw.studentMobile}`} className="hidden sm:flex items-center gap-2 hover:text-orange-600">
-                                <MdPhone className="text-orange-500 shrink-0" size={16} />
-                                <span>{raw.studentMobile}</span>
-                            </a>
-                        )}
-                        {raw.parentMobile && (
-                            <a href={`tel:+91${raw.parentMobile}`} className="hidden sm:flex items-center gap-2 hover:text-emerald-600">
-                                <MdPhone className="text-emerald-500 shrink-0" size={16} />
-                                <span>Parent: {raw.parentMobile}</span>
-                            </a>
-                        )}
-                        {raw.fatherName && (
-                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
-                                <MdPerson className="text-orange-500 shrink-0" size={16} />
-                                <span className="truncate">Father: {raw.fatherName}</span>
+                {/* DEDICATED STUDENT INFORMATION CARD */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 lg:p-6 shadow-xs space-y-3.5 sm:space-y-4">
+                    {/* Section Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 sm:pb-3.5 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <MdBadge size={17} />
                             </div>
-                        )}
-                        <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
-                            <MdBusiness className="text-orange-500 shrink-0" size={16} />
-                            <span className="truncate">Dept: {raw.subDepartmentId?.departmentId?.name || "Dept"} / {subdepartment?.name || raw.subDepartmentId?.name || "Sub Dept"}</span>
+                            <div>
+                                <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">Student Details</h3>
+                                <p className="text-[11px] sm:text-xs text-slate-500 font-normal">Contact channels, academic department & native details</p>
+                            </div>
                         </div>
                         {raw.sessionId?.name && (
-                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
-                                <MdCalendarToday className="text-orange-500 shrink-0" size={16} />
-                                <span>Session: {raw.sessionId.name} <span className="text-emerald-600 font-bold">(Active)</span></span>
+                            <div className="self-start sm:self-auto">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-orange-50/70 border border-orange-200/80 px-3 py-1 rounded-full shadow-2xs">
+                                    <MdCalendarToday size={13} className="text-orange-500 shrink-0" />
+                                    <span>Session: <strong className="text-slate-900 font-bold">{raw.sessionId.name}</strong></span>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Active
+                                    </span>
+                                </span>
                             </div>
                         )}
+                    </div>
+
+                    {/* Information Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5">
+                        {/* 1. Student Email */}
+                        {raw.email && (
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdEmail size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Student Email
+                                    </span>
+                                    <a
+                                        href={`mailto:${raw.email}`}
+                                        className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate block mt-0.5 transition-colors"
+                                        title={raw.email}
+                                    >
+                                        {raw.email}
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. Student Contact */}
+                        {raw.studentMobile && (
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdPhone size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Student Contact
+                                    </span>
+                                    <a
+                                        href={`tel:+91${raw.studentMobile}`}
+                                        className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate block mt-0.5 transition-colors"
+                                    >
+                                        +91 {raw.studentMobile}
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. Parent Contact */}
+                        {raw.parentMobile && (
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdPhone size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Parent Contact
+                                    </span>
+                                    <a
+                                        href={`tel:+91${raw.parentMobile}`}
+                                        className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate block mt-0.5 transition-colors"
+                                    >
+                                        +91 {raw.parentMobile}
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Father's Name */}
+                        {raw.fatherName && (
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdPerson size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Father's Name
+                                    </span>
+                                    <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors" title={raw.fatherName}>
+                                        {raw.fatherName}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 5. Department & Sub-Department */}
+                        <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                <MdBusiness size={17} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                    Department / Tech
+                                </span>
+                                <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors">
+                                    {raw.subDepartmentId?.departmentId?.name || "ITEG"} / {subdepartment?.name || raw.subDepartmentId?.name || "TECH"}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 6. Village / Hometown */}
                         {raw.village && (
-                            <div className="flex items-center gap-2 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
-                                <MdLocationOn className="text-orange-500 shrink-0" size={16} />
-                                <span className="truncate">Village: {raw.village}</span>
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdLocationOn size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Village / Hometown
+                                    </span>
+                                    <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors" title={raw.village}>
+                                        {raw.village}
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>

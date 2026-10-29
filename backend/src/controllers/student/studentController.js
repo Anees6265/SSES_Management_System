@@ -966,7 +966,7 @@ exports.downloadSampleExcel = async (req, res) => {
 // ✅ Get All Students (with department-based access control)
 exports.getAllStudents = async (req, res) => {
   try {
-    const { sessionId, currentLevelId, currentSubLevelId, status, subDepartmentId, year } = req.query;
+    const { sessionId, currentLevelId, currentSubLevelId, status, subDepartmentId, year, isFTP, ftpDomain } = req.query;
 
     let subDeptFilter = req.subDeptFilter ? { ...req.subDeptFilter } : null;
 
@@ -996,6 +996,12 @@ exports.getAllStudents = async (req, res) => {
       }
     }
     if (year) andConditions.push({ year });
+    if (isFTP !== undefined) {
+      andConditions.push({ isFTP: isFTP === "true" || isFTP === true });
+    }
+    if (ftpDomain) {
+      andConditions.push({ ftpDomain });
+    }
     if (status) {
       andConditions.push({ status });
     } else {
@@ -1147,7 +1153,7 @@ exports.updateStudent = async (req, res) => {
       "gender", "category", "dob", "dobString", "aadharNo", "aadharCard",
       "fullAddress", "address", "village", "tehsil", "district", "pincode",
       "trackBus", "sponsorshipType", "ssismGroup", "track", "techno", "technology",
-      "status", "isFTP", "withITEG", "percent12", "percent10", "year12"
+      "status", "isFTP", "ftpDomain", "domain", "withITEG", "percent12", "percent10", "year12"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });

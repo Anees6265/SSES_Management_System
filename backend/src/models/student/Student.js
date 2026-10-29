@@ -155,6 +155,7 @@ const studentSchema = new mongoose.Schema({
     default: "Active"
   },
   isFTP: { type: Boolean, default: false },
+  ftpDomain: { type: String, default: "", trim: true },
   withITEG: { type: Boolean, default: false },
 
   // 🔒 Promotion Lock (prevents race condition on concurrent task updates)

@@ -11,6 +11,8 @@ import DatePicker from '../../shared/DatePicker';
 import Header from '../../shared/sidebar/Header';
 import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import Pagination from '../../shared/pagination/Pagination';
+import TableDownloadDropdown from '../../shared/table/TableDownloadDropdown';
+import { exportGenericToExcel, exportGenericToPDF } from '../../../utils/studentExportHelpers';
 
 // Helper function to get current week dates
 const getCurrentWeekDates = () => {
@@ -296,6 +298,94 @@ const AttendanceDetails = () => {
     };
   }, [filteredData]);
 
+  // Selection & Export State
+  const [selectedStdIds, setSelectedStdIds] = useState([]);
+
+  useEffect(() => {
+    setSelectedStdIds([]);
+  }, [filters, searchTerm]);
+
+  const allStdIds = useMemo(() => {
+    return filteredData.map((s) => s.stdId);
+  }, [filteredData]);
+
+  const isAllSelected = allStdIds.length > 0 && allStdIds.every((id) => selectedStdIds.includes(id));
+  const isIndeterminate = selectedStdIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedStdIds([]);
+    } else {
+      setSelectedStdIds(allStdIds);
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedStdIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const getSelectedOrAllAttendance = () => {
+    if (selectedStdIds.length === 0) return filteredData;
+    const set = new Set(selectedStdIds);
+    return filteredData.filter((s) => set.has(s.stdId));
+  };
+
+  const attendanceExportColumns = [
+    { key: "sno", label: "S.No." },
+    { key: "name", label: "Student Name" },
+    { key: "fatherName", label: "Father Name" },
+    { key: "course", label: "Class / Course" },
+    { key: "year", label: "Year" },
+    { key: "subLevel", label: "Sub-Level" },
+    { key: "mobile", label: "Mobile" },
+    { key: "attendancePercent", label: "Attendance %" },
+    { key: "present", label: "Present Days" },
+    { key: "leave", label: "Leave Days" },
+  ];
+
+  const handleDownloadExcel = () => {
+    const list = getSelectedOrAllAttendance();
+    if (!list.length) return;
+    const formatted = list.map((s, idx) => ({
+      sno: idx + 1,
+      name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+      fatherName: s.fathersName || "—",
+      course: s.course || "—",
+      year: `${getStudentYear(s)} Year`,
+      subLevel: s.currentSubLevelId?.name || "—",
+      mobile: s.mobile || "—",
+      attendancePercent: s.attendancePercent || "0%",
+      present: s.present ?? 0,
+      leave: s.leave ?? 0,
+    }));
+    exportGenericToExcel(formatted, attendanceExportColumns, {
+      filename: `Attendance_Report_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
+  const handleDownloadPDF = () => {
+    const list = getSelectedOrAllAttendance();
+    if (!list.length) return;
+    const formatted = list.map((s, idx) => ({
+      sno: idx + 1,
+      name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+      fatherName: s.fathersName || "—",
+      course: s.course || "—",
+      year: `${getStudentYear(s)} Year`,
+      subLevel: s.currentSubLevelId?.name || "—",
+      mobile: s.mobile || "—",
+      attendancePercent: s.attendancePercent || "0%",
+      present: s.present ?? 0,
+      leave: s.leave ?? 0,
+    }));
+    exportGenericToPDF(formatted, attendanceExportColumns, {
+      title: "Student Attendance Report",
+      filename: `Attendance_Report_${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  };
+
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -530,18 +620,27 @@ const AttendanceDetails = () => {
         <div className="bg-white border border-gray-200/90 rounded-xl sm:rounded-2xl shadow-2xs overflow-hidden">
           
           {/* Section Header */}
-          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900">Student Attendance Records</h3>
               <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                 {filteredData.length}
               </span>
             </div>
-            {searchTerm && (
-              <span className="text-xs text-gray-400 font-medium hidden sm:inline">
-                Filtering by: "{searchTerm}"
-              </span>
-            )}
+            <div className="flex items-center gap-2.5">
+              {searchTerm && (
+                <span className="text-xs text-gray-400 font-medium hidden sm:inline mr-1">
+                  Filtering by: "{searchTerm}"
+                </span>
+              )}
+              <TableDownloadDropdown
+                count={selectedStdIds.length}
+                total={filteredData.length}
+                onDownloadExcel={handleDownloadExcel}
+                onDownloadPDF={handleDownloadPDF}
+                size="sm"
+              />
+            </div>
           </div>
 
           {/* Loading & Error States */}
@@ -581,6 +680,21 @@ const AttendanceDetails = () => {
                 <table className="w-full text-left">
                   <thead className="bg-gray-50/80 border-b border-gray-100">
                     <tr>
+                      <th className="w-12 px-3 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = isIndeterminate;
+                          }}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelectAll();
+                          }}
+                          className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                          title={isAllSelected ? "Deselect All" : "Select All"}
+                        />
+                      </th>
                       <th className="px-4 lg:px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">S.No</th>
                       <th className="px-4 lg:px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-4 lg:px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Father Name</th>
@@ -595,11 +709,20 @@ const AttendanceDetails = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
                     {paginatedData.map((student, index) => {
+                      const isChecked = selectedStdIds.includes(student.stdId);
                       const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
                       const yearVal = getStudentYear(student);
                       const subLevelName = student.currentSubLevelId?.name || 'N/A';
                       return (
                         <tr key={student.stdId} className="hover:bg-orange-50/20 transition-colors">
+                          <td className="w-12 px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSelectOne(student.stdId)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            />
+                          </td>
                           <td className="px-4 lg:px-6 py-3.5 whitespace-nowrap text-xs text-gray-500 font-medium">
                             {globalIndex}
                           </td>
@@ -666,6 +789,14 @@ const AttendanceDetails = () => {
                       {/* Top Row: Avatar, Student Name, Sub-Level Badge */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center pr-0.5">
+                            <input
+                              type="checkbox"
+                              checked={selectedStdIds.includes(student.stdId)}
+                              onChange={() => handleToggleSelectOne(student.stdId)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            />
+                          </div>
                           <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
                             {`${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase()}
                           </div>

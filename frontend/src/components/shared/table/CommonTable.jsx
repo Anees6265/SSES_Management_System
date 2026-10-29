@@ -11,10 +11,12 @@ import {
 import { ChevronUp, ChevronDown } from "lucide-react";
 import Pagination from "../pagination/Pagination";
 import EmptyState from "../empty-state/EmptyState";
+import TableDownloadDropdown from "./TableDownloadDropdown";
+import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 
 const CommonTable = ({
   columns,
-  data,
+  data = [],
   editable,
   pagination,
   rowsPerPage = 10,
@@ -26,14 +28,86 @@ const CommonTable = ({
   minRows = 0,
   className = "",
   wrapperClassName = "",
+  selectable = true,
+  showSno = true,
+  exportable = true,
+  exportTitle = "Table Data Report",
+  onExportExcel,
+  onExportPDF,
 }) => {
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
 
   useEffect(() => {
     setGlobalFilter(searchTerm || "");
   }, [searchTerm]);
+
+  // Reset internal selection when data or search changes
+  useEffect(() => {
+    setSelectedRowIds([]);
+  }, [searchTerm, data]);
+
+  const hasExternalSelect = useMemo(() => {
+    return (columns || []).some((c) => c && (c.key === "select" || c.id === "select" || c.accessorKey === "select"));
+  }, [columns]);
+
+  const hasExternalSno = useMemo(() => {
+    return (columns || []).some((c) => c && (c.key === "sno" || c.id === "sno" || c.accessorKey === "sno"));
+  }, [columns]);
+
+  const allRowIds = useMemo(() => {
+    return (data || []).map((d, i) => d._id || d.id || i);
+  }, [data]);
+
+  const isAllSelected = allRowIds.length > 0 && allRowIds.every((id) => selectedRowIds.includes(id));
+  const isIndeterminate = selectedRowIds.length > 0 && !isAllSelected;
+
+  const handleToggleAll = () => {
+    if (isAllSelected) {
+      setSelectedRowIds([]);
+    } else {
+      setSelectedRowIds(allRowIds);
+    }
+  };
+
+  const handleToggleRow = (id) => {
+    setSelectedRowIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const getSelectedOrAllData = () => {
+    if (selectedRowIds.length === 0) return data;
+    const set = new Set(selectedRowIds);
+    return data.filter((d, i) => set.has(d._id || d.id || i));
+  };
+
+  const handleExcelExport = () => {
+    const toExport = getSelectedOrAllData();
+    if (!toExport || toExport.length === 0) return;
+    if (onExportExcel) {
+      onExportExcel(toExport);
+      return;
+    }
+    exportGenericToExcel(toExport, columns, {
+      filename: `${exportTitle.replace(/[^a-zA-Z0-9]/g, "_")}_${toExport.length}.xlsx`,
+    });
+  };
+
+  const handlePDFExport = () => {
+    const toExport = getSelectedOrAllData();
+    if (!toExport || toExport.length === 0) return;
+    if (onExportPDF) {
+      onExportPDF(toExport);
+      return;
+    }
+    exportGenericToPDF(toExport, columns, {
+      title: exportTitle,
+      filename: `${exportTitle.replace(/[^a-zA-Z0-9]/g, "_")}_${toExport.length}.pdf`,
+    });
+  };
 
   const tableColumns = useMemo(() => {
     const cols = columns.map((col) => ({
@@ -41,8 +115,27 @@ const CommonTable = ({
       header: col.label,
       ...(col.accessorFn ? { accessorFn: col.accessorFn } : { accessorKey: col.key }),
       align: col.align,
-      cell: ({ row }) =>
-        col.render ? col.render(row.original) : (col.accessorFn ? col.accessorFn(row.original) : row.original[col.key]),
+      enableSorting: col.enableSorting !== undefined ? col.enableSorting : col.key !== "sno",
+      cell: (cellContext) => {
+        const { row, table } = cellContext;
+        const pageIndex = table.getState().pagination?.pageIndex || 0;
+        const pageSize = table.getState().pagination?.pageSize || 10;
+        const pageRows = table.getRowModel().rows;
+        const rowIndexOnPage = pageRows.indexOf(row);
+        const serialNo = pageIndex * pageSize + (rowIndexOnPage >= 0 ? rowIndexOnPage : row.index) + 1;
+
+        if (col.render) {
+          return col.render(row.original, serialNo, cellContext);
+        }
+        if (col.key === "sno") {
+          return (
+            <span className="font-semibold text-gray-500 text-xs sm:text-sm">
+              {serialNo}
+            </span>
+          );
+        }
+        return col.accessorFn ? col.accessorFn(row.original) : row.original[col.key];
+      },
     }));
 
     if (editable && actionButton) {
@@ -63,8 +156,81 @@ const CommonTable = ({
       });
     }
 
-    return cols;
-  }, [columns, editable, actionButton, extraColumn]);
+    const finalCols = [];
+
+    // Prepend checkbox column if selectable and caller has not provided external selection column
+    if (selectable && !hasExternalSelect) {
+      finalCols.push({
+        key: "select",
+        id: "select",
+        accessorKey: "select",
+        header: (
+          <div className="flex items-center justify-center py-1">
+            <input
+              type="checkbox"
+              checked={isAllSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = isIndeterminate;
+              }}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleToggleAll();
+              }}
+              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+              title={isAllSelected ? "Deselect All" : "Select All"}
+            />
+          </div>
+        ),
+        align: "center",
+        thClassName: "w-12 px-2 py-3 sm:py-4 text-center",
+        cellClassName: "w-12 px-2 py-3 sm:py-4 text-center",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const rowId = row.original._id || row.original.id || row.index;
+          return (
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                checked={selectedRowIds.includes(rowId)}
+                onChange={() => handleToggleRow(rowId)}
+                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+              />
+            </div>
+          );
+        },
+      });
+    }
+
+    // Prepend S.No. column if showSno and caller has not provided external sno column
+    if (showSno && !hasExternalSno) {
+      finalCols.push({
+        key: "sno",
+        id: "sno",
+        accessorKey: "sno",
+        header: "S.No.",
+        align: "center",
+        thClassName: "w-16 px-3 py-3 sm:py-4 text-center",
+        cellClassName: "w-16 px-3 py-3 sm:py-4 text-center",
+        enableSorting: false,
+        cell: (cellContext) => {
+          const { row, table } = cellContext;
+          const pageIndex = table.getState().pagination?.pageIndex || 0;
+          const pageSize = table.getState().pagination?.pageSize || 10;
+          const pageRows = table.getRowModel().rows;
+          const rowIndexOnPage = pageRows.indexOf(row);
+          const serialNo = pageIndex * pageSize + (rowIndexOnPage >= 0 ? rowIndexOnPage : row.index) + 1;
+          return (
+            <span className="font-semibold text-gray-500 text-xs sm:text-sm">
+              {serialNo}
+            </span>
+          );
+        },
+      });
+    }
+
+    finalCols.push(...cols);
+    return finalCols;
+  }, [columns, editable, actionButton, extraColumn, selectable, showSno, hasExternalSelect, hasExternalSno, isAllSelected, isIndeterminate, selectedRowIds]);
 
   const table = useReactTable({
     data,
@@ -106,7 +272,7 @@ const CommonTable = ({
                     <th
                       key={header.id}
                       onClick={header.column.getToggleSortingHandler()}
-                      className={`px-3 sm:px-6 py-3 sm:py-4 ${
+                      className={`${header.column.columnDef.thClassName || "px-3 sm:px-6 py-3 sm:py-4"} ${
                         header.column.columnDef.align === "center"
                           ? "text-center"
                           : header.column.columnDef.align === "right"
@@ -183,7 +349,9 @@ const CommonTable = ({
                               : "text-left"
                           }`}
                           onClick={(e) => {
-                            if (cell.column.id === "action") e.stopPropagation();
+                            if (cell.column.id === "action" || cell.column.id === "select" || cell.column.columnDef.accessorKey === "select") {
+                              e.stopPropagation();
+                            }
                           }}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -10,12 +10,15 @@ import {
 import Loader from "../../shared/loader/Loader";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import CommonTable from "../../shared/table/CommonTable";
+import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import Header from "../../shared/sidebar/Header";
 import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import { getFtpDomainsForStudent } from "../../../utils/ftpConfig";
+import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 import { MdTableChart } from "react-icons/md";
-import { Search, X, ChevronRight, Phone, RotateCcw, Filter } from "lucide-react";
+import { Search, X, ChevronRight, Phone, RotateCcw, Filter, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "react-toastify";
 
 const toTitle = (str) =>
@@ -38,6 +41,8 @@ const StudentDetailTable = () => {
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedYear, setSelectedYear] = useState("All");
   const [selectedTech, setSelectedTech] = useState("All");
+  const [selectedDomain, setSelectedDomain] = useState("All");
+  const [selectedIds, setSelectedIds] = useState([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
@@ -89,41 +94,59 @@ const StudentDetailTable = () => {
     const names = departmentSubLevels.map(sl => sl.name);
     // Natural sort: e.g., 1A -> 1B -> 1C -> 2A
     names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-    return ["All", ...new Set(names)];
+    return ["All", ...new Set(names), "FTP Students"];
   }, [departmentSubLevels]);
+
+  const availableDomains = useMemo(() => {
+    const set = new Set();
+    students.forEach((s) => {
+      if (s.ftpDomain) set.add(s.ftpDomain);
+    });
+    const sample = students[0] || {};
+    getFtpDomainsForStudent(sample).forEach((d) => set.add(d));
+    return Array.from(set);
+  }, [students]);
 
   const filteredData = useMemo(() => {
     const rawSearch = String(searchTerm || "").trim().toLowerCase();
     return students.filter((s) => {
-      const matchTab = activeTab === "All" || s.currentSubLevelId?.name === activeTab;
+      const matchTab =
+        activeTab === "All"
+          ? true
+          : activeTab === "FTP Students"
+          ? Boolean(s.isFTP)
+          : s.currentSubLevelId?.name === activeTab;
+      const matchDomain =
+        activeTab !== "FTP Students" ||
+        selectedDomain === "All" ||
+        s.ftpDomain === selectedDomain;
       const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(s.status);
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
       const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
       const stdTech = String(s.track || s.course || "General").toLowerCase();
       const matchTech = selectedTech === "All" || stdTech.includes(selectedTech.toLowerCase());
-
-      const fullName = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
-      const matchSearch = !rawSearch ||
-        fullName.includes(rawSearch) ||
-        String(s.fullName || "").toLowerCase().includes(rawSearch) ||
-        String(s.fatherName || "").toLowerCase().includes(rawSearch) ||
-        String(s.prkey || "").toLowerCase().includes(rawSearch) ||
-        String(s.studentId || "").toLowerCase().includes(rawSearch) ||
-        String(s.registrationNo || "").toLowerCase().includes(rawSearch) ||
-        String(s.enrollmentNo || "").toLowerCase().includes(rawSearch) ||
-        String(s.studentMobile || "").includes(rawSearch) ||
-        String(s.course || "").toLowerCase().includes(rawSearch) ||
-        String(s.district || "").toLowerCase().includes(rawSearch);
-
-      return matchTab && matchStatus && matchSession && matchYear && matchTech && matchSearch;
+      const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const searchLower = searchTerm.toLowerCase();
+      const matchSearch = !searchTerm ||
+        name.includes(searchLower) ||
+        s.fullName?.toLowerCase().includes(searchLower) ||
+        s.prkey?.toLowerCase().includes(searchLower) ||
+        s.studentId?.toLowerCase().includes(searchLower) ||
+        s.registrationNo?.toLowerCase().includes(searchLower) ||
+        s.enrollmentNo?.toLowerCase().includes(searchLower) ||
+        s.ftpDomain?.toLowerCase().includes(searchLower) ||
+        s.studentMobile?.includes(searchTerm) ||
+        s.district?.toLowerCase().includes(searchLower);
+      return matchTab && matchDomain && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
-  }, [students, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
+  }, [students, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
 
-  // Reset mobile page whenever filters/tabs change
+  // Reset mobile page & selection whenever filters/tabs change
   useEffect(() => {
     setMobilePage(1);
-  }, [searchTerm, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
+    setSelectedIds([]);
+  }, [searchTerm, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -131,26 +154,141 @@ const StudentDetailTable = () => {
     if (selectedStatus.length > 0) count++;
     if (selectedSessionId) count++;
     if (selectedYear !== "All") count++;
+    if (activeTab === "FTP Students" && selectedDomain !== "All") count++;
     return count;
-  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear]);
+  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear, activeTab, selectedDomain]);
 
   const hasActiveFilters = activeFilterCount > 0 || Boolean(searchTerm);
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setActiveTab("All");
+    setSelectedDomain("All");
     setSelectedStatus([]);
     setSelectedSessionId("");
     setSelectedYear("All");
     setSelectedTech("All");
+    setSelectedIds([]);
   };
+
+  const currentFilteredIds = useMemo(() => filteredData.map((s) => s._id), [filteredData]);
+  const isAllSelected = currentFilteredIds.length > 0 && currentFilteredIds.every((id) => selectedIds.includes(id));
+  const isIndeterminate = selectedIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(currentFilteredIds);
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectedStudentsList = useMemo(() => {
+    if (selectedIds.length === 0) return [];
+    const set = new Set(selectedIds);
+    return filteredData.filter((s) => set.has(s._id));
+  }, [selectedIds, filteredData]);
+
+  const currentSubDept = subDepts.find((sd) => sd._id === subDepartmentId);
+  const deptName = currentSubDept?.name || students[0]?.subDepartmentId?.name || "Tech";
+
+  const handleDownloadExcel = (targetStudents = selectedStudentsList) => {
+    const toExport = targetStudents && targetStudents.length > 0 ? targetStudents : filteredData;
+    if (toExport.length === 0) {
+      toast.warning("No students available to download");
+      return;
+    }
+    const cleanDept = deptName.replace(/[^a-zA-Z0-9]/g, "_");
+    const cleanTab = activeTab.replace(/[^a-zA-Z0-9]/g, "_");
+    const filename = `${cleanDept}_${cleanTab}_${toExport.length}_Students.xlsx`;
+    exportStudentsToExcel(toExport, { filename });
+    toast.success(`Exported ${toExport.length} student${toExport.length > 1 ? "s" : ""} to Excel`);
+  };
+
+  const handleDownloadPDF = (targetStudents = selectedStudentsList) => {
+    const toExport = targetStudents && targetStudents.length > 0 ? targetStudents : filteredData;
+    if (toExport.length === 0) {
+      toast.warning("No students available to download");
+      return;
+    }
+    const cleanDept = deptName.replace(/[^a-zA-Z0-9]/g, "_");
+    const cleanTab = activeTab.replace(/[^a-zA-Z0-9]/g, "_");
+    const filename = `${cleanDept}_${cleanTab}_${toExport.length}_Students.pdf`;
+    exportStudentsToPDF(toExport, {
+      title: `${deptName} — Student Progress Information Report (${activeTab})`,
+      subTitle: `Department: ${deptName} | Tab: ${activeTab}`,
+      filename,
+    });
+    toast.success(`Exported ${toExport.length} student${toExport.length > 1 ? "s" : ""} to PDF`);
+  };
+
+  const tableData = useMemo(() => {
+    return filteredData.map((item, idx) => ({
+      ...item,
+      sno: idx + 1,
+    }));
+  }, [filteredData]);
 
   const paginatedMobileData = useMemo(() => {
     const start = (mobilePage - 1) * mobilePageSize;
-    return filteredData.slice(start, start + mobilePageSize);
-  }, [filteredData, mobilePage]);
+    return tableData.slice(start, start + mobilePageSize);
+  }, [tableData, mobilePage]);
 
   const columns = [
+    {
+      key: "select",
+      label: (
+        <div className="flex items-center justify-center py-1">
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = isIndeterminate;
+            }}
+            onChange={(e) => {
+              e.stopPropagation();
+              handleToggleSelectAll();
+            }}
+            className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+            title={isAllSelected ? "Deselect All Students" : "Select All Students"}
+            aria-label="Select or deselect all students"
+          />
+        </div>
+      ),
+      align: "center",
+      thClassName: "w-12 px-2 py-3 sm:py-4 text-center",
+      cellClassName: "w-12 px-2 py-3 sm:py-4 text-center",
+      enableSorting: false,
+      render: (row) => (
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(row._id)}
+            onChange={() => handleToggleSelectOne(row._id)}
+            className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+            aria-label={`Select ${row.firstName || "student"}`}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "sno",
+      label: "S.No.",
+      align: "center",
+      thClassName: "w-16 px-3 py-3 sm:py-4 text-center",
+      cellClassName: "w-16 px-3 py-3 sm:py-4 text-center",
+      render: (row, sno) => (
+        <span className="font-semibold text-gray-500 text-xs sm:text-sm">
+          {sno || row.sno}
+        </span>
+      ),
+    },
     {
       key: "name",
       label: "Student",
@@ -159,7 +297,14 @@ const StudentDetailTable = () => {
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
           <div>
-            <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
+              {row.isFTP && (
+                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
+                  FTP{row.ftpDomain ? ` • ${row.ftpDomain}` : ""}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       ),
@@ -224,9 +369,6 @@ const StudentDetailTable = () => {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader /></div>;
 
-  const currentSubDept = subDepts.find(sd => sd._id === subDepartmentId);
-  const deptName = currentSubDept?.name || students[0]?.subDepartmentId?.name;
-
   return (
     <>
       <Header
@@ -241,26 +383,33 @@ const StudentDetailTable = () => {
 
       {/* SubLevel Tabs */}
       <div className="bg-white border-b px-3 sm:px-6 flex gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth [-webkit-overflow-scrolling:touch]">
-        {subLevelTabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${activeTab === tab
-                ? "border-orange-500 text-orange-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            <span>{tab}</span>
-            <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === tab
-                ? "bg-orange-100 text-orange-700"
-                : "bg-gray-100 text-gray-500"
-              }`}>
-              {tab === "All"
-                ? students.length
-                : students.filter((s) => s.currentSubLevelId?.name === tab).length}
-            </span>
-          </button>
-        ))}
+        {subLevelTabs.map((tab) => {
+          const tabCount =
+            tab === "All"
+              ? students.length
+              : tab === "FTP Students"
+              ? students.filter((s) => Boolean(s.isFTP)).length
+              : students.filter((s) => s.currentSubLevelId?.name === tab).length;
+
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${activeTab === tab
+                  ? "border-orange-500 text-orange-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+            >
+              <span>{tab}</span>
+              <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === tab
+                  ? "bg-orange-100 text-orange-700"
+                  : "bg-gray-100 text-gray-500"
+                }`}>
+                {tabCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
@@ -394,6 +543,20 @@ const StudentDetailTable = () => {
                 buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
               />
 
+              {/* FTP Domain Filter (active when in FTP Students tab) */}
+              {activeTab === "FTP Students" && (
+                <SelectDropdown
+                  value={selectedDomain}
+                  onChange={(val) => setSelectedDomain(val)}
+                  options={[
+                    { value: "All", label: "All Domains" },
+                    ...availableDomains.map((d) => ({ value: d, label: d }))
+                  ]}
+                  className="w-full md:w-auto md:min-w-[155px]"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-orange-200 bg-orange-50/70 rounded-xl text-xs sm:text-sm text-orange-950 font-bold transition-colors cursor-pointer hover:border-orange-400 focus:outline-none shadow-2xs"
+                />
+              )}
+
               {/* Desktop Reset Button */}
               {hasActiveFilters && (
                 <button
@@ -406,6 +569,15 @@ const StudentDetailTable = () => {
                   <span>Reset</span>
                 </button>
               )}
+
+              {/* Quick Export Dropdown in Theme Color */}
+              <TableDownloadDropdown
+                count={selectedIds.length}
+                total={filteredData.length}
+                onDownloadExcel={() => handleDownloadExcel()}
+                onDownloadPDF={() => handleDownloadPDF()}
+                size="md"
+              />
 
               {/* Mobile Close/Apply Filters Button */}
               {showMobileFilters && (
@@ -424,11 +596,11 @@ const StudentDetailTable = () => {
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
         <div className="hidden md:block">
           <CommonTable
-            data={filteredData}
+            data={tableData}
             columns={columns}
             pagination
             rowsPerPage={10}
-            emptyMessage={searchTerm.trim() ? `No students found matching "${searchTerm}"` : (activeTab === "All" ? "No data found" : `No students in the sub level ${activeTab}`)}
+            emptyMessage={activeTab === "All" ? "No data found" : activeTab === "FTP Students" ? "No FTP students found" : `No students in the sub level ${activeTab}`}
             filtersConfig={[
               {
                 title: "Status",
@@ -454,6 +626,16 @@ const StudentDetailTable = () => {
                 selected: selectedYear === "All" ? [] : [selectedYear],
                 setter: (vals) => setSelectedYear(vals.length > 0 ? vals[0] : "All"),
               },
+              ...(activeTab === "FTP Students" && availableDomains.length > 0
+                ? [
+                    {
+                      title: "Domain",
+                      options: availableDomains,
+                      selected: selectedDomain === "All" ? [] : [selectedDomain],
+                      setter: (vals) => setSelectedDomain(vals.length > 0 ? vals[0] : "All"),
+                    },
+                  ]
+                : []),
             ]}
             extraColumn={{
               header: "Task Board",
@@ -496,10 +678,18 @@ const StudentDetailTable = () => {
         <div className="md:hidden space-y-3">
           {filteredData.length === 0 ? (
             <EmptyState
-              title={activeTab === "All" ? "No Students Found" : `No Students in Sub-Level ${activeTab}`}
+              title={
+                activeTab === "All"
+                  ? "No Students Found"
+                  : activeTab === "FTP Students"
+                  ? "No FTP Students Found"
+                  : `No Students in Sub-Level ${activeTab}`
+              }
               subtitle={
                 searchTerm
                   ? `No students matched "${searchTerm}". Try checking your spelling or reset filters.`
+                  : activeTab === "FTP Students"
+                  ? "No students have been marked as FTP yet in this department."
                   : "Try adjusting your search terms, session, or status filters to view records."
               }
               actionText={hasActiveFilters ? "Reset All Filters" : undefined}
@@ -516,11 +706,28 @@ const StudentDetailTable = () => {
                   {/* Top Row: Avatar, Student Name, PR Key, Status Badge */}
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center pr-0.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(row._id)}
+                          onChange={() => handleToggleSelectOne(row._id)}
+                          className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                          aria-label={`Select ${row.firstName || "student"}`}
+                        />
+                      </div>
                       <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
-                          {toTitle(`${row.firstName} ${row.lastName}`)}
-                        </h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] font-bold text-gray-400">#{row.sno}</span>
+                          <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
+                            {toTitle(`${row.firstName} ${row.lastName}`)}
+                          </h4>
+                          {row.isFTP && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                              FTP{row.ftpDomain ? ` • ${row.ftpDomain}` : ""}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0 ${STATUS_COLORS[row.status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>

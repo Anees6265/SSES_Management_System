@@ -700,22 +700,60 @@ export default function StudentReportForm() {
 
       let resolvedDynamicSections = [];
       if (reportData.dynamicSections && reportData.dynamicSections.length > 0) {
-        resolvedDynamicSections = reportData.dynamicSections.map(sec => {
-          if (sec.sectionType === "LevelProgressTable" && autoLevelProgress) return autoLevelProgress;
-          if (sec.sectionType === "SubjectPerformanceTable" && autoSubjectPerf) return autoSubjectPerf;
-          if (sec.sectionType === "SoftSkillsRating" && autoSoftSkills?.hasSyllabusTasks) return autoSoftSkills;
-          return sec;
+        const existingSectionMap = new Map();
+        reportData.dynamicSections.forEach(sec => {
+          if (sec?.sectionType) {
+            existingSectionMap.set(sec.sectionType, sec);
+          }
         });
-        if (!resolvedDynamicSections.some(s => s.sectionType === "LevelProgressTable") && autoLevelProgress) {
-          resolvedDynamicSections.unshift(autoLevelProgress);
-        }
-        if (!resolvedDynamicSections.some(s => s.sectionType === "SubjectPerformanceTable") && autoSubjectPerf) {
-          const lIdx = resolvedDynamicSections.findIndex(s => s.sectionType === "LevelProgressTable");
-          resolvedDynamicSections.splice(lIdx + 1, 0, autoSubjectPerf);
-        }
-        if (!resolvedDynamicSections.some(s => s.sectionType === "SoftSkillsRating") && autoSoftSkills) {
-          resolvedDynamicSections.push(autoSoftSkills);
-        }
+
+        // Ensure all canonical sections from autoSections are present and properly resolved
+        resolvedDynamicSections = autoSections.map(autoSec => {
+          const existingSec = existingSectionMap.get(autoSec.sectionType);
+
+          // If section is not present in existing reportCard or has empty items, populate from autoSections with fallbacks
+          if (!existingSec || !Array.isArray(existingSec.items) || existingSec.items.length === 0) {
+            if (autoSec.sectionType === "CareerStatus" && reportData.careerReadiness) {
+              const cr = reportData.careerReadiness;
+              const mappedItems = (autoSec.items || []).map(item => {
+                const nameLower = (item.itemName || "").toLowerCase();
+                let val = item.value;
+                if (nameLower.includes("resume") && cr.resumeStatus) {
+                  val = (cr.resumeStatus === "Uploaded" || cr.resumeStatus === "Created") ? "Created" : (cr.resumeStatus === "Not Uploaded" ? "Not created" : cr.resumeStatus);
+                } else if (nameLower.includes("linkedin") && cr.linkedinStatus) {
+                  val = (cr.linkedinStatus === "Up-to-date" || cr.linkedinStatus === "Created") ? "Created" : (cr.linkedinStatus === "Need Improvement" ? "In Progress" : "Not created");
+                } else if (nameLower.includes("aptitude") && cr.aptitudeStatus) {
+                  val = (cr.aptitudeStatus === "Done" || cr.aptitudeStatus === "Ready") ? "Ready" : "In Progress";
+                } else if (nameLower.includes("placement") && cr.placementReady) {
+                  val = cr.placementReady;
+                }
+                return { ...item, value: val };
+              });
+              return { ...autoSec, items: mappedItems };
+            }
+            return autoSec;
+          }
+
+          // If existingSec exists, apply live updates where appropriate:
+          if (existingSec.sectionType === "LevelProgressTable") {
+            return autoLevelProgress || existingSec;
+          }
+          if (existingSec.sectionType === "SubjectPerformanceTable") {
+            return autoSubjectPerf || existingSec;
+          }
+          if (existingSec.sectionType === "SoftSkillsRating" && autoSoftSkills?.hasSyllabusTasks) {
+            return autoSoftSkills;
+          }
+
+          return existingSec;
+        });
+
+        // Also preserve any custom dynamic sections in reportData that are not part of standard autoSections
+        reportData.dynamicSections.forEach(sec => {
+          if (sec?.sectionType && !autoSections.some(as => as.sectionType === sec.sectionType)) {
+            resolvedDynamicSections.push(sec);
+          }
+        });
       } else {
         resolvedDynamicSections = autoSections;
       }
@@ -782,11 +820,17 @@ export default function StudentReportForm() {
 
       setFormData(prev => {
         if (!prev.dynamicSections || prev.dynamicSections.length === 0) return prev;
+        const currentTypes = new Set(prev.dynamicSections.map(s => s.sectionType));
         const updated = prev.dynamicSections.map(sec => {
           if (sec.sectionType === "LevelProgressTable" && freshLevel) return freshLevel;
           if (sec.sectionType === "SubjectPerformanceTable" && freshSubject) return freshSubject;
           if (sec.sectionType === "SoftSkillsRating" && freshSoftSkills?.hasSyllabusTasks) return freshSoftSkills;
           return sec;
+        });
+        freshAuto.forEach(freshSec => {
+          if (!currentTypes.has(freshSec.sectionType)) {
+            updated.push(freshSec);
+          }
         });
         return { ...prev, dynamicSections: updated };
       });
@@ -814,6 +858,19 @@ export default function StudentReportForm() {
     const discCats = Array.isArray(formData.discipline?.categories) ? formData.discipline.categories : [];
     const techSkills = Array.isArray(formData.technicalSkills) ? formData.technicalSkills : [];
     const coCurr = Array.isArray(formData.coCurricular) ? formData.coCurricular : [];
+
+    // Keep root careerReadiness object in sync with CareerStatus dynamic section items
+    const careerSection = (formData.dynamicSections || []).find(s => s.sectionType === "CareerStatus");
+    let resolvedCareerReadiness = { ...(formData.careerReadiness || {}) };
+    if (careerSection && Array.isArray(careerSection.items)) {
+      careerSection.items.forEach(it => {
+        const name = (it.itemName || "").toLowerCase();
+        if (name.includes("resume")) resolvedCareerReadiness.resumeStatus = it.value;
+        else if (name.includes("linkedin")) resolvedCareerReadiness.linkedinStatus = it.value;
+        else if (name.includes("aptitude")) resolvedCareerReadiness.aptitudeStatus = it.value;
+        else if (name.includes("placement")) resolvedCareerReadiness.placementReady = it.value;
+      });
+    }
 
     return {
       studentRef: id,
@@ -850,7 +907,7 @@ export default function StudentReportForm() {
           totalPercentage: Number(skill.totalPercentage) || 0,
           remark: skill?.remark?.trim() || "No remarks"
         })),
-      careerReadiness: formData.careerReadiness || {},
+      careerReadiness: resolvedCareerReadiness,
       academicPerformance: formData.academicPerformance || {},
       coCurricular: coCurr
         .filter(item => item?.title && item.title.trim() !== "" && item?.category && item.category.trim() !== "")

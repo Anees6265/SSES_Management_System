@@ -7,6 +7,8 @@ import Header from "../../shared/sidebar/Header";
 import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 import {
   Search,
   X,
@@ -222,8 +224,8 @@ const StudentPermission = () => {
               )}
             </div>
 
-            {/* Quick Count & Reset */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 text-xs font-semibold text-gray-500">
+            {/* Quick Count & Actions */}
+            <div className="flex items-center justify-between sm:justify-end gap-3 text-xs font-semibold text-gray-500 flex-wrap">
               {searchTerm && (
                 <button
                   type="button"
@@ -237,6 +239,22 @@ const StudentPermission = () => {
               <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg font-bold">
                 {filteredData.length} {filteredData.length === 1 ? "student" : "students"}
               </span>
+
+              <TableDownloadDropdown
+                total={filteredData.length}
+                onDownloadExcel={() =>
+                  exportStudentsToExcel(filteredData, {
+                    filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.xlsx`,
+                  })
+                }
+                onDownloadPDF={() =>
+                  exportStudentsToPDF(filteredData, {
+                    title: "Dummy Students Report",
+                    filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.pdf`,
+                  })
+                }
+                size="sm"
+              />
             </div>
           </div>
         </div>
@@ -254,6 +272,18 @@ const StudentPermission = () => {
             minRows={10}
             className="flex-1 flex flex-col h-full"
             wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
+            exportTitle="Dummy_Students"
+            onExportExcel={(selected) =>
+              exportStudentsToExcel(selected, {
+                filename: `Dummy_Students_${selected.length}.xlsx`,
+              })
+            }
+            onExportPDF={(selected) =>
+              exportStudentsToPDF(selected, {
+                title: "Dummy Students Report",
+                filename: `Dummy_Students_${selected.length}.pdf`,
+              })
+            }
             emptyMessage={
               searchTerm
                 ? `No dummy students matching "${searchTerm}"`

@@ -8,6 +8,8 @@ import { FaUpload } from "react-icons/fa";
 import CommonTable from "../../shared/table/CommonTable";
 import SearchBox from "../../shared/search-export/SearchBox";
 import Header from "../../shared/sidebar/Header";
+import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 
 const toTitleCase = (str) =>
   str
@@ -199,8 +201,23 @@ const StudentLevelData = () => {
           </div>
           
           {/* Search and Filters */}
-          <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="flex justify-between items-center flex-wrap gap-4 pb-3">
             <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search students..." />
+            <TableDownloadDropdown
+              total={filteredData.length}
+              onDownloadExcel={() =>
+                exportStudentsToExcel(filteredData, {
+                  filename: `${activeTab.replace(/[^a-zA-Z0-9]/g, '_')}_Students.xlsx`,
+                })
+              }
+              onDownloadPDF={() =>
+                exportStudentsToPDF(filteredData, {
+                  title: `${activeTab} Students Report`,
+                  filename: `${activeTab.replace(/[^a-zA-Z0-9]/g, '_')}_Students.pdf`,
+                })
+              }
+              size="sm"
+            />
           </div>
         </div>
         
@@ -211,6 +228,18 @@ const StudentLevelData = () => {
           pagination={true}
           rowsPerPage={rowsPerPage}
           searchTerm={searchTerm}
+          exportTitle={`${activeTab}_Students`}
+          onExportExcel={(selected) =>
+            exportStudentsToExcel(selected, {
+              filename: `${activeTab.replace(/[^a-zA-Z0-9]/g, '_')}_Students_${selected.length}.xlsx`,
+            })
+          }
+          onExportPDF={(selected) =>
+            exportStudentsToPDF(selected, {
+              title: `${activeTab} Students Report`,
+              filename: `${activeTab.replace(/[^a-zA-Z0-9]/g, '_')}_Students_${selected.length}.pdf`,
+            })
+          }
           emptyMessage={`No data found for ${activeTab}`}
         />
       </div>

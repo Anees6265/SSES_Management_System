@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
     MdEmail, MdPhone, MdCheckCircle, MdAccessTime,
@@ -9,7 +9,7 @@ import {
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
-    MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList
+    MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList, MdExpandMore
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -21,6 +21,13 @@ import OfferJoiningModal from "../../placements/OfferJoiningModal";
 import Loader from "../../../shared/loader/Loader";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
+import {
+    getStudentDepartmentKey,
+    getFtpDomainsForStudent,
+    getDepartmentLabelForStudent,
+    FTP_DOMAINS_BY_DEPARTMENT,
+    DEPARTMENT_FTP_LABELS
+} from "../../../../utils/ftpConfig";
 import {
     useGetNewStudentTasksQuery,
     useGetNewStudentByIdQuery,
@@ -395,6 +402,123 @@ const ACADEMIC_YEAR_OPTIONS = [
     { value: "3rd Year", label: "3rd Year" },
     { value: "4th Year", label: "4th Year" }
 ];
+
+const MarkToFtpModal = ({ isOpen, onClose, student, onConfirm, loading }) => {
+    const detectedDeptKey = getStudentDepartmentKey(student);
+    const [selectedDept, setSelectedDept] = useState(detectedDeptKey);
+    const [selectedDomain, setSelectedDomain] = useState(student.ftpDomain || "");
+
+    useEffect(() => {
+        const dKey = getStudentDepartmentKey(student);
+        setSelectedDept(dKey);
+        setSelectedDomain(student.ftpDomain || "");
+    }, [student, isOpen]);
+
+    if (!isOpen) return null;
+
+    const availableDomains = FTP_DOMAINS_BY_DEPARTMENT[selectedDept] || FTP_DOMAINS_BY_DEPARTMENT.ITEG;
+    const name = `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
+
+    const modalDomainOptions = [
+        { value: "", label: "-- Select Domain --" },
+        ...availableDomains.map((d) => ({ value: d, label: d }))
+    ];
+    if (selectedDomain && !availableDomains.includes(selectedDomain)) {
+        modalDomainOptions.splice(1, 0, { value: selectedDomain, label: selectedDomain });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-gray-100 overflow-visible animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-orange-50/50 rounded-t-3xl">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-xs">
+                            <MdTrendingUp size={18} />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-bold text-gray-900">
+                                {student.isFTP ? "Update FTP Domain" : "Mark Student to FTP"}
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-0.5">{name}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="rounded-xl p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+                    >
+                        <MdClose size={18} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {/* Department Info */}
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Department</p>
+                            <p className="text-xs font-black text-slate-800 mt-0.5">
+                                {DEPARTMENT_FTP_LABELS[selectedDept] || "Tech (ITEG)"}
+                            </p>
+                        </div>
+                        <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                            Fast Track Program
+                        </span>
+                    </div>
+
+                    {/* Select Domain Dropdown */}
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-gray-700">
+                            Select Domain <span className="text-rose-500">*</span>
+                        </label>
+                        <SelectDropdown
+                            value={selectedDomain}
+                            onChange={(val) => setSelectedDomain(val)}
+                            options={modalDomainOptions}
+                            placeholder="-- Select Domain --"
+                            disabled={loading}
+                            className="w-full"
+                            buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3.5 border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-xs sm:text-sm text-gray-800 font-medium transition-all shadow-2xs cursor-pointer focus:outline-none"
+                            menuClassName="w-full"
+                        />
+                        <p className="text-[11px] text-gray-400">
+                            Available specialized domains for {DEPARTMENT_FTP_LABELS[selectedDept] || "this department"}.
+                        </p>
+                    </div>
+
+                    {/* Preview Pill if selected */}
+                    {selectedDomain && (
+                        <div className="p-2.5 rounded-xl bg-orange-50/80 border border-orange-200 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-orange-800">Assigned Domain:</span>
+                            <span className="font-black text-orange-700 bg-white px-2.5 py-0.5 rounded-lg border border-orange-200 shadow-2xs">
+                                {selectedDomain}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 border-t border-gray-100 px-6 py-3.5 bg-gray-50/50 rounded-b-3xl">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer active:scale-95"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onConfirm(selectedDomain)}
+                        disabled={loading || !selectedDomain}
+                        className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                        <MdCheck size={14} />
+                        {loading ? "Saving..." : student.isFTP ? "Update Domain" : "Confirm & Mark to FTP"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
     const fileInputRef = useRef(null);
@@ -1257,6 +1381,8 @@ const StudentProfilePage = () => {
     const [sectionModal, setSectionModal] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [userNotifications, setUserNotifications] = useState(null);
+    const [ftpModalOpen, setFtpModalOpen] = useState(false);
+    const [inlineFtpDomain, setInlineFtpDomain] = useState("");
     const [ftpLoading, setFtpLoading] = useState(false);
     const [itegLoading, setItegLoading] = useState(false);
     const [readyLoading, setReadyLoading] = useState(false);
@@ -1597,6 +1723,59 @@ const StudentProfilePage = () => {
         return false;
     }, [raw, effectiveLevelHistory]);
 
+    // Check if Student cleared Level 1C (or completed Level 1)
+    const isLevel1CCleared = useMemo(() => {
+        const history = effectiveLevelHistory || [];
+        const has1CCompleted = history.some(h => 
+            (h.subLevelId?.name || "").toUpperCase().includes("1C") && h.status === "completed"
+        );
+        if (has1CCompleted) return true;
+        const hasLevel1Completed = history.some(h => 
+            (h.levelId?.name || "").toUpperCase().includes("LEVEL 1") && h.status === "completed"
+        );
+        if (hasLevel1Completed) return true;
+        const curSubName = (raw?.currentSubLevelId?.name || "").toUpperCase();
+        const curLevelOrder = raw?.currentLevelId?.order || 0;
+        if (curSubName.includes("2A") || curSubName.includes("2B") || curSubName.includes("2C") || curLevelOrder >= 2) {
+            return true;
+        }
+        return false;
+    }, [raw, effectiveLevelHistory]);
+
+    // Check if Student is currently on Level 2A or 2B
+    const isCurrentLevel2Aor2B = useMemo(() => {
+        const curSubName = (raw?.currentSubLevelId?.name || "").toUpperCase();
+        return curSubName.includes("2A") || curSubName.includes("2B");
+    }, [raw?.currentSubLevelId?.name]);
+
+    // Eligible to choose Domain: Either marked as FTP OR cleared Level 1C & currently on Level 2A / 2B
+    const isDomainOptionEligible = useMemo(() => {
+        if (Boolean(raw?.isFTP)) return true;
+        if (isLevel1CCleared && isCurrentLevel2Aor2B) return true;
+        return false;
+    }, [raw?.isFTP, isLevel1CCleared, isCurrentLevel2Aor2B]);
+
+    const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
+
+    // Auto-sync inlineFtpDomain with currentDomain on load
+    useEffect(() => {
+        if (currentDomain) {
+            setInlineFtpDomain(currentDomain);
+        } else {
+            setInlineFtpDomain("");
+        }
+    }, [currentDomain]);
+
+    // Available domain options formatted for SelectDropdown
+    const cardDomainOptions = useMemo(() => {
+        const domains = getFtpDomainsForStudent(raw);
+        const list = domains.map((d) => ({ value: d, label: d }));
+        if (currentDomain && !domains.includes(currentDomain)) {
+            list.splice(0, 0, { value: currentDomain, label: currentDomain });
+        }
+        return [{ value: "", label: "-- Select Domain --" }, ...list];
+    }, [raw, currentDomain]);
+
     const handleMoveToReadyForPlacement = async () => {
         try {
             await moveToReadyForPlacement(raw._id).unwrap();
@@ -1797,16 +1976,101 @@ const StudentProfilePage = () => {
         }
     };
 
-    const handleFtpToggle = async () => {
+    useEffect(() => {
+        setInlineFtpDomain(currentDomain || "");
+    }, [currentDomain]);
+
+    const handleConfirmFtp = async (selectedDomain) => {
         setFtpLoading(true);
         try {
-            await updateStudent({ id: raw._id, data: { isFTP: !raw.isFTP } }).unwrap();
-            toast.success(raw.isFTP ? "FTP status removed" : "Student shifted to FTP");
-            navigate(0);
+            await updateStudent({
+                id: raw._id,
+                data: {
+                    isFTP: true,
+                    ftpDomain: selectedDomain,
+                    domain: selectedDomain,
+                    track: selectedDomain,
+                    techno: selectedDomain,
+                    technology: selectedDomain,
+                }
+            }).unwrap();
+            toast.success(
+                raw.isFTP
+                    ? `FTP Domain updated to ${selectedDomain}`
+                    : `${name} marked as FTP in ${selectedDomain}`
+            );
+            setFtpModalOpen(false);
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            } else {
+                navigate(0);
+            }
         } catch (err) {
             toast.error(err?.data?.message || "FTP update failed");
         } finally {
             setFtpLoading(false);
+            setMoreOpen(false);
+        }
+    };
+
+    const handleRemoveFtp = async () => {
+        setFtpLoading(true);
+        try {
+            await updateStudent({
+                id: raw._id,
+                data: { isFTP: false, ftpDomain: "" }
+            }).unwrap();
+            toast.success("FTP status removed successfully");
+            setFtpModalOpen(false);
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            } else {
+                navigate(0);
+            }
+        } catch (err) {
+            toast.error(err?.data?.message || "FTP update failed");
+        } finally {
+            setFtpLoading(false);
+            setMoreOpen(false);
+        }
+    };
+
+    const handleSaveInlineFtpDomain = async () => {
+        if (!inlineFtpDomain) {
+            toast.warning("Please select a domain first");
+            return;
+        }
+        setFtpLoading(true);
+        try {
+            await updateStudent({
+                id: raw._id,
+                data: {
+                    ftpDomain: inlineFtpDomain,
+                    domain: inlineFtpDomain,
+                    track: inlineFtpDomain,
+                    techno: inlineFtpDomain,
+                    technology: inlineFtpDomain,
+                }
+            }).unwrap();
+            toast.success(`Domain updated to ${inlineFtpDomain}`);
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            } else {
+                navigate(0);
+            }
+        } catch (err) {
+            toast.error(err?.data?.message || "Failed to update Domain");
+        } finally {
+            setFtpLoading(false);
+        }
+    };
+
+    const handleFtpToggle = async () => {
+        if (!raw.isFTP) {
+            setMoreOpen(false);
+            setFtpModalOpen(true);
+        } else {
+            await handleRemoveFtp();
         }
     };
 
@@ -1936,6 +2200,15 @@ const StudentProfilePage = () => {
             {promoteModal && (
                 <PromoteModal name={name} onConfirm={handlePromote} onCancel={() => setPromoteModal(false)} loading={promoting} />
             )}
+            {ftpModalOpen && (
+                <MarkToFtpModal
+                    isOpen={ftpModalOpen}
+                    onClose={() => setFtpModalOpen(false)}
+                    student={raw}
+                    onConfirm={handleConfirmFtp}
+                    loading={ftpLoading}
+                />
+            )}
             {readyModal && (
                 <ReadyStudentModal name={name} currentStatus={readinessStatus} onConfirm={handleReadiness} onCancel={() => setReadyModal(false)} loading={readyLoading} />
             )}
@@ -2063,8 +2336,9 @@ const StudentProfilePage = () => {
                                         </span>
                                     )}
                                     {raw.isFTP && (
-                                        <span className="text-[10px] sm:text-[11px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">
-                                            FTP
+                                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-2 sm:px-2.5 py-0.5 rounded-full bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border border-orange-200 shrink-0 shadow-2xs">
+                                            <MdTrendingUp size={12} className="text-orange-600" />
+                                            <span>FTP{raw.ftpDomain ? ` • ${raw.ftpDomain}` : ""}</span>
                                         </span>
                                     )}
                                     {raw.withITEG && !isNaturallyITEG(raw.course) && (
@@ -2198,9 +2472,21 @@ const StudentProfilePage = () => {
                                             <button onClick={() => { setMoreOpen(false); setPromoteModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-emerald-600 flex items-center gap-2">
                                                 <MdArrowUpward size={14} /> Promote Student
                                             </button>
-                                            <button onClick={handleFtpToggle} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-orange-600 flex items-center gap-2">
-                                                <MdArrowUpward size={14} /> {raw.isFTP ? "Remove FTP" : "Shift to FTP"}
+                                            <button 
+                                                onClick={() => { setMoreOpen(false); setFtpModalOpen(true); }}
+                                                className="w-full text-left px-4 py-2 hover:bg-slate-50 text-orange-600 flex items-center gap-2 font-medium"
+                                            >
+                                                <MdTrendingUp size={14} /> {raw.isFTP ? "Change FTP Domain" : "Mark to FTP"}
                                             </button>
+                                            {raw.isFTP && (
+                                                <button 
+                                                    onClick={handleRemoveFtp}
+                                                    disabled={ftpLoading}
+                                                    className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2 font-medium disabled:opacity-50"
+                                                >
+                                                    <MdClose size={14} /> Remove from FTP
+                                                </button>
+                                            )}
                                             {!isNaturallyITEG(raw.course) && (
                                                 <button 
                                                     onClick={handleItegToggle} 
@@ -2246,6 +2532,102 @@ const StudentProfilePage = () => {
                     </div>
 
                 </div>
+
+                {/* DEDICATED DOMAIN OPTION CARD (OPENS WHEN STUDENT IS MARKED TO FTP OR CLEARED LEVEL 1C & CURRENTLY ON 2A/2B) */}
+                {isDomainOptionEligible && (
+                    <div className="relative z-20 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 lg:p-6 shadow-xs space-y-3.5 sm:space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                    <MdTrendingUp size={18} />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                                            {raw.isFTP ? "Fast Track Program (FTP) Domain" : "Specialization Domain Selection"}
+                                        </h3>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 shadow-2xs">
+                                            {raw.isFTP ? "FTP ACTIVE" : `CLEARED 1C • CURRENT ${currentSubLevelName}`}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5">
+                                        Department: <strong className="text-slate-800 font-bold">{getDepartmentLabelForStudent(raw)}</strong>
+                                        {!raw.isFTP && (
+                                            <span className="text-orange-600 font-medium ml-1.5">• Eligible for Domain Specialization</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {currentDomain ? (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-50/70 border border-orange-200 px-3 py-1 rounded-xl shadow-2xs">
+                                        <MdCheck size={14} className="text-emerald-600" /> Current: <span className="font-black text-slate-900">{currentDomain}</span>
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl shadow-2xs">
+                                        <MdWarning size={14} className="text-amber-600" /> Domain Pending Selection
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Domain Selection Field */}
+                        <div className="bg-slate-50/60 rounded-2xl p-3.5 sm:p-4 border border-slate-200/70 space-y-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <span>Select Domain:</span>
+                                    <span className="text-orange-600 font-medium">({getDepartmentLabelForStudent(raw)} Specialized Tracks)</span>
+                                </label>
+                                <span className="text-[11px] text-slate-400 font-medium">Choose student domain track from dropdown</span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                                <div className="relative flex-1">
+                                    <SelectDropdown
+                                        value={inlineFtpDomain}
+                                        onChange={(val) => setInlineFtpDomain(val)}
+                                        options={cardDomainOptions}
+                                        placeholder="-- Select Domain --"
+                                        disabled={ftpLoading}
+                                        className="w-full"
+                                        buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3.5 border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-xs sm:text-sm text-gray-800 font-medium transition-all shadow-2xs cursor-pointer focus:outline-none"
+                                        menuClassName="w-full"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveInlineFtpDomain}
+                                    disabled={ftpLoading || !inlineFtpDomain || inlineFtpDomain === currentDomain}
+                                    className="h-11 px-5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                                >
+                                    <MdCheck size={15} /> {ftpLoading ? "Saving..." : (inlineFtpDomain === currentDomain ? "Saved" : "Save Domain")}
+                                </button>
+                                {raw.isFTP ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveFtp}
+                                        disabled={ftpLoading}
+                                        className="h-11 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs transition disabled:opacity-50 shadow-2xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                                        title="Remove student from Fast Track Program"
+                                    >
+                                        <MdClose size={15} /> Remove FTP
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFtpModalOpen(true)}
+                                        disabled={ftpLoading}
+                                        className="h-11 px-3.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 font-bold text-xs transition disabled:opacity-50 shadow-2xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                                        title="Also mark student to Fast Track Program (FTP)"
+                                    >
+                                        <MdTrendingUp size={15} /> Mark to FTP
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* DEDICATED STUDENT INFORMATION CARD */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 lg:p-6 shadow-xs space-y-3.5 sm:space-y-4">

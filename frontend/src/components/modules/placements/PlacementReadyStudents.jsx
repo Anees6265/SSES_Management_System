@@ -15,6 +15,8 @@ import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
+import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 import {
   MdCheckCircle,
   MdWork,
@@ -531,6 +533,59 @@ const PlacementReadyStudents = () => {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const paginatedData = filteredCandidates.slice(startIndex, startIndex + rowsPerPage);
 
+  // Selection state & actions
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState([]);
+
+  useEffect(() => {
+    setSelectedCandidateIds([]);
+  }, [activeTab, readySubFilter, selectedTech, searchTerm]);
+
+  const allCandidateIds = useMemo(() => {
+    return filteredCandidates.map((c) => c.studentId?._id || c._id);
+  }, [filteredCandidates]);
+
+  const isAllCandidatesSelected =
+    allCandidateIds.length > 0 && allCandidateIds.every((id) => selectedCandidateIds.includes(id));
+  const isCandidateIndeterminate =
+    selectedCandidateIds.length > 0 && !isAllCandidatesSelected;
+
+  const handleToggleSelectAllCandidates = () => {
+    if (isAllCandidatesSelected) {
+      setSelectedCandidateIds([]);
+    } else {
+      setSelectedCandidateIds(allCandidateIds);
+    }
+  };
+
+  const handleToggleSelectCandidate = (id) => {
+    setSelectedCandidateIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const getSelectedOrAllCandidates = () => {
+    if (selectedCandidateIds.length === 0) return filteredCandidates;
+    const set = new Set(selectedCandidateIds);
+    return filteredCandidates.filter((c) => set.has(c.studentId?._id || c._id));
+  };
+
+  const handleDownloadExcel = () => {
+    const list = getSelectedOrAllCandidates();
+    if (!list.length) return;
+    exportStudentsToExcel(list, {
+      filename: `Placement_Candidates_${activeTab}_${list.length}.xlsx`,
+    });
+  };
+
+  const handleDownloadPDF = () => {
+    const list = getSelectedOrAllCandidates();
+    if (!list.length) return;
+    exportStudentsToPDF(list, {
+      title: `Placement Candidates Report (${activeTab})`,
+      filename: `Placement_Candidates_${activeTab}_${list.length}.pdf`,
+    });
+  };
+
   const hasActiveFilters = Boolean(searchTerm || selectedTech !== "All" || readySubFilter !== "All");
 
   const resetFilters = () => {
@@ -726,6 +781,15 @@ const PlacementReadyStudents = () => {
                   <MdClose size={15} /> Clear Filters
                 </button>
               )}
+
+              {/* Table Download Dropdown */}
+              <TableDownloadDropdown
+                count={selectedCandidateIds.length}
+                total={filteredCandidates.length}
+                onDownloadExcel={handleDownloadExcel}
+                onDownloadPDF={handleDownloadPDF}
+                size="md"
+              />
             </div>
           </div>
         </div>
@@ -774,6 +838,14 @@ const PlacementReadyStudents = () => {
                       {/* Top: Avatar, Name, Stage */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center pr-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedCandidateIds.includes(sId)}
+                              onChange={() => handleToggleSelectCandidate(sId)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            />
+                          </div>
                           <Avatar firstName={candidate.firstName} lastName={candidate.lastName} imageUrl={candidate.image} size="sm" />
                           <div className="min-w-0">
                             <h4 className="font-extrabold text-xs text-slate-900 truncate">
@@ -907,6 +979,22 @@ const PlacementReadyStudents = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      <th className="py-4 px-3 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isAllCandidatesSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = isCandidateIndeterminate;
+                          }}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelectAllCandidates();
+                          }}
+                          className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                          title={isAllCandidatesSelected ? "Deselect All" : "Select All"}
+                        />
+                      </th>
+                      <th className="py-4 px-3 w-16 text-center">S.NO.</th>
                       <th className="py-4 px-5">CANDIDATE PROFILE</th>
                       <th className="py-4 px-4">TRACK / TECHNOLOGY</th>
                       <th className="py-4 px-4 text-center">STAGE</th>
@@ -916,8 +1004,10 @@ const PlacementReadyStudents = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                    {paginatedData.map((candidate) => {
+                    {paginatedData.map((candidate, idx) => {
                       const sId = candidate.studentId?._id || candidate._id;
+                      const isChecked = selectedCandidateIds.includes(sId);
+                      const serialNo = startIndex + idx + 1;
                       const resumeURL =
                         candidate.resumeURL ||
                         candidate.studentId?.documents?.find((d) =>
@@ -937,6 +1027,19 @@ const PlacementReadyStudents = () => {
                           onClick={() => setQuickViewCandidate(candidate)}
                           className="hover:bg-slate-50/70 transition cursor-pointer group"
                         >
+                          {/* Checkbox */}
+                          <td className="py-4 px-3 w-12 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSelectCandidate(sId)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            />
+                          </td>
+                          {/* S.No. */}
+                          <td className="py-4 px-3 w-16 text-center font-semibold text-slate-500">
+                            {serialNo}
+                          </td>
                           {/* Profile */}
                           <td className="py-4 px-5">
                             <div className="flex items-center gap-3">

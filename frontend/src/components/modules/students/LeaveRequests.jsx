@@ -22,6 +22,8 @@ import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 
 const FILTERS = [
   { label: "All", value: "all" },
@@ -529,25 +531,43 @@ const LeaveRequests = () => {
             })}
           </div>
 
-          {/* Search Box */}
-          <div className="relative flex-1 max-w-full sm:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search students..."
-              className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/70 pl-9 pr-9 text-xs sm:text-sm font-medium text-gray-800 outline-none transition-all duration-200 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10"
+          {/* Search Box and Download */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search students..."
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/70 pl-9 pr-9 text-xs sm:text-sm font-medium text-gray-800 outline-none transition-all duration-200 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <TableDownloadDropdown
+              total={filteredRequests.length}
+              onDownloadExcel={() =>
+                exportGenericToExcel(filteredRequests, columns, {
+                  filename: `Leave_Requests_${new Date().toISOString().slice(0, 10)}.xlsx`,
+                })
+              }
+              onDownloadPDF={() =>
+                exportGenericToPDF(filteredRequests, columns, {
+                  title: "Leave Requests Report",
+                  filename: `Leave_Requests_${new Date().toISOString().slice(0, 10)}.pdf`,
+                })
+              }
+              size="md"
             />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
-                title="Clear search"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
         </div>
 
@@ -561,6 +581,7 @@ const LeaveRequests = () => {
             pagination
             rowsPerPage={10}
             minRows={10}
+            exportTitle="Leave_Requests"
             className="flex-1 flex flex-col h-full"
             wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
             emptyMessage={

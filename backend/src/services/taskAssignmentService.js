@@ -64,11 +64,18 @@ const toTaskEntryMap = async (syllabusVersionId) => {
 
 const getSyllabusVersionForStudent = async (student, syllabusVersionId) => {
   if (syllabusVersionId) {
-    const version = await SyllabusVersion.findOne({
+    let version = await SyllabusVersion.findOne({
       _id: syllabusVersionId,
       isActive: true,
-      sessionId: student.sessionId
+      ...(student.isUIUX ? {} : { sessionId: student.sessionId })
     });
+
+    if (!version) {
+      version = await SyllabusVersion.findOne({
+        _id: syllabusVersionId,
+        isActive: true
+      });
+    }
 
     if (!version) {
       throw new Error("Syllabus version not found");
@@ -88,13 +95,22 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId) => {
     }
   }
 
-  const activeVersion = await SyllabusVersion.findOne({
-    sessionId: student.sessionId,
+  let activeVersion = await SyllabusVersion.findOne({
+    ...(student.isUIUX ? {} : { sessionId: student.sessionId }),
     levelId: student.currentLevelId,
     subLevelId: student.currentSubLevelId,
     status: "active",
     isActive: true
   }).sort({ createdAt: -1 });
+
+  if (!activeVersion) {
+    activeVersion = await SyllabusVersion.findOne({
+      levelId: student.currentLevelId,
+      subLevelId: student.currentSubLevelId,
+      status: "active",
+      isActive: true
+    }).sort({ createdAt: -1 });
+  }
 
   if (!activeVersion) {
     throw new Error("No active syllabus found for this student");
@@ -103,8 +119,14 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId) => {
   return activeVersion;
 };
 
-const validateStudentVersionMatch = (student, syllabusVersion) => {
-  if (student.sessionId.toString() !== syllabusVersion.sessionId.toString()) {
+const validateStudentVersionMatch = (student, syllabusVersion, options = {}) => {
+  if (
+    !options.allowSessionMismatch &&
+    !student.isUIUX &&
+    student.sessionId &&
+    syllabusVersion.sessionId &&
+    student.sessionId.toString() !== syllabusVersion.sessionId.toString()
+  ) {
     throw new Error("Student session does not match the syllabus version session");
   }
 
@@ -161,7 +183,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   }
 
   const syllabusVersion = options.syllabusVersion || await getSyllabusVersionForStudent(student, syllabusVersionId);
-  validateStudentVersionMatch(student, syllabusVersion);
+  validateStudentVersionMatch(student, syllabusVersion, options);
   const taskEntries = options.taskEntries || await buildTaskEntries(syllabusVersion._id);
 
   if (taskEntries.length === 0) {
@@ -747,7 +769,8 @@ const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null)
         assignTasksToStudent(student._id, effectiveVersionId, {
           student,
           syllabusVersion,
-          taskEntries
+          taskEntries,
+          allowSessionMismatch: true
         })
       )
     );
@@ -825,7 +848,10 @@ const syncTaskToStudents = async (task) => {
     status: { $in: ["Active", "active"] }
   };
   if (taskDoc.sessionId) {
-    studentQuery.sessionId = taskDoc.sessionId;
+    studentQuery.$or = [
+      { sessionId: taskDoc.sessionId },
+      { isUIUX: true }
+    ];
   }
   if (taskDoc.levelId) {
     studentQuery.currentLevelId = taskDoc.levelId;

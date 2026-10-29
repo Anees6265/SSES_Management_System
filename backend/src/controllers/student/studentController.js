@@ -1187,22 +1187,108 @@ exports.updateStudent = async (req, res) => {
       updateData.fullName = `${updateData.firstName} ${updateData.lastName}`.trim();
     }
 
+    let shouldAutoAssignUIUXTasks = false;
+    let targetUIUXSyllabusId = null;
+    let targetUIUXSubLevelId = null;
+    let shouldReassignOriginalTasks = false;
+
     if (updateData.isUIUX === true) {
       try {
         const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i });
         if (uiuxSubDept) {
           const uiuxLevel1 = await Level.findOne({ subDepartmentId: uiuxSubDept._id, order: 1 });
           if (uiuxLevel1) {
-            const uiuxSubLevel1A = await SubLevel.findOne({ levelId: uiuxLevel1._id, name: "1A" });
+            const uiuxSubLevel1A = await SubLevel.findOne({
+              levelId: uiuxLevel1._id,
+              name: { $regex: /^1A$/i }
+            }) || await SubLevel.findOne({
+              levelId: uiuxLevel1._id,
+              name: /1A/i
+            });
+
             if (uiuxSubLevel1A) {
-              if (String(existingStudent.subDepartmentId) === String(uiuxSubDept._id) || !existingStudent.currentSubLevelId) {
-                updateData.currentLevelId = uiuxLevel1._id;
-                updateData.currentSubLevelId = uiuxSubLevel1A._id;
+              // 1. Preserve original level & sublevel before moving to UI/UX (only if not already marked)
+              if (!existingStudent.isUIUX) {
+                updateData.uiuxPreviousLevelId = existingStudent.currentLevelId;
+                updateData.uiuxPreviousSubLevelId = existingStudent.currentSubLevelId;
+                updateData.uiuxPreviousSyllabusVersionId = existingStudent.syllabusVersionId;
               }
+
+              // 2. Set student level to UI/UX Level 1 and SubLevel 1A
+              updateData.currentLevelId = uiuxLevel1._id;
+              updateData.currentSubLevelId = uiuxSubLevel1A._id;
+
+              // 3. Remove all previously assigned tasks & snapshots
+              await StudentTask.deleteMany({ studentId: existingStudent._id });
+              await StudentProgressSnapshot.deleteMany({ studentId: existingStudent._id });
+
+              // 4. Find active SyllabusVersion for UI/UX SubLevel 1A
+              let uiuxSyllabus = await SyllabusVersion.findOne({
+                subLevelId: uiuxSubLevel1A._id,
+                sessionId: existingStudent.sessionId,
+                status: "active",
+                isActive: true
+              }).sort({ versionNumber: -1, createdAt: -1 });
+
+              if (!uiuxSyllabus) {
+                uiuxSyllabus = await SyllabusVersion.findOne({
+                  subLevelId: uiuxSubLevel1A._id,
+                  status: "active",
+                  isActive: true
+                }).sort({ versionNumber: -1, createdAt: -1 });
+              }
+
+              if (!uiuxSyllabus) {
+                uiuxSyllabus = await SyllabusVersion.findOne({
+                  subLevelId: uiuxSubLevel1A._id,
+                  isActive: true
+                }).sort({ versionNumber: -1, createdAt: -1 });
+              }
+
+              if (uiuxSyllabus) {
+                updateData.syllabusVersionId = uiuxSyllabus._id;
+                shouldAutoAssignUIUXTasks = true;
+                targetUIUXSyllabusId = uiuxSyllabus._id;
+              } else {
+                updateData.syllabusVersionId = null;
+              }
+
+              targetUIUXSubLevelId = uiuxSubLevel1A._id;
             }
           }
         }
-      } catch (_) {}
+      } catch (uiuxErr) {
+        console.error("Error setting UI/UX mapping in updateStudent:", uiuxErr);
+      }
+    } else if (updateData.isUIUX === false && existingStudent.isUIUX === true) {
+      try {
+        const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i });
+        if (uiuxSubDept) {
+          const uiuxLevel1 = await Level.findOne({ subDepartmentId: uiuxSubDept._id, order: 1 });
+          if (uiuxLevel1) {
+            const uiuxSubLevel1A = await SubLevel.findOne({ levelId: uiuxLevel1._id, name: /1A/i });
+            if (uiuxSubLevel1A) {
+              await StudentTask.deleteMany({
+                studentId: existingStudent._id,
+                subLevelId: uiuxSubLevel1A._id
+              });
+            }
+          }
+        }
+
+        if (existingStudent.uiuxPreviousLevelId && existingStudent.uiuxPreviousSubLevelId) {
+          updateData.currentLevelId = existingStudent.uiuxPreviousLevelId;
+          updateData.currentSubLevelId = existingStudent.uiuxPreviousSubLevelId;
+          updateData.syllabusVersionId = existingStudent.uiuxPreviousSyllabusVersionId || null;
+          shouldReassignOriginalTasks = Boolean(updateData.syllabusVersionId);
+        }
+
+        updateData.uiuxPreviousLevelId = null;
+        updateData.uiuxPreviousSubLevelId = null;
+        updateData.uiuxPreviousSyllabusVersionId = null;
+      } catch (uiuxRevertErr) {
+        console.error("Error reverting UI/UX mapping:", uiuxRevertErr);
+      }
     }
 
     if (updateData.studentMobile !== undefined) {
@@ -1296,6 +1382,85 @@ exports.updateStudent = async (req, res) => {
     }
 
     const student = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
+
+    // Auto-assign UI/UX syllabus tasks if marked to UI/UX
+    if (shouldAutoAssignUIUXTasks && targetUIUXSyllabusId) {
+      try {
+        await assignTasksToStudent(student._id, targetUIUXSyllabusId, {
+          student,
+          allowSessionMismatch: true
+        });
+      } catch (assignErr) {
+        console.error("Error auto-assigning UI/UX syllabus tasks to student:", assignErr.message);
+      }
+    }
+
+    // Auto-assign any standalone Task entries for UI/UX SubLevel 1A
+    if (targetUIUXSubLevelId) {
+      try {
+        const Task = require("../../models/syllabus/Task");
+        const directTasks = await Task.find({
+          subLevelId: targetUIUXSubLevelId,
+          isActive: true
+        }).lean();
+
+        if (directTasks.length > 0) {
+          const existingTasks = await StudentTask.find({
+            studentId: student._id,
+            subLevelId: targetUIUXSubLevelId
+          }).select("taskId");
+          const existingIds = new Set(existingTasks.map(t => String(t.taskId)));
+
+          const missingTasks = directTasks.filter(t => !existingIds.has(String(t._id)));
+          if (missingTasks.length > 0) {
+            const docs = missingTasks.map(t => ({
+              studentId: student._id,
+              sessionId: student.sessionId || t.sessionId,
+              levelId: student.currentLevelId || t.levelId,
+              subLevelId: targetUIUXSubLevelId,
+              syllabusVersionId: t.syllabusVersionId || student.syllabusVersionId || null,
+              taskId: t._id,
+              subjectId: t.subjectId || null,
+              topicId: t.topicId || null,
+              subTopicId: t.subTopicId || null,
+              subjectName: t.subjectName || "UI/UX",
+              topicName: t.topicName || "General",
+              subTopicName: t.subTopicName || null,
+              taskNodeType: t.taskNodeType || "general",
+              isGeneralTask: t.taskNodeType === "general",
+              title: t.title,
+              description: t.description || "",
+              type: t.type || "assignment",
+              priority: t.priority || "medium",
+              mandatory: t.mandatory !== false,
+              maxMarks: typeof t.maxMarks === "number" ? t.maxMarks : 5,
+              timeDays: t.timeDays || 5,
+              measurablePoints: t.measurablePoints || "",
+              status: "pending",
+              isActive: true,
+              assignedType: "auto",
+              assignedAt: new Date()
+            }));
+            await StudentTask.insertMany(docs);
+          }
+        }
+      } catch (taskSyncErr) {
+        console.error("Error syncing direct UI/UX tasks to student:", taskSyncErr.message);
+      }
+    }
+
+    // If reverting from UI/UX and student has their previous syllabus, restore tasks
+    if (shouldReassignOriginalTasks && updateData.syllabusVersionId) {
+      try {
+        await assignTasksToStudent(student._id, updateData.syllabusVersionId, {
+          student,
+          allowSessionMismatch: true
+        });
+      } catch (reassignErr) {
+        console.error("Error reassigning original tasks upon reverting UI/UX:", reassignErr.message);
+      }
+    }
+
     return res.status(200).json({ message: "Student updated successfully", data: student });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

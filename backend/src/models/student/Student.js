@@ -158,6 +158,21 @@ const studentSchema = new mongoose.Schema({
   ftpDomain: { type: String, default: "", trim: true },
   withITEG: { type: Boolean, default: false },
   isUIUX: { type: Boolean, default: false },
+  uiuxPreviousLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Level",
+    default: null
+  },
+  uiuxPreviousSubLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubLevel",
+    default: null
+  },
+  uiuxPreviousSyllabusVersionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SyllabusVersion",
+    default: null
+  },
 
   // 🔒 Promotion Lock (prevents race condition on concurrent task updates)
   promotionPending: { type: Boolean, default: false },

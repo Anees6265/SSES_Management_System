@@ -70,6 +70,31 @@ const StudentDetailTable = () => {
   const { data: allSubLevelsRes = {} } = useGetAllSubLevelsQuery();
   const allSubLevels = allSubLevelsRes.data || [];
 
+  const currentSubDept = useMemo(() => {
+    if (!subDepartmentId) return null;
+    return subDepts.find((sd) => String(sd._id) === String(subDepartmentId)) || null;
+  }, [subDepts, subDepartmentId]);
+
+  const isUiUxPage = useMemo(() => {
+    if (currentSubDept?.name) {
+      const upper = currentSubDept.name.toUpperCase();
+      return upper.includes("UI/UX") || upper.includes("UIUX");
+    }
+    if (subDepartmentId === "6aafcf7e46338295b1e23aef") return true;
+    const directStudent = students.find((s) => {
+      const sSubId = s.subDepartmentId?._id || s.subDepartmentId;
+      return sSubId && String(sSubId) === String(subDepartmentId);
+    });
+    const subName = directStudent?.subDepartmentId?.name || "";
+    if (subName) {
+      const upper = subName.toUpperCase();
+      return upper.includes("UI/UX") || upper.includes("UIUX");
+    }
+    return false;
+  }, [currentSubDept, subDepartmentId, students]);
+
+  const deptName = currentSubDept?.name || (isUiUxPage ? "UI/UX" : students[0]?.subDepartmentId?.name) || "Tech";
+
   // Determine which levels belong to the current subdepartment(s)
   const allowedLevelIds = useMemo(() => {
     let targetSubDeptIds = [];
@@ -94,8 +119,22 @@ const StudentDetailTable = () => {
     const names = departmentSubLevels.map(sl => sl.name);
     // Natural sort: e.g., 1A -> 1B -> 1C -> 2A
     names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    if (isUiUxPage) {
+      // In UI/UX sub-department: No "Others" tab!
+      // Ensure "1A" is present so marked students show under 1A by default
+      const uiuxLevelNames = new Set(names);
+      uiuxLevelNames.add("1A");
+      const sortedUiuxLevels = Array.from(uiuxLevelNames).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      return ["All", ...sortedUiuxLevels, "FTP Students"];
+    }
+
+    // In student's home department (TECH, Management, Science, etc.):
+    // Include "Others" tab where marked UI/UX students appear!
     return ["All", ...new Set(names), "Others", "FTP Students"];
-  }, [departmentSubLevels]);
+  }, [departmentSubLevels, isUiUxPage]);
 
   const availableDomains = useMemo(() => {
     const set = new Set();
@@ -110,14 +149,29 @@ const StudentDetailTable = () => {
   const filteredData = useMemo(() => {
     const rawSearch = String(searchTerm || "").trim().toLowerCase();
     return students.filter((s) => {
-      const matchTab =
-        activeTab === "All"
-          ? true
-          : activeTab === "FTP Students"
-          ? Boolean(s.isFTP)
-          : activeTab === "Others"
-          ? Boolean(s.isUIUX)
-          : s.currentSubLevelId?.name === activeTab && !s.isUIUX;
+      let matchTab = false;
+      if (activeTab === "All") {
+        matchTab = true;
+      } else if (activeTab === "FTP Students") {
+        matchTab = Boolean(s.isFTP);
+      } else if (isUiUxPage) {
+        // In UI/UX sub-department:
+        // Marked UI/UX students should show in 1A level tab by default!
+        if (activeTab === "1A") {
+          matchTab = Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A";
+        } else {
+          matchTab = s.currentSubLevelId?.name === activeTab;
+        }
+      } else {
+        // In home department:
+        // Marked UI/UX students appear only in "Others" tab, excluded from 1A/2A/etc.
+        if (activeTab === "Others") {
+          matchTab = Boolean(s.isUIUX);
+        } else {
+          matchTab = s.currentSubLevelId?.name === activeTab && !s.isUIUX;
+        }
+      }
+
       const matchDomain =
         activeTab !== "FTP Students" ||
         selectedDomain === "All" ||
@@ -142,13 +196,20 @@ const StudentDetailTable = () => {
         s.district?.toLowerCase().includes(searchLower);
       return matchTab && matchDomain && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
-  }, [students, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
+  }, [students, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm, isUiUxPage]);
 
   // Reset mobile page & selection whenever filters/tabs change
   useEffect(() => {
     setMobilePage(1);
     setSelectedIds([]);
   }, [searchTerm, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
+
+  // Ensure active tab is valid for current department tabs
+  useEffect(() => {
+    if (!subLevelTabs.includes(activeTab)) {
+      setActiveTab("All");
+    }
+  }, [subLevelTabs, activeTab]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -196,9 +257,6 @@ const StudentDetailTable = () => {
     const set = new Set(selectedIds);
     return filteredData.filter((s) => set.has(s._id));
   }, [selectedIds, filteredData]);
-
-  const currentSubDept = subDepts.find((sd) => sd._id === subDepartmentId);
-  const deptName = currentSubDept?.name || students[0]?.subDepartmentId?.name || "Tech";
 
   const handleDownloadExcel = (targetStudents = selectedStudentsList) => {
     const toExport = targetStudents && targetStudents.length > 0 ? targetStudents : filteredData;
@@ -350,10 +408,12 @@ const StudentDetailTable = () => {
       key: "level",
       label: "Year & Level",
       align: "center",
-      accessorFn: (row) => `${row.year || "1st Year"} / ${row.currentSubLevelId?.name || row.currentLevelId?.name || "—"}`,
+      accessorFn: (row) => `${row.year || "1st Year"} / ${isUiUxPage && row.isUIUX ? "1A" : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—")}`,
       render: (row) => {
         const year = row.year || "1st Year";
-        const level = row.currentSubLevelId?.name || row.currentLevelId?.name || "—";
+        const level = isUiUxPage && row.isUIUX
+          ? "1A"
+          : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—");
         return (
           <span className="inline-flex items-center text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
             {year} / {level}
@@ -391,14 +451,24 @@ const StudentDetailTable = () => {
       {/* SubLevel Tabs */}
       <div className="bg-white border-b px-3 sm:px-6 flex gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth [-webkit-overflow-scrolling:touch]">
         {subLevelTabs.map((tab) => {
-          const tabCount =
-            tab === "All"
-              ? students.length
-              : tab === "FTP Students"
-              ? students.filter((s) => Boolean(s.isFTP)).length
-              : tab === "Others"
-              ? students.filter((s) => Boolean(s.isUIUX)).length
-              : students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX).length;
+          let tabCount = 0;
+          if (tab === "All") {
+            tabCount = students.length;
+          } else if (tab === "FTP Students") {
+            tabCount = students.filter((s) => Boolean(s.isFTP)).length;
+          } else if (isUiUxPage) {
+            if (tab === "1A") {
+              tabCount = students.filter((s) => Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A").length;
+            } else {
+              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab).length;
+            }
+          } else {
+            if (tab === "Others") {
+              tabCount = students.filter((s) => Boolean(s.isUIUX)).length;
+            } else {
+              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX).length;
+            }
+          }
 
           return (
             <button
@@ -766,7 +836,7 @@ const StudentDetailTable = () => {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-gray-400 font-medium">Year & Level:</span>
                       <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
-                        {(row.year || "1st Year")} / {(row.currentSubLevelId?.name || row.currentLevelId?.name || "—")}
+                        {(row.year || "1st Year")} / {(isUiUxPage && row.isUIUX ? "1A" : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—"))}
                       </span>
                     </div>
 

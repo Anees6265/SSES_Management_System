@@ -9,7 +9,8 @@ import {
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
-    MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList, MdExpandMore
+    MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList, MdExpandMore,
+    MdDesignServices
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -2093,6 +2094,27 @@ const StudentProfilePage = () => {
         }
     };
 
+    const [uiuxLoading, setUiuxLoading] = useState(false);
+
+    const handleUiuxToggle = async () => {
+        setUiuxLoading(true);
+        try {
+            const nextStatus = !raw.isUIUX;
+            await updateStudent({ id: raw._id, data: { isUIUX: nextStatus } }).unwrap();
+            toast.success(nextStatus ? "Student marked as UIUX student successfully" : "Student removed from UIUX student");
+            if (refetchStudentFull) {
+                refetchStudentFull();
+            } else {
+                navigate(0);
+            }
+        } catch (err) {
+            toast.error(err?.data?.message || "UIUX status update failed");
+        } finally {
+            setUiuxLoading(false);
+            setMoreOpen(false);
+        }
+    };
+
     const handleReadiness = async (status) => {
         setReadyLoading(true);
         try {
@@ -2364,6 +2386,11 @@ const StudentProfilePage = () => {
                                             Technology: {trackName}
                                         </span>
                                     )}
+                                    {raw.isUIUX && (
+                                        <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md border border-purple-200 text-[11px] font-bold inline-flex items-center gap-1">
+                                            <MdDesignServices size={12} /> UI/UX Student
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Placement Badge / Dummy Status */}
@@ -2496,6 +2523,13 @@ const StudentProfilePage = () => {
                                                     <MdSchool size={14} /> {raw.withITEG ? "Remove ITEG Program" : "Enroll with ITEG Program"}
                                                 </button>
                                             )}
+                                            <button 
+                                                onClick={handleUiuxToggle} 
+                                                disabled={uiuxLoading}
+                                                className="w-full text-left px-4 py-2 hover:bg-purple-50 text-purple-600 flex items-center gap-2 font-medium disabled:opacity-50"
+                                            >
+                                                <MdDesignServices size={14} /> {raw.isUIUX ? "Remove from UIUX Student" : "Mark to UIUX student"}
+                                            </button>
                                             {isEligibleForPlacement && !isDummy && (
                                                 <button onClick={() => { setMoreOpen(false); setReadyModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
                                                     <MdCheckCircle size={14} /> Shift Placement Status

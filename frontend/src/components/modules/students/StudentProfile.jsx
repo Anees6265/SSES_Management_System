@@ -9,7 +9,8 @@ import {
   useGetReportCardQuery,
   useSetStudentPasswordMutation,
   useGetStudentLevelHistoryQuery,
-  useShiftToUIUXMutation
+  useShiftToUIUXMutation,
+  useUpdateStudentByIdMutation
 } from "../../../redux/api/authApi";
 import { taskAPI } from '../../../services/taskService';
 import { API_BASE_URL } from '../../../config/apiConfig';
@@ -33,7 +34,7 @@ import download from "../../../assets/icons/download-icon.png";
 import studentProfileBg from "../../../assets/images/Student_profile_2nd_bg.jpg";
 import Header from '../../shared/sidebar/Header';
 import { IoCamera } from "react-icons/io5";
-import { MdLock, MdCheck, MdEmail, MdTune } from "react-icons/md";
+import { MdLock, MdCheck, MdEmail, MdTune, MdDesignServices } from "react-icons/md";
 import { FaExchangeAlt } from "react-icons/fa";
 import { FiChevronDown } from "react-icons/fi";
 
@@ -141,6 +142,20 @@ export default function StudentProfile() {
   }, [isActionsOpen]);
 
   const [shiftToUIUX, { isLoading: isShiftingToUIUX }] = useShiftToUIUXMutation();
+  const [updateStudent, { isLoading: isUpdatingStudent }] = useUpdateStudentByIdMutation();
+
+  const handleToggleMarkUIUX = async () => {
+    try {
+      const nextStatus = !studentData?.isUIUX;
+      await updateStudent({ id, data: { isUIUX: nextStatus } }).unwrap();
+      toast.success(nextStatus ? "Marked as UIUX student successfully" : "Removed from UIUX student");
+      setActionsOpen(false);
+      if (refetch) refetch();
+    } catch (err) {
+      console.error("Failed to update UI/UX status:", err);
+      toast.error(err?.data?.message || err?.message || "Failed to update UIUX status");
+    }
+  };
 
   const isAlreadyUIUX = useMemo(() => {
     const subDeptName = String(studentData?.subDepartmentId?.name || "").trim().toLowerCase();
@@ -496,6 +511,22 @@ export default function StudentProfile() {
                       </button>
                     )}
 
+                    {/* Mark to UI/UX Student Toggle */}
+                    <button
+                      type="button"
+                      disabled={isDummy || isUpdatingStudent}
+                      onClick={handleToggleMarkUIUX}
+                      className="w-full px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-left text-purple-700 hover:bg-purple-50 active:bg-purple-100 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <MdDesignServices size={15} className="text-purple-600 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="font-bold">{studentData?.isUIUX ? "Remove from UIUX Student" : "Mark to UIUX student"}</span>
+                        <span className="text-[10px] font-normal text-gray-500">
+                          {studentData?.isUIUX ? "Remove UI/UX student mark" : "Show in UI/UX & home dept (Others tab)"}
+                        </span>
+                      </div>
+                    </button>
+
                     <div className="my-1 border-t border-gray-100"></div>
 
                     {/* Update Email */}
@@ -610,6 +641,11 @@ export default function StudentProfile() {
                     {studentData.enrollmentNo && (
                       <span className="bg-white/20 text-white font-mono text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full backdrop-blur-xs font-semibold">
                         Enr: {studentData.enrollmentNo}
+                      </span>
+                    )}
+                    {studentData.isUIUX && (
+                      <span className="bg-purple-500/30 border border-purple-400/50 text-purple-200 text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold inline-flex items-center gap-1 backdrop-blur-xs">
+                        <MdDesignServices size={12} /> UI/UX Student
                       </span>
                     )}
                   </div>

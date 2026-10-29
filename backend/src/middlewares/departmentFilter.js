@@ -37,6 +37,17 @@ const invalidateDeptCache = (departmentId) => {
  * Sets req.subDeptFilter = { subDepartmentId: { $in: [...] } } OR null
  * Sets req.allowedSubDeptIds = ObjectId[] OR null
  */
+const isUiUxSubDepartment = async (subDeptId) => {
+  if (!subDeptId) return false;
+  try {
+    const sd = await SubDepartment.findById(subDeptId).lean();
+    const name = String(sd?.name || "").toUpperCase();
+    return name.includes("UI/UX") || name.includes("UIUX");
+  } catch (e) {
+    return false;
+  }
+};
+
 const isItegSubDepartment = async (subDeptId) => {
   if (!subDeptId) return false;
   try {
@@ -67,10 +78,15 @@ const departmentFilter = async (req, res, next) => {
 
       if (subDepartmentId) {
         req.allowedSubDeptIds = [subDepartmentId];
+        const isUiUx = await isUiUxSubDepartment(subDepartmentId);
         const isIteg = await isItegSubDepartment(subDepartmentId);
-        req.subDeptFilter = isIteg 
-          ? { $or: [{ subDepartmentId }, { withITEG: true }] }
-          : { subDepartmentId };
+        if (isUiUx) {
+          req.subDeptFilter = { $or: [{ subDepartmentId }, { isUIUX: true }] };
+        } else if (isIteg) {
+          req.subDeptFilter = { $or: [{ subDepartmentId }, { withITEG: true }] };
+        } else {
+          req.subDeptFilter = { subDepartmentId };
+        }
       } else if (departmentId) {
         const subDepts = await SubDepartment.find({ departmentId, isActive: true }).select("_id");
         const ids = subDepts.map((s) => s._id);
@@ -141,9 +157,14 @@ const departmentFilter = async (req, res, next) => {
       if (!isAllowed) {
         return res.status(403).json({ message: "Access denied for this sub-department." });
       }
-      req.subDeptFilter = isIteg
-        ? { $or: [{ subDepartmentId: req.query.subDepartmentId }, { withITEG: true }] }
-        : { subDepartmentId: req.query.subDepartmentId };
+      const isUiUx = await isUiUxSubDepartment(req.query.subDepartmentId);
+      if (isUiUx) {
+        req.subDeptFilter = { $or: [{ subDepartmentId: req.query.subDepartmentId }, { isUIUX: true }] };
+      } else if (isIteg) {
+        req.subDeptFilter = { $or: [{ subDepartmentId: req.query.subDepartmentId }, { withITEG: true }] };
+      } else {
+        req.subDeptFilter = { subDepartmentId: req.query.subDepartmentId };
+      }
     } else {
       req.subDeptFilter = isIteg
         ? (ids.length ? { $or: [{ subDepartmentId: { $in: ids } }, { withITEG: true }] } : { withITEG: true })

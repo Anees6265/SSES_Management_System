@@ -45,6 +45,7 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
       "Year": safeStr(s.year, "1st Year"),
       "Level": safeStr(levelName),
       "Status": safeStr(s.status, "Active"),
+      "UI/UX Student": s.isUIUX ? "Yes" : "No",
       "FTP Student": s.isFTP ? "Yes" : "No",
       "Domain": safeStr(domain),
       "Session": safeStr(s.sessionId?.name),

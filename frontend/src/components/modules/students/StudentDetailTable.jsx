@@ -94,7 +94,7 @@ const StudentDetailTable = () => {
     const names = departmentSubLevels.map(sl => sl.name);
     // Natural sort: e.g., 1A -> 1B -> 1C -> 2A
     names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-    return ["All", ...new Set(names), "FTP Students"];
+    return ["All", ...new Set(names), "Others", "FTP Students"];
   }, [departmentSubLevels]);
 
   const availableDomains = useMemo(() => {
@@ -115,7 +115,9 @@ const StudentDetailTable = () => {
           ? true
           : activeTab === "FTP Students"
           ? Boolean(s.isFTP)
-          : s.currentSubLevelId?.name === activeTab;
+          : activeTab === "Others"
+          ? Boolean(s.isUIUX)
+          : s.currentSubLevelId?.name === activeTab && !s.isUIUX;
       const matchDomain =
         activeTab !== "FTP Students" ||
         selectedDomain === "All" ||
@@ -299,6 +301,11 @@ const StudentDetailTable = () => {
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
+              {row.isUIUX && (
+                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-purple-100 text-purple-700 border border-purple-200 shadow-2xs">
+                  UI/UX
+                </span>
+              )}
               {row.isFTP && (
                 <span className="px-1.5 py-0.5 rounded text-[9.5px] font-extrabold bg-orange-100 text-orange-700 border border-orange-200 shadow-2xs">
                   FTP{row.ftpDomain ? ` • ${row.ftpDomain}` : ""}
@@ -389,7 +396,9 @@ const StudentDetailTable = () => {
               ? students.length
               : tab === "FTP Students"
               ? students.filter((s) => Boolean(s.isFTP)).length
-              : students.filter((s) => s.currentSubLevelId?.name === tab).length;
+              : tab === "Others"
+              ? students.filter((s) => Boolean(s.isUIUX)).length
+              : students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX).length;
 
           return (
             <button
@@ -600,7 +609,15 @@ const StudentDetailTable = () => {
             columns={columns}
             pagination
             rowsPerPage={10}
-            emptyMessage={activeTab === "All" ? "No data found" : activeTab === "FTP Students" ? "No FTP students found" : `No students in the sub level ${activeTab}`}
+            emptyMessage={
+              activeTab === "All"
+                ? "No data found"
+                : activeTab === "FTP Students"
+                ? "No FTP students found"
+                : activeTab === "Others"
+                ? "No students in Others tab"
+                : `No students in the sub level ${activeTab}`
+            }
             filtersConfig={[
               {
                 title: "Status",
@@ -683,6 +700,8 @@ const StudentDetailTable = () => {
                   ? "No Students Found"
                   : activeTab === "FTP Students"
                   ? "No FTP Students Found"
+                  : activeTab === "Others"
+                  ? "No Students in Others"
                   : `No Students in Sub-Level ${activeTab}`
               }
               subtitle={
@@ -690,6 +709,8 @@ const StudentDetailTable = () => {
                   ? `No students matched "${searchTerm}". Try checking your spelling or reset filters.`
                   : activeTab === "FTP Students"
                   ? "No students have been marked as FTP yet in this department."
+                  : activeTab === "Others"
+                  ? "No students have been marked as UI/UX yet."
                   : "Try adjusting your search terms, session, or status filters to view records."
               }
               actionText={hasActiveFilters ? "Reset All Filters" : undefined}
@@ -722,6 +743,11 @@ const StudentDetailTable = () => {
                           <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">
                             {toTitle(`${row.firstName} ${row.lastName}`)}
                           </h4>
+                          {row.isUIUX && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                              UI/UX
+                            </span>
+                          )}
                           {row.isFTP && (
                             <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                               FTP{row.ftpDomain ? ` • ${row.ftpDomain}` : ""}

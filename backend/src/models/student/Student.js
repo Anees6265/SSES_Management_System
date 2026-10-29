@@ -157,6 +157,7 @@ const studentSchema = new mongoose.Schema({
   isFTP: { type: Boolean, default: false },
   ftpDomain: { type: String, default: "", trim: true },
   withITEG: { type: Boolean, default: false },
+  isUIUX: { type: Boolean, default: false },
 
   // 🔒 Promotion Lock (prevents race condition on concurrent task updates)
   promotionPending: { type: Boolean, default: false },
@@ -190,6 +191,7 @@ studentSchema.index({ currentSubLevelId: 1, syllabusVersionId: 1 });
 studentSchema.index({ status: 1 });
 studentSchema.index({ "permissionDetails.status": 1 });
 studentSchema.index({ withITEG: 1 });
+studentSchema.index({ isUIUX: 1 });
 studentSchema.index({ studentId: 1 });
 studentSchema.index({ registrationNo: 1 });
 studentSchema.index({ enrollmentNo: 1 });

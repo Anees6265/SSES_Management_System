@@ -93,25 +93,29 @@ const StudentDetailTable = () => {
   }, [departmentSubLevels]);
 
   const filteredData = useMemo(() => {
+    const rawSearch = String(searchTerm || "").trim().toLowerCase();
     return students.filter((s) => {
       const matchTab = activeTab === "All" || s.currentSubLevelId?.name === activeTab;
       const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(s.status);
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
       const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
-      const stdTech = (s.track || s.course || "General").toLowerCase();
+      const stdTech = String(s.track || s.course || "General").toLowerCase();
       const matchTech = selectedTech === "All" || stdTech.includes(selectedTech.toLowerCase());
-      const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
-      const searchLower = searchTerm.toLowerCase();
-      const matchSearch = !searchTerm ||
-        name.includes(searchLower) ||
-        s.fullName?.toLowerCase().includes(searchLower) ||
-        s.prkey?.toLowerCase().includes(searchLower) ||
-        s.studentId?.toLowerCase().includes(searchLower) ||
-        s.registrationNo?.toLowerCase().includes(searchLower) ||
-        s.enrollmentNo?.toLowerCase().includes(searchLower) ||
-        s.studentMobile?.includes(searchTerm) ||
-        s.district?.toLowerCase().includes(searchLower);
+
+      const fullName = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const matchSearch = !rawSearch ||
+        fullName.includes(rawSearch) ||
+        String(s.fullName || "").toLowerCase().includes(rawSearch) ||
+        String(s.fatherName || "").toLowerCase().includes(rawSearch) ||
+        String(s.prkey || "").toLowerCase().includes(rawSearch) ||
+        String(s.studentId || "").toLowerCase().includes(rawSearch) ||
+        String(s.registrationNo || "").toLowerCase().includes(rawSearch) ||
+        String(s.enrollmentNo || "").toLowerCase().includes(rawSearch) ||
+        String(s.studentMobile || "").includes(rawSearch) ||
+        String(s.course || "").toLowerCase().includes(rawSearch) ||
+        String(s.district || "").toLowerCase().includes(rawSearch);
+
       return matchTab && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
   }, [students, activeTab, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm]);
@@ -150,6 +154,7 @@ const StudentDetailTable = () => {
     {
       key: "name",
       label: "Student",
+      accessorFn: (row) => row.fullName || `${row.firstName || ""} ${row.lastName || ""}`.trim(),
       render: (row) => (
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
@@ -162,12 +167,19 @@ const StudentDetailTable = () => {
     {
       key: "fatherName",
       label: "Father's Name",
+      accessorFn: (row) => row.fatherName || "",
       render: (row) => toTitle(row.fatherName || ""),
     },
-    { key: "studentMobile", label: "Mobile", align: "center" },
+    {
+      key: "studentMobile",
+      label: "Mobile",
+      align: "center",
+      accessorFn: (row) => String(row.studentMobile || "")
+    },
     {
       key: "course",
       label: "Course",
+      accessorFn: (row) => row.course || "",
       render: (row) => {
         const courseUpper = (row.course || "").toUpperCase();
         return (
@@ -186,6 +198,7 @@ const StudentDetailTable = () => {
       key: "level",
       label: "Year & Level",
       align: "center",
+      accessorFn: (row) => `${row.year || "1st Year"} / ${row.currentSubLevelId?.name || row.currentLevelId?.name || "—"}`,
       render: (row) => {
         const year = row.year || "1st Year";
         const level = row.currentSubLevelId?.name || row.currentLevelId?.name || "—";
@@ -200,6 +213,7 @@ const StudentDetailTable = () => {
       key: "status",
       label: "Status",
       align: "center",
+      accessorFn: (row) => row.status || "",
       render: (row) => (
         <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[row.status] || "bg-gray-100 text-gray-600"}`}>
           {row.status}
@@ -412,11 +426,9 @@ const StudentDetailTable = () => {
           <CommonTable
             data={filteredData}
             columns={columns}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
             pagination
             rowsPerPage={10}
-            emptyMessage={activeTab === "All" ? "No data found" : `No students in the sub level ${activeTab}`}
+            emptyMessage={searchTerm.trim() ? `No students found matching "${searchTerm}"` : (activeTab === "All" ? "No data found" : `No students in the sub level ${activeTab}`)}
             filtersConfig={[
               {
                 title: "Status",

@@ -8,7 +8,8 @@ import {
   useUpdateStudentEmailMutation,
   useGetReportCardQuery,
   useSetStudentPasswordMutation,
-  useGetStudentLevelHistoryQuery
+  useGetStudentLevelHistoryQuery,
+  useShiftToUIUXMutation
 } from "../../../redux/api/authApi";
 import { taskAPI } from '../../../services/taskService';
 import { API_BASE_URL } from '../../../config/apiConfig';
@@ -32,7 +33,9 @@ import download from "../../../assets/icons/download-icon.png";
 import studentProfileBg from "../../../assets/images/Student_profile_2nd_bg.jpg";
 import Header from '../../shared/sidebar/Header';
 import { IoCamera } from "react-icons/io5";
-import { MdLock, MdCheck } from "react-icons/md";
+import { MdLock, MdCheck, MdEmail, MdTune } from "react-icons/md";
+import { FaExchangeAlt } from "react-icons/fa";
+import { FiChevronDown } from "react-icons/fi";
 
 const translateLevelName = (name) => {
   if (!name) return "";
@@ -62,7 +65,7 @@ const isNaturallyITEG = (c) => {
 export default function StudentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: studentData, isLoading, isError } = useGetNewStudentByIdQuery(id);
+  const { data: studentData, isLoading, isError, refetch } = useGetNewStudentByIdQuery(id);
   const { data: levelHistoryResponse } = useGetStudentLevelHistoryQuery(id);
 
   const daysInSubLevel = useMemo(() => {
@@ -118,6 +121,44 @@ export default function StudentProfile() {
   const [isEmailModalOpen, setEmailModalOpen] = useState(false);
   const [isReportCardOpen, setReportCardOpen] = useState(false);
   const [isSetPasswordOpen, setSetPasswordOpen] = useState(false);
+  const [isShiftModalOpen, setShiftModalOpen] = useState(false);
+  const [isActionsOpen, setActionsOpen] = useState(false);
+
+  const actionsMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target)) {
+        setActionsOpen(false);
+      }
+    };
+    if (isActionsOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isActionsOpen]);
+
+  const [shiftToUIUX, { isLoading: isShiftingToUIUX }] = useShiftToUIUXMutation();
+
+  const isAlreadyUIUX = useMemo(() => {
+    const subDeptName = String(studentData?.subDepartmentId?.name || "").trim().toLowerCase();
+    const tech = String(studentData?.technology || studentData?.techno || studentData?.track || "").trim().toLowerCase();
+    return subDeptName.includes("ui/ux") || subDeptName.includes("uiux") || tech === "ui/ux";
+  }, [studentData]);
+
+  const handleShiftToUIUX = async () => {
+    try {
+      const res = await shiftToUIUX(id).unwrap();
+      toast.success(res?.message || "Student shifted to ITEG (UI/UX) successfully!");
+      setShiftModalOpen(false);
+      if (refetch) refetch();
+    } catch (err) {
+      console.error("Failed to shift student to UI/UX:", err);
+      toast.error(err?.data?.message || err?.message || "Failed to shift student to UI/UX");
+    }
+  };
 
   const fileInputRef = useRef(null);
 
@@ -361,24 +402,7 @@ export default function StudentProfile() {
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}></div>
-            <div className="absolute top-2 sm:top-7 right-2 sm:right-8 flex flex-col sm:flex-row gap-1 sm:gap-3 z-20">
-              <button
-                onClick={() => {
-                  if (canChooseElective()) {
-                    // console.log('Update Technology button clicked');
-                    setTechModalOpen(true);
-                  }
-                }}
-                disabled={!canChooseElective()}
-                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${canChooseElective()
-                  ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer hover:shadow-md'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
-                  }`}
-                title={canChooseElective() ? 'Choose your elective technology' : 'Complete Level 2A/2B/2C to unlock electives'}
-              >
-                <span className="hidden sm:inline">Choose Elective</span>
-                <span className="sm:hidden">Elective</span>
-              </button>
+            <div className="absolute top-2 sm:top-7 right-2 sm:right-8 flex items-center gap-1.5 sm:gap-3 z-20">
               <button
                 disabled={isDummy}
                 onClick={() => {
@@ -394,30 +418,134 @@ export default function StudentProfile() {
                     },
                   });
                 }}
-                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${
-                  isDummy
+                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${isDummy
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                     : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer hover:shadow-md'
-                }`}
+                  }`}
                 title={isDummy ? "Task board is disabled for dummy students" : "Manage student tasks and assignments"}
               >
                 <span className="hidden sm:inline">Task List</span>
                 <span className="sm:hidden">Tasks</span>
               </button>
+
               <button
                 onClick={() => setEmailModalOpen(true)}
-                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white disabled:opacity-50 cursor-pointer"
+                className="hidden md:inline-flex px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white disabled:opacity-50 cursor-pointer"
               >
                 <span className="hidden sm:inline">Update Email</span>
                 <span className="sm:hidden">Email</span>
               </button>
+
               <button
                 onClick={() => setSetPasswordOpen(true)}
-                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer"
+                className="hidden md:inline-flex px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer"
               >
                 <span className="hidden sm:inline">Set Password</span>
                 <span className="sm:hidden">Password</span>
               </button>
+
+              {/* Action Dropdown Menu */}
+              <div className="relative" ref={actionsMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen(prev => !prev)}
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer inline-flex items-center gap-1.5"
+                  title="Profile actions"
+                >
+                  <span>Action</span>
+                  <FiChevronDown size={14} className={`transition-transform duration-200 ${isActionsOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {isActionsOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-60 sm:w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-1.5 border-b border-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Options
+                    </div>
+
+                    {/* Shift to UI/UX Option */}
+                    {isAlreadyUIUX ? (
+                      <div className="px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-purple-700 bg-purple-50/70 border-l-2 border-purple-500 cursor-default">
+                        <MdCheck size={16} className="text-purple-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span>In UI/UX</span>
+                          <span className="text-[10px] font-normal text-purple-600">ITEG &bull; UI/UX Sub-Department</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isDummy || isShiftingToUIUX}
+                        onClick={() => {
+                          setActionsOpen(false);
+                          if (isDummy) {
+                            toast.warning("Cannot shift a dummy student");
+                            return;
+                          }
+                          setShiftModalOpen(true);
+                        }}
+                        className={`w-full px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-left transition-colors cursor-pointer ${isDummy
+                            ? 'text-gray-400 cursor-not-allowed opacity-60'
+                            : 'text-purple-700 hover:bg-purple-50 active:bg-purple-100'
+                          }`}
+                      >
+                        <FaExchangeAlt size={13} className="text-purple-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-bold">Shift to UI/UX</span>
+                          <span className="text-[10px] font-normal text-gray-500">Transfer to ITEG Department</span>
+                        </div>
+                      </button>
+                    )}
+
+                    <div className="my-1 border-t border-gray-100"></div>
+
+                    {/* Update Email */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsOpen(false);
+                        setEmailModalOpen(true);
+                      }}
+                      className="w-full px-3.5 py-2 flex items-center gap-2.5 text-xs font-semibold text-gray-700 hover:bg-orange-50 hover:text-orange-600 text-left transition-colors cursor-pointer"
+                    >
+                      <MdEmail size={16} className="text-gray-400 shrink-0" />
+                      <span>Update Email</span>
+                    </button>
+
+                    {/* Set Password */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsOpen(false);
+                        setSetPasswordOpen(true);
+                      }}
+                      className="w-full px-3.5 py-2 flex items-center gap-2.5 text-xs font-semibold text-gray-700 hover:bg-orange-50 hover:text-orange-600 text-left transition-colors cursor-pointer"
+                    >
+                      <MdLock size={16} className="text-gray-400 shrink-0" />
+                      <span>Set Password</span>
+                    </button>
+
+                    {/* Choose Elective */}
+                    <button
+                      type="button"
+                      disabled={!canChooseElective()}
+                      onClick={() => {
+                        setActionsOpen(false);
+                        if (canChooseElective()) {
+                          setTechModalOpen(true);
+                        }
+                      }}
+                      className={`w-full px-3.5 py-2 flex items-center gap-2.5 text-xs font-semibold text-left transition-colors ${canChooseElective()
+                          ? 'text-gray-700 hover:bg-orange-50 hover:text-orange-600 cursor-pointer'
+                          : 'text-gray-400 cursor-not-allowed opacity-60'
+                        }`}
+                      title={canChooseElective() ? 'Choose your elective technology' : 'Complete Level 2A/2B/2C to unlock electives'}
+                    >
+                      <MdTune size={16} className="text-gray-400 shrink-0" />
+                      <span>Choose Elective</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               {/* <button
                 onClick={() => document.getElementById('resume-upload').click()}
                 disabled={isResumeUploading}
@@ -498,6 +626,14 @@ export default function StudentProfile() {
                           ITEG Program
                         </span>
                       )}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Dept:{" "}
+                      <strong className="text-white font-semibold">
+                        {studentData.subDepartmentId?.departmentId?.name || (studentData.withITEG ? "ITEG" : "—")}
+                        {studentData.subDepartmentId?.name ? ` (${studentData.subDepartmentId.name})` : ""}
+                      </strong>
                     </span>
                     <span>•</span>
                     <span>Session: <strong className="text-white font-semibold">{studentData.sessionId?.name || "N/A"}</strong></span>
@@ -985,6 +1121,13 @@ export default function StudentProfile() {
         onClose={() => setSetPasswordOpen(false)}
         studentId={studentData._id}
         onSetPassword={setStudentPassword}
+      />
+      <ShiftToUIUXModal
+        isOpen={isShiftModalOpen}
+        onClose={() => setShiftModalOpen(false)}
+        studentData={studentData}
+        onConfirm={handleShiftToUIUX}
+        isLoading={isShiftingToUIUX}
       />
       <ReportCardModal
         isOpen={isReportCardOpen}
@@ -1639,6 +1782,124 @@ const UpdateEmailModal = ({ isOpen, onClose, studentData, onUpdate, isLoading })
         >
           &times;
         </button>
+      </div>
+    </div>
+  );
+};
+
+const ShiftToUIUXModal = ({ isOpen, onClose, studentData, onConfirm, isLoading }) => {
+  if (!isOpen) return null;
+
+  const currentDept = studentData?.subDepartmentId?.departmentId?.name || (studentData?.withITEG ? "ITEG" : "Other");
+  const currentSubDept = studentData?.subDepartmentId?.name || "General";
+  const currentCourse = studentData?.course || "N/A";
+  const currentYear = studentData?.year || "1st Year";
+  const currentLevel = studentData?.currentLevelId?.name || "Level 1";
+  const currentSubLevel = studentData?.currentSubLevelId?.name || "1A";
+
+  const studentName = studentData?.fullName || `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "Student";
+  const prKey = studentData?.studentId || studentData?.registrationNo || studentData?.enrollmentNo || "N/A";
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl py-5 px-5 sm:px-7 w-full max-w-lg relative shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          disabled={isLoading}
+          className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          &times;
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+            <FaExchangeAlt size={18} />
+          </div>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Shift to ITEG — UI/UX</h2>
+            <p className="text-xs text-gray-500">Department Transfer Confirmation</p>
+          </div>
+        </div>
+
+        {/* Student Mini Card */}
+        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 mb-4">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>Student Name:</span>
+            <span className="font-semibold text-gray-800">{studentName}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>Student ID / Reg:</span>
+            <span className="font-mono font-medium text-gray-700">{prKey}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>Course & Year:</span>
+            <span className="font-medium text-gray-700">{currentCourse} • {currentYear}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>Current Level:</span>
+            <span className="font-semibold text-indigo-600">{currentLevel} ({currentSubLevel})</span>
+          </div>
+        </div>
+
+        {/* Shift Mapping Visual */}
+        <div className="grid grid-cols-11 items-center gap-2 bg-gradient-to-r from-gray-50 via-purple-50/50 to-indigo-50 border border-purple-100 rounded-xl p-3.5 mb-4">
+          <div className="col-span-5 text-center">
+            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-0.5">Current Department</span>
+            <div className="text-xs font-bold text-gray-800 truncate">{currentDept}</div>
+            <div className="text-[11px] text-gray-600 truncate">{currentSubDept}</div>
+          </div>
+          <div className="col-span-1 flex justify-center text-purple-600">
+            <FaExchangeAlt size={14} className="rotate-90 sm:rotate-0" />
+          </div>
+          <div className="col-span-5 text-center">
+            <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider block mb-0.5">Target Department</span>
+            <div className="text-xs font-bold text-purple-900 truncate">ITEG</div>
+            <div className="text-[11px] font-semibold text-indigo-700 truncate">UI/UX</div>
+          </div>
+        </div>
+
+        {/* Informational Alert */}
+        <div className="bg-purple-50/60 border border-purple-200/70 rounded-xl p-3 mb-5 text-xs text-purple-900 leading-relaxed">
+          <p className="font-semibold mb-1 flex items-center gap-1.5 text-purple-950">
+            <span className="inline-block w-2 h-2 rounded-full bg-purple-600"></span>
+            What happens next?
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-purple-800/90 text-[11px]">
+            <li>Student will be transferred to <strong>ITEG Department &rarr; UI/UX Sub-Department</strong>.</li>
+            <li>Current level progress <strong>({currentSubLevel})</strong> will be mapped to UI/UX sublevels.</li>
+            <li>Student will now appear in ITEG&apos;s UI/UX student list across all dashboards.</li>
+          </ul>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isLoading}
+            className="w-full sm:flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-300 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] cursor-pointer inline-flex items-center justify-center shrink-0 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="w-full sm:flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:from-purple-800 active:to-indigo-800 text-white font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Shifting...</span>
+              </>
+            ) : (
+              <>
+                <MdCheck size={16} />
+                <span>Confirm & Shift to UI/UX</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -39,10 +39,10 @@ const CommonTable = ({
     const cols = columns.map((col) => ({
       ...col,
       header: col.label,
-      accessorKey: col.key,
+      ...(col.accessorFn ? { accessorFn: col.accessorFn } : { accessorKey: col.key }),
       align: col.align,
       cell: ({ row }) =>
-        col.render ? col.render(row.original) : row.original[col.key],
+        col.render ? col.render(row.original) : (col.accessorFn ? col.accessorFn(row.original) : row.original[col.key]),
     }));
 
     if (editable && actionButton) {

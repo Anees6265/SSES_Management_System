@@ -1,5 +1,6 @@
 const SubLevel = require("../../models/department/SubLevel");
 const Level = require("../../models/department/Level");
+const SubDepartment = require("../../models/department/SubDepartment");
 const Student = require("../../models/student/Student");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const mongoose = require("mongoose");
@@ -61,9 +62,18 @@ exports.getSubLevelsByLevel = async (req, res) => {
       isActive: true 
     }).populate('levelId').sort({ order: 1 });
 
+    const levelDoc = await Level.findById(levelId).populate('subDepartmentId');
+    const subDeptName = String(levelDoc?.subDepartmentId?.name || "").toUpperCase();
+    const isUiUx = subDeptName.includes("UI/UX") || subDeptName.includes("UIUX");
+
     const data = [];
     for (const subLevel of subLevels) {
-      const studentCount = await Student.countDocuments({ currentSubLevelId: subLevel._id, status: 'Active' });
+      const isUiUx1A = isUiUx && String(subLevel.name).trim().toUpperCase() === "1A";
+      const studentCount = await Student.countDocuments(
+        isUiUx1A
+          ? { $or: [{ currentSubLevelId: subLevel._id }, { isUIUX: true }], status: 'Active' }
+          : { currentSubLevelId: subLevel._id, status: 'Active' }
+      );
       const syllabus = await SyllabusVersion.findOne({ subLevelId: subLevel._id, isActive: true }).sort({ versionNumber: -1 });
       const subjects = syllabus ? syllabus.subjects.map(s => s.name) : [];
       data.push({

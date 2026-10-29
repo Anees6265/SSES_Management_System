@@ -111,19 +111,28 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
 
     const subDepartmentsWithCounts = await Promise.all(
       subDepartments.map(async (subDepartment) => {
-        const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+        const subDeptNameUpper = String(subDepartment.name || "").toUpperCase();
+        const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
+        const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
+
         const totalStudents = await Student.countDocuments(
-          isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+          isUiUx
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+            : isIteg
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
+            : { subDepartmentId: subDepartment._id }
         );
         
         // Fetch levels for this sub-department
         const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
-            const count = await Student.countDocuments({
-              subDepartmentId: subDepartment._id,
-              currentLevelId: lvl._id
-            });
+            const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
+            const count = await Student.countDocuments(
+              isUiUxLevel1
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+            );
             return {
               levelId: lvl._id,
               levelName: lvl.name,
@@ -141,10 +150,12 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
-            const count = await Student.countDocuments({
-              subDepartmentId: subDepartment._id,
-              currentSubLevelId: slvl._id
-            });
+            const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
+            const count = await Student.countDocuments(
+              isUiUxSubLevel1A
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+            );
             return {
               subLevelId: slvl._id,
               subLevelName: slvl.name,
@@ -210,19 +221,28 @@ exports.getAllSubDepartments = async (req, res) => {
     const subDepartments = await SubDepartment.find(filter).populate('departmentId');
     const subDepartmentsWithCounts = await Promise.all(
       subDepartments.map(async (subDepartment) => {
-        const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+        const subDeptNameUpper = String(subDepartment.name || "").toUpperCase();
+        const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
+        const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
+
         const totalStudents = await Student.countDocuments(
-          isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+          isUiUx
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+            : isIteg
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
+            : { subDepartmentId: subDepartment._id }
         );
 
         // Fetch levels for this sub-department
         const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
-            const count = await Student.countDocuments({
-              subDepartmentId: subDepartment._id,
-              currentLevelId: lvl._id
-            });
+            const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
+            const count = await Student.countDocuments(
+              isUiUxLevel1
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+            );
             return {
               levelId: lvl._id,
               levelName: lvl.name,
@@ -240,10 +260,12 @@ exports.getAllSubDepartments = async (req, res) => {
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
-            const count = await Student.countDocuments({
-              subDepartmentId: subDepartment._id,
-              currentSubLevelId: slvl._id
-            });
+            const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
+            const count = await Student.countDocuments(
+              isUiUxSubLevel1A
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+            );
             return {
               subLevelId: slvl._id,
               subLevelName: slvl.name,
@@ -319,19 +341,28 @@ exports.getSubDepartmentById = async (req, res) => {
       }
     }
     
-    const isIteg = String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || String(subDepartment.name || "").toUpperCase().includes("ITEG");
+    const subDeptNameUpper = String(subDepartment.name || "").toUpperCase();
+    const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
+    const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
+
     const totalStudents = await Student.countDocuments(
-      isIteg ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] } : { subDepartmentId: subDepartment._id }
+      isUiUx
+        ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+        : isIteg
+        ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
+        : { subDepartmentId: subDepartment._id }
     );
 
     // Fetch levels for this sub-department
     const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
     const levelCounts = await Promise.all(
       levels.map(async (lvl) => {
-        const count = await Student.countDocuments({
-          subDepartmentId: subDepartment._id,
-          currentLevelId: lvl._id
-        });
+        const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
+        const count = await Student.countDocuments(
+          isUiUxLevel1
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
+            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+        );
         return {
           levelId: lvl._id,
           levelName: lvl.name,
@@ -349,10 +380,12 @@ exports.getSubDepartmentById = async (req, res) => {
 
     const subLevelCounts = await Promise.all(
       subLevels.map(async (slvl) => {
-        const count = await Student.countDocuments({
-          subDepartmentId: subDepartment._id,
-          currentSubLevelId: slvl._id
-        });
+        const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
+        const count = await Student.countDocuments(
+          isUiUxSubLevel1A
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
+            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+        );
         return {
           subLevelId: slvl._id,
           subLevelName: slvl.name,

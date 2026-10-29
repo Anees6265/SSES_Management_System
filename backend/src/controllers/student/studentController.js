@@ -992,7 +992,21 @@ exports.getAllStudents = async (req, res) => {
       andConditions.push({ currentLevelId });
     }
     if (currentSubLevelId) {
-      if (Array.isArray(currentSubLevelId)) {
+      let isUiUx1A = false;
+      try {
+        const slDoc = await SubLevel.findById(currentSubLevelId).populate({
+          path: "levelId",
+          populate: { path: "subDepartmentId" }
+        });
+        const sdName = String(slDoc?.levelId?.subDepartmentId?.name || "").toUpperCase();
+        if ((sdName.includes("UI/UX") || sdName.includes("UIUX")) && String(slDoc?.name || "").trim().toUpperCase() === "1A") {
+          isUiUx1A = true;
+        }
+      } catch (_) {}
+
+      if (isUiUx1A) {
+        andConditions.push({ $or: [{ currentSubLevelId }, { isUIUX: true }] });
+      } else if (Array.isArray(currentSubLevelId)) {
         const validIds = currentSubLevelId.filter(id => mongoose.Types.ObjectId.isValid(id));
         if (validIds.length > 0) andConditions.push({ currentSubLevelId: { $in: validIds } });
       } else if (typeof currentSubLevelId === "string" && currentSubLevelId.includes(",")) {
@@ -1171,6 +1185,24 @@ exports.updateStudent = async (req, res) => {
     // Sync names
     if (updateData.firstName && updateData.lastName && !updateData.fullName) {
       updateData.fullName = `${updateData.firstName} ${updateData.lastName}`.trim();
+    }
+
+    if (updateData.isUIUX === true) {
+      try {
+        const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i });
+        if (uiuxSubDept) {
+          const uiuxLevel1 = await Level.findOne({ subDepartmentId: uiuxSubDept._id, order: 1 });
+          if (uiuxLevel1) {
+            const uiuxSubLevel1A = await SubLevel.findOne({ levelId: uiuxLevel1._id, name: "1A" });
+            if (uiuxSubLevel1A) {
+              if (String(existingStudent.subDepartmentId) === String(uiuxSubDept._id) || !existingStudent.currentSubLevelId) {
+                updateData.currentLevelId = uiuxLevel1._id;
+                updateData.currentSubLevelId = uiuxSubLevel1A._id;
+              }
+            }
+          }
+        }
+      } catch (_) {}
     }
 
     if (updateData.studentMobile !== undefined) {
@@ -2340,12 +2372,26 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
   try {
     const { subLevelId } = req.params;
 
+    let isUiUx1A = false;
+    try {
+      const slDoc = await SubLevel.findById(subLevelId).populate({
+        path: "levelId",
+        populate: { path: "subDepartmentId" }
+      });
+      const sdName = String(slDoc?.levelId?.subDepartmentId?.name || "").toUpperCase();
+      if ((sdName.includes("UI/UX") || sdName.includes("UIUX")) && String(slDoc?.name || "").trim().toUpperCase() === "1A") {
+        isUiUx1A = true;
+      }
+    } catch (_) {}
+
     const students = await Student.find({
-      currentSubLevelId: subLevelId,
+      ...(isUiUx1A
+        ? { $or: [{ currentSubLevelId: subLevelId }, { isUIUX: true }] }
+        : { currentSubLevelId: subLevelId }),
       status: { $nin: ["Dummy", "Dropped"] },
     })
       .populate("currentSubLevelId", "name")
-      .select("firstName lastName prkey status currentSubLevelId image attendanceRate");
+      .select("firstName lastName prkey status currentSubLevelId image attendanceRate isUIUX");
 
     const studentIds = students.map(s => s._id);
 

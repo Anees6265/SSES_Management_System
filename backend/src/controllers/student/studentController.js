@@ -1690,7 +1690,11 @@ exports.getStudentTasks = async (req, res) => {
     if (subLevelId === "all") {
       // Return all tasks across all sublevels/syllabus versions
     } else if (subLevelId) {
-      filter.$or = [{ subLevelId }, { isExtra: true }, { isGeneralTask: true }];
+      filter.$or = [
+        { subLevelId },
+        { subLevelId: null, isExtra: true },
+        { subLevelId: null, isGeneralTask: true }
+      ];
     } else {
       const orConditions = [{ isExtra: true }, { isGeneralTask: true }];
       if (student.currentSubLevelId) {
@@ -1705,7 +1709,8 @@ exports.getStudentTasks = async (req, res) => {
 
 
     const tasks = await StudentTask.find(filter)
-      .populate("subLevelId", "name")
+      .populate("subLevelId", "name order")
+      .populate("levelId", "name order")
       .sort({ assignedAt: -1, createdAt: -1 });
 
 
@@ -1725,6 +1730,9 @@ exports.getStudentTasks = async (req, res) => {
       pendingTasks: tasks.filter(t => t.status === "pending").length,
       inProgressTasks: tasks.filter(t => t.status === "inProgress").length,
       groupedBySubject: grouped,
+      subLevelId: subLevelId || student.currentSubLevelId,
+      currentSubLevelId: student.currentSubLevelId,
+      currentLevelId: student.currentLevelId,
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -2638,11 +2646,56 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
 exports.getStudentLevelHistory = async (req, res) => {
   try {
     const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
-    const history = await StudentLevelProgress.find({ studentId: req.params.id })
+    const StudentTask = require("../../models/syllabus/StudentTask");
+    const SubLevel = require("../../models/department/SubLevel");
+
+    let history = await StudentLevelProgress.find({ studentId: req.params.id })
       .populate("levelId", "name order")
       .populate("subLevelId", "name order")
       .populate("sessionId", "name")
       .sort({ createdAt: 1 });
+
+    // Also check if student has tasks in sublevels not recorded in StudentLevelProgress
+    const recordedSubLevelIds = new Set(
+      history
+        .map(h => (h.subLevelId?._id || h.subLevelId)?.toString())
+        .filter(Boolean)
+    );
+
+    const taskSubLevelIds = await StudentTask.distinct("subLevelId", { studentId: req.params.id });
+
+    for (const sId of taskSubLevelIds) {
+      if (sId && !recordedSubLevelIds.has(sId.toString())) {
+        const subLevel = await SubLevel.findById(sId).populate("levelId", "name order");
+        if (subLevel) {
+          const totalTasks = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId });
+          const completedTasksCount = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId, status: "completed" });
+          const completionPercentage = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
+
+          history.push({
+            _id: `task_sublevel_${sId}`,
+            studentId: req.params.id,
+            subLevelId: subLevel,
+            levelId: subLevel.levelId,
+            status: completionPercentage === 100 ? "completed" : "in_progress",
+            totalTasks,
+            completedTasksCount,
+            completionPercentage,
+            createdAt: new Date(0)
+          });
+        }
+      }
+    }
+
+    // Sort history by level order, then sublevel order
+    history.sort((a, b) => {
+      const lvlOrderA = a.levelId?.order ?? 0;
+      const lvlOrderB = b.levelId?.order ?? 0;
+      if (lvlOrderA !== lvlOrderB) return lvlOrderA - lvlOrderB;
+      const subOrderA = a.subLevelId?.order ?? 0;
+      const subOrderB = b.subLevelId?.order ?? 0;
+      return subOrderA - subOrderB;
+    });
 
     return res.status(200).json({ count: history.length, data: history });
   } catch (error) {

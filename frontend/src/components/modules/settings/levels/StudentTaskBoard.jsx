@@ -4,12 +4,17 @@ import {
     MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
     MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified,
-    MdExpandMore, MdCheck
+    MdExpandMore, MdCheck, MdHistory
 } from "react-icons/md";
 import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
-import { useGetNewStudentTasksQuery, useAssignExtraTaskMutation, useGetSyllabusVersionWithHierarchyQuery } from "../../../../redux/api/authApi";
+import {
+    useGetNewStudentTasksQuery,
+    useAssignExtraTaskMutation,
+    useGetSyllabusVersionWithHierarchyQuery,
+    useGetStudentLevelHistoryQuery
+} from "../../../../redux/api/authApi";
 import { useSidebar } from "../../../../contexts/SidebarContext";
 import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
@@ -229,19 +234,23 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                 )}
             </div>
 
-            {/* Marks & Rating Badge - Only shown when inProgress or completed */}
-            {(isInProgress || isCompleted) && (
-                <div className="flex items-center justify-between pt-1 text-xs">
-                    {isCompleted ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-black text-[10px] tracking-wider bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
-                            <MdVerified size={12} /> VERIFIED
-                        </span>
-                    ) : (
-                        <span className="inline-flex items-center gap-1 text-orange-600 font-black text-[10px] tracking-wider bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5">
-                            RATING
-                        </span>
-                    )}
+            {/* Marks & Rating Badge */}
+            <div className="flex items-center justify-between pt-1 text-xs">
+                {isCompleted ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-black text-[10px] tracking-wider bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                        <MdVerified size={12} /> VERIFIED
+                    </span>
+                ) : isInProgress ? (
+                    <span className="inline-flex items-center gap-1 text-orange-600 font-black text-[10px] tracking-wider bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5">
+                        RATING
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1 text-slate-500 font-bold text-[10px] tracking-wider bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
+                        PENDING
+                    </span>
+                )}
 
+                <div className="flex items-center gap-1">
                     <div className="flex items-center gap-0.5">
                         {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
                             const isSelected = star <= (task.marks || 0);
@@ -264,12 +273,16 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                                 </button>
                             );
                         })}
-                        <span className="ml-1 text-[10px] font-black text-slate-500">
-                            {task.marks || 0}/{task.maxMarks || 5}
-                        </span>
                     </div>
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                        task.marks !== null && task.marks !== undefined
+                            ? "bg-amber-50 text-amber-800 border border-amber-200"
+                            : "bg-slate-100 text-slate-500"
+                    }`}>
+                        Marks: {task.marks !== null && task.marks !== undefined ? task.marks : 0}/{task.maxMarks || 5}
+                    </span>
                 </div>
-            )}
+            </div>
 
             {/* Footer Row */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100/70 text-[10px] font-bold text-slate-400">
@@ -532,6 +545,8 @@ const StudentTaskBoard = () => {
     const levelName = level?.name || student?.currentLevelId?.name || "Level";
     const subLevelName = subLevel?.name || student?.currentSubLevelId?.name || "";
 
+    const [selectedSubLevelId,    setSelectedSubLevelId]    = useState(null);
+    const [showPreviousDropdown,  setShowPreviousDropdown]  = useState(false);
     const [search,            setSearch]            = useState("");
     const [subjectFilter,     setSubjectFilter]     = useState("");
     const [showFilterDrawer,  setShowFilterDrawer]  = useState(false);
@@ -546,14 +561,56 @@ const StudentTaskBoard = () => {
 
     useEffect(() => {
         setTasks(null);
+        setSelectedSubLevelId(null);
     }, [student?._id]);
 
     const isDummy = (student?.status || "").toLowerCase() === "dummy";
 
-    const { data, isLoading, refetch } = useGetNewStudentTasksQuery(
-        { id: student?._id },
+    const { data: levelHistoryData } = useGetStudentLevelHistoryQuery(
+        student?._id,
         { skip: !student?._id || isDummy }
     );
+
+    const { data, isLoading, refetch } = useGetNewStudentTasksQuery(
+        { id: student?._id, subLevelId: selectedSubLevelId || undefined },
+        { skip: !student?._id || isDummy }
+    );
+
+    const levelHistory = levelHistoryData?.data || [];
+    const currentSubLevelIdStr = (student?.currentSubLevelId?._id || student?.currentSubLevelId)?.toString();
+
+    // Identify previous levels: any sublevel in history that is not the current active sublevel
+    const previousLevels = useMemo(() => {
+        return levelHistory.filter(h => {
+            const hSubId = (h.subLevelId?._id || h.subLevelId)?.toString();
+            return hSubId && hSubId !== currentSubLevelIdStr;
+        });
+    }, [levelHistory, currentSubLevelIdStr]);
+
+    const isViewingPrevious = Boolean(selectedSubLevelId);
+
+    // Selected level record when viewing previous
+    const selectedLevelInfo = useMemo(() => {
+        if (!selectedSubLevelId) return null;
+        return levelHistory.find(h => {
+            const hSubId = (h.subLevelId?._id || h.subLevelId)?.toString();
+            return hSubId === selectedSubLevelId.toString();
+        });
+    }, [selectedSubLevelId, levelHistory]);
+
+    const activeLevelName = isViewingPrevious
+        ? (selectedLevelInfo?.levelId?.name || "Previous Level")
+        : levelName;
+    const activeSubLevelName = isViewingPrevious
+        ? (selectedLevelInfo?.subLevelId?.name || "")
+        : subLevelName;
+
+    const handleSelectSubLevel = (subId) => {
+        setSelectedSubLevelId(subId);
+        setTasks(null);
+        setShowPreviousDropdown(false);
+        setSubjectFilter("");
+    };
 
     const allTasks = tasks
         ?? Object.values(data?.groupedBySubject || {}).flatMap(g => g.tasks || []);
@@ -649,14 +706,16 @@ const StudentTaskBoard = () => {
 
         list.push({
             id: "tb-board-info",
-            title: subLevelName ? `Task Board: ${levelName} - ${subLevelName}` : `Task Board: ${levelName}`,
-            message: `Active practical task progression board for ${studentName}. Total tasks: ${total}.`,
-            time: "Active Level",
+            title: activeSubLevelName ? `Task Board: ${activeLevelName} - ${activeSubLevelName}` : `Task Board: ${activeLevelName}`,
+            message: isViewingPrevious
+                ? `Viewing previous level tasks for ${studentName} in ${activeLevelName} - ${activeSubLevelName}. Total tasks: ${total}.`
+                : `Active practical task progression board for ${studentName}. Total tasks: ${total}.`,
+            time: isViewingPrevious ? "Previous Level" : "Active Level",
             type: "info",
         });
 
         return list;
-    }, [student, pendingCount, inProgressCount, completed, subLevelName, percent, levelName, studentName, total]);
+    }, [student, pendingCount, inProgressCount, completed, activeSubLevelName, percent, activeLevelName, studentName, total, isViewingPrevious]);
 
     const activeNotifications = userNotifications ?? defaultTaskBoardNotifications;
 
@@ -897,6 +956,12 @@ const StudentTaskBoard = () => {
                     <span className="text-slate-600 font-bold truncate max-w-[150px] sm:max-w-none">{studentName}</span>
                     <span>/</span>
                     <span className="text-slate-900 font-black">Task Board</span>
+                    {isViewingPrevious && (
+                        <>
+                            <span>/</span>
+                            <span className="text-amber-600 font-extrabold">{activeLevelName} {activeSubLevelName ? `(${activeSubLevelName})` : ""}</span>
+                        </>
+                    )}
                 </div>
 
                 {/* Student Tag Line */}
@@ -907,10 +972,18 @@ const StudentTaskBoard = () => {
                     <div className="flex items-center gap-2 text-xs font-extrabold flex-wrap">
                         <span className="text-slate-900">{studentName}</span>
                         <span className="text-slate-300">|</span>
-                        <span className="text-slate-500">{student.course || "Course"} {level?.name ? `- ${level.name}` : ""}</span>
-                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-black">
-                            ACTIVE
+                        <span className="text-slate-500">
+                            {student.course || "Course"} {activeLevelName ? `- ${activeLevelName}` : ""} {activeSubLevelName ? `(${activeSubLevelName})` : ""}
                         </span>
+                        {isViewingPrevious ? (
+                            <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-black">
+                                PREVIOUS LEVEL
+                            </span>
+                        ) : (
+                            <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] px-2.5 py-0.5 rounded-full uppercase font-black">
+                                ACTIVE
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -928,17 +1001,144 @@ const StudentTaskBoard = () => {
                         <p className="text-[11px] sm:text-xs text-slate-400 font-medium">Manage and track student assignments & evaluations</p>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        {/* Previous Tasks Dropdown */}
+                        <div className="relative flex-1 sm:flex-initial">
+                            <button
+                                type="button"
+                                onClick={() => setShowPreviousDropdown(p => !p)}
+                                className={`w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer border ${
+                                    isViewingPrevious
+                                        ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100/70"
+                                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                                }`}
+                                title="View previous tasks by level"
+                            >
+                                <MdHistory size={16} className={isViewingPrevious ? "text-amber-600" : "text-slate-500"} />
+                                <span className="truncate max-w-[130px] sm:max-w-none">
+                                    {isViewingPrevious
+                                        ? `Previous: ${activeSubLevelName ? `${activeLevelName} (${activeSubLevelName})` : activeLevelName}`
+                                        : "Previous Tasks"}
+                                </span>
+                                {isViewingPrevious ? (
+                                    <span
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSelectSubLevel(null);
+                                        }}
+                                        className="ml-0.5 hover:bg-amber-200/80 p-0.5 rounded-full text-amber-700 cursor-pointer"
+                                        title="Back to current level"
+                                    >
+                                        <MdClose size={13} />
+                                    </span>
+                                ) : (
+                                    previousLevels.length > 0 && (
+                                        <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded-full">
+                                            {previousLevels.length}
+                                        </span>
+                                    )
+                                )}
+                                <MdExpandMore size={15} className={`transition-transform duration-200 opacity-60 ${showPreviousDropdown ? "rotate-180" : ""}`} />
+                            </button>
+
+                            {showPreviousDropdown && (
+                                <>
+                                    <div className="fixed inset-0 z-20" onClick={() => setShowPreviousDropdown(false)} />
+                                    <div className="absolute right-0 top-11 z-30 bg-white border border-slate-200 rounded-2xl shadow-xl w-72 max-w-[calc(100vw-2rem)] py-2 text-slate-700 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
+                                        <div className="px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                                            Select Level / Tasks
+                                        </div>
+
+                                        {/* Current Level Option */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectSubLevel(null)}
+                                            className={`w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer text-left transition ${
+                                                !isViewingPrevious ? "bg-orange-50/60 text-orange-700 font-bold" : "text-slate-800"
+                                            }`}
+                                        >
+                                            <div className="min-w-0 pr-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="truncate font-bold text-slate-900">
+                                                        {levelName} {subLevelName ? `(${subLevelName})` : ""}
+                                                    </span>
+                                                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-700">
+                                                        Current
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 block mt-0.5">
+                                                    Active Level Tasks
+                                                </span>
+                                            </div>
+                                            {!isViewingPrevious && <MdCheck size={16} className="text-orange-500 shrink-0" />}
+                                        </button>
+
+                                        {/* Previous Levels Section */}
+                                        <div className="px-3.5 pt-2.5 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-t border-slate-100 flex items-center justify-between">
+                                            <span>Previous Levels</span>
+                                            <span className="text-[9px] font-bold text-slate-400">
+                                                {previousLevels.length} available
+                                            </span>
+                                        </div>
+
+                                        {previousLevels.length === 0 ? (
+                                            <div className="px-4 py-3 text-center text-xs text-slate-400 italic font-medium">
+                                                No previous levels for this student
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-60 overflow-y-auto no-scrollbar py-0.5">
+                                                {previousLevels.map(h => {
+                                                    const subId = (h.subLevelId?._id || h.subLevelId)?.toString();
+                                                    const isSelected = selectedSubLevelId === subId;
+                                                    const lName = h.levelId?.name || "Level";
+                                                    const slName = h.subLevelId?.name || "";
+                                                    const pct = h.totalTasks > 0
+                                                        ? Math.round(((h.completedTasksCount || 0) / h.totalTasks) * 100)
+                                                        : (h.completionPercentage ?? 100);
+
+                                                    return (
+                                                        <button
+                                                            key={h._id || subId}
+                                                            type="button"
+                                                            onClick={() => handleSelectSubLevel(subId)}
+                                                            className={`w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer text-left transition ${
+                                                                isSelected ? "bg-amber-50 text-amber-900 font-bold" : "text-slate-800"
+                                                            }`}
+                                                        >
+                                                            <div className="min-w-0 pr-2">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="font-bold text-slate-900">
+                                                                        {lName} {slName ? `— ${slName}` : ""}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                                                                        {h.status === "completed" ? "Completed" : "Previous"}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+                                                                    {h.completedTasksCount ?? 0} of {h.totalTasks ?? 0} Tasks • {pct}%
+                                                                </span>
+                                                            </div>
+                                                            {isSelected && <MdCheck size={16} className="text-amber-600 shrink-0" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         {/* + New Task Button */}
                         <button
                             onClick={() => setShowExtraModal(true)}
-                            className="flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer"
+                            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer"
                         >
                             <MdAdd size={16} /> <span>New Task</span>
                         </button>
 
                         {/* Filter Button / Subject Dropdown */}
-                        <div className="relative">
+                        <div className="relative flex-1 sm:flex-initial">
                             <button
                                 onClick={() => setShowFilterDrawer(p => !p)}
                                 className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 border font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs shadow-xs transition cursor-pointer ${
@@ -1047,6 +1247,37 @@ const StudentTaskBoard = () => {
                 <div className="flex justify-center pt-20"><Loader /></div>
             ) : (
                 <div className="space-y-3.5 sm:space-y-4">
+                    {/* Previous Level Alert Banner */}
+                    {isViewingPrevious && (
+                        <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/50 to-amber-50/90 border border-amber-200/90 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                    <MdHistory size={20} />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-xs sm:text-sm font-extrabold text-amber-950">
+                                            Viewing Previous Level: {activeLevelName} {activeSubLevelName ? `(${activeSubLevelName})` : ""}
+                                        </h3>
+                                        <span className="bg-amber-100 text-amber-800 font-black text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                            Archive Record
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-amber-800/80 font-medium mt-0.5">
+                                        Displaying historical tasks, evaluation scores, and markings recorded for this level.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleSelectSubLevel(null)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold text-xs hover:bg-amber-100/80 hover:border-amber-400 transition shadow-2xs self-start sm:self-auto cursor-pointer shrink-0"
+                            >
+                                <MdArrowBack size={14} />
+                                <span>Back to Current Level ({subLevelName || "Current"})</span>
+                            </button>
+                        </div>
+                    )}
                     {/* Mobile Status Tabs (md:hidden) */}
                     <div className="md:hidden">
                         <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 rounded-2xl overflow-x-auto no-scrollbar">

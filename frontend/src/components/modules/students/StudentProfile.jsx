@@ -393,6 +393,9 @@ export default function StudentProfile() {
   const placementStatus = hasPlacement ? "Placed" : "Not Placed";
   const isDummy = (studentData?.status || "").toLowerCase() === "dummy";
 
+  const studentSubDeptId = studentData?.subDepartmentId?._id || studentData?.subDepartmentId;
+  const progressPath = studentSubDeptId ? `/student-detail-table/${studentSubDeptId}` : '/student-detail-table';
+
   return (
     <>
       <Header
@@ -402,8 +405,8 @@ export default function StudentProfile() {
           navigate(-1);
         }}
         breadcrumbs={[
-          { label: 'Academics', path: '/student-detail-table' },
-          { label: 'Student Progress', path: '/student-detail-table' },
+          { label: 'Academics', path: progressPath },
+          { label: 'Student Progress', path: progressPath },
           { label: 'Profile' }
         ]}
       />

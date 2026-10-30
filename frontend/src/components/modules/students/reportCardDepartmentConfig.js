@@ -99,12 +99,12 @@ export const DEPARTMENT_CONFIGS = {
     interviewSubtitle: "Laboratory methodology, biosafety standards, scientific articulation & research viva composure",
     interviewSectionTitle: "7. Bio-Sciences Interview & Lab Viva Evaluation",
     interviewItems: [
-      { itemName: "Laboratory Protocol & Technique Depth", value: 4.2, maxMarks: 5 },
-      { itemName: "Scientific Communication & Articulation", value: 4.0, maxMarks: 5 },
-      { itemName: "Biosafety, QC & Laboratory Compliance", value: 4.1, maxMarks: 5 },
-      { itemName: "Experimental Analysis & Problem Solving", value: 3.9, maxMarks: 5 },
-      { itemName: "Technical Viva & Research Defense", value: 4.0, maxMarks: 5 },
-      { itemName: "Overall Bio-Science Recommendation", value: 4.1, maxMarks: 5 }
+      { itemName: "Laboratory Protocol & Technique Depth", value: 0, maxMarks: 5 },
+      { itemName: "Scientific Communication & Articulation", value: 0, maxMarks: 5 },
+      { itemName: "Biosafety, QC & Laboratory Compliance", value: 0, maxMarks: 5 },
+      { itemName: "Experimental Analysis & Problem Solving", value: 0, maxMarks: 5 },
+      { itemName: "Technical Viva & Research Defense", value: 0, maxMarks: 5 },
+      { itemName: "Overall Bio-Science Recommendation", value: 0, maxMarks: 5 }
     ],
     mockGrowthAreas: [
       "Advanced instrumental analysis (HPLC & Spectrophotometry) & biochemical assay troubleshooting",
@@ -112,12 +112,7 @@ export const DEPARTMENT_CONFIGS = {
       "Scientific research viva confidence and protocol methodology defense under time constraints"
     ],
     strengths: "Aseptic laboratory techniques, Biochemical analysis, Scientific documentation, Strict protocol adherence",
-    defaultSubjects: [
-      { itemName: "Microbiology & Microbial Genetics", value: "Outstanding", score: 46, maxMarks: 50, remark: "4.75" },
-      { itemName: "Biochemistry & Molecular Biology", value: "Excellent", score: 43, maxMarks: 50, remark: "4.45" },
-      { itemName: "Immunology & Medical Diagnostics", value: "Excellent", score: 28, maxMarks: 30, remark: "4.60" },
-      { itemName: "Bioprocess & Fermentation Tech", value: "Very Good", score: 24, maxMarks: 25, remark: "4.50" }
-    ]
+    defaultSubjects: []
   },
   MEG: {
     name: "Management Excellence Group (MEG)",
@@ -125,12 +120,12 @@ export const DEPARTMENT_CONFIGS = {
     interviewSubtitle: "Business acumen, domain depth, corporate communication & executive composure",
     interviewSectionTitle: "7. Management Interview & Mock Assessment",
     interviewItems: [
-      { itemName: "Business & Domain Knowledge", value: 4.0, maxMarks: 5 },
-      { itemName: "Business Communication & Articulation", value: 4.0, maxMarks: 5 },
-      { itemName: "Confidence & Executive Presence", value: 3.8, maxMarks: 5 },
-      { itemName: "Case Analysis & Problem Solving", value: 4.1, maxMarks: 5 },
-      { itemName: "Commercial Acumen & Practical Logic", value: 4.0, maxMarks: 5 },
-      { itemName: "Overall Managerial Recommendation", value: 4.0, maxMarks: 5 }
+      { itemName: "Business & Domain Knowledge", value: 0, maxMarks: 5 },
+      { itemName: "Business Communication & Articulation", value: 0, maxMarks: 5 },
+      { itemName: "Confidence & Executive Presence", value: 0, maxMarks: 5 },
+      { itemName: "Case Analysis & Problem Solving", value: 0, maxMarks: 5 },
+      { itemName: "Commercial Acumen & Practical Logic", value: 0, maxMarks: 5 },
+      { itemName: "Overall Managerial Recommendation", value: 0, maxMarks: 5 }
     ],
     mockGrowthAreas: [
       "Financial modeling, data analytics & spreadsheet simulation practice",
@@ -138,12 +133,7 @@ export const DEPARTMENT_CONFIGS = {
       "Strategic marketing & corporate case competition readiness"
     ],
     strengths: "Strategic business thinking, Case analysis, Professional networking, Team leadership",
-    defaultSubjects: [
-      { itemName: "Principles & Practice of Management", value: "Outstanding", score: 48, maxMarks: 50, remark: "4.80" },
-      { itemName: "Financial Accounting & Reporting", value: "Excellent", score: 44, maxMarks: 50, remark: "4.40" },
-      { itemName: "Business Communication & Soft Skills", value: "Excellent", score: 27, maxMarks: 30, remark: "4.50" },
-      { itemName: "Business Economics", value: "Very Good", score: 23, maxMarks: 25, remark: "4.60" }
-    ]
+    defaultSubjects: []
   },
   BTECH: {
     name: "Sant Singaji Engineering College (B.Tech)",
@@ -151,12 +141,12 @@ export const DEPARTMENT_CONFIGS = {
     interviewSubtitle: "Engineering fundamentals, system architecture, technical viva & problem-solving under pressure",
     interviewSectionTitle: "7. Engineering Viva & Mock Assessment",
     interviewItems: [
-      { itemName: "Engineering Fundamentals & Core Concepts", value: 4.1, maxMarks: 5 },
-      { itemName: "System Design & Technical Architecture", value: 4.0, maxMarks: 5 },
-      { itemName: "Analytical Problem Solving & Troubleshooting", value: 4.2, maxMarks: 5 },
-      { itemName: "Technical Viva & Project Defense", value: 3.9, maxMarks: 5 },
-      { itemName: "Engineering Practical & Tool Proficiency", value: 4.0, maxMarks: 5 },
-      { itemName: "Overall Engineering Recommendation", value: 4.1, maxMarks: 5 }
+      { itemName: "Engineering Fundamentals & Core Concepts", value: 0, maxMarks: 5 },
+      { itemName: "System Design & Technical Architecture", value: 0, maxMarks: 5 },
+      { itemName: "Analytical Problem Solving & Troubleshooting", value: 0, maxMarks: 5 },
+      { itemName: "Technical Viva & Project Defense", value: 0, maxMarks: 5 },
+      { itemName: "Engineering Practical & Tool Proficiency", value: 0, maxMarks: 5 },
+      { itemName: "Overall Engineering Recommendation", value: 0, maxMarks: 5 }
     ],
     mockGrowthAreas: [
       "Complex system architecture, circuit/load analysis & design calculations",
@@ -164,12 +154,7 @@ export const DEPARTMENT_CONFIGS = {
       "Capstone engineering prototype demonstration and technical defense"
     ],
     strengths: "Engineering fundamentals, Mathematical modeling, Technical design & CAD, System troubleshooting",
-    defaultSubjects: [
-      { itemName: "Data Structures & Algorithms", value: "Outstanding", score: 47, maxMarks: 50, remark: "4.85" },
-      { itemName: "Operating Systems & System Architecture", value: "Excellent", score: 44, maxMarks: 50, remark: "4.50" },
-      { itemName: "Database Management Systems", value: "Excellent", score: 28, maxMarks: 30, remark: "4.65" },
-      { itemName: "Computer Networks & Security", value: "Very Good", score: 23, maxMarks: 25, remark: "4.40" }
-    ]
+    defaultSubjects: []
   },
   ITEG: {
     name: "Information Technology & Emerging Growth (ITEG)",
@@ -177,12 +162,12 @@ export const DEPARTMENT_CONFIGS = {
     interviewSubtitle: "Technical depth, data structures, coding fluency, articulate communication & live coding composure",
     interviewSectionTitle: "7. Technical Interview & Mock Assessment",
     interviewItems: [
-      { itemName: "Core CS & Technical Knowledge", value: 4.0, maxMarks: 5 },
-      { itemName: "Data Structures & Problem Solving", value: 4.1, maxMarks: 5 },
-      { itemName: "Technical Communication & Articulation", value: 4.0, maxMarks: 5 },
-      { itemName: "Confidence & Live Coding Composure", value: 3.8, maxMarks: 5 },
-      { itemName: "Answer Quality & Architectural Precision", value: 4.0, maxMarks: 5 },
-      { itemName: "Overall Technical Recommendation", value: 4.0, maxMarks: 5 }
+      { itemName: "Core CS & Technical Knowledge", value: 0, maxMarks: 5 },
+      { itemName: "Data Structures & Problem Solving", value: 0, maxMarks: 5 },
+      { itemName: "Technical Communication & Articulation", value: 0, maxMarks: 5 },
+      { itemName: "Confidence & Live Coding Composure", value: 0, maxMarks: 5 },
+      { itemName: "Answer Quality & Architectural Precision", value: 0, maxMarks: 5 },
+      { itemName: "Overall Technical Recommendation", value: 0, maxMarks: 5 }
     ],
     mockGrowthAreas: [
       "Advanced system design and complex algorithmic interview practice (LeetCode / HackerRank)",
@@ -190,12 +175,7 @@ export const DEPARTMENT_CONFIGS = {
       "Deep-dive portfolio projects demonstrating end-to-end architectures"
     ],
     strengths: "Problem solving, Full stack development, Clean code structuring, Logical thinking",
-    defaultSubjects: [
-      { itemName: "Python Programming", value: "Excellent", score: 92, maxMarks: 100, remark: "4.12" },
-      { itemName: "Data Structures & Algorithms", value: "Very Good", score: 45, maxMarks: 50, remark: "3.90" },
-      { itemName: "Full Stack Web Development", value: "Excellent", score: 78, maxMarks: 80, remark: "4.35" },
-      { itemName: "Database Systems (SQL & MongoDB)", value: "Good", score: 38, maxMarks: 50, remark: "3.80" }
-    ]
+    defaultSubjects: []
   }
 };
 

@@ -484,7 +484,9 @@ export default function StudentReport() {
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
                   <span>Evaluated By</span>
                   <span className="font-bold text-slate-800">
-                    {reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}
+                    {reportCardData?.generatedByName && reportCardData.generatedByName.toLowerCase() !== "system"
+                      ? (reportCardData.generatedByName.startsWith("Prof.") ? reportCardData.generatedByName : `Prof. ${reportCardData.generatedByName}`)
+                      : "Faculty Evaluator"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
@@ -638,7 +640,9 @@ export default function StudentReport() {
                       const evaluated = item.score ?? 0;
                       const total = item.maxMarks || 100;
                       const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-                      const rating = parseFloat(item.remark) || 4.0;
+                      const parsedRating = parseFloat(item.remark);
+                      const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                      const rating = hasRating ? parsedRating : 0;
                       const level = item.value || "Good";
 
                       const levelColor =
@@ -675,10 +679,16 @@ export default function StudentReport() {
 
                           <td className="py-4 px-4 text-center">
                             <div className="inline-flex flex-col items-center">
-                              <StarRating rating={rating} size="text-xs" />
-                              <span className="text-xs font-bold text-slate-800 mt-1">
-                                {rating.toFixed(2)} <span className="text-slate-400 font-normal">/ 5.0</span>
-                              </span>
+                              {hasRating ? (
+                                <>
+                                  <StarRating rating={rating} size="text-xs" />
+                                  <span className="text-xs font-bold text-slate-800 mt-1">
+                                    {rating.toFixed(2)} <span className="text-slate-400 font-normal">/ 5.0</span>
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-medium text-slate-400">—</span>
+                              )}
                             </div>
                           </td>
 
@@ -725,7 +735,9 @@ export default function StudentReport() {
                   const evaluated = item.score ?? 0;
                   const total = item.maxMarks || 100;
                   const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-                  const rating = parseFloat(item.remark) || 4.0;
+                  const parsedRating = parseFloat(item.remark);
+                  const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                  const rating = hasRating ? parsedRating : 0;
                   const level = item.value || "Good";
 
                   const levelColor =
@@ -765,8 +777,14 @@ export default function StudentReport() {
                       <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                         <span className="text-slate-500 font-medium">Faculty Rating</span>
                         <div className="flex items-center gap-1.5">
-                          <StarRating rating={rating} size="text-[10px]" />
-                          <span className="font-black text-slate-800">{rating.toFixed(1)} / 5.0</span>
+                          {hasRating ? (
+                            <>
+                              <StarRating rating={rating} size="text-[10px]" />
+                              <span className="font-black text-slate-800">{rating.toFixed(1)} / 5.0</span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 font-medium">—</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -883,11 +901,11 @@ export default function StudentReport() {
               {(softSkillsSection?.items?.length > 0
                 ? softSkillsSection.items
                 : [
-                  { itemName: "Communication Skills", value: 4.2 },
-                  { itemName: "Team Collaboration", value: 4.1 },
-                  { itemName: "Problem Solving", value: 4.0 },
-                  { itemName: "Presentation Clarity", value: 4.2 },
-                  { itemName: "Professional Punctuality", value: 4.4 }
+                  { itemName: "Communication Skills", value: 0 },
+                  { itemName: "Team Collaboration", value: 0 },
+                  { itemName: "Problem Solving", value: 0 },
+                  { itemName: "Presentation Clarity", value: 0 },
+                  { itemName: "Professional Punctuality", value: 0 }
                 ]
               ).map((item, idx) => {
                 const isSyllabus = item.isFromSyllabus || item.completedTasks !== undefined || softSkillsSection?.hasSyllabusTasks;
@@ -1026,10 +1044,10 @@ export default function StudentReport() {
             {(careerReadinessSection?.items?.length > 0
               ? careerReadinessSection.items
               : [
-                { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Created" },
-                { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Created" },
-                { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "In Progress" },
-                { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Ready" }
+                { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Not created" },
+                { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Not created" },
+                { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "Not Started" },
+                { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Not Ready" }
               ]
             ).map((item, idx) => {
               const val = item.value || "In Progress";
@@ -1214,7 +1232,11 @@ export default function StudentReport() {
                 <div className="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
                   {(reportCardData?.generatedByName || "FA").slice(0, 2).toUpperCase()}
                 </div>
-                <span className="text-slate-800 font-bold">{reportCardData?.generatedByName || "Prof. Himanshu Vishwakarma"}</span>
+                <span className="text-slate-800 font-bold">
+                  {reportCardData?.generatedByName && reportCardData.generatedByName.toLowerCase() !== "system"
+                    ? (reportCardData.generatedByName.startsWith("Prof.") ? reportCardData.generatedByName : `Prof. ${reportCardData.generatedByName}`)
+                    : "Faculty Evaluator"}
+                </span>
                 <span className="text-slate-400">· Senior Faculty Mentor</span>
               </div>
               <span className="text-slate-400 text-[11px] sm:text-xs">Official {isBTech ? "SSEC" : "SSISM"} Evaluation</span>

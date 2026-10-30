@@ -682,6 +682,25 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
     })
   ]);
 
+  try {
+    const { createNotification } = require("./notificationService");
+    const statusLabel = studentTask.status === "completed" ? "completed" : studentTask.status === "inProgress" ? "started" : studentTask.status;
+    createNotification({
+      title: studentTask.status === "completed" ? "Task Completed" : "Task Status Updated",
+      message: `Task "${studentTask.title}" has been marked as ${statusLabel}${studentTask.marks ? ` (${studentTask.marks}/${studentTask.maxMarks || 5} marks)` : ""}`,
+      type: studentTask.status === "completed" ? "success" : "info",
+      category: "task",
+      studentId,
+      recipientRole: "all",
+      actorId,
+      actorName,
+      actorRole,
+      metadata: { taskId: studentTask._id, status: studentTask.status, marks: studentTask.marks },
+    }).catch((err) => console.error("Notification creation error:", err));
+  } catch (notifErr) {
+    console.error("Failed to trigger task notification:", notifErr);
+  }
+
   const { syncStudentReadiness } = require("./promotionService");
   await syncStudentReadiness(studentId);
   await syncStudentLevelProgressStats(studentId);

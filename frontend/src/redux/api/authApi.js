@@ -51,14 +51,29 @@ const rawBaseQuery = fetchBaseQuery({
       "uploadMyExtraDocument", "getMyExtraDocuments", "getMyStudentPlacement",
       "getMyStudentReportCard",
     ];
-    if (studentEndpoints.includes(endpoint)) {
+    const isStudentPortal =
+      localStorage.getItem("role") === "student" ||
+      (!localStorage.getItem("token") && !!localStorage.getItem("studentToken"));
+
+    const notificationEndpoints = [
+      "getNotifications",
+      "clearAllNotifications",
+      "dismissNotification",
+      "markNotificationRead",
+    ];
+
+    if (
+      studentEndpoints.includes(endpoint) ||
+      (isStudentPortal && notificationEndpoints.includes(endpoint))
+    ) {
       const encryptedToken = localStorage.getItem("studentToken");
       let token = decrypt(encryptedToken);
-      
+      if (!token) token = encryptedToken;
       if (token) headers.set("Authorization", `Bearer ${token}`);
     } else {
       const encryptedToken = localStorage.getItem("token");
-      const token = decrypt(encryptedToken);
+      let token = decrypt(encryptedToken);
+      if (!token) token = encryptedToken;
       if (token) headers.set("Authorization", `Bearer ${token}`);
     }
     return headers;
@@ -249,7 +264,7 @@ const baseQueryWithAutoRefresh = async (args, api, extraOptions) => {
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryWithAutoRefresh,
-  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task'],
+  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications'],
   // Global configuration for better caching
   keepUnusedDataFor: 300, // 5 minutes default cache
   refetchOnMountOrArgChange: 30, // Only refetch if data is older than 30 seconds
@@ -2014,6 +2029,37 @@ export const authApi = createApi({
       }),
     }),
 
+    // --- Realtime Persistent Notifications ---
+    getNotifications: builder.query({
+      query: (params = {}) => ({
+        url: "/notifications",
+        params: typeof params === "object" ? params : {},
+      }),
+      providesTags: ["Notifications"],
+    }),
+    clearAllNotifications: builder.mutation({
+      query: (body = {}) => ({
+        url: "/notifications/clear-all",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Notifications"],
+    }),
+    dismissNotification: builder.mutation({
+      query: (id) => ({
+        url: `/notifications/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Notifications"],
+    }),
+    markNotificationRead: builder.mutation({
+      query: (id) => ({
+        url: `/notifications/${id}/read`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["Notifications"],
+    }),
+
   }),
 });
 
@@ -2202,4 +2248,8 @@ export const {
   useGetMyStudentReportCardQuery,
   useCreateNewStudentMutation,
   useImportStudentsExcelMutation,
+  useGetNotificationsQuery,
+  useClearAllNotificationsMutation,
+  useDismissNotificationMutation,
+  useMarkNotificationReadMutation,
 } = authApi;

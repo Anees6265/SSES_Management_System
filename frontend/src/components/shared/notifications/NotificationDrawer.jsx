@@ -4,11 +4,17 @@ import { createPortal } from "react-dom";
 import { Bell, BellOff, X, CheckCheck, Trash2, Info } from "lucide-react";
 import { MdWarning, MdCheckCircle } from "react-icons/md";
 import { confirmDelete } from "../modal/DeleteConfirmModal";
+import {
+  useGetNotificationsQuery,
+  useClearAllNotificationsMutation,
+  useDismissNotificationMutation,
+} from "../../../redux/api/authApi";
 
 const NotificationDrawer = ({
   isOpen,
   onClose,
-  notifications = [],
+  studentId = null,
+  notifications: externalNotifications = null,
   onClearAll,
   onDismiss,
   title = "Notifications",
@@ -17,6 +23,43 @@ const NotificationDrawer = ({
   const [isMounted, setIsMounted] = useState(false);
   const [animatedOpen, setAnimatedOpen] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
+
+  const { data: notifData } = useGetNotificationsQuery(
+    studentId ? { studentId } : undefined,
+    {
+      skip: !isOpen,
+      pollingInterval: 20000,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+
+  const [clearAllApi] = useClearAllNotificationsMutation();
+  const [dismissApi] = useDismissNotificationMutation();
+
+  const notifications = useMemo(() => {
+    if (externalNotifications !== null && externalNotifications !== undefined) {
+      return externalNotifications;
+    }
+    return notifData?.data || [];
+  }, [externalNotifications, notifData]);
+
+  const handleClearAll = async () => {
+    try {
+      await clearAllApi(studentId ? { studentId } : {}).unwrap();
+    } catch (err) {
+      console.error("clearAllNotifications error:", err);
+    }
+    if (onClearAll) onClearAll();
+  };
+
+  const handleDismiss = async (id) => {
+    try {
+      await dismissApi(id).unwrap();
+    } catch (err) {
+      console.error("dismissNotification error:", err);
+    }
+    if (onDismiss) onDismiss(id);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -105,7 +148,7 @@ const NotificationDrawer = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-            {notifications.length > 0 && onClearAll && (
+            {notifications.length > 0 && (
               <button
                 type="button"
                 onClick={async () => {
@@ -117,7 +160,7 @@ const NotificationDrawer = ({
                       confirmText: "Clear All",
                     })
                   ) {
-                    onClearAll();
+                    await handleClearAll();
                   }
                 }}
                 className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl border border-rose-200/80 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
@@ -259,16 +302,14 @@ const NotificationDrawer = ({
                       </div>
                     </div>
 
-                    {onDismiss && (
-                      <button
-                        type="button"
-                        onClick={() => onDismiss(notif.id)}
-                        className="text-gray-300 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                        title="Dismiss notification"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDismiss(notif.id || notif._id)}
+                      className="text-gray-300 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                      title="Dismiss notification"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
 
                   <p className="text-xs text-gray-600 font-medium leading-relaxed pl-10.5">

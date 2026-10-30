@@ -8,6 +8,7 @@ import {
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
 import SecurityHelmet from "../../shared/SecurityHelmet";
+import NotificationBell from "../../shared/notifications/NotificationBell";
 
 const navItems = [
   { to: "/student-portal/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
@@ -254,8 +255,9 @@ export default function StudentPortalLayout() {
             <span className="text-xs font-bold text-orange-500 uppercase tracking-wide">Student Portal</span>
           </div>
 
-          {/* Right side — avatar only */}
+          {/* Right side — notifications & avatar */}
           <div className="flex items-center gap-2.5 ml-auto">
+            <NotificationBell title="My Notifications" subtitle="Live academic & task updates" />
             {studentData.image ? (
               <img src={studentData.image} alt={name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
             ) : (

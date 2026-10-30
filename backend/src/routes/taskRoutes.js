@@ -581,6 +581,24 @@ router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), as
       isActive: true
     });
 
+    try {
+      const { createNotification } = require("../services/notificationService");
+      createNotification({
+        title: "New Task Assigned",
+        message: `Task "${task.title}" has been assigned to ${student.firstName || ""} ${student.lastName || ""} (${student.prkey || ""})`,
+        type: "info",
+        category: "task",
+        studentId: student._id,
+        recipientRole: "all",
+        actorId: req.user?._id || req.user?.id,
+        actorName: req.user?.name || "Faculty",
+        actorRole: req.user?.role || "faculty",
+        metadata: { taskId: task._id, title: task.title },
+      }).catch(err => console.error("Notification creation error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger task notification:", notifErr);
+    }
+
     res.status(201).json({
       success: true,
       message: "Task created for student successfully",

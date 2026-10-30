@@ -135,7 +135,7 @@ const extractRowsFromWorksheet = (worksheet) => {
 
 exports.createSyllabusVersion = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, version: versionInput, title, subjects } = req.body;
+    const { sessionId, levelId, subLevelId, version: versionInput, title, subjects, domain } = req.body;
     if (!sessionId || !levelId || !subLevelId) {
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     }
@@ -168,6 +168,7 @@ exports.createSyllabusVersion = async (req, res) => {
     if (existingVersion) {
       existingVersion.isActive = true;
       existingVersion.status = "active";
+      if (domain !== undefined) existingVersion.domain = (domain || "").trim();
       // Add subjects to existing version instead of creating new
       upsertSubjectTree(existingVersion, subjects);
       await existingVersion.save();
@@ -182,6 +183,7 @@ exports.createSyllabusVersion = async (req, res) => {
       sessionId, levelId, subLevelId,
       version: resolvedVersion,
       title: title || "",
+      domain: (domain || "").trim(),
       subjects: normalizeSubjects(subjects)
     });
     res.status(201).json({ success: true, message: "Syllabus version created successfully", data: syllabusVersion });
@@ -296,7 +298,7 @@ exports.archiveSyllabusVersion = async (req, res) => {
 
 exports.addTaskToSyllabusVersion = async (req, res) => {
   try {
-    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate } = req.body;
+    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain } = req.body;
     if (!ensureObjectId(subjectId) || !ensureObjectId(topicId) || !title) {
       return res.status(400).json({ success: false, message: "subjectId, topicId and title are required" });
     }
@@ -328,6 +330,7 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       subTopicName: subTopic?.name || "",
       taskNodeType: subTopicId ? "subTopic" : "topic",
       title,
+      domain: (domain || sv.domain || "").trim(),
       description: description || "",
       type: type || "assignment",
       priority: priority || "medium",
@@ -543,7 +546,7 @@ exports.toggleSubTopicActive = async (req, res) => {
 // Rows with taskTitle = syllabus + task
 exports.uploadCombined = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version } = req.body;
+    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version, domain } = req.body;
     if (!sessionId || !levelId || !subLevelId)
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     if (!Array.isArray(rows) || rows.length === 0)
@@ -626,6 +629,7 @@ exports.uploadCombined = async (req, res) => {
       sv.status = "active";
       if (title && title.trim()) sv.title = title.trim();
       if (version && version.trim()) sv.version = version.trim();
+      if (domain !== undefined) sv.domain = (domain || "").trim();
       upsertSubjectTree(sv, subjects);
       await sv.save();
     } else {
@@ -635,6 +639,7 @@ exports.uploadCombined = async (req, res) => {
         subLevelId,
         title: (title || "").trim(),
         version: (version || "").trim() || "v1.0",
+        domain: (domain || "").trim(),
         subjects: normalizeSubjects(subjects),
         status: "active",
         isActive: true
@@ -696,6 +701,7 @@ exports.uploadCombined = async (req, res) => {
         subTopicName: foundSubTopic?.name || "",
         taskNodeType: foundSubTopic ? "subTopic" : "topic",
         title:        taskTitle,
+        domain:       (row.domain || domain || sv.domain || "").trim(),
         type:         ["assignment","project","practice","reading","assessment","other"].includes(taskType) ? taskType : "assessment",
         maxMarks,
         timeDays,

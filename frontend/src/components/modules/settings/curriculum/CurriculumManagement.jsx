@@ -39,6 +39,7 @@ import {
   useGetTasksBySyllabusVersionQuery,
 } from "../../../../redux/api/authApi";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 
 /* ─── Helpers ─────────────────────────────────────────── */
 const getId = (value) => (typeof value === "object" ? value?._id : value);
@@ -288,6 +289,7 @@ const CurriculumUploadDrawerContent = ({
   const [selectedSubLevelId, setSelectedSubLevelId] = useState("");
   const [title, setTitle] = useState("");
   const [version, setVersion] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState("");
 
   const [isDragging, setIsDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
@@ -300,6 +302,19 @@ const CurriculumUploadDrawerContent = ({
   const [uploadCombined] = useUploadCombinedSyllabusMutation();
 
   const selectedDept = departments.find((d) => getId(d) === selectedDeptId);
+  const selectedLevel = levels.find((l) => getId(l) === selectedLevelId);
+  const selectedSubLevel = subLevels.find((sl) => getId(sl) === selectedSubLevelId);
+
+  const isLevel2B = useMemo(() => {
+    const sName = String(selectedSubLevel?.name || "").trim().toUpperCase();
+    const lName = String(selectedLevel?.name || "").trim().toUpperCase();
+    return sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B");
+  }, [selectedLevel, selectedSubLevel]);
+
+  const departmentDomains = useMemo(() => {
+    return getDomainsForDepartment(selectedDept?.name || "");
+  }, [selectedDept]);
+
   const filteredSessions = useMemo(() => {
     return filterSessionsByDepartment(sessions, selectedDept?.name || selectedDept);
   }, [sessions, selectedDept]);
@@ -345,17 +360,20 @@ const CurriculumUploadDrawerContent = ({
     setSelectedSubDeptId("");
     setSelectedLevelId("");
     setSelectedSubLevelId("");
+    setSelectedDomain("");
   };
 
   const handleSubDeptChange = (val) => {
     setSelectedSubDeptId(val);
     setSelectedLevelId("");
     setSelectedSubLevelId("");
+    setSelectedDomain("");
   };
 
   const handleLevelChange = (val) => {
     setSelectedLevelId(val);
     setSelectedSubLevelId("");
+    setSelectedDomain("");
   };
 
   const totalSubjects = hierarchy.length;
@@ -472,13 +490,17 @@ const CurriculumUploadDrawerContent = ({
 
     setSaving(true);
     try {
-      const taskRows = buildTaskRows(hierarchy);
+      const taskRows = buildTaskRows(hierarchy).map(r => ({
+        ...r,
+        domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+      }));
       const res = await uploadCombined({
         sessionId: selectedSessionId,
         levelId: selectedLevelId,
         subLevelId: selectedSubLevelId,
         title: title.trim(),
         version: version.trim() || undefined,
+        domain: isLevel2B ? (selectedDomain || "") : "",
         tasks: taskRows,
         subjectMeta: finalMeta,
       }).unwrap();
@@ -571,7 +593,10 @@ const CurriculumUploadDrawerContent = ({
             </label>
             <SelectDropdown
               value={selectedSubLevelId}
-              onChange={(val) => setSelectedSubLevelId(val)}
+              onChange={(val) => {
+                setSelectedSubLevelId(val);
+                setSelectedDomain("");
+              }}
               disabled={!selectedLevelId}
               options={subLevelOptions}
               buttonClassName={`h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
@@ -580,6 +605,29 @@ const CurriculumUploadDrawerContent = ({
             />
           </div>
         </div>
+
+        {/* Optional Domain for Level 2B */}
+        {isLevel2B && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              </label>
+              <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                Level 2B Specialization
+              </span>
+            </div>
+            <SelectDropdown
+              value={selectedDomain}
+              onChange={(val) => setSelectedDomain(val)}
+              options={[
+                { value: "", label: "-- Select Domain (Optional) --" },
+                ...departmentDomains.map((d) => ({ value: d, label: d }))
+              ]}
+              buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-400 cursor-pointer"
+            />
+          </div>
+        )}
 
         {/* Optional Title & Version */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

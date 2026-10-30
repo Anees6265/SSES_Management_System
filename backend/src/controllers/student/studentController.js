@@ -8,6 +8,7 @@ const Level = require("../../models/department/Level");
 const SubLevel = require("../../models/department/SubLevel");
 const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+const Task = require("../../models/syllabus/Task");
 const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
@@ -1177,7 +1178,8 @@ exports.updateStudent = async (req, res) => {
       "gender", "category", "dob", "dobString", "aadharNo", "aadharCard",
       "fullAddress", "address", "village", "tehsil", "district", "pincode",
       "trackBus", "sponsorshipType", "ssismGroup", "track", "techno", "technology",
-      "status", "isFTP", "ftpDomain", "domain", "withITEG", "isUIUX", "percent12", "percent10", "year12"
+      "status", "isFTP", "ftpDomain", "domain", "withITEG", "isUIUX", "percent12", "percent10", "year12",
+      "ftpPreviousLevelId", "ftpPreviousSubLevelId", "ftpPreviousSyllabusVersionId"
     ];
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });
@@ -1288,6 +1290,116 @@ exports.updateStudent = async (req, res) => {
         updateData.uiuxPreviousSyllabusVersionId = null;
       } catch (uiuxRevertErr) {
         console.error("Error reverting UI/UX mapping:", uiuxRevertErr);
+      }
+    }
+
+    // ----------------------------------------------------
+    // FTP Domain Handling & Archival Logic
+    // ----------------------------------------------------
+    let shouldAutoAssignFtpTasks = false;
+    let targetFtpSyllabus = null;
+    let targetFtpTasks = [];
+
+    const isMarkingFtp = updateData.isFTP === true || (updateData.ftpDomain !== undefined && updateData.ftpDomain !== "" && updateData.isFTP !== false);
+    const domainCandidate = String(updateData.ftpDomain || updateData.domain || req.body.ftpDomain || req.body.domain || "").trim();
+
+    if (isMarkingFtp && domainCandidate) {
+      if (domainCandidate.toLowerCase() === "others") {
+        // "Others" option: mark student as FTP, keep current level syllabus and tasks as is
+        updateData.isFTP = true;
+        updateData.ftpDomain = "Others";
+        updateData.domain = "Others";
+        updateData.track = "Others";
+        updateData.techno = "Others";
+        updateData.technology = "Others";
+      } else {
+        // Specific Domain selected: validate that syllabus or tasks are uploaded for this domain
+        const domainRegex = new RegExp(`^${domainCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+
+        // 1. Look for SyllabusVersion with this domain
+        let domainSyllabus = await SyllabusVersion.findOne({
+          domain: domainRegex,
+          sessionId: existingStudent.sessionId,
+          status: "active",
+          isActive: true
+        }).sort({ createdAt: -1 });
+
+        if (!domainSyllabus) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            domain: domainRegex,
+            status: "active",
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        if (!domainSyllabus) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            domain: domainRegex,
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        // 2. Look for Task entries with this domain
+        const domainTasks = await Task.find({
+          domain: domainRegex,
+          isActive: true
+        }).lean();
+
+        const hasUploadedDomainContent = Boolean(domainSyllabus) || (domainTasks && domainTasks.length > 0);
+
+        if (!hasUploadedDomainContent) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot mark to FTP: No syllabus or tasks uploaded for domain "${domainCandidate}". Please upload syllabus or tasks for this domain first.`
+          });
+        }
+
+        // Valid domain content exists -> Proceed with FTP marking & task archival
+        if (!existingStudent.isFTP) {
+          updateData.ftpPreviousLevelId = existingStudent.currentLevelId;
+          updateData.ftpPreviousSubLevelId = existingStudent.currentSubLevelId;
+          updateData.ftpPreviousSyllabusVersionId = existingStudent.syllabusVersionId;
+        }
+
+        // Archive all previous active non-archived student tasks
+        await StudentTask.updateMany(
+          {
+            studentId: existingStudent._id,
+            isArchived: { $ne: true }
+          },
+          {
+            $set: {
+              isArchived: true,
+              archivedAt: new Date(),
+              archivedReason: `FTP Domain: ${domainCandidate}`
+            }
+          }
+        );
+
+        updateData.isFTP = true;
+        updateData.ftpDomain = domainCandidate;
+        updateData.domain = domainCandidate;
+        updateData.track = domainCandidate;
+        updateData.techno = domainCandidate;
+        updateData.technology = domainCandidate;
+        if (domainSyllabus) {
+          updateData.syllabusVersionId = domainSyllabus._id;
+          targetFtpSyllabus = domainSyllabus;
+        }
+        targetFtpTasks = domainTasks || [];
+        shouldAutoAssignFtpTasks = true;
+      }
+    } else if (updateData.isFTP === false && existingStudent.isFTP === true) {
+      updateData.ftpDomain = "";
+      updateData.domain = "";
+      if (existingStudent.ftpPreviousSyllabusVersionId) {
+        updateData.syllabusVersionId = existingStudent.ftpPreviousSyllabusVersionId;
+      }
+      if (existingStudent.ftpPreviousLevelId) {
+        updateData.currentLevelId = existingStudent.ftpPreviousLevelId;
+      }
+      if (existingStudent.ftpPreviousSubLevelId) {
+        updateData.currentSubLevelId = existingStudent.ftpPreviousSubLevelId;
       }
     }
 
@@ -1458,6 +1570,68 @@ exports.updateStudent = async (req, res) => {
         });
       } catch (reassignErr) {
         console.error("Error reassigning original tasks upon reverting UI/UX:", reassignErr.message);
+      }
+    }
+
+    // Auto-assign FTP domain syllabus & tasks
+    if (shouldAutoAssignFtpTasks) {
+      if (targetFtpSyllabus) {
+        try {
+          await assignTasksToStudent(student._id, targetFtpSyllabus._id, {
+            student,
+            allowSessionMismatch: true,
+            allowLevelMismatch: true
+          });
+        } catch (assignErr) {
+          console.error("Error auto-assigning FTP domain syllabus tasks:", assignErr.message);
+        }
+      }
+
+      if (targetFtpTasks && targetFtpTasks.length > 0) {
+        try {
+          const existingSTs = await StudentTask.find({
+            studentId: student._id,
+            isArchived: { $ne: true }
+          }).select("taskId");
+          const existingTaskIds = new Set(existingSTs.map((t) => String(t.taskId)));
+
+          const newTasksToInsert = targetFtpTasks.filter((t) => !existingTaskIds.has(String(t._id)));
+          if (newTasksToInsert.length > 0) {
+            const docs = newTasksToInsert.map((t) => ({
+              studentId: student._id,
+              sessionId: student.sessionId || t.sessionId,
+              levelId: student.currentLevelId || t.levelId,
+              subLevelId: student.currentSubLevelId || t.subLevelId,
+              syllabusVersionId: t.syllabusVersionId || targetFtpSyllabus?._id || student.syllabusVersionId || null,
+              taskId: t._id,
+              subjectId: t.subjectId || null,
+              topicId: t.topicId || null,
+              subTopicId: t.subTopicId || null,
+              subjectName: t.subjectName || student.ftpDomain || "FTP",
+              topicName: t.topicName || "General",
+              subTopicName: t.subTopicName || null,
+              taskNodeType: t.taskNodeType || "general",
+              isGeneralTask: t.taskNodeType === "general" || !t.syllabusVersionId,
+              title: t.title,
+              description: t.description || "",
+              type: t.type || "assessment",
+              priority: t.priority || "medium",
+              mandatory: t.mandatory !== false,
+              maxMarks: typeof t.maxMarks === "number" ? t.maxMarks : 5,
+              timeDays: t.timeDays || null,
+              measurablePoints: t.measurablePoints || "",
+              dueDate: t.dueDate || null,
+              status: "pending",
+              isActive: true,
+              isArchived: false,
+              assignedType: "auto",
+              assignedByName: "System (FTP Domain Assign)"
+            }));
+            await StudentTask.insertMany(docs, { ordered: false });
+          }
+        } catch (taskErr) {
+          console.error("Error auto-assigning FTP domain tasks:", taskErr.message);
+        }
       }
     }
 
@@ -1703,6 +1877,7 @@ exports.getStudentTasks = async (req, res) => {
 
     const filter = {
       studentId: id,
+      isArchived: { $ne: true }
     };
     if (subLevelId === "all") {
       // Return all tasks across all sublevels/syllabus versions
@@ -1824,6 +1999,104 @@ exports.getStudentTaskHistory = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// ✅ Get Student Archived Tasks & Previous Syllabus
+exports.getStudentArchivedTasks = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findById(id)
+      .populate("currentLevelId", "name")
+      .populate("currentSubLevelId", "name")
+      .populate("ftpPreviousLevelId", "name")
+      .populate("ftpPreviousSubLevelId", "name")
+      .populate("sessionId", "name")
+      .populate("subDepartmentId", "name");
+
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    // 1. Fetch archived tasks
+    let archivedTasks = await StudentTask.find({
+      studentId: id,
+      isArchived: true
+    })
+      .populate("levelId", "name")
+      .populate("subLevelId", "name")
+      .populate("sessionId", "name")
+      .sort({ archivedAt: -1, createdAt: -1 });
+
+    // Fallback if no tasks explicitly marked isArchived: true but student is FTP and has previous tasks
+    if (archivedTasks.length === 0 && student.isFTP && student.ftpPreviousSubLevelId) {
+      archivedTasks = await StudentTask.find({
+        studentId: id,
+        subLevelId: student.ftpPreviousSubLevelId._id || student.ftpPreviousSubLevelId
+      })
+        .populate("levelId", "name")
+        .populate("subLevelId", "name")
+        .populate("sessionId", "name")
+        .sort({ createdAt: -1 });
+    }
+
+    // 2. Fetch previous syllabus info if available
+    let previousSyllabus = null;
+    const prevSyllabusId = student.ftpPreviousSyllabusVersionId || student.uiuxPreviousSyllabusVersionId || (archivedTasks.length > 0 ? archivedTasks[0].syllabusVersionId : null);
+    if (prevSyllabusId) {
+      previousSyllabus = await SyllabusVersion.findById(prevSyllabusId)
+        .populate("sessionId", "name")
+        .populate("levelId", "name")
+        .populate("subLevelId", "name")
+        .lean();
+    }
+
+    const completedTasks = archivedTasks.filter((t) => t.status === "completed");
+    const tasksWithMarks = completedTasks.filter((t) => typeof t.marks === "number");
+    const averageMarks = tasksWithMarks.length > 0
+      ? Number((tasksWithMarks.reduce((sum, t) => sum + t.marks, 0) / tasksWithMarks.length).toFixed(2))
+      : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        student: {
+          _id: student._id,
+          fullName: student.fullName || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+          firstName: student.firstName,
+          lastName: student.lastName,
+          image: student.image,
+          status: student.status,
+          studentId: student.studentId,
+          enrollmentNo: student.enrollmentNo,
+          course: student.course,
+          email: student.email,
+          studentMobile: student.studentMobile,
+          fatherName: student.fatherName,
+          gender: student.gender,
+          category: student.category,
+          batchYear: student.batchYear,
+          isFTP: student.isFTP,
+          ftpDomain: student.ftpDomain,
+          withITEG: student.withITEG,
+          isUIUX: student.isUIUX,
+          department: student.subDepartmentId?.name || "N/A",
+          currentLevel: student.currentLevelId?.name || "N/A",
+          currentSubLevel: student.currentSubLevelId?.name || "N/A",
+          previousLevel: student.ftpPreviousLevelId?.name || "N/A",
+          previousSubLevel: student.ftpPreviousSubLevelId?.name || "N/A",
+          session: student.sessionId?.name || "N/A",
+        },
+        previousSyllabus,
+        tasks: archivedTasks,
+        totalTasks: archivedTasks.length,
+        completedTasks: completedTasks.length,
+        pendingTasks: archivedTasks.filter((t) => t.status === "pending").length,
+        inProgressTasks: archivedTasks.filter((t) => t.status === "inProgress").length,
+        averageMarks
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

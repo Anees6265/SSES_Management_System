@@ -42,6 +42,7 @@ const taskSchema = new mongoose.Schema({
     required: true
   },
   title: { type: String, required: true, trim: true },
+  domain: { type: String, default: "", trim: true },
   description: { type: String, default: "" },
   type: {
     type: String,

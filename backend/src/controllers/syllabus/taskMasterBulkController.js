@@ -9,7 +9,7 @@ const VALID_PRIORITY = ["low", "medium", "high"];
 // Body: { syllabusVersionId, tasks: [{ topic, subTopic, taskTitle, taskType, priority, maxMarks, timeDays, measurablePoints }] }
 exports.bulkUploadTasks = async (req, res) => {
   try {
-    const { syllabusVersionId, tasks } = req.body;
+    const { syllabusVersionId, tasks, domain } = req.body;
 
     if (!syllabusVersionId)
       return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
@@ -111,6 +111,7 @@ exports.bulkUploadTasks = async (req, res) => {
         subTopicName:     foundSubTopic?.name || "",
         taskNodeType:     foundSubTopic ? "subTopic" : "topic",
         title:            taskTitle,
+        domain:           (row.domain || domain || sv.domain || "").trim(),
         type:             resolvedType,
         maxMarks,
         timeDays,

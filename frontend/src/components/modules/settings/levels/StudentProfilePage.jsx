@@ -10,7 +10,7 @@ import {
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
     MdTrendingUp, MdCheck, MdFlag, MdAssignment, MdLocationOn,
     MdPerson, MdArrowBack, MdNotInterested, MdDashboard, MdList, MdExpandMore,
-    MdDesignServices
+    MdDesignServices, MdArchive
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
@@ -423,9 +423,10 @@ const MarkToFtpModal = ({ isOpen, onClose, student, onConfirm, loading }) => {
 
     const modalDomainOptions = [
         { value: "", label: "-- Select Domain --" },
-        ...availableDomains.map((d) => ({ value: d, label: d }))
+        ...availableDomains.map((d) => ({ value: d, label: d })),
+        { value: "Others", label: "Others" }
     ];
-    if (selectedDomain && !availableDomains.includes(selectedDomain)) {
+    if (selectedDomain && !availableDomains.includes(selectedDomain) && selectedDomain !== "Others") {
         modalDomainOptions.splice(1, 0, { value: selectedDomain, label: selectedDomain });
     }
 
@@ -1776,7 +1777,8 @@ const StudentProfilePage = () => {
     const cardDomainOptions = useMemo(() => {
         const domains = getFtpDomainsForStudent(raw);
         const list = domains.map((d) => ({ value: d, label: d }));
-        if (currentDomain && !domains.includes(currentDomain)) {
+        list.push({ value: "Others", label: "Others" });
+        if (currentDomain && !domains.includes(currentDomain) && currentDomain !== "Others") {
             list.splice(0, 0, { value: currentDomain, label: currentDomain });
         }
         return [{ value: "", label: "-- Select Domain --" }, ...list];
@@ -2361,6 +2363,13 @@ const StudentProfilePage = () => {
                                 <MdAssignment size={16} /> Task Board
                             </button>
                             <button
+                                onClick={() => navigate(`/student/${raw._id}/archive`)}
+                                className="flex items-center justify-center gap-1.5 sm:gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-2xs active:scale-[0.98] cursor-pointer"
+                                title="View Previous Level Archived Tasks & Syllabus"
+                            >
+                                <MdArchive size={16} className="text-amber-600" /> Archive
+                            </button>
+                            <button
                                 onClick={() => setEditModal(true)}
                                 className="flex items-center justify-center gap-1.5 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm active:scale-[0.98] cursor-pointer"
                             >
@@ -2393,6 +2402,12 @@ const StudentProfilePage = () => {
                                                 className="w-full text-left px-4 py-2 hover:bg-slate-50 text-orange-600 flex items-center gap-2 font-medium"
                                             >
                                                 <MdTrendingUp size={14} /> {raw.isFTP ? "Change FTP Domain" : "Mark to FTP"}
+                                            </button>
+                                            <button 
+                                                onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/archive`); }}
+                                                className="w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-800 flex items-center gap-2 font-medium"
+                                            >
+                                                <MdArchive size={14} className="text-amber-600" /> View Archive
                                             </button>
                                             {raw.isFTP && (
                                                 <button 
@@ -2527,15 +2542,25 @@ const StudentProfilePage = () => {
                                     <MdCheck size={15} /> {ftpLoading ? "Saving..." : (inlineFtpDomain === currentDomain ? "Saved" : "Save Domain")}
                                 </button>
                                 {raw.isFTP ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveFtp}
-                                        disabled={ftpLoading}
-                                        className="h-11 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs transition disabled:opacity-50 shadow-2xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 shrink-0"
-                                        title="Remove student from Fast Track Program"
-                                    >
-                                        <MdClose size={15} /> Remove FTP
-                                    </button>
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/student/${raw._id}/archive`)}
+                                            className="h-11 px-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition shadow-2xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                                            title="View Previous Level Archived Tasks & Syllabus"
+                                        >
+                                            <MdArchive size={15} className="text-amber-600" /> Archive
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveFtp}
+                                            disabled={ftpLoading}
+                                            className="h-11 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs transition disabled:opacity-50 shadow-2xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                                            title="Remove student from Fast Track Program"
+                                        >
+                                            <MdClose size={15} /> Remove FTP
+                                        </button>
+                                    </>
                                 ) : (
                                     <button
                                         type="button"

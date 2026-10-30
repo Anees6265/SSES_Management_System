@@ -173,6 +173,21 @@ const studentSchema = new mongoose.Schema({
     ref: "SyllabusVersion",
     default: null
   },
+  ftpPreviousLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Level",
+    default: null
+  },
+  ftpPreviousSubLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubLevel",
+    default: null
+  },
+  ftpPreviousSyllabusVersionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SyllabusVersion",
+    default: null
+  },
 
   // 🔒 Promotion Lock (prevents race condition on concurrent task updates)
   promotionPending: { type: Boolean, default: false },

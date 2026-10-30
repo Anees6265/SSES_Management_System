@@ -36,6 +36,7 @@ import ShowSubLevelTablesData from "../settings/levels/ShowSubLevelTablesData";
 import SubLevelManagement from "../settings/levels/SubLevelManagement";
 import StudentProfilePage from "../settings/levels/StudentProfilePage";
 import StudentTaskBoard from "../settings/levels/StudentTaskBoard";
+import StudentArchivePage from "../students/StudentArchivePage";
 import TaskManagement from "../settings/tasks/TaskManagement";
 import TaskList from "../students/TaskList";
 import SettingFIle from "../settings/SettingFIle";
@@ -111,6 +112,7 @@ const Layout = () => {
                     <Route path="/student-detail-table/:subDepartmentId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentDetailTable /></ProtectedRoute>} />
                     <Route path="/student/leveldata/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentLevelData /></ProtectedRoute>} />
                     <Route path="/student-profile/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentProfilePage /></ProtectedRoute>} />
+                    <Route path="/student/:id/archive" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentArchivePage /></ProtectedRoute>} />
                     <Route path="/student/:id/report/edit" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentReportForm /></ProtectedRoute>} />
                     <Route path="/student/:id/report" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentReport /></ProtectedRoute>} />
                     <Route path="/student-level-interviews/:studentId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentLevelInterviewHistory /></ProtectedRoute>} />

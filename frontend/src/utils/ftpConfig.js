@@ -124,6 +124,23 @@ export const getFtpDomainsForStudent = (student = {}) => {
 };
 
 /**
+ * Returns available domain options for a given department name, code, or key.
+ */
+export const getDomainsForDepartment = (deptNameOrKey = "") => {
+  const norm = String(deptNameOrKey || "").trim().toUpperCase();
+  if (norm.includes("B.TECH") || norm.includes("BTECH") || norm.includes("ENGINEERING")) {
+    return FTP_DOMAINS_BY_DEPARTMENT.BTECH || [];
+  }
+  if (norm.includes("MEG") || norm.includes("MANAGEMENT") || norm.includes("COMMERCE") || norm.includes("BBA") || norm.includes("MBA")) {
+    return FTP_DOMAINS_BY_DEPARTMENT.MEG || [];
+  }
+  if (norm.includes("BEG") || norm.includes("SCIENCE") || norm.includes("BIO") || norm.includes("PHARM")) {
+    return FTP_DOMAINS_BY_DEPARTMENT.BEG || [];
+  }
+  return FTP_DOMAINS_BY_DEPARTMENT.ITEG || [];
+};
+
+/**
  * Returns human-readable department label for a given student
  */
 export const getDepartmentLabelForStudent = (student = {}) => {

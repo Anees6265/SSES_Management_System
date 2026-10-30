@@ -123,6 +123,7 @@ const validateStudentVersionMatch = (student, syllabusVersion, options = {}) => 
   if (
     !options.allowSessionMismatch &&
     !student.isUIUX &&
+    !student.isFTP &&
     student.sessionId &&
     syllabusVersion.sessionId &&
     student.sessionId.toString() !== syllabusVersion.sessionId.toString()
@@ -131,8 +132,11 @@ const validateStudentVersionMatch = (student, syllabusVersion, options = {}) => 
   }
 
   if (
-    student.currentLevelId.toString() !== syllabusVersion.levelId.toString() ||
-    student.currentSubLevelId.toString() !== syllabusVersion.subLevelId.toString()
+    !options.allowLevelMismatch &&
+    !student.isFTP &&
+    !student.isUIUX &&
+    (student.currentLevelId?.toString() !== syllabusVersion.levelId?.toString() ||
+    student.currentSubLevelId?.toString() !== syllabusVersion.subLevelId?.toString())
   ) {
     throw new Error("Student is not currently in the level/sublevel of this syllabus version");
   }

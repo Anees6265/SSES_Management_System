@@ -35,6 +35,7 @@ import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import { TaskUploadDrawer } from "./SyllabusTab";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 
 const TASK_TYPES = [
   { value: "assessment", label: "Assessment" },
@@ -73,6 +74,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
 
   const [taskForm, setTaskForm] = useState({
     title: "",
+    domain: "",
     description: "",
     type: "assessment",
     priority: "medium",
@@ -86,6 +88,16 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const rawSessions = sessionsData?.data || [];
   const deptIdentifier = departmentName || subdepartment?.departmentId?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId.departmentId?.name : "") || "";
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  const isLevel2B = useMemo(() => {
+    const sName = String(subLevel?.name || "").trim().toUpperCase();
+    const lName = String(level?.name || "").trim().toUpperCase();
+    return sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B");
+  }, [level, subLevel]);
+
+  const departmentDomains = useMemo(() => {
+    return getDomainsForDepartment(deptIdentifier);
+  }, [deptIdentifier]);
 
   useEffect(() => {
     if (selectedSessionId && sessions.length > 0) {
@@ -166,6 +178,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const resetForm = () => {
     setTaskForm({
       title: "",
+      domain: "",
       description: "",
       type: "assessment",
       priority: "medium",
@@ -196,6 +209,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
       const payload = {
         ...taskForm,
         title: taskForm.title.trim(),
+        domain: isLevel2B ? (taskForm.domain || "").trim() : "",
         timeDays: taskForm.timeDays ? Number(taskForm.timeDays) : null,
         maxMarks: Number(taskForm.maxMarks) || 5
       };
@@ -233,6 +247,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     setEditingTask(task);
     setTaskForm({
       title: task.title || "",
+      domain: task.domain || "",
       description: task.description || "",
       type: task.type || "assessment",
       priority: task.priority || "medium",
@@ -592,6 +607,30 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                       />
                     </div>
 
+                    {/* Optional Domain for Level 2B */}
+                    {isLevel2B && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className={labelCls}>
+                            Domain <span className="text-slate-400 normal-case font-normal">(optional)</span>
+                          </label>
+                          <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                            Level 2B Specialization
+                          </span>
+                        </div>
+                        <SelectDropdown
+                          value={taskForm.domain}
+                          onChange={(val) => setTaskForm((prev) => ({ ...prev, domain: val }))}
+                          options={[
+                            { value: "", label: "-- Select Domain (Optional) --" },
+                            ...departmentDomains.map((d) => ({ value: d, label: d }))
+                          ]}
+                          placeholder="-- Select Domain (Optional) --"
+                          buttonClassName={selectBtnCls}
+                        />
+                      </div>
+                    )}
+
                     {/* Description */}
                     <div>
                       <label className={labelCls}>Description <span className="text-slate-400 normal-case font-normal">(optional)</span></label>
@@ -812,6 +851,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                       syllabusVersionId={selectedVersionId}
                       subjectName={subLevel?.name || ""}
                       version={versions.find(v => v._id === selectedVersionId)?.version || ""}
+                      level={level}
+                      subLevel={subLevel}
+                      departmentName={deptIdentifier}
+                      departmentId={departmentId}
+                      subdepartment={subdepartment}
                       onSaved={() => {
                         refetchTasks();
                         onSuccess?.();

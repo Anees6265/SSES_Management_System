@@ -45,6 +45,7 @@ const syllabusVersionSchema = new mongoose.Schema({
   },
   version: { type: String, required: true, trim: true },
   title: { type: String, default: "", trim: true },
+  domain: { type: String, default: "", trim: true },
   status: {
     type: String,
     enum: ["draft", "active", "archived"],

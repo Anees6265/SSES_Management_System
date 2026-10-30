@@ -30,9 +30,16 @@ import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import CommonTable from "../../../shared/table/CommonTable";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 
 /* ─── helpers ─────────────────────────────────────────── */
 const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim());
+
+const checkIsLevel2B = (level, subLevel) => {
+  const sName = String(subLevel?.name || "").trim().toUpperCase();
+  const lName = String(level?.name || "").trim().toUpperCase();
+  return sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B");
+};
 
 const resolveDeptIdentifier = (departmentName, level, subLevel, subdepartment) => {
   if (departmentName && departmentName !== "Department") return departmentName;
@@ -273,6 +280,7 @@ const SubjectAccordion = ({ item, index }) => {
 export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName, departmentId, subdepartment, onSaved, onClose }, ref) => {
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedDomain,    setSelectedDomain]    = useState("");
   const [subject,           setSubject]           = useState("");
   const [topics,            setTopics]            = useState([{ name: "", subTopics: [""] }]);
   const [saving,            setSaving]            = useState(false);
@@ -282,6 +290,8 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   const rawSessions = sessionsData?.data || [];
   const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+  const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
+  const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
   useEffect(() => {
     if (selectedSessionId && sessions.length > 0) {
@@ -291,7 +301,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   }, [selectedSessionId, sessions]);
 
   const reset = () => {
-    setSubject(""); setSelectedSessionId("");
+    setSubject(""); setSelectedSessionId(""); setSelectedDomain("");
     setTopics([{ name: "", subTopics: [""] }]);
   };
 
@@ -321,8 +331,10 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
     setSaving(true);
     try {
       await createSyllabusVersion({
-        sessionId: selectedSessionId, levelId: level._id,
+        sessionId: selectedSessionId,
+        levelId: level._id,
         subLevelId: subLevel._id,
+        domain: isLevel2B ? (selectedDomain || "") : "",
         subjects: [buildSubjectPayload()],
       }).unwrap();
       toast.success("Subject saved to syllabus!");
@@ -350,6 +362,29 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
           placeholder="-- Select Session --"
         />
       </div>
+
+      {/* Optional Domain for Level 2B */}
+      {isLevel2B && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+            </label>
+            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+              Level 2B Specialization
+            </span>
+          </div>
+          <SelectDropdown
+            value={selectedDomain}
+            onChange={(val) => setSelectedDomain(val)}
+            options={[
+              { value: "", label: "-- Select Domain (Optional) --" },
+              ...departmentDomains.map((d) => ({ value: d, label: d }))
+            ]}
+            placeholder="-- Select Domain (Optional) --"
+          />
+        </div>
+      )}
 
       {/* Subject */}
       <div className="space-y-1.5">
@@ -488,6 +523,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const [hierarchy,        setHierarchy]        = useState([]);
   const [fileName,         setFileName]         = useState("");
   const [selectedSessionId,setSelectedSessionId]= useState("");
+  const [selectedDomain,   setSelectedDomain]   = useState("");
   const [subjectMeta,      setSubjectMeta]      = useState([]); // [{ name, includeInReportCard, reportCategory }]
   const [showPreview,      setShowPreview]      = useState(false);
 
@@ -496,6 +532,8 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const rawSessions = sessionsData?.data || [];
   const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+  const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
+  const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
   useEffect(() => {
     if (selectedSessionId && sessions.length > 0) {
@@ -517,6 +555,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     setHierarchy([]);
     setFileName("");
     setSelectedSessionId("");
+    setSelectedDomain("");
     setSubjectMeta([]);
     setShowPreview(false);
   };
@@ -589,11 +628,15 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
 
     setSaving(true);
     try {
-      const taskRows = buildTaskRows(hierarchy);
+      const taskRows = buildTaskRows(hierarchy).map((r) => ({
+        ...r,
+        domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+      }));
       const res = await uploadCombined({
         sessionId:   selectedSessionId,
         levelId:     level._id,
         subLevelId:  subLevel._id,
+        domain:      isLevel2B ? (selectedDomain || "") : "",
         tasks:       taskRows,
         subjectMeta: finalMeta,
       }).unwrap();
@@ -632,6 +675,29 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
           placeholder="-- Select Session --"
         />
       </div>
+
+      {/* Optional Domain for Level 2B */}
+      {isLevel2B && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+            </label>
+            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+              Level 2B Specialization
+            </span>
+          </div>
+          <SelectDropdown
+            value={selectedDomain}
+            onChange={(val) => setSelectedDomain(val)}
+            options={[
+              { value: "", label: "-- Select Domain (Optional) --" },
+              ...departmentDomains.map((d) => ({ value: d, label: d }))
+            ]}
+            placeholder="-- Select Domain (Optional) --"
+          />
+        </div>
+      )}
 
       {/* 2. TEMPLATE DOWNLOAD BANNER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
@@ -1136,16 +1202,20 @@ const parseTaskExcel = (file) =>
     reader.readAsArrayBuffer(file);
   });
 
-export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSaved }) => {
+export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSaved, level, subLevel, departmentName, departmentId, subdepartment }) => {
   const fileRef = useRef(null);
-  const [rows,     setRows]     = useState([]);
-  const [fileName, setFileName] = useState("");
-  const [saving,   setSaving]   = useState(false);
-  const [parsing,  setParsing]  = useState(false);
+  const [rows,           setRows]           = useState([]);
+  const [fileName,       setFileName]       = useState("");
+  const [selectedDomain, setSelectedDomain] = useState("");
+  const [saving,         setSaving]         = useState(false);
+  const [parsing,        setParsing]        = useState(false);
 
   const [bulkUploadTasks] = useBulkUploadTasksMutation();
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
+  const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
-  const reset = () => { setRows([]); setFileName(""); };
+  const reset = () => { setRows([]); setFileName(""); setSelectedDomain(""); };
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -1208,7 +1278,15 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
     if (!rows.length) { toast.error("No data to upload"); return; }
     setSaving(true);
     try {
-      const res = await bulkUploadTasks({ syllabusVersionId, tasks: rows }).unwrap();
+      const tasksWithDomain = rows.map((r) => ({
+        ...r,
+        domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+      }));
+      const res = await bulkUploadTasks({
+        syllabusVersionId,
+        tasks: tasksWithDomain,
+        domain: isLevel2B ? (selectedDomain || "") : "",
+      }).unwrap();
       toast.success(`${res.inserted} task(s) uploaded!`);
       if (res.errors?.length) {
         console.warn('Task upload warnings:', res.errors);
@@ -1242,6 +1320,29 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
           ⬇ Download Template
         </a>
       </div>
+
+      {/* Optional Domain for Level 2B */}
+      {isLevel2B && (
+        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Domain <span className="text-gray-400 font-normal lowercase">(optional)</span>
+            </label>
+            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+              Level 2B Specialization
+            </span>
+          </div>
+          <SelectDropdown
+            value={selectedDomain}
+            onChange={(val) => setSelectedDomain(val)}
+            options={[
+              { value: "", label: "-- Select Domain (Optional) --" },
+              ...departmentDomains.map((d) => ({ value: d, label: d }))
+            ]}
+            placeholder="-- Select Domain (Optional) --"
+          />
+        </div>
+      )}
 
       <div
         onClick={() => fileRef.current?.click()}
@@ -1770,15 +1871,20 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
 const TASK_TYPES = ["writtenExam", "interview", "project", "presentation", "learning", "assessment"];
 const EMPTY_FORM = { title: "", measurablePoints: "", timeDays: "", type: "assessment", dueDate: "" };
 
-export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-task-form", showSubmitButton = true }) => {
+export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, departmentId, subdepartment, onSaved, formId = "manual-task-form", showSubmitButton = true }) => {
   const subLevelId = subLevel?._id;
   const [syllabusVersionId, setSyllabusVersionId] = useState(versionId || "");
   const [subjectId,  setSubjectId]  = useState("");
   const [topicId,    setTopicId]    = useState("");
   const [taskTarget, setTaskTarget] = useState("");
   const [subTopicId, setSubTopicId] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState("");
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
+
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
+  const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
   const { data: versionsData } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId, sessionId: "" },
@@ -1815,7 +1921,7 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
   const subTopics = topics.find((t) => t._id === topicId)?.subTopics || [];
 
   const [createTask] = useCreateTaskManualMutation();
-  const resetForm = () => { setSubjectId(""); setTopicId(""); setTaskTarget(""); setSubTopicId(""); setForm(EMPTY_FORM); };
+  const resetForm = () => { setSubjectId(""); setTopicId(""); setTaskTarget(""); setSubTopicId(""); setSelectedDomain(""); setForm(EMPTY_FORM); };
   const canSubmit = taskTarget === "topic" || (taskTarget === "subtopic" && subTopicId);
 
   const handleSubmit = async (e) => {
@@ -1827,12 +1933,13 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
         syllabusVersionId, subjectId, topicId,
         ...(taskTarget === "subtopic" && subTopicId ? { subTopicId } : {}),
         ...form,
+        domain:   isLevel2B ? (selectedDomain || "") : "",
         title:    form.title.trim(),
         timeDays: form.timeDays ? Number(form.timeDays) : null,
       };
       await createTask(payload).unwrap();
       toast.success("Task created successfully!");
-      setForm(EMPTY_FORM); setSubTopicId(""); setTaskTarget("");
+      setForm(EMPTY_FORM); setSubTopicId(""); setTaskTarget(""); setSelectedDomain("");
       onSaved?.();
     } catch (err) {
       toast.error(err?.data?.message || "Failed to create task");
@@ -1943,6 +2050,19 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
             <label className={lc}>Task Title <span className="text-red-400 normal-case font-normal">*</span></label>
             <input className={ic} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Build a REST API" />
           </div>
+
+          {/* Optional Domain for Level 2B */}
+          {isLevel2B && (
+            <div>
+              <label className={lc}>Domain <span className="text-gray-400 normal-case font-normal">(optional - Level 2B)</span></label>
+              <select className={ic} value={selectedDomain} onChange={(e) => setSelectedDomain(e.target.value)}>
+                <option value="">-- Select Domain (Optional) --</option>
+                {departmentDomains.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={lc}>Measurable Points</label>
@@ -2478,6 +2598,9 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
               <SyllabusUploadModalContent
                 level={level}
                 subLevel={subLevel}
+                departmentName={departmentName}
+                departmentId={departmentId}
+                subdepartment={subdepartment}
                 onSaved={() => {
                   closeDrawer();
                   refetch();

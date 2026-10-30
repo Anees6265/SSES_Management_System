@@ -953,7 +953,7 @@ const TaskDrawerContent = ({ activeTab }) => {
                 <ManualTaskForm subLevel={activeTab} onSaved={() => { }} showSubmitButton={false} formId="manual-task-form" />
             ) : syllabusVersionId ? (
                 <div className="px-5 py-4">
-                    <TaskUploadDrawer syllabusVersionId={syllabusVersionId} subjectName={activeTab?.name || ""} version={activeVersion?.version || ""} onSaved={() => { }} />
+                    <TaskUploadDrawer subLevel={activeTab} syllabusVersionId={syllabusVersionId} subjectName={activeTab?.name || ""} version={activeVersion?.version || ""} onSaved={() => { }} />
                 </div>
             ) : null}
         </div>

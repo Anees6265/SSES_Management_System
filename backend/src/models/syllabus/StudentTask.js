@@ -117,6 +117,19 @@ const studentTaskSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isArchived: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  archivedAt: {
+    type: Date,
+    default: null
+  },
+  archivedReason: {
+    type: String,
+    default: null
+  },
   // Extra tasks are assigned outside the syllabus (individual student only).
   // When isExtra is true, syllabusVersionId/sessionId/levelId/subLevelId
   // are stored for context but are not required for validation.

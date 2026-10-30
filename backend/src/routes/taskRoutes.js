@@ -129,7 +129,8 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       dueDate,
       sessionId,
       subjectName,
-      topicName
+      topicName,
+      domain
     } = req.body;
     
     if (!levelId || !subLevelId || !title) {
@@ -146,6 +147,7 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       subjectName: subjectName || "General",
       topicName: topicName || "",
       title: title.trim(),
+      domain: (domain || "").trim(),
       description: description || "",
       type: type || "assignment",
       priority: priority || "medium",

@@ -34,6 +34,7 @@ import {
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import { TaskUploadDrawer } from "./SyllabusTab";
+import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 
 const TASK_TYPES = [
   { value: "assessment", label: "Assessment" },
@@ -58,7 +59,7 @@ const selectBtnCls = "w-full flex items-center justify-between gap-2 px-3.5 py-2
 const inputCls = "w-full border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder-gray-400 font-medium text-gray-800 shadow-2xs";
 const labelCls = "block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5";
 
-const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) => {
+const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName, departmentId, subdepartment, onSuccess }) => {
   const [activeTab, setActiveTab] = useState("add"); // add, manage
   const [addMode, setAddMode] = useState("manual"); // manual, bulk
   const [taskType, setTaskType] = useState("syllabus"); // syllabus, general
@@ -82,7 +83,16 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
   });
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
-  const sessions = sessionsData?.data || [];
+  const rawSessions = sessionsData?.data || [];
+  const deptIdentifier = departmentName || subdepartment?.departmentId?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId.departmentId?.name : "") || "";
+  const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  useEffect(() => {
+    if (selectedSessionId && sessions.length > 0) {
+      const exists = sessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedSessionId, sessions]);
 
   const { data: versionsData } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId: subLevel?._id, sessionId: selectedSessionId },
@@ -448,7 +458,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                             }}
                             options={[
                               { value: "", label: "All Sessions" },
-                              ...sessions.map(s => ({ value: s._id, label: s.name }))
+                              ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
                             ]}
                             placeholder="All Sessions"
                             buttonClassName={selectBtnCls}
@@ -771,7 +781,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, onSuccess }) =>
                           }}
                           options={[
                             { value: "", label: "All Sessions" },
-                            ...sessions.map(s => ({ value: s._id, label: s.name }))
+                            ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
                           ]}
                           placeholder="All Sessions"
                           buttonClassName={selectBtnCls}

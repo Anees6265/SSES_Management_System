@@ -28,7 +28,10 @@ exports.createLevel = async (req, res) => {
 
     const level = await Level.create(req.body);
     const populatedLevel = await Level.findById(level._id)
-      .populate('subDepartmentId');
+      .populate({
+        path: 'subDepartmentId',
+        populate: { path: 'departmentId', select: 'name code allowedCourses' }
+      });
     
     res.status(201).json({
       success: true,
@@ -63,7 +66,10 @@ exports.getLevelsBySubDepartment = async (req, res) => {
     }
     
     const levels = await Level.find(query)
-      .populate('subDepartmentId')
+      .populate({
+        path: 'subDepartmentId',
+        populate: { path: 'departmentId', select: 'name code allowedCourses' }
+      })
       .sort({ order: 1 });
     
     res.status(200).json({
@@ -85,7 +91,10 @@ exports.getAllLevels = async (req, res) => {
     const query = includeInactive === 'true' ? {} : { isActive: { $ne: false } };
 
     const levels = await Level.find(query)
-      .populate('subDepartmentId')
+      .populate({
+        path: 'subDepartmentId',
+        populate: { path: 'departmentId', select: 'name code allowedCourses' }
+      })
       .sort({ subDepartmentId: 1, order: 1 });
       
     res.status(200).json({
@@ -107,7 +116,10 @@ exports.getLevelById = async (req, res) => {
       _id: req.params.id, 
       isActive: true 
     })
-      .populate('subDepartmentId');
+      .populate({
+        path: 'subDepartmentId',
+        populate: { path: 'departmentId', select: 'name code allowedCourses' }
+      });
       
     if (!level) {
       return res.status(404).json({
@@ -150,7 +162,10 @@ exports.updateLevel = async (req, res) => {
       { _id: req.params.id },
       req.body,
       { new: true, runValidators: true }
-    ).populate('subDepartmentId');
+    ).populate({
+      path: 'subDepartmentId',
+      populate: { path: 'departmentId', select: 'name code allowedCourses' }
+    });
     
     if (!level) {
       return res.status(404).json({

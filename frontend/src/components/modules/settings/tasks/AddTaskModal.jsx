@@ -17,6 +17,7 @@ import {
     useGetSyllabusVersionsBySubLevelQuery,
     useGetSyllabusVersionWithHierarchyQuery,
 } from "../../../../redux/api/authApi";
+import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 
 const getId = (item) => {
     if (!item) return "";
@@ -148,6 +149,12 @@ const AddTaskModal = ({
         if (!selectedDepartmentId) return subDepartments;
         return subDepartments.filter((sd) => getId(sd.departmentId) === String(selectedDepartmentId));
     }, [subDepartments, selectedDepartmentId]);
+
+    // Sessions filtered by selected department
+    const filteredSessionsList = useMemo(() => {
+        const selectedDept = departments.find((d) => d._id === selectedDepartmentId);
+        return filterSessionsByDepartment(sessionsList, selectedDept?.name || selectedDept);
+    }, [sessionsList, departments, selectedDepartmentId]);
 
     // Available levels STRICTLY filtered by selected subDepartment with deduplication
     const availableLevels = useMemo(() => {
@@ -440,7 +447,7 @@ const AddTaskModal = ({
                                     }}
                                     options={[
                                         { value: "", label: "Select Session" },
-                                        ...sessionsList.map((s) => ({ value: s._id, label: s.name })),
+                                        ...filteredSessionsList.map((s) => ({ value: s._id, label: formatSessionLabel(s) })),
                                     ]}
                                     className="w-full"
                                     menuClassName="w-full shadow-xl border border-slate-100"

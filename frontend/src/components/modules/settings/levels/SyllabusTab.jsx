@@ -29,9 +29,19 @@ import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import CommonTable from "../../../shared/table/CommonTable";
+import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 
 /* ─── helpers ─────────────────────────────────────────── */
 const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim());
+
+const resolveDeptIdentifier = (departmentName, level, subLevel, subdepartment) => {
+  if (departmentName && departmentName !== "Department") return departmentName;
+  if (subdepartment?.departmentId?.name) return subdepartment.departmentId.name;
+  if (typeof level?.subDepartmentId === "object" && level.subDepartmentId?.departmentId?.name) {
+    return level.subDepartmentId.departmentId.name;
+  }
+  return departmentName || "";
+};
 
 /* Download combined syllabus+task template */
 const downloadSyllabusTemplate = () => {
@@ -247,7 +257,7 @@ const SubjectAccordion = ({ item, index }) => {
 /* ══════════════════════════════════════════════════════════
    MANUAL SYLLABUS FORM (single subject → topics → subtopics)
 ══════════════════════════════════════════════════════════ */
-export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClose }, ref) => {
+export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName, departmentId, subdepartment, onSaved, onClose }, ref) => {
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [subject,           setSubject]           = useState("");
@@ -256,7 +266,16 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
 
   const [createSyllabusVersion] = useCreateSyllabusVersionMutation();
   const { data: sessionsData }  = useGetAllSessionsQuery();
-  const sessions = sessionsData?.data || [];
+  const rawSessions = sessionsData?.data || [];
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  useEffect(() => {
+    if (selectedSessionId && sessions.length > 0) {
+      const exists = sessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedSessionId, sessions]);
 
   const reset = () => {
     setSubject(""); setSelectedSessionId("");
@@ -314,7 +333,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, onSaved, onClos
         <SelectDropdown
           value={selectedSessionId}
           onChange={(val) => setSelectedSessionId(val)}
-          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
           placeholder="-- Select Session --"
         />
       </div>
@@ -448,7 +467,7 @@ ManualSyllabusForm.displayName = "ManualSyllabusForm";
 /* ══════════════════════════════════════════════════════════
    EXCEL SYLLABUS UPLOAD (High-UX Drag & Drop + Subject Mapping)
 ══════════════════════════════════════════════════════════ */
-export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onClose }, ref) => {
+export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentName, departmentId, subdepartment, onSaved, onClose }, ref) => {
   const fileRef = useRef(null);
   const [isDragging,       setIsDragging]       = useState(false);
   const [parsing,          setParsing]          = useState(false);
@@ -461,7 +480,16 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
 
   const [uploadCombined]       = useUploadCombinedSyllabusMutation();
   const { data: sessionsData } = useGetAllSessionsQuery();
-  const sessions = sessionsData?.data || [];
+  const rawSessions = sessionsData?.data || [];
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  useEffect(() => {
+    if (selectedSessionId && sessions.length > 0) {
+      const exists = sessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedSessionId, sessions]);
 
   const totalSubjects  = hierarchy.length;
   const totalTopics    = hierarchy.reduce((acc, s) => acc + s.topics.length, 0);
@@ -577,7 +605,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, onSaved, onCl
         <SelectDropdown
           value={selectedSessionId}
           onChange={(val) => setSelectedSessionId(val)}
-          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
           placeholder="-- Select Session --"
         />
       </div>
@@ -818,7 +846,7 @@ SyllabusUploadDrawer.displayName = "SyllabusUploadDrawer";
 /* ══════════════════════════════════════════════════════════
    UNIFIED MODAL CONTENT (Tabs for Excel & Manual + Responsive Width)
 ══════════════════════════════════════════════════════════ */
-export const SyllabusUploadModalContent = ({ level, subLevel, onSaved, onClose }) => {
+export const SyllabusUploadModalContent = ({ level, subLevel, departmentName, departmentId, subdepartment, onSaved, onClose }) => {
   const [mode, setMode] = useState("excel");
 
   return (
@@ -853,9 +881,25 @@ export const SyllabusUploadModalContent = ({ level, subLevel, onSaved, onClose }
       </div>
 
       {mode === "excel" ? (
-        <SyllabusUploadDrawer level={level} subLevel={subLevel} onSaved={onSaved} onClose={onClose} />
+        <SyllabusUploadDrawer
+          level={level}
+          subLevel={subLevel}
+          departmentName={departmentName}
+          departmentId={departmentId}
+          subdepartment={subdepartment}
+          onSaved={onSaved}
+          onClose={onClose}
+        />
       ) : (
-        <ManualSyllabusForm level={level} subLevel={subLevel} onSaved={onSaved} onClose={onClose} />
+        <ManualSyllabusForm
+          level={level}
+          subLevel={subLevel}
+          departmentName={departmentName}
+          departmentId={departmentId}
+          subdepartment={subdepartment}
+          onSaved={onSaved}
+          onClose={onClose}
+        />
       )}
     </div>
   );
@@ -1987,7 +2031,7 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
 };
 
 /* --- Tasks Tab ----------------------------------------- */
-export const TasksTab = ({ level, subLevel, onVersionChange }) => {
+export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdepartment, onVersionChange }) => {
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [activeVersionId,   setActiveVersionId]   = useState("");
@@ -1996,7 +2040,16 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
   const [activeSubjectId,   setActiveSubjectId]   = useState("");
 
   const { data: sessionsData } = useGetAllSessionsQuery();
-  const sessions = sessionsData?.data || [];
+  const rawSessions = sessionsData?.data || [];
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  useEffect(() => {
+    if (selectedSessionId && sessions.length > 0) {
+      const exists = sessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedSessionId, sessions]);
 
   const { data: versionsData, refetch } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId, sessionId: selectedSessionId },
@@ -2094,7 +2147,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
                     setActiveSubjectId("");
                     setSearchTerm("");
                   }}
-                  options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+                  options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
                   placeholder="All Sessions"
                 />
               </div>
@@ -2172,6 +2225,9 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
         onClose={() => setShowTaskModal(false)}
         level={level}
         subLevel={subLevel}
+        departmentName={deptIdentifier}
+        departmentId={departmentId}
+        subdepartment={subdepartment}
         onSuccess={() => {
           setShowTaskModal(false);
           refetch();
@@ -2181,7 +2237,7 @@ export const TasksTab = ({ level, subLevel, onVersionChange }) => {
   );
 };
 
-const EmptyUploadState = ({ level, subLevel, onSaved }) => {
+const EmptyUploadState = ({ level, subLevel, departmentName, departmentId, subdepartment, onSaved }) => {
   const [showUpload, setShowUpload] = useState(false);
   const drawerRef = useRef(null);
 
@@ -2228,6 +2284,9 @@ const EmptyUploadState = ({ level, subLevel, onSaved }) => {
           <SyllabusUploadModalContent
             level={level}
             subLevel={subLevel}
+            departmentName={departmentName}
+            departmentId={departmentId}
+            subdepartment={subdepartment}
             onSaved={() => { setShowUpload(false); onSaved?.(); }}
             onClose={() => setShowUpload(false)}
           />
@@ -2240,7 +2299,7 @@ const EmptyUploadState = ({ level, subLevel, onSaved }) => {
 /* ══════════════════════════════════════════════════════════
    MAIN SYLLABUS TAB
 ══════════════════════════════════════════════════════════ */
-const SyllabusTab = ({ level, subLevel }) => {
+const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartment }) => {
   const subLevelId = subLevel?._id;
 
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -2249,7 +2308,16 @@ const SyllabusTab = ({ level, subLevel }) => {
   const [activeSubject,     setActiveSubject]     = useState("");
 
   const { data: sessionsData } = useGetAllSessionsQuery();
-  const sessions = sessionsData?.data || [];
+  const rawSessions = sessionsData?.data || [];
+  const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
+  const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+
+  useEffect(() => {
+    if (selectedSessionId && sessions.length > 0) {
+      const exists = sessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedSessionId, sessions]);
 
   const { data: versionsData, refetch } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId, sessionId: selectedSessionId },
@@ -2312,7 +2380,16 @@ const SyllabusTab = ({ level, subLevel }) => {
   };
 
   if (allVersions.length === 0 && !selectedSessionId) {
-    return <EmptyUploadState level={level} subLevel={subLevel} onSaved={refetch} />;
+    return (
+      <EmptyUploadState
+        level={level}
+        subLevel={subLevel}
+        departmentName={deptIdentifier}
+        departmentId={departmentId}
+        subdepartment={subdepartment}
+        onSaved={refetch}
+      />
+    );
   }
 
   return (
@@ -2345,7 +2422,7 @@ const SyllabusTab = ({ level, subLevel }) => {
                 setActiveSubject("");
                 setSearchTerm("");
               }}
-              options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: s.name }))]}
+              options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
               placeholder="All Sessions"
             />
           </div>

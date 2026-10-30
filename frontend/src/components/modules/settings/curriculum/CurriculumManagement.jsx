@@ -38,6 +38,7 @@ import {
   useGetSyllabusVersionWithHierarchyQuery,
   useGetTasksBySyllabusVersionQuery,
 } from "../../../../redux/api/authApi";
+import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 
 /* ─── Helpers ─────────────────────────────────────────── */
 const getId = (value) => (typeof value === "object" ? value?._id : value);
@@ -285,10 +286,22 @@ const CurriculumUploadDrawerContent = ({
 
   const [uploadCombined] = useUploadCombinedSyllabusMutation();
 
+  const selectedDept = departments.find((d) => getId(d) === selectedDeptId);
+  const filteredSessions = useMemo(() => {
+    return filterSessionsByDepartment(sessions, selectedDept?.name || selectedDept);
+  }, [sessions, selectedDept]);
+
+  useEffect(() => {
+    if (selectedSessionId && filteredSessions.length > 0) {
+      const exists = filteredSessions.some((s) => s._id === selectedSessionId);
+      if (!exists) setSelectedSessionId("");
+    }
+  }, [selectedDeptId, filteredSessions]);
+
   // Dropdown options
   const sessionOptions = [
     { value: "", label: "-- Select Session --" },
-    ...sessions.map((s) => ({ value: s._id, label: `${s.name}${s.status ? ` (${s.status})` : ""}` })),
+    ...filteredSessions.map((s) => ({ value: s._id, label: `${formatSessionLabel(s)}${s.status ? ` (${s.status})` : ""}` })),
   ];
   const deptOptions = [
     { value: "", label: "-- Select Department --" },

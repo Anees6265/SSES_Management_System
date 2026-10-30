@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useGetAllSessionsQuery } from '../../redux/api/authApi';
 import SelectDropdown from './form-fields/SelectDropdown';
+import { filterSessionsByDepartment, formatSessionLabel } from '../../utils/sessionDurationHelpers';
 
 const SessionSelector = ({ 
   selectedSessionId, 
@@ -17,13 +18,25 @@ const SessionSelector = ({
   buttonClassName = "",
   showStatus = false,
   align = "left",
+  departmentName = "",
+  filterSessions = null,
 }) => {
   const { data: sessionsData, isLoading } = useGetAllSessionsQuery(showAll);
 
   const sessionsList = sessionsData?.data || [];
-  const displaySessions = showAll 
+  const baseSessions = showAll 
     ? sessionsList 
     : sessionsList.filter((s) => s.isActive);
+
+  const displaySessions = useMemo(() => {
+    let result = baseSessions;
+    if (typeof filterSessions === 'function') {
+      result = filterSessions(result);
+    } else if (departmentName) {
+      result = filterSessionsByDepartment(result, departmentName);
+    }
+    return result;
+  }, [baseSessions, filterSessions, departmentName]);
 
   const options = [
     ...(includeAllOption ? [{ value: "", label: allOptionLabel }] : []),
@@ -31,7 +44,8 @@ const SessionSelector = ({
       const statusText = session.status 
         ? session.status.charAt(0).toUpperCase() + session.status.slice(1)
         : (session.isActive ? 'Active' : 'Inactive');
-      const itemLabel = showStatus ? `${session.name} (${statusText})` : session.name;
+      const formattedName = formatSessionLabel(session);
+      const itemLabel = showStatus ? `${formattedName} (${statusText})` : formattedName;
       return {
         value: session._id,
         label: itemLabel,

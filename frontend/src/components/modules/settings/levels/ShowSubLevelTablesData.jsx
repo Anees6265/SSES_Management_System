@@ -14,7 +14,8 @@ import {
     useGetLevelByIdQuery,
     useGetSyllabusVersionsBySubLevelQuery,
     useGetNewStudentsQuery,
-    useGetSubLevelProgressQuery
+    useGetSubLevelProgressQuery,
+    useGetAllDepartmentsQuery
 } from "../../../../redux/api/authApi";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import SearchBox from "../../../shared/search-export/SearchBox";
@@ -75,7 +76,7 @@ const STUDENT_COLUMNS = [
     },
 ];
 
-const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onRowClick, onTaskBoard }) => {
+const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onRowClick, onTaskBoard, departmentName }) => {
     const [selectedSessionId, setSelectedSessionId] = useState("");
     const params = subLevel?._id
         ? `currentSubLevelId=${subLevel._id}${selectedSessionId ? `&sessionId=${selectedSessionId}` : ''}`
@@ -172,6 +173,7 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                             showAll={true}
                             includeAllOption={true}
                             allOptionLabel="All Sessions"
+                            departmentName={departmentName}
                         />
                     </div>
                     <ExportDropdown data={students} sectionName="students" />
@@ -997,6 +999,14 @@ const ShowSubLevelTablesData = () => {
     const departmentName = location.state?.departmentName || subdepartment?.departmentId?.name || cachedData?.departmentName || "Department";
     const session = location.state?.session || location.state?.sessionName || cachedData?.session;
 
+    const { data: deptsRes } = useGetAllDepartmentsQuery();
+    const allDepartments = deptsRes?.data || [];
+    const matchedDept = allDepartments.find((d) => 
+        String(d._id) === String(departmentId) || 
+        (departmentName && departmentName !== "Department" && String(d.name).toUpperCase() === String(departmentName).toUpperCase())
+    );
+    const effectiveDepartmentName = matchedDept?.name || (departmentName !== "Department" ? departmentName : "") || "";
+
     useEffect(() => {
         if (level?._id) {
             try {
@@ -1158,6 +1168,9 @@ const ShowSubLevelTablesData = () => {
                                 <SyllabusUploadModalContent
                                     level={level}
                                     subLevel={activeTab}
+                                    departmentName={effectiveDepartmentName}
+                                    departmentId={departmentId}
+                                    subdepartment={subdepartment}
                                     onClose={closeDrawer}
                                     onSaved={() => {
                                         closeDrawer();
@@ -1321,15 +1334,29 @@ const ShowSubLevelTablesData = () => {
                                 subdepartmentId={subdepartment?._id || querySubdeptId || level?.subDepartmentId?._id || level?.subDepartmentId}
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
+                                departmentName={effectiveDepartmentName}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: row.raw, level, subdepartment } })}
                                 onTaskBoard={(row) => navigate("/student/task-board", { state: { student: row.raw, level, subdepartment } })}
                             />
                         )}
                         {activeSection === "Tasks" && (
-                            <TasksTab level={level} subLevel={activeTab} onVersionChange={setActiveTaskVersionId} />
+                            <TasksTab
+                                level={level}
+                                subLevel={activeTab}
+                                departmentName={effectiveDepartmentName}
+                                departmentId={departmentId}
+                                subdepartment={subdepartment}
+                                onVersionChange={setActiveTaskVersionId}
+                            />
                         )}
                         {activeSection === "Syllabus" && (
-                            <SyllabusTab level={level} subLevel={activeTab} />
+                            <SyllabusTab
+                                level={level}
+                                subLevel={activeTab}
+                                departmentName={effectiveDepartmentName}
+                                departmentId={departmentId}
+                                subdepartment={subdepartment}
+                            />
                         )}
                         {activeSection === "Progress" && (
                             <ProgressTab

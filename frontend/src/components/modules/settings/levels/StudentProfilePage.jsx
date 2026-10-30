@@ -30,6 +30,7 @@ import {
     DEPARTMENT_FTP_LABELS
 } from "../../../../utils/ftpConfig";
 import {
+    useGetNotificationsQuery,
     useGetNewStudentTasksQuery,
     useGetNewStudentByIdQuery,
     useGetStudentProgressSnapshotsQuery,
@@ -1381,7 +1382,11 @@ const StudentProfilePage = () => {
     const [activityModal, setActivityModal] = useState(false);
     const [sectionModal, setSectionModal] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [userNotifications, setUserNotifications] = useState(null);
+    const { data: studentNotifsData } = useGetNotificationsQuery(
+        studentId ? { studentId } : undefined,
+        { skip: !studentId, pollingInterval: 20000, refetchOnMountOrArgChange: true }
+    );
+    const studentNotifCount = studentNotifsData?.data?.length || 0;
     const [ftpModalOpen, setFtpModalOpen] = useState(false);
     const [inlineFtpDomain, setInlineFtpDomain] = useState("");
     const [ftpLoading, setFtpLoading] = useState(false);
@@ -1798,120 +1803,6 @@ const StudentProfilePage = () => {
     const permissionHistory = Array.isArray(raw.permissions) ? raw.permissions : [];
     const pendingPermissions = permissionHistory.filter(item => item.status === "pending").length;
 
-    const defaultStudentNotifications = useMemo(() => {
-        if (!raw) return [];
-        const list = [];
-
-        /* // 1. Attendance Alert
-        const attendance = raw.attendanceRate !== undefined && raw.attendanceRate !== null ? Number(raw.attendanceRate) : null;
-        if (attendance !== null && attendance < 75) {
-            list.push({
-                id: "attendance-warning",
-                title: "Low Attendance Warning",
-                message: `${name}'s attendance is currently at ${attendance}%, which is below the minimum mandatory 75% requirement. Immediate academic counseling recommended.`,
-                time: "Attendance Alert",
-                type: "warning",
-            });
-        } else if (attendance !== null && attendance >= 75) {
-            list.push({
-                id: "attendance-good",
-                title: "Good Attendance Record",
-                message: `${name} has maintained a consistent attendance rate of ${attendance}%.`,
-                time: "Attendance Verified",
-                type: "success",
-            });
-        } */
-
-        // 2. Tasks Status
-        if (overdueTasks > 0) {
-            list.push({
-                id: "tasks-overdue",
-                title: "Overdue Tasks Pending",
-                message: `${name} has ${overdueTasks} overdue task(s) in ${currentSubLevelName || "current sublevel"} requiring immediate evaluation or submission.`,
-                time: "Task Alert",
-                type: "warning",
-            });
-        } else if (pendingTasks > 0) {
-            list.push({
-                id: "tasks-pending",
-                title: "Tasks In Progress",
-                message: `${pendingTasks} active task(s) currently pending or in progress in ${currentSubLevelName || "current sublevel"}. Completion rate: ${completionRate}%.`,
-                time: "Academic Progress",
-                type: "info",
-            });
-        } else if (totalTasks > 0 && completedTasks === totalTasks) {
-            list.push({
-                id: "tasks-completed",
-                title: "All Level Tasks Completed",
-                message: `All ${totalTasks} assigned tasks for ${currentSubLevelName} have been completed successfully. Ready for evaluation or level promotion.`,
-                time: "Milestone",
-                type: "success",
-            });
-        }
-
-        // 3. Permission / Gate Pass Requests
-        if (pendingPermissions > 0) {
-            list.push({
-                id: "permissions-pending",
-                title: "Pending Permission Requests",
-                message: `${name} has ${pendingPermissions} pending permission/gate pass request(s) awaiting approval or review.`,
-                time: "Permission Alert",
-                type: "warning",
-            });
-        }
-
-        // 4. Placement Readiness / Dummy Status
-        if (isDummy) {
-            list.push({
-                id: "dummy-student-alert",
-                title: "Dummy Student (Non-Attending)",
-                message: `${name} is currently marked as Dummy (${raw.dummyDetails?.reason || "Non-Attending"}). Excluded from campus placement recruitment drives.`,
-                time: "Student Status",
-                type: "warning",
-            });
-        } else if (readinessStatus === "Ready") {
-            list.push({
-                id: "placement-ready",
-                title: "Placement Ready",
-                message: `${name} is verified and marked as 'Ready for Placement'. Profile is active in the placement officer portal.`,
-                time: "Placement Status",
-                type: "success",
-            });
-        } else if (readinessStatus === "In Progress" || readinessStatus === "Training") {
-            list.push({
-                id: "placement-progress",
-                title: "Placement Readiness In Progress",
-                message: `Currently undergoing placement preparation (${readinessStatus}). Portfolio and interview readiness in progress.`,
-                time: "Career Portal",
-                type: "info",
-            });
-        }
-
-        // 5. Academic Level & Track Status
-        list.push({
-            id: "academic-level",
-            title: `Academic Level: ${currentLevelLabel} (${currentSubLevelName})`,
-            message: `Active in ${currentLevelLabel} • ${currentSubLevelName}. Specialization Track: ${trackName}.`,
-            time: daysInSubLevel ? `${daysInSubLevel} in sublevel` : "Current Level",
-            type: "info",
-        });
-
-        // 6. Documents status
-        if (regularDocs.length === 0) {
-            list.push({
-                id: "docs-missing",
-                title: "Verification Documents Missing",
-                message: "No official verification documents have been uploaded for this student record yet.",
-                time: "Document Notice",
-                type: "warning",
-            });
-        }
-
-        return list;
-    }, [raw, name, overdueTasks, pendingTasks, completedTasks, totalTasks, currentSubLevelName, completionRate, pendingPermissions, readinessStatus, currentLevelLabel, trackName, daysInSubLevel, regularDocs.length, isDummy]);
-
-    const activeNotifications = userNotifications ?? defaultStudentNotifications;
-
     const breadcrumbs = useMemo(() => {
         if (origin === "department" || stateDeptId || stateDeptName) {
             const list = [{ label: "Departments", path: "/department-management" }];
@@ -2288,9 +2179,7 @@ const StudentProfilePage = () => {
             <NotificationDrawer
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
-                notifications={activeNotifications}
-                onClearAll={() => setUserNotifications([])}
-                onDismiss={(notifId) => setUserNotifications(prev => (prev ?? defaultStudentNotifications).filter(n => n.id !== notifId))}
+                studentId={studentId}
                 title="Student Alerts & Notifications"
                 subtitle={`${name} • Live status alerts & academic updates`}
             />
@@ -2309,9 +2198,9 @@ const StudentProfilePage = () => {
                         title="Notifications & Alerts"
                     >
                         <MdNotificationsNone size={19} />
-                        {activeNotifications.length > 0 && (
+                        {studentNotifCount > 0 && (
                             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
-                                {activeNotifications.length}
+                                {studentNotifCount}
                             </span>
                         )}
                     </button>

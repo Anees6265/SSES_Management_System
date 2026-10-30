@@ -24,6 +24,7 @@ const departmentRoutes = require('./departmentRoutes');
 const subDepartmentRoutes = require('./subDepartmentRoutes');
 const levelRoutes = require('./levelRoutes');
 const subLevelRoutes = require('./subLevelRoutes');
+const notificationRoutes = require('./notificationRoutes');
 
 // Mount routes
 router.use('/user', userRoutes);
@@ -49,6 +50,7 @@ router.use('/departments', departmentRoutes);
 router.use('/subdepartments', subDepartmentRoutes);
 router.use('/levels', levelRoutes);
 router.use('/sublevels', subLevelRoutes);
+router.use('/notifications', notificationRoutes);
 router.use('/', smartSyllabusRoutes);
 
 module.exports = router;

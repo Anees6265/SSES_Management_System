@@ -1275,7 +1275,11 @@ export default function StudentReportCard() {
                     <div className="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center">
                       {(rc.generatedByName || "FA").slice(0, 2).toUpperCase()}
                     </div>
-                    <span className="text-slate-800 font-bold">{rc.generatedByName || "Prof. Himanshu Vishwakarma"}</span>
+                    <span className="text-slate-800 font-bold">
+                      {rc.generatedByName && rc.generatedByName.toLowerCase() !== "system"
+                        ? (rc.generatedByName.startsWith("Prof.") ? rc.generatedByName : `Prof. ${rc.generatedByName}`)
+                        : "Faculty Evaluator"}
+                    </span>
                     <span className="text-slate-400">· Senior Faculty Mentor</span>
                   </div>
                   <span className="text-slate-400">Official {isBTech ? "SSEC" : "SSISM"} Evaluation</span>

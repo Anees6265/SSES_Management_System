@@ -549,12 +549,26 @@ exports.uploadCombined = async (req, res) => {
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ success: false, message: "tasks array is required" });
 
+    const isSoftSkillSubject = (name = "") => {
+      if (!name || typeof name !== "string") return false;
+      const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return (
+        clean.includes("softskill") ||
+        clean.includes("communicationskill") ||
+        clean.includes("personalitydevelopment") ||
+        clean === "softskills" ||
+        clean === "softskill"
+      );
+    };
+
     // Build a quick lookup: subjectName → { includeInReportCard, reportCategory }
     const metaMap = {};
     (Array.isArray(subjectMeta) ? subjectMeta : []).forEach(m => {
       if (m.name) metaMap[m.name.trim()] = {
-        includeInReportCard: m.includeInReportCard === true,
-        reportCategory: ["technical", "softskill"].includes(m.reportCategory) ? m.reportCategory : ""
+        includeInReportCard: m.includeInReportCard !== false,
+        reportCategory: ["technical", "softskill"].includes(m.reportCategory)
+          ? m.reportCategory
+          : (isSoftSkillSubject(m.name) ? "softskill" : "technical")
       };
     });
 
@@ -586,16 +600,21 @@ exports.uploadCombined = async (req, res) => {
       });
     }
 
-    const subjects = Array.from(subjectMap.entries()).map(([sName, topicMap], si) => ({
-      name: sName,
-      order: si + 1,
-      ...(metaMap[sName] || {}),
-      topics: Array.from(topicMap.entries()).map(([tName, stSet], ti) => ({
-        name: tName,
-        order: ti + 1,
-        subTopics: Array.from(stSet).map((stName, sti) => ({ name: stName, order: sti + 1 }))
-      }))
-    }));
+    const subjects = Array.from(subjectMap.entries()).map(([sName, topicMap], si) => {
+      const autoCat = isSoftSkillSubject(sName) ? "softskill" : "technical";
+      const meta = metaMap[sName] || { includeInReportCard: true, reportCategory: autoCat };
+      return {
+        name: sName,
+        order: si + 1,
+        includeInReportCard: meta.includeInReportCard !== false,
+        reportCategory: meta.reportCategory || autoCat,
+        topics: Array.from(topicMap.entries()).map(([tName, stSet], ti) => ({
+          name: tName,
+          order: ti + 1,
+          subTopics: Array.from(stSet).map((stName, sti) => ({ name: stName, order: sti + 1 }))
+        }))
+      };
+    });
 
     if (subjects.length === 0)
       return res.status(400).json({ success: false, message: "No valid subject/topic rows found" });

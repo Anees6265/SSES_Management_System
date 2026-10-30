@@ -1461,6 +1461,23 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      createNotification({
+        title: isTargetUIUX ? "Student Shifted to UI/UX" : "Student Department Updated",
+        message: `${student.firstName || ""} ${student.lastName || ""} (${student.prkey || ""}) has been ${isTargetUIUX ? "shifted to ITEG · UI/UX" : "updated"}`,
+        type: "info",
+        category: "level",
+        studentId: student._id,
+        recipientRole: "all",
+        actorId: req.user?.id || req.user?._id,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+      }).catch(err => console.error("Notification creation error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger shift notification:", notifErr);
+    }
+
     return res.status(200).json({ message: "Student updated successfully", data: student });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -2192,6 +2209,24 @@ exports.assignExtraTask = async (req, res) => {
       isExtra: true,
       isActive: true,
     });
+
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      createNotification({
+        title: "New Extra Task Assigned",
+        message: `Task "${extraTask.title}" has been assigned to ${student.firstName || ""} ${student.lastName || ""} (${student.prkey || ""})`,
+        type: "info",
+        category: "task",
+        studentId: student._id,
+        recipientRole: "all",
+        actorId: req.user?.id || req.user?._id,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { taskId: extraTask._id, title: extraTask.title },
+      }).catch(err => console.error("Notification creation error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger extra task notification:", notifErr);
+    }
 
     return res.status(201).json({
       success: true,

@@ -397,7 +397,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       const StudentReportCard = require("../models/student/studentReportCard");
       let reportCard = await StudentReportCard.findOne({ studentRef: studentId });
       
-      const actorName = actorUser?.name || "System";
+      const actorName = actorUser?.name && actorUser.name.toLowerCase() !== "system" ? actorUser.name : "Faculty Evaluator";
       if (!reportCard) {
         reportCard = new StudentReportCard({
           studentRef: studentId,

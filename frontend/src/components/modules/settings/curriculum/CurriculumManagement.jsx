@@ -44,6 +44,19 @@ import { filterSessionsByDepartment, formatSessionLabel } from "../../../../util
 const getId = (value) => (typeof value === "object" ? value?._id : value);
 const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim());
 
+const isSoftSkillSubject = (name = "") => {
+  if (!name || typeof name !== "string") return false;
+  const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return (
+    clean.includes("softskill") ||
+    clean.includes("communicationskill") ||
+    clean.includes("personalitydevelopment") ||
+    clean.includes("softskills") ||
+    clean.includes("communication") ||
+    clean.includes("personality")
+  );
+};
+
 const formatAcademicYear = (session) => {
   if (!session?.startDate || !session?.endDate) return "-";
   const startYear = new Date(session.startDate).getFullYear();
@@ -401,7 +414,7 @@ const CurriculumUploadDrawerContent = ({
         parsed.map((s) => ({
           name: s.subject,
           includeInReportCard: true,
-          reportCategory: "technical",
+          reportCategory: isSoftSkillSubject(s.subject) ? "softskill" : "technical",
         }))
       );
       toast.success(
@@ -447,11 +460,15 @@ const CurriculumUploadDrawerContent = ({
       return;
     }
 
-    const invalid = subjectMeta.find((s) => s.includeInReportCard && !s.reportCategory);
-    if (invalid) {
-      toast.error(`Please select a category for "${invalid.name}" in Report Card Settings`);
-      return;
-    }
+    const finalMeta = (subjectMeta?.length ? subjectMeta : hierarchy.map(s => ({
+      name: s.subject,
+      includeInReportCard: true,
+      reportCategory: isSoftSkillSubject(s.subject) ? "softskill" : "technical",
+    }))).map(s => ({
+      ...s,
+      includeInReportCard: true,
+      reportCategory: s.reportCategory || (isSoftSkillSubject(s.name) ? "softskill" : "technical"),
+    }));
 
     setSaving(true);
     try {
@@ -463,7 +480,7 @@ const CurriculumUploadDrawerContent = ({
         title: title.trim(),
         version: version.trim() || undefined,
         tasks: taskRows,
-        subjectMeta,
+        subjectMeta: finalMeta,
       }).unwrap();
 
       toast.success(res.message || "Curriculum & Tasks uploaded successfully!");
@@ -710,107 +727,6 @@ const CurriculumUploadDrawerContent = ({
             </div>
           </div>
 
-          {/* Report Card Configuration */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 space-y-3 shadow-2xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div>
-                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                  <MdBook className="text-orange-500" size={16} /> Report Card Settings
-                </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                  Configure which subjects appear on student report cards & evaluation category
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {subjectMeta.map((sm, idx) => (
-                <div key={sm.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MdBook size={15} className="text-orange-400 shrink-0" />
-                    <span className="text-xs font-extrabold text-slate-800 truncate">{sm.name}</span>
-                    <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                      ({hierarchy[idx]?.topics?.length || 0} topics)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
-                    {/* Include Toggle */}
-                    <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSubjectMeta((prev) =>
-                            prev.map((s, i) =>
-                              i === idx
-                                ? { ...s, includeInReportCard: true, reportCategory: s.reportCategory || "technical" }
-                                : s
-                            )
-                          )
-                        }
-                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${
-                          sm.includeInReportCard ? "bg-emerald-500 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"
-                        }`}
-                      >
-                        ✓ Report Card
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSubjectMeta((prev) =>
-                            prev.map((s, i) =>
-                              i === idx ? { ...s, includeInReportCard: false, reportCategory: "" } : s
-                            )
-                          )
-                        }
-                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${
-                          !sm.includeInReportCard ? "bg-slate-200 text-slate-700" : "text-slate-500 hover:bg-slate-50"
-                        }`}
-                      >
-                        Exclude
-                      </button>
-                    </div>
-
-                    {/* Category Selector */}
-                    {sm.includeInReportCard && (
-                      <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSubjectMeta((prev) =>
-                              prev.map((s, i) => (i === idx ? { ...s, reportCategory: "technical" } : s))
-                            )
-                          }
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${
-                            sm.reportCategory === "technical"
-                              ? "bg-blue-600 text-white shadow-2xs"
-                              : "text-slate-500 hover:bg-slate-50"
-                          }`}
-                        >
-                          💻 Tech
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSubjectMeta((prev) =>
-                              prev.map((s, i) => (i === idx ? { ...s, reportCategory: "softskill" } : s))
-                            )
-                          }
-                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${
-                            sm.reportCategory === "softskill"
-                              ? "bg-purple-600 text-white shadow-2xs"
-                              : "text-slate-500 hover:bg-slate-50"
-                          }`}
-                        >
-                          🤝 Soft Skill
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Topics & Tasks Collapsible Preview */}
           <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-2xs">

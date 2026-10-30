@@ -36,7 +36,7 @@ import Header from "../../shared/sidebar/Header";
 import api from "../../../utils/axiosInstance";
 import { useGetAllSessionsQuery } from "../../../redux/api/authApi";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
-import NotificationDrawer from "../../shared/notifications/NotificationDrawer";
+import NotificationBell from "../../shared/notifications/NotificationBell";
 
 // ── Clean, Calm Stat Card Component ──────────────────────────
 const CleanStatCard = ({
@@ -410,41 +410,6 @@ const AdminDashboard = () => {
   const [selectedSessionId, setSelectedSessionId] = useState("all");
   const [academicYearLabel, setAcademicYearLabel] = useState("All Sessions");
   const [selectedLevel, setSelectedLevel] = useState("All");
-  const [showNotification, setShowNotification] = useState(false);
-  const [userNotifications, setUserNotifications] = useState(null);
-
-  const defaultNotifications = useMemo(() => {
-    const list = [];
-    if (isSuperAdminOrAdmin) {
-      list.push({
-        id: "role-welcome",
-        title: "Administrator Privileges Active",
-        message: `Welcome back, ${userObj.name || "Administrator"}! Institutional governance active across all ${depts.length} departments. Current cycle: ${academicYearLabel}.`,
-        time: "Active",
-        type: "success",
-      });
-    } else {
-      list.push({
-        id: "faculty-welcome",
-        title: `${departmentName || "Department"} Faculty Access`,
-        message: `Logged in as ${userObj.name || "Faculty"} (${role.toUpperCase()}) for the ${departmentName || "Assigned"} department. Current cycle: ${academicYearLabel}.`,
-        time: "Active",
-        type: "success",
-      });
-    }
-
-    list.push({
-      id: "system-sync",
-      title: "System Synchronization Live",
-      message: `Academic Session ${academicYearLabel} is synchronized. Attendance, syllabus tracking, and student performance metrics are up to date.`,
-      time: "Live",
-      type: "info",
-    });
-
-    return list;
-  }, [isSuperAdminOrAdmin, userObj.name, role, depts.length, departmentName, academicYearLabel]);
-
-  const activeNotifications = userNotifications ?? defaultNotifications;
 
   // Clear legacy localStorage cache on mount so dashboard always opens with All Sessions by default
   useEffect(() => {
@@ -549,16 +514,7 @@ const AdminDashboard = () => {
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-orange-500" : ""}`} />
               </button>
-              <button
-                onClick={() => setShowNotification(true)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs relative"
-                title="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-                {activeNotifications.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
-                )}
-              </button>
+              <NotificationBell />
             </div>
           }
         >
@@ -965,14 +921,6 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
-
-      <NotificationDrawer
-        isOpen={showNotification}
-        onClose={() => setShowNotification(false)}
-        notifications={activeNotifications}
-        onClearAll={() => setUserNotifications([])}
-        onDismiss={(id) => setUserNotifications((prev) => (prev ?? defaultNotifications).filter((n) => n.id !== id))}
-      />
     </>
   );
 }
@@ -996,16 +944,7 @@ const AdminDashboard = () => {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-orange-500" : ""}`} />
             </button>
-            <button
-              onClick={() => setShowNotification(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs relative"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              {activeNotifications.length > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
-              )}
-            </button>
+            <NotificationBell />
           </div>
         }
       >
@@ -1476,14 +1415,6 @@ const AdminDashboard = () => {
         <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
       </div>
     </div>
-
-    <NotificationDrawer
-      isOpen={showNotification}
-      onClose={() => setShowNotification(false)}
-      notifications={activeNotifications}
-      onClearAll={() => setUserNotifications([])}
-      onDismiss={(id) => setUserNotifications((prev) => (prev ?? defaultNotifications).filter((n) => n.id !== id))}
-    />
     </>
   );
 };

@@ -10,6 +10,7 @@ import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
 import {
+    useGetNotificationsQuery,
     useGetNewStudentTasksQuery,
     useAssignExtraTaskMutation,
     useGetSyllabusVersionWithHierarchyQuery,
@@ -541,6 +542,7 @@ const StudentTaskBoard = () => {
 
     const { student, level, subdepartment, subLevel } = location.state || {};
 
+    const studentId = student?._id || student?.id || null;
     const studentName = `${student?.firstName || ""} ${student?.lastName || ""}`.trim() || "Student";
     const levelName = level?.name || student?.currentLevelId?.name || "Level";
     const subLevelName = subLevel?.name || student?.currentSubLevelId?.name || "";
@@ -557,7 +559,11 @@ const StudentTaskBoard = () => {
     const [showExtraModal,    setShowExtraModal]    = useState(false);
     const [activeMobileTab,   setActiveMobileTab]   = useState("all");
     const [showNotifications, setShowNotifications] = useState(false);
-    const [userNotifications, setUserNotifications] = useState(null);
+    const { data: boardNotifsData } = useGetNotificationsQuery(
+        studentId ? { studentId } : undefined,
+        { skip: !studentId, pollingInterval: 20000, refetchOnMountOrArgChange: true }
+    );
+    const boardNotifCount = boardNotifsData?.data?.length || 0;
 
     useEffect(() => {
         setTasks(null);
@@ -669,55 +675,6 @@ const StudentTaskBoard = () => {
     const inProgressCount = filtered.filter(t => t.status === "inProgress").length;
     const pendingCount = filtered.filter(t => t.status === "pending" || !t.status).length;
     const percent   = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    const defaultTaskBoardNotifications = useMemo(() => {
-        if (!student) return [];
-        const list = [];
-
-        if (pendingCount > 0) {
-            list.push({
-                id: "tb-pending-tasks",
-                title: `${pendingCount} Pending Task(s)`,
-                message: `There are ${pendingCount} task(s) waiting to be started in ${subLevelName || "this sublevel"}.`,
-                time: "Task Alert",
-                type: "warning",
-            });
-        }
-
-        if (inProgressCount > 0) {
-            list.push({
-                id: "tb-inprogress-tasks",
-                title: `${inProgressCount} Task(s) In Progress`,
-                message: `${inProgressCount} task(s) are currently being worked on by ${studentName}.`,
-                time: "In Progress",
-                type: "info",
-            });
-        }
-
-        if (completed > 0) {
-            list.push({
-                id: "tb-completed-tasks",
-                title: `${completed} Task(s) Completed`,
-                message: `Total ${completed} task(s) have been completed successfully (${percent}% level completion rate).`,
-                time: "Milestone",
-                type: "success",
-            });
-        }
-
-        list.push({
-            id: "tb-board-info",
-            title: activeSubLevelName ? `Task Board: ${activeLevelName} - ${activeSubLevelName}` : `Task Board: ${activeLevelName}`,
-            message: isViewingPrevious
-                ? `Viewing previous level tasks for ${studentName} in ${activeLevelName} - ${activeSubLevelName}. Total tasks: ${total}.`
-                : `Active practical task progression board for ${studentName}. Total tasks: ${total}.`,
-            time: isViewingPrevious ? "Previous Level" : "Active Level",
-            type: "info",
-        });
-
-        return list;
-    }, [student, pendingCount, inProgressCount, completed, activeSubLevelName, percent, activeLevelName, studentName, total, isViewingPrevious]);
-
-    const activeNotifications = userNotifications ?? defaultTaskBoardNotifications;
 
     const handleDragStart = (task) => setDragTask(task);
 
@@ -900,9 +857,9 @@ const StudentTaskBoard = () => {
                             title="Notifications & Alerts"
                         >
                             <MdNotificationsNone size={18} />
-                            {activeNotifications.length > 0 && (
+                            {boardNotifCount > 0 && (
                                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
-                                    {activeNotifications.length}
+                                    {boardNotifCount}
                                 </span>
                             )}
                         </button>
@@ -937,9 +894,9 @@ const StudentTaskBoard = () => {
                         title="Notifications & Alerts"
                     >
                         <MdNotificationsNone size={19} />
-                        {activeNotifications.length > 0 && (
+                        {boardNotifCount > 0 && (
                             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
-                                {activeNotifications.length}
+                                {boardNotifCount}
                             </span>
                         )}
                     </button>
@@ -1375,9 +1332,7 @@ const StudentTaskBoard = () => {
             <NotificationDrawer
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
-                notifications={activeNotifications}
-                onClearAll={() => setUserNotifications([])}
-                onDismiss={(notifId) => setUserNotifications(prev => (prev ?? defaultTaskBoardNotifications).filter(n => n.id !== notifId))}
+                studentId={studentId}
                 title="Task Board Notifications"
                 subtitle={`${studentName} • Practical task alerts & level status`}
             />

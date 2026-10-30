@@ -340,7 +340,7 @@ export default function StudentReportForm() {
         if (idx < currentIdx) {
           status = "Completed";
           completion = 100;
-          ratingStr = "4.10";
+          ratingStr = "—";
         } else if (idx === currentIdx) {
           status = "Current";
           if (taskPerf?.completionRate !== undefined && taskPerf.completionRate > 0) {
@@ -348,9 +348,9 @@ export default function StudentReportForm() {
           } else if (tasks?.totalTasks > 0) {
             completion = Math.round((tasks.completedTasks / tasks.totalTasks) * 100);
           } else {
-            completion = 60;
+            completion = 0;
           }
-          ratingStr = "3.90";
+          ratingStr = "—";
         }
         return {
           itemName: lvl,
@@ -379,7 +379,7 @@ export default function StudentReportForm() {
           value: skill.remark || "Good",
           score: skill.completedTasks || 0,
           maxMarks: skill.totalTasks || 0,
-          remark: skill.rating ? Number(skill.rating).toFixed(2) : "4.00"
+          remark: skill.rating ? Number(skill.rating).toFixed(2) : "—"
         });
       });
     } else if (tasks?.groupedBySubject) {
@@ -399,7 +399,7 @@ export default function StudentReportForm() {
             gradedCount++;
           }
         });
-        const rating = gradedCount > 0 ? (scoreSum / gradedCount).toFixed(2) : "4.00";
+        const rating = gradedCount > 0 ? (scoreSum / gradedCount).toFixed(2) : "—";
         const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
         let level = "Needs Improvement";
         if (pct >= 85) level = "Outstanding";
@@ -417,33 +417,29 @@ export default function StudentReportForm() {
       });
     }
 
-    if (subjectItems.length === 0 && deptConfig.defaultSubjects) {
-      deptConfig.defaultSubjects.forEach(s => subjectItems.push({ ...s }));
-    }
-
     const subjectPerformanceSection = {
       sectionName: "Subject-wise Performance",
       sectionType: "SubjectPerformanceTable",
       items: subjectItems
     };
 
-    // 3. Soft Skills & Behavioural Evaluation (Auto from Soft Skills Syllabus if available, else default editable)
+    // 3. Soft Skills & Behavioural Evaluation (Auto from Soft Skills Syllabus if available, else clean default)
     const softSkillsSection = {
       sectionName: "Soft Skills & Behavioural Evaluation",
       sectionType: "SoftSkillsRating",
       subjectName: softSkillsSyllabus?.subjectName || "Soft Skills",
       hasSyllabusTasks: !!softSkillsSyllabus,
       items: softSkillsSyllabus ? softSkillsSyllabus.items : [
-        { itemName: "Communication Skills", value: 4.2, maxMarks: 5 },
-        { itemName: "Team Collaboration", value: 4.1, maxMarks: 5 },
-        { itemName: "Problem Solving", value: 4.0, maxMarks: 5 },
-        { itemName: "Presentation Clarity", value: 4.2, maxMarks: 5 },
-        { itemName: "Professional Punctuality", value: 4.4, maxMarks: 5 }
+        { itemName: "Communication Skills", value: 0, maxMarks: 5 },
+        { itemName: "Team Collaboration", value: 0, maxMarks: 5 },
+        { itemName: "Problem Solving", value: 0, maxMarks: 5 },
+        { itemName: "Presentation Clarity", value: 0, maxMarks: 5 },
+        { itemName: "Professional Punctuality", value: 0, maxMarks: 5 }
       ]
     };
 
-    // 4. Interview Evaluation (Department-specific defaults, fully editable)
-    const interviewItems = deptConfig.interviewItems.map(item => ({ ...item }));
+    // 4. Interview Evaluation (Department-specific defaults, fully editable, initial score 0)
+    const interviewItems = (deptConfig.interviewItems || []).map(item => ({ ...item, value: 0 }));
 
     const interviewSection = {
       sectionName: deptConfig.interviewSectionTitle || "Interview Evaluation",
@@ -452,33 +448,35 @@ export default function StudentReportForm() {
     };
 
     // 5. Career Readiness
+    const hasLinkedin = !!(student?.placement?.linkedinURL || student?.linkedinURL);
     const careerSection = {
       sectionName: "Career Readiness",
       sectionType: "CareerStatus",
       items: [
         { itemName: "Resume", value: resumeStatus },
-        { itemName: "LinkedIn", value: "Created" },
-        { itemName: "Aptitude", value: "In Progress" },
+        { itemName: "LinkedIn", value: hasLinkedin ? "Created" : "Not created" },
+        { itemName: "Aptitude", value: student?.placement?.aptitudeStatus || "Not Started" },
         { itemName: "Placement Ready", value: placementReady }
       ]
     };
 
     // 6. Attendance & Discipline
+    const attendanceVal = student?.attendanceRate ? `${student.attendanceRate}%` : "—";
     const attendanceDisciplineSection = {
       sectionName: "Attendance & Discipline",
       sectionType: "AttendanceDiscipline",
       items: [
-        { itemName: "Attendance", value: "92%" },
-        { itemName: "Punctuality", value: "Good" },
-        { itemName: "Discipline", value: "Excellent" },
-        { itemName: "Professional Behaviour", value: "Good" }
+        { itemName: "Attendance", value: attendanceVal },
+        { itemName: "Punctuality", value: "—" },
+        { itemName: "Discipline", value: "—" },
+        { itemName: "Professional Behaviour", value: "—" }
       ]
     };
 
     // 7. Strengths & Areas for Improvement (Department-tailored)
     const strengthsItems = [
       { itemName: "Strengths", value: deptConfig.strengths },
-      { itemName: "Areas for Improvement", value: deptConfig.mockGrowthAreas.join(", ") }
+      { itemName: "Areas for Improvement", value: (deptConfig.mockGrowthAreas || []).join(", ") }
     ];
 
     const strengthsSection = {
@@ -487,16 +485,35 @@ export default function StudentReportForm() {
       items: strengthsItems
     };
 
-    // 8. Overall Performance
+    // 8. Overall Performance - Dynamically calculated from actual sections without dummy numbers
+    const gradedSubjs = subjectItems.filter(s => s.remark && s.remark !== "—" && !isNaN(parseFloat(s.remark)) && parseFloat(s.remark) > 0);
+    const avgSubjScore = gradedSubjs.length > 0 ? Number((gradedSubjs.reduce((a, b) => a + parseFloat(b.remark), 0) / gradedSubjs.length).toFixed(2)) : 0;
+
+    const gradedSoft = (softSkillsSection.items || []).filter(s => s.value && !isNaN(parseFloat(s.value)) && parseFloat(s.value) > 0);
+    const avgSoftScore = gradedSoft.length > 0 ? Number((gradedSoft.reduce((a, b) => a + parseFloat(b.value), 0) / gradedSoft.length).toFixed(2)) : 0;
+
+    const gradedInterview = interviewItems.filter(s => s.value && !isNaN(parseFloat(s.value)) && parseFloat(s.value) > 0);
+    const avgInterviewScore = gradedInterview.length > 0 ? Number((gradedInterview.reduce((a, b) => a + parseFloat(b.value), 0) / gradedInterview.length).toFixed(2)) : 0;
+
+    const components = [avgSubjScore, avgSoftScore, avgInterviewScore].filter(v => v > 0);
+    const calculatedOverall = components.length > 0 ? Number((components.reduce((a, b) => a + b, 0) / components.length).toFixed(2)) : 0;
+
+    let overallRemark = "Pending Evaluation";
+    if (calculatedOverall >= 4.5) overallRemark = "Outstanding";
+    else if (calculatedOverall >= 4.0) overallRemark = "Excellent";
+    else if (calculatedOverall >= 3.5) overallRemark = "Very Good";
+    else if (calculatedOverall >= 3.0) overallRemark = "Good";
+    else if (calculatedOverall > 0) overallRemark = "Average";
+
     const overallPerformanceSection = {
       sectionName: "Overall Performance",
       sectionType: "OverallPerformanceSummary",
       items: [
-        { itemName: "Subject Performance", value: 4.10, maxMarks: 5 },
-        { itemName: "Soft Skills", value: 4.00, maxMarks: 5 },
-        { itemName: "Interview", value: 3.80, maxMarks: 5 },
-        { itemName: "Discipline", value: 4.20, maxMarks: 5 },
-        { itemName: "Overall Rating", value: 4.02, maxMarks: 5, remark: "Excellent" }
+        { itemName: "Subject Performance", value: avgSubjScore, maxMarks: 5 },
+        { itemName: "Soft Skills", value: avgSoftScore, maxMarks: 5 },
+        { itemName: "Interview", value: avgInterviewScore, maxMarks: 5 },
+        { itemName: "Discipline", value: 0, maxMarks: 5 },
+        { itemName: "Overall Rating", value: calculatedOverall, maxMarks: 5, remark: overallRemark }
       ]
     };
 
@@ -609,8 +626,8 @@ export default function StudentReportForm() {
       dynamicSections,
       careerReadiness: {
         resumeStatus,
-        linkedinStatus: "Not created",
-        aptitudeStatus: "In-Progress",
+        linkedinStatus: (student.placement?.linkedinURL || student.linkedinURL) ? "Created" : "Not created",
+        aptitudeStatus: student.placement?.aptitudeStatus || "Not Started",
         placementReady
       },
       academicPerformance: {
@@ -648,7 +665,7 @@ export default function StudentReportForm() {
     toast.success("Auto-filled from student profile & task record!");
   };
 
-  const addDynamicItem = (sectionIndex, defaultItem = { itemName: "New Parameter", value: 4.0, maxMarks: 5 }) => {
+  const addDynamicItem = (sectionIndex, defaultItem = { itemName: "New Parameter", value: 0, maxMarks: 5 }) => {
     setFormData(prev => {
       const next = deepClone(prev);
       const section = next.dynamicSections[sectionIndex];
@@ -744,6 +761,16 @@ export default function StudentReportForm() {
           if (existingSec.sectionType === "SoftSkillsRating" && autoSoftSkills?.hasSyllabusTasks) {
             return autoSoftSkills;
           }
+          if (existingSec.sectionType === "OverallPerformanceSummary") {
+            const hasDummyValues = existingSec.items?.some(i => 
+              (i.itemName === "Overall Rating" && (i.value === 4.02 || i.value === "4.02")) ||
+              (i.itemName === "Subject Performance" && (i.value === 4.1 || i.value === "4.10" || i.value === 4.10))
+            );
+            if (hasDummyValues) {
+              const autoOverall = autoSections.find(s => s.sectionType === "OverallPerformanceSummary");
+              if (autoOverall) return autoOverall;
+            }
+          }
 
           return existingSec;
         });
@@ -761,8 +788,13 @@ export default function StudentReportForm() {
       setFormData(prev => {
         const merged = deepClone(prev);
         if (reportData.batchYear) merged.batchYear = reportData.batchYear;
-        if (reportData.generatedByName) merged.generatedByName = reportData.generatedByName;
-        else if (loggedInUser?.name) merged.generatedByName = loggedInUser.name;
+        if (loggedInUser?.name && loggedInUser.name.toLowerCase() !== "system") {
+          merged.generatedByName = loggedInUser.name;
+        } else if (reportData.generatedByName && reportData.generatedByName.toLowerCase() !== "system") {
+          merged.generatedByName = reportData.generatedByName;
+        } else {
+          merged.generatedByName = "Faculty Evaluator";
+        }
         if (reportData.templateType) merged.templateType = reportData.templateType;
         if (resolvedDynamicSections && resolvedDynamicSections.length > 0) {
           merged.dynamicSections = resolvedDynamicSections;
@@ -875,7 +907,7 @@ export default function StudentReportForm() {
     return {
       studentRef: id,
       batchYear: (formData.batchYear || "").trim(),
-      generatedByName: (formData.generatedByName || "").trim(),
+      generatedByName: (formData.generatedByName || loggedInUser?.name || "Faculty Evaluator").replace(/^Prof\.\s*/i, "").trim(),
       templateType: formData.templateType || "ITEG_STANDARD",
       dynamicSections: formData.dynamicSections || [],
       softSkills: {
@@ -1135,13 +1167,16 @@ export default function StudentReportForm() {
 
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                  Generated By <span className="text-rose-500">*</span>
+                  Evaluated By <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={`Prof. ${formData.generatedByName}`}
+                  value={(() => {
+                    const raw = (formData.generatedByName || loggedInUser?.name || "Faculty Evaluator").replace(/^Prof\.\s*/i, "");
+                    return `Prof. ${raw}`;
+                  })()}
                   disabled
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-xs sm:text-sm font-medium"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 cursor-not-allowed text-xs sm:text-sm font-bold"
                 />
               </div>
             </div>
@@ -1371,7 +1406,7 @@ export default function StudentReportForm() {
                                 <div className="text-center">
                                   <span className="inline-flex items-center gap-1 font-bold text-sm text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-lg">
                                     <FaStar className="text-amber-500 text-xs" />
-                                    {item.remark || "4.00"}
+                                    {item.remark || "—"}
                                   </span>
                                 </div>
                                 <div className="text-right">
@@ -1424,7 +1459,7 @@ export default function StudentReportForm() {
                                   <span className="text-[10px] text-amber-700 block font-medium">Avg Rating</span>
                                   <span className="font-bold text-amber-800 text-xs flex items-center gap-1">
                                     <FaStar className="text-amber-500 text-[10px]" />
-                                    {item.remark || "4.00"} / 5.0
+                                    {item.remark || "—"} / 5.0
                                   </span>
                                 </div>
                               </div>
@@ -1509,7 +1544,7 @@ export default function StudentReportForm() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => addDynamicItem(sIdx, { itemName: "New Soft Skill", value: 4.0, maxMarks: 5 })}
+                              onClick={() => addDynamicItem(sIdx, { itemName: "New Soft Skill", value: 0, maxMarks: 5 })}
                               className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
                             >
                               <FaPlus size={10} /> Add Skill Metric
@@ -1562,7 +1597,7 @@ export default function StudentReportForm() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => addDynamicItem(sIdx, { itemName: "New Evaluation Parameter", value: 4.0, maxMarks: 5 })}
+                          onClick={() => addDynamicItem(sIdx, { itemName: "New Evaluation Parameter", value: 0, maxMarks: 5 })}
                           className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer self-start sm:self-auto"
                         >
                           <FaPlus size={10} /> Add Interview Metric
@@ -1640,7 +1675,7 @@ export default function StudentReportForm() {
                             value={item.value || ""}
                             onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
                             className="w-28 sm:w-32 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold text-center bg-white"
-                            placeholder="e.g. 92% or Good"
+                            placeholder="e.g. Good or Regular"
                           />
                         </div>
                       ))}
@@ -1666,6 +1701,57 @@ export default function StudentReportForm() {
 
                   {section.sectionType === "OverallPerformanceSummary" && (
                     <div className="space-y-3">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                        <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                          Overall aggregate performance scores:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const subjSec = formData.dynamicSections.find(s => s.sectionType === "SubjectPerformanceTable");
+                            const softSec = formData.dynamicSections.find(s => s.sectionType === "SoftSkillsRating");
+                            const intSec = formData.dynamicSections.find(s => s.sectionType === "InterviewRating");
+
+                            const gradedSubjs = (subjSec?.items || []).filter(s => s.remark && s.remark !== "—" && !isNaN(parseFloat(s.remark)) && parseFloat(s.remark) > 0);
+                            const avgSubj = gradedSubjs.length > 0 ? Number((gradedSubjs.reduce((a, b) => a + parseFloat(b.remark), 0) / gradedSubjs.length).toFixed(2)) : 0;
+
+                            const gradedSoft = (softSec?.items || []).filter(s => s.value && !isNaN(parseFloat(s.value)) && parseFloat(s.value) > 0);
+                            const avgSoft = gradedSoft.length > 0 ? Number((gradedSoft.reduce((a, b) => a + parseFloat(b.value), 0) / gradedSoft.length).toFixed(2)) : 0;
+
+                            const gradedInt = (intSec?.items || []).filter(s => s.value && !isNaN(parseFloat(s.value)) && parseFloat(s.value) > 0);
+                            const avgInt = gradedInt.length > 0 ? Number((gradedInt.reduce((a, b) => a + parseFloat(b.value), 0) / gradedInt.length).toFixed(2)) : 0;
+
+                            const components = [avgSubj, avgSoft, avgInt].filter(v => v > 0);
+                            const overallScore = components.length > 0 ? Number((components.reduce((a, b) => a + b, 0) / components.length).toFixed(2)) : 0;
+
+                            let remark = "Pending Evaluation";
+                            if (overallScore >= 4.5) remark = "Outstanding";
+                            else if (overallScore >= 4.0) remark = "Excellent";
+                            else if (overallScore >= 3.5) remark = "Very Good";
+                            else if (overallScore >= 3.0) remark = "Good";
+                            else if (overallScore > 0) remark = "Average";
+
+                            setFormData(prev => {
+                              const next = deepClone(prev);
+                              const targetSec = next.dynamicSections[sIdx];
+                              if (targetSec) {
+                                targetSec.items = [
+                                  { itemName: "Subject Performance", value: avgSubj, maxMarks: 5 },
+                                  { itemName: "Soft Skills", value: avgSoft, maxMarks: 5 },
+                                  { itemName: "Interview", value: avgInt, maxMarks: 5 },
+                                  { itemName: "Discipline", value: 0, maxMarks: 5 },
+                                  { itemName: "Overall Rating", value: overallScore, maxMarks: 5, remark }
+                                ];
+                              }
+                              return next;
+                            });
+                            toast.success("Overall summary recalculated from current sections!");
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                        >
+                          <FaSyncAlt size={10} /> Auto-Calculate Summary
+                        </button>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                         {section.items.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100">

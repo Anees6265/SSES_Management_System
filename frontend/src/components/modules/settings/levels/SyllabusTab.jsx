@@ -43,6 +43,19 @@ const resolveDeptIdentifier = (departmentName, level, subLevel, subdepartment) =
   return departmentName || "";
 };
 
+const isSoftSkillSubject = (name = "") => {
+  if (!name || typeof name !== "string") return false;
+  const clean = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return (
+    clean.includes("softskill") ||
+    clean.includes("communicationskill") ||
+    clean.includes("personalitydevelopment") ||
+    clean.includes("softskills") ||
+    clean.includes("communication") ||
+    clean.includes("personality")
+  );
+};
+
 /* Download combined syllabus+task template */
 const downloadSyllabusTemplate = () => {
   const data = [
@@ -536,7 +549,13 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
         return;
       }
       setHierarchy(parsed);
-      setSubjectMeta(parsed.map(s => ({ name: s.subject, includeInReportCard: true, reportCategory: "technical" })));
+      setSubjectMeta(
+        parsed.map((s) => ({
+          name: s.subject,
+          includeInReportCard: true,
+          reportCategory: isSoftSkillSubject(s.subject) ? "softskill" : "technical",
+        }))
+      );
       toast.success(`Successfully parsed ${parsed.length} subject(s) with ${parsed.reduce((a, s) => a + s.topics.length, 0)} topics`);
     } catch (err) {
       console.error("Excel parse error:", err);
@@ -558,11 +577,15 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     if (!subLevel?._id)     { toast.error("SubLevel not found"); return; }
     if (!level?._id)        { toast.error("Level not found"); return; }
 
-    const invalid = confirmedMeta.find(s => s.includeInReportCard && !s.reportCategory);
-    if (invalid) {
-      toast.error(`Please select a category for "${invalid.name}" in Report Card Settings`);
-      return;
-    }
+    const finalMeta = (confirmedMeta?.length ? confirmedMeta : hierarchy.map(s => ({
+      name: s.subject,
+      includeInReportCard: true,
+      reportCategory: isSoftSkillSubject(s.subject) ? "softskill" : "technical",
+    }))).map(s => ({
+      ...s,
+      includeInReportCard: true,
+      reportCategory: s.reportCategory || (isSoftSkillSubject(s.name) ? "softskill" : "technical"),
+    }));
 
     setSaving(true);
     try {
@@ -572,7 +595,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
         levelId:     level._id,
         subLevelId:  subLevel._id,
         tasks:       taskRows,
-        subjectMeta: confirmedMeta,
+        subjectMeta: finalMeta,
       }).unwrap();
 
       toast.success(res.message || "Syllabus & Tasks uploaded successfully!");
@@ -723,71 +746,6 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
             </div>
           </div>
 
-          {/* 5. INLINE REPORT CARD SETTINGS */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 space-y-3 shadow-2xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div>
-                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                  <MdBook className="text-orange-500" size={16} /> Report Card Settings
-                </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                  Configure which subjects appear on student report cards & their evaluation category
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {subjectMeta.map((sm, idx) => (
-                <div key={sm.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-100 bg-slate-50/50 gap-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MdBook size={15} className="text-orange-400 shrink-0" />
-                    <span className="text-xs font-extrabold text-slate-800 truncate">{sm.name}</span>
-                    <span className="text-[10px] text-slate-400 font-medium shrink-0">({hierarchy[idx]?.topics?.length || 0} topics)</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
-                    {/* Include Toggle */}
-                    <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: true, reportCategory: s.reportCategory || "technical" } : s))}
-                        className={`px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-md transition ${sm.includeInReportCard ? "bg-emerald-500 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
-                      >
-                        ✓ Report Card
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, includeInReportCard: false, reportCategory: "" } : s))}
-                        className={`px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-md transition ${!sm.includeInReportCard ? "bg-slate-200 text-slate-700" : "text-slate-500 hover:bg-slate-50"}`}
-                      >
-                        Exclude
-                      </button>
-                    </div>
-
-                    {/* Category Selector */}
-                    {sm.includeInReportCard && (
-                      <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "technical" } : s))}
-                          className={`px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md transition ${sm.reportCategory === "technical" ? "bg-blue-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
-                        >
-                          💻 Tech
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSubjectMeta(prev => prev.map((s, i) => i === idx ? { ...s, reportCategory: "softskill" } : s))}
-                          className={`px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md transition ${sm.reportCategory === "softskill" ? "bg-purple-600 text-white shadow-2xs" : "text-slate-500 hover:bg-slate-50"}`}
-                        >
-                          🤝 Soft Skill
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* 6. COLLAPSIBLE HIERARCHY PREVIEW */}
           <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-2xs">
@@ -2238,9 +2196,6 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
 };
 
 const EmptyUploadState = ({ level, subLevel, departmentName, departmentId, subdepartment, onSaved }) => {
-  const [showUpload, setShowUpload] = useState(false);
-  const drawerRef = useRef(null);
-
   return (
     <div className="flex flex-col items-center justify-center py-12 sm:py-20 px-4 sm:px-8 text-center">
       <div className="w-20 sm:w-24 h-20 sm:h-24 rounded-full bg-orange-50 flex items-center justify-center mb-5 sm:mb-6">
@@ -2251,47 +2206,38 @@ const EmptyUploadState = ({ level, subLevel, departmentName, departmentId, subde
         Upload the academic syllabus to get started. Once uploaded, you can assign lessons to specific weeks and track coverage.
       </p>
 
-      {!showUpload ? (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold px-5 sm:px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer"
-          >
-            <MdCloudUpload size={16} /> Upload Syllabus
-          </button>
-          <button
-            type="button"
-            onClick={downloadSyllabusTemplate}
-            className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-5 sm:px-6 py-2.5 rounded-xl transition cursor-pointer"
-          >
-            <MdFileDownload size={16} /> Download Template
-          </button>
-        </div>
-      ) : (
-        <div className="w-full max-w-3xl text-left mt-4 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3.5 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-black text-slate-900">Upload Syllabus Curriculum</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Import Excel syllabus or add manual subjects</p>
-            </div>
-            <button
-              onClick={() => setShowUpload(false)}
-              className="text-xs text-slate-400 hover:text-slate-700 font-bold px-3 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer flex items-center justify-center text-center"
-            >
-              <span>Close</span>
-            </button>
-          </div>
-          <SyllabusUploadModalContent
-            level={level}
-            subLevel={subLevel}
-            departmentName={departmentName}
-            departmentId={departmentId}
-            subdepartment={subdepartment}
-            onSaved={() => { setShowUpload(false); onSaved?.(); }}
-            onClose={() => setShowUpload(false)}
-          />
-        </div>
-      )}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+        <OrangeButton
+          buttonTitle="Upload Syllabus"
+          icon={<MdCloudUpload size={16} className="shrink-0" />}
+          panelTitle="Upload Syllabus"
+          panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${subLevel?.name || "SubLevel"}`}
+          maxWidth="sm:max-w-2xl lg:max-w-3xl"
+          showFooter={false}
+          customButtonClass="!bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white text-xs sm:text-sm font-semibold px-5 sm:px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer !normal-case tracking-normal shadow-xs"
+          drawerContent={({ closeDrawer }) => (
+            <SyllabusUploadModalContent
+              level={level}
+              subLevel={subLevel}
+              departmentName={departmentName}
+              departmentId={departmentId}
+              subdepartment={subdepartment}
+              onSaved={() => {
+                closeDrawer();
+                onSaved?.();
+              }}
+              onClose={closeDrawer}
+            />
+          )}
+        />
+        <button
+          type="button"
+          onClick={downloadSyllabusTemplate}
+          className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-300 hover:bg-orange-50 px-5 sm:px-6 py-2.5 rounded-xl transition cursor-pointer"
+        >
+          <MdFileDownload size={16} /> Download Template
+        </button>
+      </div>
     </div>
   );
 };
@@ -2512,14 +2458,34 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
 
       {/* Content */}
       {allVersions.length === 0 || !currentVersionId ? (
-        <div className="py-20 text-center px-4">
+        <div className="py-20 text-center px-4 flex flex-col items-center justify-center">
           <div className="w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-3 border border-orange-100/40">
             <MdBook size={26} className="text-orange-400" />
           </div>
           <h4 className="text-sm font-bold text-gray-800">No syllabus found</h4>
-          <p className="text-xs text-gray-455 mt-1 max-w-xs mx-auto leading-relaxed">
-            {selectedSessionId ? "Try selecting a different session" : "Upload syllabus first"}
+          <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto leading-relaxed mb-4">
+            {selectedSessionId ? "No syllabus found for the selected session. Try selecting a different session or upload syllabus." : "Upload syllabus first to get started."}
           </p>
+          <OrangeButton
+            buttonTitle="Upload Syllabus"
+            icon={<MdCloudUpload size={16} className="shrink-0" />}
+            panelTitle="Upload Syllabus"
+            panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${subLevel?.name || "SubLevel"}`}
+            maxWidth="sm:max-w-2xl lg:max-w-3xl"
+            showFooter={false}
+            customButtonClass="!bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl transition hover:shadow-md cursor-pointer !normal-case tracking-normal shadow-xs"
+            drawerContent={({ closeDrawer }) => (
+              <SyllabusUploadModalContent
+                level={level}
+                subLevel={subLevel}
+                onSaved={() => {
+                  closeDrawer();
+                  refetch();
+                }}
+                onClose={closeDrawer}
+              />
+            )}
+          />
         </div>
       ) : (
         <VersionTopicTable versionId={currentVersionId} searchTerm={searchTerm} activeSubject={activeSubject} />

@@ -93,7 +93,7 @@ const syncReportCardLive = async (studentId, reportCard) => {
           ? Number((completedWithMarks.reduce((sum, t) => sum + t.marks, 0) / completedWithMarks.length).toFixed(2))
           : 0;
         const percent = prevTasks.length > 0 ? Math.round((completedTasks.length / prevTasks.length) * 100) : 100;
-        const rating = averageMarks > 0 ? averageMarks.toFixed(2) : "4.00";
+        const rating = averageMarks > 0 ? averageMarks.toFixed(2) : "—";
 
         levelProgressItemsMap.set(slName, {
           itemName: sl.name,
@@ -197,7 +197,7 @@ const syncReportCardLive = async (studentId, reportCard) => {
         else if (averageMarks >= 3.0) performanceLevel = "Good";
         else if (averageMarks >= 2.5) performanceLevel = "Average";
 
-        const ratingStr = averageMarks > 0 ? averageMarks.toFixed(2) : "4.00";
+        const ratingStr = averageMarks > 0 ? averageMarks.toFixed(2) : "—";
 
         subjectItems.push({
           itemName: subjectName,
@@ -237,23 +237,24 @@ const syncReportCardLive = async (studentId, reportCard) => {
             }
           });
 
-          let rating = 4.0;
+          let rating = 0;
           if (gradedCount > 0) {
             rating = Number((scoreSum / gradedCount).toFixed(1));
           } else if (completed > 0) {
-            rating = Number(Math.min(5, Math.max(1, 2.5 + ((completed / total) * 2.5))).toFixed(1));
+            rating = Number(Math.min(5, Math.max(1, (completed / total) * 5)).toFixed(1));
           } else if (inProgress > 0) {
             rating = 2.5;
           } else {
             rating = 0;
           }
 
-          let remark = "Needs Improvement";
+          let remark = "Pending";
           if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
           else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
           else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
           else if (rating >= 3.0 || pct >= 50) remark = "Good";
           else if (completed > 0) remark = "Average";
+          else if (inProgress > 0) remark = "In Progress";
 
           return {
             itemName: topicName,
@@ -298,6 +299,27 @@ const syncReportCardLive = async (studentId, reportCard) => {
   }
 };
 
+const resolveEvaluatorName = async (reqUser, bodyName) => {
+  if (reqUser?.name && typeof reqUser.name === 'string' && reqUser.name.trim() && reqUser.name.trim().toLowerCase() !== 'system') {
+    return reqUser.name.trim();
+  }
+  if (reqUser?.id) {
+    try {
+      const User = mongoose.model("User");
+      const u = await User.findById(reqUser.id).select("name");
+      if (u?.name && u.name.trim() && u.name.trim().toLowerCase() !== 'system') {
+        return u.name.trim();
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  if (bodyName && typeof bodyName === 'string' && bodyName.trim() && bodyName.trim().toLowerCase() !== 'system') {
+    return bodyName.trim();
+  }
+  return "Faculty Evaluator";
+};
+
 exports.saveStudentReportCard = async (req, res) => {
   try {
     const {
@@ -318,10 +340,12 @@ exports.saveStudentReportCard = async (req, res) => {
       resolvedBatchYear = student?.batchYear || student?.sessionId?.name || '2025–26';
     }
 
+    const resolvedGeneratedByName = await resolveEvaluatorName(req.user, generatedByName);
+
     const reportCardData = {
       studentRef,
       batchYear: resolvedBatchYear,
-      generatedByName,
+      generatedByName: resolvedGeneratedByName,
       softSkills: { ...softSkills, totalSoftSkillMarks },
       discipline: { ...discipline, totalDisciplineMarks },
       technicalSkills, careerReadiness, academicPerformance,
@@ -353,6 +377,10 @@ exports.getStudentReportCard = async (req, res) => {
       return res.status(200).json({ success: true, data: null, message: 'Report card not found for this student' });
     }
 
+    if (!reportCard.generatedByName || reportCard.generatedByName.toLowerCase() === "system") {
+      reportCard.generatedByName = "Faculty Evaluator";
+    }
+
     // Sync live task performance
     await syncReportCardLive(studentId, reportCard);
 
@@ -371,6 +399,9 @@ exports.getStudentReportCardForEdit = async (req, res) => {
 
     const reportCard = await StudentReportCard.findOne({ studentRef: studentId });
     if (reportCard) {
+      if (!reportCard.generatedByName || reportCard.generatedByName.toLowerCase() === "system") {
+        reportCard.generatedByName = "Faculty Evaluator";
+      }
       // Sync live task performance
       await syncReportCardLive(studentId, reportCard);
     }
@@ -415,8 +446,10 @@ exports.updateStudentReportCard = async (req, res) => {
     const totalSoftSkillMarks = calcSoftSkillMarks(softSkills);
     const totalDisciplineMarks = calcDisciplineMarks(discipline);
 
+    const resolvedGeneratedByName = await resolveEvaluatorName(req.user, generatedByName);
+
     const updatedData = {
-      generatedByName, batchYear, templateType, dynamicSections,
+      generatedByName: resolvedGeneratedByName, batchYear, templateType, dynamicSections,
       ...(softSkills && { softSkills: { ...softSkills, totalSoftSkillMarks } }),
       ...(discipline && { discipline: { ...discipline, totalDisciplineMarks } }),
       technicalSkills, careerReadiness, academicPerformance,

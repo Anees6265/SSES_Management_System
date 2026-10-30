@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useGetNewStudentsQuery,
@@ -32,22 +32,52 @@ const STATUS_COLORS = {
   Dummy: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
+const getStoredProgressFilters = (subDeptId) => {
+  try {
+    const raw = sessionStorage.getItem(`student_progress_filters_${subDeptId || "all"}`);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return null;
+};
+
 const StudentDetailTable = () => {
   const navigate = useNavigate();
   const { subDepartmentId } = useParams(); // present for admin, absent for faculty
 
-  const [activeTab, setActiveTab] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState([]);
-  const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("All");
-  const [selectedTech, setSelectedTech] = useState("All");
-  const [selectedDomain, setSelectedDomain] = useState("All");
+  const [activeTab, setActiveTab] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.activeTab || "All";
+  });
+  const [selectedStatus, setSelectedStatus] = useState(() => {
+    const f = getStoredProgressFilters(subDepartmentId);
+    return Array.isArray(f?.selectedStatus) ? f.selectedStatus : [];
+  });
+  const [selectedSessionId, setSelectedSessionId] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.selectedSessionId || "";
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.selectedYear || "All";
+  });
+  const [selectedTech, setSelectedTech] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.selectedTech || "All";
+  });
+  const [selectedDomain, setSelectedDomain] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.selectedDomain || "All";
+  });
+  const [searchTerm, setSearchTerm] = useState(() => {
+    return getStoredProgressFilters(subDepartmentId)?.searchTerm || "";
+  });
+  const [currentPage, setCurrentPage] = useState(() => {
+    const f = getStoredProgressFilters(subDepartmentId);
+    return (typeof f?.currentPage === "number" && f.currentPage >= 1) ? f.currentPage : 1;
+  });
+  const [mobilePage, setMobilePage] = useState(() => {
+    const f = getStoredProgressFilters(subDepartmentId);
+    return (typeof f?.mobilePage === "number" && f.mobilePage >= 1) ? f.mobilePage : 1;
+  });
+
   const [selectedIds, setSelectedIds] = useState([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
 
   // Build query string — if subDepartmentId present, filter by it
   const queryStr = subDepartmentId ? `subDepartmentId=${subDepartmentId}` : "";
@@ -64,10 +94,10 @@ const StudentDetailTable = () => {
 
   const students = res.data || [];
 
-  const { data: allLevelsRes = {} } = useGetAllLevelsQuery();
+  const { data: allLevelsRes = {}, isLoading: isLevelsLoading } = useGetAllLevelsQuery();
   const allLevels = allLevelsRes.data || [];
 
-  const { data: allSubLevelsRes = {} } = useGetAllSubLevelsQuery();
+  const { data: allSubLevelsRes = {}, isLoading: isSubLevelsLoading } = useGetAllSubLevelsQuery();
   const allSubLevels = allSubLevelsRes.data || [];
 
   const currentSubDept = useMemo(() => {
@@ -198,18 +228,77 @@ const StudentDetailTable = () => {
     });
   }, [students, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm, isUiUxPage]);
 
-  // Reset mobile page & selection whenever filters/tabs change
+  const prevSubDeptRef = useRef(subDepartmentId);
+
   useEffect(() => {
+    if (prevSubDeptRef.current !== subDepartmentId) {
+      prevSubDeptRef.current = subDepartmentId;
+      const f = getStoredProgressFilters(subDepartmentId);
+      setActiveTab(f?.activeTab || "All");
+      setSearchTerm(f?.searchTerm || "");
+      setSelectedStatus(Array.isArray(f?.selectedStatus) ? f.selectedStatus : []);
+      setSelectedSessionId(f?.selectedSessionId || "");
+      setSelectedYear(f?.selectedYear || "All");
+      setSelectedTech(f?.selectedTech || "All");
+      setSelectedDomain(f?.selectedDomain || "All");
+      setCurrentPage((typeof f?.currentPage === "number" && f.currentPage >= 1) ? f.currentPage : 1);
+      setMobilePage((typeof f?.mobilePage === "number" && f.mobilePage >= 1) ? f.mobilePage : 1);
+      setSelectedIds([]);
+    }
+  }, [subDepartmentId]);
+
+  // Persist active filters to sessionStorage
+  useEffect(() => {
+    try {
+      const dataToSave = {
+        activeTab,
+        searchTerm,
+        selectedStatus,
+        selectedSessionId,
+        selectedYear,
+        selectedTech,
+        selectedDomain,
+        currentPage,
+        mobilePage,
+      };
+      sessionStorage.setItem(
+        `student_progress_filters_${subDepartmentId || "all"}`,
+        JSON.stringify(dataToSave)
+      );
+    } catch (_) {}
+  }, [
+    subDepartmentId,
+    activeTab,
+    searchTerm,
+    selectedStatus,
+    selectedSessionId,
+    selectedYear,
+    selectedTech,
+    selectedDomain,
+    currentPage,
+    mobilePage,
+  ]);
+
+  // Reset mobile & desktop page & selection whenever filters/tabs change (except initial mount)
+  const isInitialFilterMount = useRef(true);
+  useEffect(() => {
+    if (isInitialFilterMount.current) {
+      isInitialFilterMount.current = false;
+      return;
+    }
     setMobilePage(1);
+    setCurrentPage(1);
     setSelectedIds([]);
   }, [searchTerm, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
 
-  // Ensure active tab is valid for current department tabs
+  // Ensure active tab is valid for current department tabs (only after sublevels load)
   useEffect(() => {
-    if (!subLevelTabs.includes(activeTab)) {
+    if (isLevelsLoading || isSubLevelsLoading) return;
+    if (allSubLevels.length === 0) return;
+    if (activeTab !== "All" && !subLevelTabs.includes(activeTab)) {
       setActiveTab("All");
     }
-  }, [subLevelTabs, activeTab]);
+  }, [subLevelTabs, activeTab, isLevelsLoading, isSubLevelsLoading, allSubLevels.length]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -232,6 +321,11 @@ const StudentDetailTable = () => {
     setSelectedYear("All");
     setSelectedTech("All");
     setSelectedIds([]);
+    setCurrentPage(1);
+    setMobilePage(1);
+    try {
+      sessionStorage.removeItem(`student_progress_filters_${subDepartmentId || "all"}`);
+    } catch (_) {}
   };
 
   const currentFilteredIds = useMemo(() => filteredData.map((s) => s._id), [filteredData]);
@@ -679,6 +773,8 @@ const StudentDetailTable = () => {
             columns={columns}
             pagination
             rowsPerPage={10}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
             emptyMessage={
               activeTab === "All"
                 ? "No data found"

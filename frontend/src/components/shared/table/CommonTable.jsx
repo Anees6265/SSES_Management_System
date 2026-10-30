@@ -34,6 +34,8 @@ const CommonTable = ({
   exportTitle = "Table Data Report",
   onExportExcel,
   onExportPDF,
+  currentPage,
+  onPageChange,
 }) => {
 
   const [globalFilter, setGlobalFilter] = useState("");
@@ -242,11 +244,33 @@ const CommonTable = ({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: rowsPerPage } },
+    initialState: {
+      pagination: {
+        pageSize: rowsPerPage,
+        pageIndex: (typeof currentPage === "number" && currentPage >= 1) ? currentPage - 1 : 0,
+      },
+    },
   });
 
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = table.getPageCount();
+
+  useEffect(() => {
+    if (typeof currentPage === "number" && currentPage >= 1) {
+      const targetIndex = currentPage - 1;
+      if (table.getState().pagination.pageIndex !== targetIndex) {
+        table.setPageIndex(targetIndex);
+      }
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (pageCount > 0 && pageIndex >= pageCount) {
+      const validPage = pageCount;
+      table.setPageIndex(validPage - 1);
+      onPageChange?.(validPage);
+    }
+  }, [pageCount, pageIndex, onPageChange]);
 
   const currentRows = table.getRowModel().rows;
   const currentRowsCount = currentRows.length;
@@ -384,7 +408,10 @@ const CommonTable = ({
               currentPage={pageIndex + 1}
               pageSize={pageSize}
               totalPages={pageCount}
-              onPageChange={(page) => table.setPageIndex(page - 1)}
+              onPageChange={(page) => {
+                table.setPageIndex(page - 1);
+                onPageChange?.(page);
+              }}
               label="entries"
             />
           </div>

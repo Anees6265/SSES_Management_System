@@ -9,6 +9,8 @@ import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import {
   Search,
   X,
@@ -45,7 +47,7 @@ const formatDate = (dateStr) =>
 
 const StudentPermission = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = usePersistentState("student_permission_search", "");
   const [previewDoc, setPreviewDoc] = useState(null);
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
@@ -258,6 +260,23 @@ const StudentPermission = () => {
             </div>
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        {searchTerm && (
+          <ActiveFilterChips
+            chips={[
+              {
+                key: "search",
+                label: "Search",
+                value: searchTerm,
+                displayValue: `"${searchTerm}"`,
+                onRemove: () => setSearchTerm(""),
+              },
+            ]}
+            onClearAll={() => setSearchTerm("")}
+            className="mb-2"
+          />
+        )}
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
         <div className="hidden md:flex flex-col flex-1 min-h-[580px]">

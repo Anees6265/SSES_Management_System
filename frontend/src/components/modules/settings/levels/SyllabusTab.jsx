@@ -28,6 +28,8 @@ import {
 import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import CommonTable from "../../../shared/table/CommonTable";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
@@ -2117,9 +2119,9 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
 /* --- Tasks Tab ----------------------------------------- */
 export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdepartment, onVersionChange }) => {
   const subLevelId = subLevel?._id;
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = usePersistentState(`tasks_tab_session_${subLevelId || "all"}`, "");
   const [activeVersionId,   setActiveVersionId]   = useState("");
-  const [searchTerm,        setSearchTerm]        = useState("");
+  const [searchTerm,        setSearchTerm]        = usePersistentState(`tasks_tab_search_${subLevelId || "all"}`, "");
   const [showTaskModal,     setShowTaskModal]     = useState(false);
   const [activeSubjectId,   setActiveSubjectId]   = useState("");
 
@@ -2179,6 +2181,39 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
 
   // Get active subject name for robust fallback matching
   const activeSubjectName = subjectsList.find(s => s._id === activeSubjectId)?.name || "";
+
+  const activeTaskChips = useMemo(() => {
+    const chips = [];
+    if (selectedSessionId) {
+      const match = sessions.find((s) => s._id === selectedSessionId);
+      chips.push({
+        key: "session",
+        label: "Session",
+        value: selectedSessionId,
+        displayValue: match ? formatSessionLabel(match) : "Selected Session",
+        onRemove: () => setSelectedSessionId(""),
+      });
+    }
+    if (activeSubjectId) {
+      chips.push({
+        key: "subject",
+        label: "Subject",
+        value: activeSubjectId,
+        displayValue: activeSubjectName || "Subject",
+        onRemove: () => setActiveSubjectId(""),
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [selectedSessionId, sessions, activeSubjectId, activeSubjectName, searchTerm]);
 
   useEffect(() => {
     if (allVersions.length > 0) {
@@ -2295,6 +2330,17 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
           </div>
         )}
 
+        {/* Active Filter Chips */}
+        <ActiveFilterChips
+          chips={activeTaskChips}
+          onClearAll={() => {
+            setSelectedSessionId("");
+            setActiveSubjectId("");
+            setSearchTerm("");
+          }}
+          className="px-4 py-1.5"
+        />
+
         {/* Table or empty state */}
         {allVersions.length === 0 || !currentVersionId ? (
           <div className="py-20 text-center px-4">
@@ -2382,9 +2428,9 @@ const EmptyUploadState = ({ level, subLevel, departmentName, departmentId, subde
 const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartment }) => {
   const subLevelId = subLevel?._id;
 
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = usePersistentState(`syllabus_tab_session_${subLevelId || "all"}`, "");
   const [activeVersionId,   setActiveVersionId]   = useState("");
-  const [searchTerm,        setSearchTerm]        = useState("");
+  const [searchTerm,        setSearchTerm]        = usePersistentState(`syllabus_tab_search_${subLevelId || "all"}`, "");
   const [activeSubject,     setActiveSubject]     = useState("");
 
   const { data: sessionsData } = useGetAllSessionsQuery();
@@ -2466,6 +2512,39 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
     try { await activateSyllabusVersion(id).unwrap(); toast.success("Activated!"); refetch(); }
     catch (err) { toast.error(err?.data?.message || "Activate failed"); }
   };
+
+  const activeSyllabusChips = useMemo(() => {
+    const chips = [];
+    if (selectedSessionId) {
+      const match = sessions.find((s) => s._id === selectedSessionId);
+      chips.push({
+        key: "session",
+        label: "Session",
+        value: selectedSessionId,
+        displayValue: match ? formatSessionLabel(match) : "Selected Session",
+        onRemove: () => setSelectedSessionId(""),
+      });
+    }
+    if (activeSubject) {
+      chips.push({
+        key: "subject",
+        label: "Subject",
+        value: activeSubject,
+        displayValue: activeSubject,
+        onRemove: () => setActiveSubject(""),
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [selectedSessionId, sessions, activeSubject, searchTerm]);
 
   if (allVersions.length === 0 && !selectedSessionId) {
     return (
@@ -2597,6 +2676,17 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
           ))}
         </div>
       )}
+
+      {/* Active Filter Chips */}
+      <ActiveFilterChips
+        chips={activeSyllabusChips}
+        onClearAll={() => {
+          setSelectedSessionId("");
+          setActiveSubject("");
+          setSearchTerm("");
+        }}
+        className="px-4 py-1.5"
+      />
 
       {/* Content */}
       {allVersions.length === 0 || !currentVersionId ? (

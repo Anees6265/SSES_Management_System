@@ -17,6 +17,7 @@ import {
   useGetAllSessionsQuery,
   useGetDeptPlacementDashboardQuery 
 } from "../../../../redux/api/authApi";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const formatSalary = (n) => n ? `₹${(n / 100000).toFixed(1)} LPA` : "—";
 const formatDate   = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -25,21 +26,22 @@ const DepartmentPlacementDetail = () => {
   const { subDepartmentId } = useParams();
   const navigate = useNavigate();
   
-  const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("All");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = usePersistentState(`dept_placement_session_${subDepartmentId || "all"}`, "");
+  const [selectedLevel, setSelectedLevel] = usePersistentState(`dept_placement_level_${subDepartmentId || "all"}`, "All");
+  const [searchTerm, setSearchTerm] = usePersistentState(`dept_placement_search_${subDepartmentId || "all"}`, "");
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessionsList = useMemo(() => sessionsData?.data || [], [sessionsData]);
 
   useEffect(() => {
-    if (sessionsList.length > 0 && !selectedSessionId) {
+    const stored = sessionStorage.getItem(`filter_val_dept_placement_session_${subDepartmentId || "all"}`);
+    if (stored === null && sessionsList.length > 0 && !selectedSessionId) {
       const activeSess = sessionsList.find(s => s.isActive || s.status === 'active') || sessionsList[0];
       if (activeSess) {
         setSelectedSessionId(activeSess._id);
       }
     }
-  }, [sessionsList, selectedSessionId]);
+  }, [sessionsList, selectedSessionId, setSelectedSessionId, subDepartmentId]);
 
   const activeSessionObj = sessionsList.find(s => s._id === selectedSessionId);
   const activeSessionLabel = activeSessionObj 
@@ -238,6 +240,12 @@ const DepartmentPlacementDetail = () => {
                 <span className="border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
                   Level: {selectedLevel}
                   <MdClose className="cursor-pointer text-sm text-slate-400 hover:text-slate-600" onClick={() => setSelectedLevel("All")} />
+                </span>
+              )}
+              {searchTerm && (
+                <span className="border border-slate-200 bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+                  Search: "{searchTerm}"
+                  <MdClose className="cursor-pointer text-sm text-slate-400 hover:text-slate-600" onClick={() => setSearchTerm("")} />
                 </span>
               )}
             </div>

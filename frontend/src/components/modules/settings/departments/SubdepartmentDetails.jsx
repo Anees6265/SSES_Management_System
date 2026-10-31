@@ -19,6 +19,8 @@ import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning, MdVisibility, MdEdit 
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { DeleteConfirmModal } from "../../../shared/modal/DeleteConfirmModal";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const SubLevelCount = ({ levelId, render }) => {
   const { data } = useGetSubLevelsByLevelQuery(levelId, { skip: !levelId });
@@ -183,7 +185,6 @@ const SubdepartmentDetails = () => {
   const navigate = useNavigate();
   const { id: paramSubdeptId } = useParams();
   const [searchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
   const [levelToDelete, setLevelToDelete] = useState(null);
   const [editingLevel, setEditingLevel] = useState(null);
   const editLevelFormRef = useRef(null);
@@ -194,6 +195,8 @@ const SubdepartmentDetails = () => {
     querySubdeptId ||
     location.state?.subdepartment?._id ||
     sessionStorage.getItem("lastVisitedSubdepartmentId");
+
+  const [searchQuery, setSearchQuery] = usePersistentState(`subdept_levels_search_${subdepartmentId || "all"}`, "");
 
   useEffect(() => {
     if (subdepartmentId) {
@@ -351,17 +354,19 @@ const SubdepartmentDetails = () => {
         </div>
 
         {searchQuery && (
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-3">
-            <span>
-              Showing {filteredLevels.length} of {levels.length} levels
-            </span>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="text-orange-500 hover:text-orange-600 font-semibold cursor-pointer flex items-center gap-1"
-            >
-              <MdClose size={13} />
-              <span>Clear filter</span>
-            </button>
+          <div className="pt-2">
+            <ActiveFilterChips
+              chips={[
+                {
+                  key: "search",
+                  label: "Search",
+                  value: searchQuery,
+                  displayValue: `"${searchQuery}"`,
+                  onRemove: () => setSearchQuery(""),
+                },
+              ]}
+              onClearAll={() => setSearchQuery("")}
+            />
           </div>
         )}
 

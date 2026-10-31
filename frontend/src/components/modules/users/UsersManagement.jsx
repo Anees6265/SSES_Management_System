@@ -26,6 +26,8 @@ import SearchBox from '../../shared/search-export/SearchBox';
 import ExportDropdown from '../../shared/search-export/ExportDropdown';
 import Header from '../../shared/sidebar/Header';
 import EmptyState from '../../shared/empty-state/EmptyState';
+import ActiveFilterChips from '../../shared/search-export/ActiveFilterChips';
+import { usePersistentState } from '../../../hooks/usePersistentFilters';
 
 const UsersManagement = () => {
     const navigate = useNavigate();
@@ -34,8 +36,8 @@ const UsersManagement = () => {
     const { hasPermission } = usePermissions();
     const createUserFormRef = useRef();
     const editUserFormRef = useRef();
-    const [activeTab, setActiveTab] = useState('Users');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = usePersistentState('users_mgmt_tab', 'Users');
+    const [searchTerm, setSearchTerm] = usePersistentState('users_mgmt_search', '');
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
     const [resetPassModal, setResetPassModal] = useState({ show: false, user: null });
@@ -561,6 +563,23 @@ const UsersManagement = () => {
                     />
                 ) : activeTab === 'Users' ? (
                     <>
+                        {/* Active Filter Chips */}
+                        {searchTerm && (
+                            <ActiveFilterChips
+                                chips={[
+                                    {
+                                        key: 'search',
+                                        label: 'Search',
+                                        value: searchTerm,
+                                        displayValue: `"${searchTerm}"`,
+                                        onRemove: () => setSearchTerm(''),
+                                    },
+                                ]}
+                                onClearAll={() => setSearchTerm('')}
+                                className="mb-2"
+                            />
+                        )}
+
                         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
                         <div className="hidden md:block">
                             <CommonTable

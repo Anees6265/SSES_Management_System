@@ -21,6 +21,8 @@ import Loader from "../../../shared/loader/Loader";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
@@ -578,8 +580,8 @@ const StudentTaskBoard = () => {
 
     const [selectedSubLevelId, setSelectedSubLevelId] = useState(null);
     const [showPreviousDropdown, setShowPreviousDropdown] = useState(false);
-    const [search, setSearch] = useState("");
-    const [subjectFilter, setSubjectFilter] = useState("");
+    const [search, setSearch] = usePersistentState(`taskboard_search_${student?._id || "all"}`, "");
+    const [subjectFilter, setSubjectFilter] = usePersistentState(`taskboard_subject_${student?._id || "all"}`, "");
     const [showFilterDrawer, setShowFilterDrawer] = useState(false);
     const [tasks, setTasks] = useState(null);
     const [dragTask, setDragTask] = useState(null);
@@ -725,6 +727,29 @@ const StudentTaskBoard = () => {
             return matchSearch && matchSubject;
         });
     }, [tasksWithSno, search, subjectFilter]);
+
+    const activeBoardChips = useMemo(() => {
+        const chips = [];
+        if (subjectFilter) {
+            chips.push({
+                key: "subject",
+                label: "Subject",
+                value: subjectFilter,
+                displayValue: subjectFilter,
+                onRemove: () => setSubjectFilter(""),
+            });
+        }
+        if (search) {
+            chips.push({
+                key: "search",
+                label: "Search",
+                value: search,
+                displayValue: `"${search}"`,
+                onRemove: () => setSearch(""),
+            });
+        }
+        return chips;
+    }, [subjectFilter, search]);
 
     const byStatus = useMemo(() => ({
         pending: filtered.filter(t => t.status === "pending" || !t.status),
@@ -1256,6 +1281,16 @@ const StudentTaskBoard = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Active Filter Chips */}
+                <ActiveFilterChips
+                    chips={activeBoardChips}
+                    onClearAll={() => {
+                        setSubjectFilter("");
+                        setSearch("");
+                    }}
+                    className="mb-2"
+                />
 
                 {/* KANBAN BOARD 3 COLUMNS */}
                 {isLoading ? (

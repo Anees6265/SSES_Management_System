@@ -11,6 +11,8 @@ import Pagination from "../../shared/pagination/Pagination";
 import Header from "../../shared/sidebar/Header";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
 import AddCompanyModal from "./AddCompanyModal";
 import CompanyProfileModal from "./CompanyProfileModal";
 import {
@@ -122,10 +124,81 @@ const CompanyDetail = () => {
   }, [companiesRes]);
 
   // Tab & Filters State
-  const [activeTab, setActiveTab] = useState("All"); // All | Active | Inactive
-  const [searchTerm, setSearchTerm] = useState("");
-  const [industryFilter, setIndustryFilter] = useState("All");
-  const [locationFilter, setLocationFilter] = useState("All");
+  const defaultCompanyFilters = useMemo(() => ({
+    activeTab: "All",
+    searchTerm: "",
+    industryFilter: "All",
+    locationFilter: "All",
+  }), []);
+
+  const {
+    filters: companyFilters,
+    updateFilter: updateCompanyFilter,
+    resetAllFilters: resetAllCompanyFilters,
+  } = usePersistentFilters("company_detail_filters", defaultCompanyFilters);
+
+  const activeTab = companyFilters.activeTab || "All";
+  const searchTerm = companyFilters.searchTerm || "";
+  const industryFilter = companyFilters.industryFilter || "All";
+  const locationFilter = companyFilters.locationFilter || "All";
+
+  const setActiveTab = (t) => {
+    updateCompanyFilter("activeTab", t);
+    setCurrentPage(1);
+  };
+  const setSearchTerm = (s) => {
+    updateCompanyFilter("searchTerm", s);
+    setCurrentPage(1);
+  };
+  const setIndustryFilter = (ind) => {
+    updateCompanyFilter("industryFilter", ind);
+    setCurrentPage(1);
+  };
+  const setLocationFilter = (loc) => {
+    updateCompanyFilter("locationFilter", loc);
+    setCurrentPage(1);
+  };
+
+  const activeCompanyChips = useMemo(() => {
+    const chips = [];
+    if (activeTab !== "All") {
+      chips.push({
+        key: "tab",
+        label: "Status",
+        value: activeTab,
+        displayValue: activeTab,
+        onRemove: () => setActiveTab("All"),
+      });
+    }
+    if (industryFilter !== "All") {
+      chips.push({
+        key: "industry",
+        label: "Industry",
+        value: industryFilter,
+        displayValue: industryFilter,
+        onRemove: () => setIndustryFilter("All"),
+      });
+    }
+    if (locationFilter !== "All") {
+      chips.push({
+        key: "location",
+        label: "Location",
+        value: locationFilter,
+        displayValue: locationFilter,
+        onRemove: () => setLocationFilter("All"),
+      });
+    }
+    if (searchTerm.trim()) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [activeTab, industryFilter, locationFilter, searchTerm]);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -219,10 +292,7 @@ const CompanyDetail = () => {
   const hasActiveFilters = Boolean(searchTerm || industryFilter !== "All" || locationFilter !== "All" || activeTab !== "All");
 
   const resetFilters = () => {
-    setSearchTerm("");
-    setIndustryFilter("All");
-    setLocationFilter("All");
-    setActiveTab("All");
+    resetAllCompanyFilters();
     setCurrentPage(1);
   };
 
@@ -430,6 +500,13 @@ const CompanyDetail = () => {
             </div>
           </div>
         </div>
+
+        {activeCompanyChips.length > 0 && (
+          <ActiveFilterChips
+            chips={activeCompanyChips}
+            onClearAll={resetFilters}
+          />
+        )}
 
         {/* ── 3. Companies Data View (Mobile Cards + Desktop Table) ── */}
         <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">

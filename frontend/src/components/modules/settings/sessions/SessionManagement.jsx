@@ -23,6 +23,8 @@ import {
 } from "../../../../redux/api/authApi";
 import Header from "../../../shared/sidebar/Header";
 import Loader from "../../../shared/loader/Loader";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 
 const STATUS_TABS = [
@@ -141,8 +143,32 @@ const SessionStatusBadge = ({ status, onStatusChange }) => {
 const SessionManagement = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = usePersistentState("session_mgmt_search", "");
+  const [statusFilter, setStatusFilter] = usePersistentState("session_mgmt_status", "all");
+
+  const activeSessionChips = useMemo(() => {
+    const chips = [];
+    if (statusFilter && statusFilter !== "all") {
+      const tabObj = STATUS_TABS.find(t => t.id === statusFilter);
+      chips.push({
+        key: "status",
+        label: "Status",
+        value: statusFilter,
+        displayValue: tabObj?.label || statusFilter,
+        onRemove: () => setStatusFilter("all"),
+      });
+    }
+    if (searchQuery) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchQuery,
+        displayValue: `"${searchQuery}"`,
+        onRemove: () => setSearchQuery(""),
+      });
+    }
+    return chips;
+  }, [statusFilter, searchQuery, setStatusFilter, setSearchQuery]);
   const [formData, setFormData] = useState({
     name: "",
     startDate: "",
@@ -432,6 +458,16 @@ const SessionManagement = () => {
             })}
           </div>
         </div>
+
+        {activeSessionChips.length > 0 && (
+          <ActiveFilterChips
+            chips={activeSessionChips}
+            onClearAll={() => {
+              setStatusFilter("all");
+              setSearchQuery("");
+            }}
+          />
+        )}
 
         {/* List of filtered session cards */}
         {filteredSessions.length === 0 ? (

@@ -9,6 +9,8 @@ import Loader from "../../shared/loader/Loader";
 import Header from "../../shared/sidebar/Header";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
 import PlacementPostPDF from "./PlacementPostPDF";
 import Avatar from "../../shared/Avatar";
 import profile from "../../../assets/images/profileImgDummy.jpeg";
@@ -99,10 +101,28 @@ const PlacementPost = () => {
   const [isCreatePostModalOpen, setCreatePostModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
-  const [searchTerm, setSearchTerm] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("All");
-  const [courseFilter, setCourseFilter] = useState("All");
-  const [packageFilter, setPackageFilter] = useState("All");
+  const defaultPlacementPostFilters = useMemo(() => ({
+    searchTerm: "",
+    companyFilter: "All",
+    courseFilter: "All",
+    packageFilter: "All",
+  }), []);
+
+  const {
+    filters: postFilters,
+    updateFilter: updatePostFilter,
+    resetAllFilters: resetAllPostFilters,
+  } = usePersistentFilters("placement_post_filters", defaultPlacementPostFilters);
+
+  const searchTerm = postFilters.searchTerm || "";
+  const companyFilter = postFilters.companyFilter || "All";
+  const courseFilter = postFilters.courseFilter || "All";
+  const packageFilter = postFilters.packageFilter || "All";
+
+  const setSearchTerm = (s) => updatePostFilter("searchTerm", s);
+  const setCompanyFilter = (c) => updatePostFilter("companyFilter", c);
+  const setCourseFilter = (cr) => updatePostFilter("courseFilter", cr);
+  const setPackageFilter = (p) => updatePostFilter("packageFilter", p);
   const [downloadingId, setDownloadingId] = useState(null);
 
   // Pagination states
@@ -267,12 +287,63 @@ const PlacementPost = () => {
     packageFilter !== "All";
 
   const clearAllFilters = () => {
-    setSearchTerm("");
-    setCompanyFilter("All");
-    setCourseFilter("All");
-    setPackageFilter("All");
+    resetAllPostFilters();
     setCurrentPage(1);
   };
+
+  const activePostChips = useMemo(() => {
+    const chips = [];
+    if (companyFilter !== "All") {
+      chips.push({
+        key: "company",
+        label: "Company",
+        value: companyFilter,
+        displayValue: companyFilter,
+        onRemove: () => {
+          setCompanyFilter("All");
+          setCurrentPage(1);
+        },
+      });
+    }
+    if (courseFilter !== "All") {
+      chips.push({
+        key: "course",
+        label: "Course",
+        value: courseFilter,
+        displayValue: courseFilter,
+        onRemove: () => {
+          setCourseFilter("All");
+          setCurrentPage(1);
+        },
+      });
+    }
+    if (packageFilter !== "All") {
+      const match = packageOptions.find((o) => o.value === packageFilter);
+      chips.push({
+        key: "package",
+        label: "Package",
+        value: packageFilter,
+        displayValue: match?.label || packageFilter,
+        onRemove: () => {
+          setPackageFilter("All");
+          setCurrentPage(1);
+        },
+      });
+    }
+    if (searchTerm.trim()) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => {
+          setSearchTerm("");
+          setCurrentPage(1);
+        },
+      });
+    }
+    return chips;
+  }, [companyFilter, courseFilter, packageFilter, searchTerm, packageOptions]);
 
   // PDF Download Handler with Toast Feedback
   const downloadPost = async (student) => {
@@ -503,6 +574,13 @@ const PlacementPost = () => {
               )}
             </div>
           </div>
+
+          {activePostChips.length > 0 && (
+            <ActiveFilterChips
+              chips={activePostChips}
+              onClearAll={clearAllFilters}
+            />
+          )}
 
           {/* ── Content View: Empty State OR Grid OR Table ── */}
           {filteredStudents.length === 0 ? (

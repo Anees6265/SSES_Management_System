@@ -37,6 +37,8 @@ import api from "../../../utils/axiosInstance";
 import { useGetAllSessionsQuery } from "../../../redux/api/authApi";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import NotificationBell from "../../shared/notifications/NotificationBell";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
 
 // ── Clean, Calm Stat Card Component ──────────────────────────
 const CleanStatCard = ({
@@ -406,43 +408,43 @@ const AdminDashboard = () => {
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessionsList = sessionsData?.data || [];
 
-  // Filter States - By default, "All Sessions" is selected when opening dashboard
-  const [selectedSessionId, setSelectedSessionId] = useState("all");
-  const [academicYearLabel, setAcademicYearLabel] = useState("All Sessions");
-  const [selectedLevel, setSelectedLevel] = useState("All");
+  // Filter States - Persisted across navigation during the session
+  const [selectedSessionId, setSelectedSessionId] = usePersistentState("dashboard_selected_session", "all");
+  const [selectedLevel, setSelectedLevel] = usePersistentState("dashboard_selected_level", "All");
 
-  // Clear legacy localStorage cache on mount so dashboard always opens with All Sessions by default
-  useEffect(() => {
-    localStorage.removeItem("dashboard_selectedSessionId");
-    localStorage.removeItem("dashboard_academicYearLabel");
-  }, []);
+  const academicYearLabel = useMemo(() => {
+    if (!selectedSessionId || selectedSessionId === "all") return "All Sessions";
+    const found = sessionsList.find((s) => s._id === selectedSessionId);
+    if (!found) return "All Sessions";
+    return found.name.startsWith("AY") ? found.name : `AY ${found.name}`;
+  }, [selectedSessionId, sessionsList]);
 
-  // If a specific session was manually selected, keep label updated if sessionsList reloads
-  useEffect(() => {
-    if (selectedSessionId !== "all" && sessionsList.length > 0) {
-      const found = sessionsList.find((s) => s._id === selectedSessionId);
-      if (found) {
-        const label = found.name.startsWith("AY") ? found.name : `AY ${found.name}`;
-        setAcademicYearLabel(label);
-      } else {
-        setSelectedSessionId("all");
-        setAcademicYearLabel("All Sessions");
-      }
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (selectedSessionId && selectedSessionId !== "all") {
+      chips.push({
+        key: "session",
+        label: "Session",
+        value: selectedSessionId,
+        displayValue: academicYearLabel,
+        onRemove: () => setSelectedSessionId("all"),
+      });
     }
-  }, [sessionsList, selectedSessionId]);
+    if (selectedLevel && selectedLevel !== "All") {
+      chips.push({
+        key: "level",
+        label: "Level",
+        value: selectedLevel,
+        displayValue: selectedLevel,
+        onRemove: () => setSelectedLevel("All"),
+      });
+    }
+    return chips;
+  }, [selectedSessionId, academicYearLabel, selectedLevel, setSelectedSessionId, setSelectedLevel]);
 
   const handleSessionChange = (e) => {
     const newId = e.target.value;
     setSelectedSessionId(newId);
-    if (newId === "all") {
-      setAcademicYearLabel("All Sessions");
-    } else {
-      const found = sessionsList.find((s) => s._id === newId);
-      if (found) {
-        const label = found.name.startsWith("AY") ? found.name : `AY ${found.name}`;
-        setAcademicYearLabel(label);
-      }
-    }
   };
 
   const fetchData = async () => {
@@ -559,6 +561,14 @@ const AdminDashboard = () => {
         <div className="bg-slate-50 min-h-screen">
 
         <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
+          <ActiveFilterChips
+            chips={activeChips}
+            onClearAll={() => {
+              setSelectedSessionId("all");
+              setSelectedLevel("All");
+            }}
+          />
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
               <UserX className="w-4 h-4 shrink-0" />
@@ -989,6 +999,14 @@ const AdminDashboard = () => {
       <div className="bg-slate-50 min-h-screen">
 
       <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
+        <ActiveFilterChips
+          chips={activeChips}
+          onClearAll={() => {
+            setSelectedSessionId("all");
+            setSelectedLevel("All");
+          }}
+        />
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
             <UserX className="w-4 h-4 shrink-0" />

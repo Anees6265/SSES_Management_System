@@ -14,6 +14,8 @@ import {
     useGetMyStudentProfileQuery
 } from "../../../redux/api/studentApi";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -947,11 +949,38 @@ export default function StudentPermissions() {
     const [applyOpen, setApplyOpen] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState(null);
     const [selectedGatePass, setSelectedGatePass] = useState(null);
-    const [search, setSearch] = useState("");
-    const [mobileTab, setMobileTab] = useState("all"); // "all" | "pending" | "approved" | "rejected"
-    const [desktopFilter, setDesktopFilter] = useState("all");
+    const [search, setSearch] = usePersistentState("student_permissions_search", "");
+    const [mobileTab, setMobileTab] = usePersistentState("student_permissions_mobile_tab", "all");
+    const [desktopFilter, setDesktopFilter] = usePersistentState("student_permissions_filter", "all");
     const [viewMode, setViewMode] = useState("kanban"); // "kanban" | "list"
     const [sortBy, setSortBy] = useState("newest");
+
+    const activePermissionChips = useMemo(() => {
+        const chips = [];
+        const effectiveFilter = desktopFilter !== "all" ? desktopFilter : mobileTab !== "all" ? mobileTab : "all";
+        if (effectiveFilter !== "all") {
+            chips.push({
+                key: "status",
+                label: "Status",
+                value: effectiveFilter,
+                displayValue: effectiveFilter.charAt(0).toUpperCase() + effectiveFilter.slice(1),
+                onRemove: () => {
+                    setDesktopFilter("all");
+                    setMobileTab("all");
+                },
+            });
+        }
+        if (search.trim()) {
+            chips.push({
+                key: "search",
+                label: "Search",
+                value: search,
+                displayValue: `"${search}"`,
+                onRemove: () => setSearch(""),
+            });
+        }
+        return chips;
+    }, [desktopFilter, mobileTab, search, setDesktopFilter, setMobileTab, setSearch]);
 
     const { data: permissionsRes, isLoading } = useGetMyPermissionsQuery();
     const { data: studentRes } = useGetMyStudentProfileQuery();
@@ -1126,6 +1155,17 @@ export default function StudentPermissions() {
 
                 </div>
             </div>
+
+            {activePermissionChips.length > 0 && (
+                <ActiveFilterChips
+                    chips={activePermissionChips}
+                    onClearAll={() => {
+                        setDesktopFilter("all");
+                        setMobileTab("all");
+                        setSearch("");
+                    }}
+                />
+            )}
 
             {/* ── Mobile Status Tabs (md:hidden) — Exactly like StudentTasks ── */}
             <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">

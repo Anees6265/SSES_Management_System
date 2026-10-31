@@ -14,6 +14,8 @@ import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
 import OrangeButton from "../../shared/OrangeButton";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import {
   MdAdd, MdSearch, MdBusiness, MdWork, MdLocationOn,
   MdCalendarToday, MdFileUpload, MdBadge, MdCheckCircle,
@@ -24,7 +26,7 @@ const PlacementDriveManagement = () => {
   const navigate = useNavigate();
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = usePersistentState("placement_drives_search", "");
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [isAddCompanyModalOpen, setAddCompanyModalOpen] = useState(false);
   const [returnToCreateDrive, setReturnToCreateDrive] = useState(false);
@@ -166,6 +168,23 @@ const PlacementDriveManagement = () => {
             </button>
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        {searchTerm && (
+          <ActiveFilterChips
+            chips={[
+              {
+                key: "search",
+                label: "Search",
+                value: searchTerm,
+                displayValue: `"${searchTerm}"`,
+                onRemove: () => setSearchTerm(""),
+              },
+            ]}
+            onClearAll={() => setSearchTerm("")}
+            className="mb-1"
+          />
+        )}
 
         {/* Drive Cards Grid */}
         {loading ? (

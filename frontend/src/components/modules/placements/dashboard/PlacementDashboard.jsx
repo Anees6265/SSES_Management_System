@@ -18,6 +18,7 @@ import {
   useGetAllSubdepartmentsQuery,
   useGetGlobalPlacementDashboardQuery 
 } from "../../../../redux/api/authApi";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const PlacementDashboard = () => {
   const navigate = useNavigate();
@@ -28,17 +29,18 @@ const PlacementDashboard = () => {
   const { data: subDeptsData } = useGetAllSubdepartmentsQuery();
   const subDeptsList = useMemo(() => subDeptsData?.data || [], [subDeptsData]);
 
-  const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState("All");
+  const [selectedSessionId, setSelectedSessionId] = usePersistentState("placement_dashboard_session", "");
+  const [selectedDeptFilter, setSelectedDeptFilter] = usePersistentState("placement_dashboard_dept", "All");
 
   useEffect(() => {
-    if (sessionsList.length > 0 && !selectedSessionId) {
+    const stored = sessionStorage.getItem("filter_val_placement_dashboard_session");
+    if (stored === null && sessionsList.length > 0 && !selectedSessionId) {
       const activeSess = sessionsList.find(s => s.isActive || s.status === "active") || sessionsList[0];
       if (activeSess) {
         setSelectedSessionId(activeSess._id);
       }
     }
-  }, [sessionsList, selectedSessionId]);
+  }, [sessionsList, selectedSessionId, setSelectedSessionId]);
 
   const activeSessionObj = sessionsList.find(s => s._id === selectedSessionId);
   const activeSessionLabel = activeSessionObj 

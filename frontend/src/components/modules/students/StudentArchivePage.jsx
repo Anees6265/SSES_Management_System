@@ -29,6 +29,8 @@ import {
 import Header from "../../shared/sidebar/Header";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import { useGetStudentArchivedTasksQuery } from "../../../redux/api/authApi";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 
 const STATUS_CONFIG = {
   completed: {
@@ -55,10 +57,29 @@ const StudentArchivePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("tasks"); // "tasks" | "syllabus"
-  const [search, setSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const defaultFilters = useMemo(() => ({
+    activeTab: "tasks",
+    search: "",
+    selectedStatus: "",
+    selectedSubject: "",
+  }), []);
+
+  const {
+    filters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters(`student_archive_${id || "default"}`, defaultFilters);
+
+  const activeTab = filters.activeTab || "tasks";
+  const search = filters.search || "";
+  const selectedStatus = filters.selectedStatus || "";
+  const selectedSubject = filters.selectedSubject || "";
+
+  const setActiveTab = (tab) => updateFilter("activeTab", tab);
+  const setSearch = (s) => updateFilter("search", s);
+  const setSelectedStatus = (st) => updateFilter("selectedStatus", st);
+  const setSelectedSubject = (sub) => updateFilter("selectedSubject", sub);
+
   const [expandedCriteria, setExpandedCriteria] = useState({});
 
   const { data: archiveResponse, isLoading, error, refetch, isFetching } = useGetStudentArchivedTasksQuery(id, {
@@ -113,6 +134,39 @@ const StudentArchivePage = () => {
       return true;
     });
   }, [tasks, selectedStatus, selectedSubject, search]);
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (selectedSubject) {
+      chips.push({
+        key: "subject",
+        label: "Subject",
+        value: selectedSubject,
+        displayValue: selectedSubject,
+        onRemove: () => setSelectedSubject(""),
+      });
+    }
+    if (selectedStatus) {
+      const statusLabel = STATUS_CONFIG[selectedStatus]?.label || selectedStatus;
+      chips.push({
+        key: "status",
+        label: "Status",
+        value: selectedStatus,
+        displayValue: statusLabel,
+        onRemove: () => setSelectedStatus(""),
+      });
+    }
+    if (search) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: search,
+        displayValue: `"${search}"`,
+        onRemove: () => setSearch(""),
+      });
+    }
+    return chips;
+  }, [selectedSubject, selectedStatus, search]);
 
   const toggleCriteria = (taskId) => {
     setExpandedCriteria(prev => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -505,6 +559,9 @@ const StudentArchivePage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Active Filter Chips */}
+              <ActiveFilterChips chips={activeChips} onClearAll={resetAllFilters} className="mb-2" />
 
               {/* Tasks List */}
               {filteredTasks.length === 0 ? (

@@ -13,6 +13,8 @@ import EmptyState from "../../../shared/empty-state/EmptyState";
 import Pagination from "../../../shared/pagination/Pagination";
 import AddTaskModal from "./AddTaskModal";
 import { buttonStyles } from "../../../../styles/buttonStyles";
+import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -464,15 +466,44 @@ const TaskManagement = () => {
     ).toLowerCase();
     const isFaculty = role === "faculty";
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterYear, setFilterYear] = useState("");
-    const [filterSession, setFilterSession] = useState("");
-    const [filterDept, setFilterDept] = useState("");
-    const [filterSub, setFilterSub] = useState("");
-    const [filterLevel, setFilterLevel] = useState("");
-    const [filterSubLevel, setFilterSubLevel] = useState("");
-    const [filterPriority, setFilterPriority] = useState("");
-    const [filterStatus, setFilterStatus] = useState("");
+    const defaultFilters = useMemo(() => ({
+        searchTerm: "",
+        filterYear: "",
+        filterSession: "",
+        filterDept: "",
+        filterSub: "",
+        filterLevel: "",
+        filterSubLevel: "",
+        filterPriority: "",
+        filterStatus: "",
+    }), []);
+
+    const {
+        filters,
+        updateFilter,
+        resetAllFilters,
+    } = usePersistentFilters("task_management", defaultFilters);
+
+    const searchTerm = filters.searchTerm || "";
+    const filterYear = filters.filterYear || "";
+    const filterSession = filters.filterSession || "";
+    const filterDept = filters.filterDept || "";
+    const filterSub = filters.filterSub || "";
+    const filterLevel = filters.filterLevel || "";
+    const filterSubLevel = filters.filterSubLevel || "";
+    const filterPriority = filters.filterPriority || "";
+    const filterStatus = filters.filterStatus || "";
+
+    const setSearchTerm = (s) => updateFilter("searchTerm", s);
+    const setFilterYear = (y) => updateFilter("filterYear", y);
+    const setFilterSession = (s) => updateFilter("filterSession", s);
+    const setFilterDept = (d) => updateFilter("filterDept", d);
+    const setFilterSub = (sd) => updateFilter("filterSub", sd);
+    const setFilterLevel = (l) => updateFilter("filterLevel", l);
+    const setFilterSubLevel = (sl) => updateFilter("filterSubLevel", sl);
+    const setFilterPriority = (p) => updateFilter("filterPriority", p);
+    const setFilterStatus = (st) => updateFilter("filterStatus", st);
+
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -605,17 +636,23 @@ const TaskManagement = () => {
     }, [taskRows, searchTerm, filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterPriority, filterStatus]);
 
     const resetFilters = () => {
-        setSearchTerm("");
-        setFilterYear("");
-        setFilterSession("");
-        setFilterDept("");
-        setFilterSub("");
-        setFilterLevel("");
-        setFilterSubLevel("");
-        setFilterPriority("");
-        setFilterStatus("");
+        resetAllFilters();
         setCurrentPage(1);
     };
+
+    const activeChips = useMemo(() => {
+        const chips = [];
+        if (filterYear) chips.push({ key: "year", label: "Year", value: filterYear, displayValue: filterYear, onRemove: () => setFilterYear("") });
+        if (filterSession) chips.push({ key: "session", label: "Session", value: filterSession, displayValue: filterSession, onRemove: () => setFilterSession("") });
+        if (filterDept) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
+        if (filterSub) chips.push({ key: "sub", label: "Sub-Dept", value: filterSub, displayValue: filterSub, onRemove: () => setFilterSub("") });
+        if (filterLevel) chips.push({ key: "level", label: "Level", value: filterLevel, displayValue: filterLevel, onRemove: () => setFilterLevel("") });
+        if (filterSubLevel) chips.push({ key: "subLevel", label: "Sub-Level", value: filterSubLevel, displayValue: filterSubLevel, onRemove: () => setFilterSubLevel("") });
+        if (filterPriority) chips.push({ key: "priority", label: "Priority", value: filterPriority, displayValue: filterPriority, onRemove: () => setFilterPriority("") });
+        if (filterStatus) chips.push({ key: "status", label: "Status", value: filterStatus, displayValue: filterStatus === "active" ? "Active" : "Disabled", onRemove: () => setFilterStatus("") });
+        if (searchTerm) chips.push({ key: "search", label: "Search", value: searchTerm, displayValue: `"${searchTerm}"`, onRemove: () => setSearchTerm("") });
+        return chips;
+    }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterPriority, filterStatus, searchTerm]);
 
     const handleDelete = async (task) => {
         if (!task?.id || deleting) return;
@@ -912,6 +949,9 @@ const TaskManagement = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Active Filter Chips */}
+                <ActiveFilterChips chips={activeChips} onClearAll={resetFilters} className="mb-2" />
 
                 {/* ── DATA SECTION ── */}
                 <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">

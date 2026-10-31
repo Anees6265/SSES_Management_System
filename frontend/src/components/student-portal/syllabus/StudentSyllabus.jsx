@@ -7,15 +7,40 @@ import {
     MdTableChart, MdViewAgenda, MdPrint, MdTopic
 } from "react-icons/md";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
 
 export default function StudentSyllabus() {
     const { data: syllabusData, isLoading, error } = useGetMyStudentSyllabusQuery();
 
-    const [activeTab, setActiveTab] = useState("current"); // "current" | "previous" | "roadmap"
+    const [activeTab, setActiveTab] = usePersistentState("student_syllabus_tab", "current");
     const [viewMode, setViewMode] = useState("table"); // "table" | "cards"
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedSubjectFilter, setSelectedSubjectFilter] = useState("All");
+    const [searchQuery, setSearchQuery] = usePersistentState("student_syllabus_search", "");
+    const [selectedSubjectFilter, setSelectedSubjectFilter] = usePersistentState("student_syllabus_subject", "All");
     const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
+
+    const activeSyllabusChips = useMemo(() => {
+        const chips = [];
+        if (selectedSubjectFilter !== "All") {
+            chips.push({
+                key: "subject",
+                label: "Subject",
+                value: selectedSubjectFilter,
+                displayValue: selectedSubjectFilter,
+                onRemove: () => setSelectedSubjectFilter("All"),
+            });
+        }
+        if (searchQuery.trim()) {
+            chips.push({
+                key: "search",
+                label: "Search",
+                value: searchQuery,
+                displayValue: `"${searchQuery}"`,
+                onRemove: () => setSearchQuery(""),
+            });
+        }
+        return chips;
+    }, [selectedSubjectFilter, searchQuery, setSelectedSubjectFilter, setSearchQuery]);
 
     const currentLevel = syllabusData?.data?.currentLevel || null;
     const previousLevels = syllabusData?.data?.previousLevels || [];
@@ -297,6 +322,16 @@ export default function StudentSyllabus() {
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {activeSyllabusChips.length > 0 && (
+                        <ActiveFilterChips
+                            chips={activeSyllabusChips}
+                            onClearAll={() => {
+                                setSelectedSubjectFilter("All");
+                                setSearchQuery("");
+                            }}
+                        />
                     )}
 
                     {/* Subjects Container */}

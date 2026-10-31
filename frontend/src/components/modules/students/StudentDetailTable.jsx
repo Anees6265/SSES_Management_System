@@ -20,6 +20,7 @@ import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/stude
 import { MdTableChart } from "react-icons/md";
 import { Search, X, ChevronRight, Phone, RotateCcw, Filter, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "react-toastify";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 
 const toTitle = (str) =>
   str?.toLowerCase().split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "";
@@ -327,6 +328,66 @@ const StudentDetailTable = () => {
       sessionStorage.removeItem(`student_progress_filters_${subDepartmentId || "all"}`);
     } catch (_) {}
   };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (selectedStatus.length > 0) {
+      chips.push({
+        key: "status",
+        label: "Status",
+        value: selectedStatus,
+        displayValue: selectedStatus.join(", "),
+        onRemove: () => setSelectedStatus([]),
+      });
+    }
+    if (selectedSessionId) {
+      const match = sessions.find((s) => s._id === selectedSessionId || s.name === selectedSessionId);
+      chips.push({
+        key: "session",
+        label: "Session",
+        value: selectedSessionId,
+        displayValue: match?.name || selectedSessionId,
+        onRemove: () => setSelectedSessionId(""),
+      });
+    }
+    if (selectedYear && selectedYear !== "All") {
+      chips.push({
+        key: "year",
+        label: "Year",
+        value: selectedYear,
+        displayValue: selectedYear,
+        onRemove: () => setSelectedYear("All"),
+      });
+    }
+    if (selectedTech && selectedTech !== "All") {
+      chips.push({
+        key: "tech",
+        label: "Specialization",
+        value: selectedTech,
+        displayValue: selectedTech,
+        onRemove: () => setSelectedTech("All"),
+      });
+    }
+    if (activeTab === "FTP Students" && selectedDomain && selectedDomain !== "All") {
+      chips.push({
+        key: "domain",
+        label: "Domain",
+        value: selectedDomain,
+        displayValue: selectedDomain,
+        onRemove: () => setSelectedDomain("All"),
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [selectedStatus, selectedSessionId, sessions, selectedYear, selectedTech, activeTab, selectedDomain, searchTerm]);
 
   const currentFilteredIds = useMemo(() => filteredData.map((s) => s._id), [filteredData]);
   const isAllSelected = currentFilteredIds.length > 0 && currentFilteredIds.every((id) => selectedIds.includes(id));
@@ -765,6 +826,9 @@ const StudentDetailTable = () => {
             </div>
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        <ActiveFilterChips chips={activeChips} onClearAll={handleResetFilters} className="mb-2" />
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
         <div className="hidden md:block">

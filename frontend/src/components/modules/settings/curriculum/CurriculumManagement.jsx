@@ -25,6 +25,8 @@ import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import Pagination from "../../../shared/pagination/Pagination";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import {
   useUploadCombinedSyllabusMutation,
   useDeleteSyllabusVersionMutation,
@@ -1018,13 +1020,38 @@ const CurriculumManagement = () => {
   ).toLowerCase();
   const isFaculty = role === "faculty";
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterYear, setFilterYear] = useState("");
-  const [filterSession, setFilterSession] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [filterSub, setFilterSub] = useState("");
-  const [filterLevel, setFilterLevel] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const defaultFilters = useMemo(() => ({
+    searchTerm: "",
+    filterYear: "",
+    filterSession: "",
+    filterDept: "",
+    filterSub: "",
+    filterLevel: "",
+    filterStatus: "",
+  }), []);
+
+  const {
+    filters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters("curriculum_management", defaultFilters);
+
+  const searchTerm = filters.searchTerm || "";
+  const filterYear = filters.filterYear || "";
+  const filterSession = filters.filterSession || "";
+  const filterDept = filters.filterDept || "";
+  const filterSub = filters.filterSub || "";
+  const filterLevel = filters.filterLevel || "";
+  const filterStatus = filters.filterStatus || "";
+
+  const setSearchTerm = (s) => updateFilter("searchTerm", s);
+  const setFilterYear = (y) => updateFilter("filterYear", y);
+  const setFilterSession = (s) => updateFilter("filterSession", s);
+  const setFilterDept = (d) => updateFilter("filterDept", d);
+  const setFilterSub = (sd) => updateFilter("filterSub", sd);
+  const setFilterLevel = (l) => updateFilter("filterLevel", l);
+  const setFilterStatus = (st) => updateFilter("filterStatus", st);
+
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -1115,15 +1142,21 @@ const CurriculumManagement = () => {
   }), [curriculumRows, searchTerm, filterYear, filterSession, filterDept, filterSub, filterLevel, filterStatus]);
 
   const resetFilters = () => {
-    setSearchTerm("");
-    setFilterYear("");
-    setFilterSession("");
-    setFilterDept("");
-    setFilterSub("");
-    setFilterLevel("");
-    setFilterStatus("");
+    resetAllFilters();
     setCurrentPage(1);
   };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (filterYear) chips.push({ key: "year", label: "Year", value: filterYear, displayValue: filterYear, onRemove: () => setFilterYear("") });
+    if (filterSession) chips.push({ key: "session", label: "Session", value: filterSession, displayValue: filterSession, onRemove: () => setFilterSession("") });
+    if (filterDept) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
+    if (filterSub) chips.push({ key: "sub", label: "Sub-Dept", value: filterSub, displayValue: filterSub, onRemove: () => setFilterSub("") });
+    if (filterLevel) chips.push({ key: "level", label: "Level", value: filterLevel, displayValue: filterLevel, onRemove: () => setFilterLevel("") });
+    if (filterStatus) chips.push({ key: "status", label: "Status", value: filterStatus, displayValue: filterStatus, onRemove: () => setFilterStatus("") });
+    if (searchTerm) chips.push({ key: "search", label: "Search", value: searchTerm, displayValue: `"${searchTerm}"`, onRemove: () => setSearchTerm("") });
+    return chips;
+  }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterStatus, searchTerm]);
 
   const handleDelete = async (row) => {
     if (!row?.id) return;
@@ -1399,6 +1432,9 @@ const CurriculumManagement = () => {
             </div>
           </div>
         )}
+
+        {/* Active Filter Chips */}
+        <ActiveFilterChips chips={activeChips} onClearAll={resetFilters} className="mb-2" />
 
         {/* DATA CONTAINER */}
         <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">

@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { useGetFacultiesQuery } from "../../../redux/api/studentApi";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../hooks/usePersistentFilters";
 
 const ROLE_COLORS = {
   hod: "bg-amber-50 text-amber-700 border-amber-200/80",
@@ -36,8 +38,31 @@ const getAvatarGradient = (name = "") => {
 
 export default function StudentFaculty() {
   const { data: facultiesRes, isLoading } = useGetFacultiesQuery();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [mobileTab, setMobileTab] = useState("all"); // "all" | "hod" | "faculty"
+  const [searchQuery, setSearchQuery] = usePersistentState("student_faculty_search", "");
+  const [mobileTab, setMobileTab] = usePersistentState("student_faculty_tab", "all");
+
+  const activeFacultyChips = useMemo(() => {
+    const chips = [];
+    if (mobileTab !== "all") {
+      chips.push({
+        key: "role",
+        label: "Role",
+        value: mobileTab,
+        displayValue: ROLE_LABELS[mobileTab] || mobileTab,
+        onRemove: () => setMobileTab("all"),
+      });
+    }
+    if (searchQuery.trim()) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchQuery,
+        displayValue: `"${searchQuery}"`,
+        onRemove: () => setSearchQuery(""),
+      });
+    }
+    return chips;
+  }, [mobileTab, searchQuery, setMobileTab, setSearchQuery]);
 
   const faculties = facultiesRes?.data || [];
 
@@ -185,6 +210,16 @@ export default function StudentFaculty() {
           </span>
         </button>
       </div>
+
+      {activeFacultyChips.length > 0 && (
+        <ActiveFilterChips
+          chips={activeFacultyChips}
+          onClearAll={() => {
+            setMobileTab("all");
+            setSearchQuery("");
+          }}
+        />
+      )}
 
       {/* ── Faculty Directory Grid ── */}
       {filteredFaculties.length === 0 ? (

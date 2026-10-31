@@ -24,6 +24,8 @@ import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 
 const FILTERS = [
   { label: "All", value: "all" },
@@ -157,8 +159,22 @@ const ResolveModal = ({ request, decision, onClose }) => {
 };
 
 const LeaveRequests = () => {
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const defaultFilters = useMemo(() => ({
+    activeTab: "all",
+    searchTerm: "",
+  }), []);
+
+  const {
+    filters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters("leave_requests", defaultFilters);
+
+  const activeTab = filters.activeTab || "all";
+  const searchTerm = filters.searchTerm || "";
+  const setActiveTab = (tab) => updateFilter("activeTab", tab);
+  const setSearchTerm = (term) => updateFilter("searchTerm", term);
+
   const [previewUrl, setPreviewUrl] = useState("");
   const [resolveState, setResolveState] = useState(null);
   const [mobilePage, setMobilePage] = useState(1);
@@ -217,6 +233,30 @@ const LeaveRequests = () => {
       rejected: requests.filter((item) => item.status === "rejected").length,
     };
   }, [requests]);
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (activeTab !== "all") {
+      const tabObj = FILTERS.find((f) => f.value === activeTab);
+      chips.push({
+        key: "activeTab",
+        label: "Status",
+        value: activeTab,
+        displayValue: tabObj?.label || activeTab,
+        onRemove: () => setActiveTab("all"),
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: "searchTerm",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [activeTab, searchTerm]);
 
   const columns = [
     {
@@ -570,6 +610,9 @@ const LeaveRequests = () => {
             />
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        <ActiveFilterChips chips={activeChips} onClearAll={resetAllFilters} className="mb-3" />
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
         <div className="hidden md:flex flex-col flex-1 min-h-[520px]">

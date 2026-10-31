@@ -17,6 +17,8 @@ import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import {
   MdCheckCircle,
   MdWork,
@@ -373,11 +375,30 @@ const PlacementReadyStudents = () => {
   const searchParams = new URLSearchParams(location.search);
   const statusParam = searchParams.get("status");
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState("All");
-  const [readySubFilter, setReadySubFilter] = useState("All"); // All | Stage2A | Stage2B
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTech, setSelectedTech] = useState("All");
+  // Tab & Filter States with persistence
+  const defaultFilters = useMemo(() => ({
+    activeTab: "All",
+    readySubFilter: "All",
+    selectedTech: "All",
+    searchTerm: "",
+  }), []);
+
+  const {
+    filters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters("placement_ready_students", defaultFilters);
+
+  const activeTab = filters.activeTab || "All";
+  const readySubFilter = filters.readySubFilter || "All";
+  const selectedTech = filters.selectedTech || "All";
+  const searchTerm = filters.searchTerm || "";
+
+  const setActiveTab = (tab) => updateFilter("activeTab", tab);
+  const setReadySubFilter = (sub) => updateFilter("readySubFilter", sub);
+  const setSelectedTech = (tech) => updateFilter("selectedTech", tech);
+  const setSearchTerm = (term) => updateFilter("searchTerm", term);
+
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -589,11 +610,50 @@ const PlacementReadyStudents = () => {
   const hasActiveFilters = Boolean(searchTerm || selectedTech !== "All" || readySubFilter !== "All");
 
   const resetFilters = () => {
-    setSearchTerm("");
-    setSelectedTech("All");
-    setReadySubFilter("All");
+    resetAllFilters();
     setCurrentPage(1);
   };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (activeTab !== "All") {
+      chips.push({
+        key: "activeTab",
+        label: "Stage",
+        value: activeTab,
+        displayValue: activeTab,
+        onRemove: () => setActiveTab("All"),
+      });
+    }
+    if (readySubFilter !== "All") {
+      chips.push({
+        key: "readySubFilter",
+        label: "Pool",
+        value: readySubFilter,
+        displayValue: readySubFilter,
+        onRemove: () => setReadySubFilter("All"),
+      });
+    }
+    if (selectedTech !== "All") {
+      chips.push({
+        key: "selectedTech",
+        label: "Technology",
+        value: selectedTech,
+        displayValue: selectedTech,
+        onRemove: () => setSelectedTech("All"),
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: "searchTerm",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    return chips;
+  }, [activeTab, readySubFilter, selectedTech, searchTerm]);
 
   if (isLoading) {
     return (
@@ -793,6 +853,9 @@ const PlacementReadyStudents = () => {
             </div>
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        <ActiveFilterChips chips={activeChips} onClearAll={resetFilters} className="mb-3" />
 
         {/* ── 3. Candidate Data View (Mobile Cards + Desktop Table) ── */}
         <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">

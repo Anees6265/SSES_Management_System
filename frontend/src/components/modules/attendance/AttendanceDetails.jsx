@@ -13,6 +13,8 @@ import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import Pagination from '../../shared/pagination/Pagination';
 import TableDownloadDropdown from '../../shared/table/TableDownloadDropdown';
 import { exportGenericToExcel, exportGenericToPDF } from '../../../utils/studentExportHelpers';
+import { usePersistentFilters } from '../../../hooks/usePersistentFilters';
+import ActiveFilterChips from '../../shared/search-export/ActiveFilterChips';
 
 // Helper function to get current week dates
 const getCurrentWeekDates = () => {
@@ -61,15 +63,26 @@ const AttendanceDetails = () => {
   const userObj = JSON.parse(localStorage.getItem("user") || "{}");
   const isGlobalAdmin = ["superadmin", "admin"].includes(role);
 
-  const [filters, setFilters] = useState({
+  const defaultFilters = useMemo(() => ({
     dateFrom: currentWeek.dateFrom,
     dateTo: currentWeek.dateTo,
     year: 'All',
     subLevelId: 'All',
     gender: '',
-    subDepartmentId: 'All'
-  });
-  const [searchTerm, setSearchTerm] = useState('');
+    subDepartmentId: 'All',
+    searchTerm: '',
+  }), [currentWeek.dateFrom, currentWeek.dateTo]);
+
+  const {
+    filters,
+    setFilters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters('attendance_details', defaultFilters);
+
+  const searchTerm = filters.searchTerm || '';
+  const setSearchTerm = (term) => updateFilter('searchTerm', term);
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dateError, setDateError] = useState('');
 
@@ -162,18 +175,73 @@ const AttendanceDetails = () => {
 
   const handleReset = () => {
     setDateError('');
-    const currentWeek = getCurrentWeekDates();
-    setFilters({
-      dateFrom: currentWeek.dateFrom,
-      dateTo: currentWeek.dateTo,
-      year: 'All',
-      subLevelId: 'All',
-      gender: '',
-      subDepartmentId: 'All'
-    });
-    setSearchTerm('');
+    resetAllFilters();
     setCurrentPage(1);
   };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (filters.subDepartmentId && filters.subDepartmentId !== 'All') {
+      const match = subDepts.find((d) => String(d._id) === String(filters.subDepartmentId));
+      chips.push({
+        key: 'subDepartmentId',
+        label: 'Sub-Department',
+        value: filters.subDepartmentId,
+        displayValue: match?.name || filters.subDepartmentId,
+        onRemove: () => handleFilterChange('subDepartmentId', 'All'),
+      });
+    }
+    if (filters.year && filters.year !== 'All') {
+      const yMatch = years.find((y) => y.value === filters.year);
+      chips.push({
+        key: 'year',
+        label: 'Year',
+        value: filters.year,
+        displayValue: yMatch?.label || filters.year,
+        onRemove: () => handleFilterChange('year', 'All'),
+      });
+    }
+    if (filters.subLevelId && filters.subLevelId !== 'All') {
+      chips.push({
+        key: 'subLevelId',
+        label: 'Sub-Level',
+        value: filters.subLevelId,
+        displayValue: filters.subLevelId,
+        onRemove: () => handleFilterChange('subLevelId', 'All'),
+      });
+    }
+    if (filters.gender) {
+      chips.push({
+        key: 'gender',
+        label: 'Gender',
+        value: filters.gender,
+        displayValue: filters.gender === 'male' ? 'Male' : filters.gender === 'female' ? 'Female' : filters.gender,
+        onRemove: () => handleFilterChange('gender', ''),
+      });
+    }
+    if (filters.dateFrom !== currentWeek.dateFrom || filters.dateTo !== currentWeek.dateTo) {
+      chips.push({
+        key: 'dateRange',
+        label: 'Dates',
+        value: `${filters.dateFrom} to ${filters.dateTo}`,
+        displayValue: `${filters.dateFrom} ~ ${filters.dateTo}`,
+        onRemove: () => {
+          handleFilterChange('dateFrom', currentWeek.dateFrom);
+          handleFilterChange('dateTo', currentWeek.dateTo);
+        },
+      });
+    }
+    if (searchTerm) {
+      chips.push({
+        key: 'searchTerm',
+        label: 'Search',
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(''),
+      });
+    }
+    return chips;
+  }, [filters, subDepts, years, currentWeek, searchTerm]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -615,6 +683,9 @@ const AttendanceDetails = () => {
             )}
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        <ActiveFilterChips chips={activeChips} onClearAll={handleReset} className="mb-3" />
 
         {/* Attendance Records Section */}
         <div className="bg-white border border-gray-200/90 rounded-xl sm:rounded-2xl shadow-2xs overflow-hidden">

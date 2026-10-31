@@ -15,7 +15,8 @@ import {
     useGetSyllabusVersionsBySubLevelQuery,
     useGetNewStudentsQuery,
     useGetSubLevelProgressQuery,
-    useGetAllDepartmentsQuery
+    useGetAllDepartmentsQuery,
+    useGetAllSessionsQuery
 } from "../../../../redux/api/authApi";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import SearchBox from "../../../shared/search-export/SearchBox";
@@ -30,6 +31,8 @@ import Loader from "../../../shared/loader/Loader";
 import Avatar from "../../../shared/Avatar";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import SessionSelector from "../../../shared/SessionSelector";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentFilters, usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const validationSchema = Yup.object({
     name: Yup.string().required("SubLevel name is required"),
@@ -76,8 +79,18 @@ const STUDENT_COLUMNS = [
     },
 ];
 
-const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onRowClick, onTaskBoard, departmentName }) => {
-    const [selectedSessionId, setSelectedSessionId] = useState("");
+const StudentsTab = ({
+    subLevel,
+    subdepartmentId,
+    searchTerm,
+    setSearchTerm,
+    selectedSessionId,
+    setSelectedSessionId,
+    sessions = [],
+    onRowClick,
+    onTaskBoard,
+    departmentName
+}) => {
     const params = subLevel?._id
         ? `currentSubLevelId=${subLevel._id}${selectedSessionId ? `&sessionId=${selectedSessionId}` : ''}`
         : "";
@@ -120,6 +133,30 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
         const start = (mobilePage - 1) * mobilePageSize;
         return searchedStudents.slice(start, start + mobilePageSize);
     }, [searchedStudents, mobilePage]);
+
+    const activeStudentChips = useMemo(() => {
+        const chips = [];
+        if (selectedSessionId) {
+            const matchedSession = sessions.find(s => (s._id || s.id) === selectedSessionId);
+            chips.push({
+                key: "sessionId",
+                label: "Session",
+                value: selectedSessionId,
+                displayValue: matchedSession?.name || "Session Selected",
+                onRemove: () => setSelectedSessionId(""),
+            });
+        }
+        if (searchTerm) {
+            chips.push({
+                key: "search",
+                label: "Search",
+                value: searchTerm,
+                displayValue: `"${searchTerm}"`,
+                onRemove: () => setSearchTerm(""),
+            });
+        }
+        return chips;
+    }, [selectedSessionId, searchTerm, sessions, setSelectedSessionId, setSearchTerm]);
 
     useEffect(() => {
         setMobilePage(1);
@@ -179,6 +216,17 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
                     <ExportDropdown data={students} sectionName="students" />
                 </div>
             </div>
+
+            {/* Active Filter Chips */}
+            <ActiveFilterChips
+                chips={activeStudentChips}
+                onClearAll={() => {
+                    setSelectedSessionId("");
+                    setSearchTerm("");
+                }}
+                className="mb-1"
+            />
+
             {searchedStudents.length === 0 ? (
                 <EmptyState
                     icon={MdPeopleOutline}
@@ -312,11 +360,30 @@ const StudentsTab = ({ subLevel, subdepartmentId, searchTerm, setSearchTerm, onR
 };
 
 const ProgressTab = ({ subLevel, onRowClick }) => {
-    const [progressSearch, setProgressSearch] = useState("");
+    const defaultProgressFilters = useMemo(() => ({
+        progressSearch: "",
+        statusFilter: "all",
+        progressRangeFilter: "all",
+        attendanceFilter: "all",
+    }), []);
+
+    const {
+        filters: progressFilters,
+        updateFilter: updateProgressFilter,
+        resetAllFilters: resetAllProgressFilters,
+    } = usePersistentFilters(`sublevel_progress_${subLevel?._id || "all"}`, defaultProgressFilters);
+
+    const progressSearch = progressFilters.progressSearch || "";
+    const statusFilter = progressFilters.statusFilter || "all";
+    const progressRangeFilter = progressFilters.progressRangeFilter || "all";
+    const attendanceFilter = progressFilters.attendanceFilter || "all";
+
+    const setProgressSearch = (s) => updateProgressFilter("progressSearch", s);
+    const setStatusFilter = (st) => updateProgressFilter("statusFilter", st);
+    const setProgressRangeFilter = (pr) => updateProgressFilter("progressRangeFilter", pr);
+    const setAttendanceFilter = (at) => updateProgressFilter("attendanceFilter", at);
+
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [progressRangeFilter, setProgressRangeFilter] = useState("all");
-    const [attendanceFilter, setAttendanceFilter] = useState("all");
     const filterRef = useRef(null);
 
     const [mobilePage, setMobilePage] = useState(1);
@@ -345,10 +412,49 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
         (attendanceFilter !== "all" ? 1 : 0);
 
     const handleClearFilters = () => {
-        setStatusFilter("all");
-        setProgressRangeFilter("all");
-        setAttendanceFilter("all");
+        resetAllProgressFilters();
     };
+
+    const activeProgressChips = useMemo(() => {
+        const chips = [];
+        if (statusFilter !== "all") {
+            chips.push({
+                key: "status",
+                label: "Status",
+                value: statusFilter,
+                displayValue: statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1),
+                onRemove: () => setStatusFilter("all"),
+            });
+        }
+        if (progressRangeFilter !== "all") {
+            chips.push({
+                key: "progress",
+                label: "Task Progress",
+                value: progressRangeFilter,
+                displayValue: progressRangeFilter === "completed" ? "100% Done" : progressRangeFilter === "inProgress" ? "In Progress" : "0% Done",
+                onRemove: () => setProgressRangeFilter("all"),
+            });
+        }
+        if (attendanceFilter !== "all") {
+            chips.push({
+                key: "attendance",
+                label: "Attendance",
+                value: attendanceFilter,
+                displayValue: attendanceFilter,
+                onRemove: () => setAttendanceFilter("all"),
+            });
+        }
+        if (progressSearch) {
+            chips.push({
+                key: "search",
+                label: "Search",
+                value: progressSearch,
+                displayValue: `"${progressSearch}"`,
+                onRemove: () => setProgressSearch(""),
+            });
+        }
+        return chips;
+    }, [statusFilter, progressRangeFilter, attendanceFilter, progressSearch]);
 
     const statusCounts = useMemo(() => {
         return {
@@ -732,71 +838,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
             </div>
 
             {/* Active Filter Chips */}
-            {activeFilterCount > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 px-1">
-                    <span className="text-[11px] font-semibold text-gray-400 mr-1">Active Filters:</span>
-                    {statusFilter !== "all" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
-                            Status: <strong className="capitalize">{statusFilter}</strong>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter("all")}
-                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
-                                title="Remove status filter"
-                            >
-                                <MdClose size={13} />
-                            </button>
-                        </span>
-                    )}
-                    {progressRangeFilter !== "all" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
-                            Task:{" "}
-                            <strong>
-                                {progressRangeFilter === "completed"
-                                    ? "100% Done"
-                                    : progressRangeFilter === "inProgress"
-                                        ? "In Progress"
-                                        : "0% Done"}
-                            </strong>
-                            <button
-                                type="button"
-                                onClick={() => setProgressRangeFilter("all")}
-                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
-                                title="Remove task progress filter"
-                            >
-                                <MdClose size={13} />
-                            </button>
-                        </span>
-                    )}
-                    {/* {attendanceFilter !== "all" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-medium">
-                            Attendance:{" "}
-                            <strong>
-                                {attendanceFilter === "high"
-                                    ? "≥90%"
-                                    : attendanceFilter === "moderate"
-                                        ? "75%-89%"
-                                        : "<75%"}
-                            </strong>
-                            <button
-                                type="button"
-                                onClick={() => setAttendanceFilter("all")}
-                                className="hover:text-orange-900 ml-0.5 cursor-pointer"
-                                title="Remove attendance filter"
-                            >
-                                <MdClose size={13} />
-                            </button>
-                        </span>
-                    )} */}
-                    <button
-                        type="button"
-                        onClick={handleClearFilters}
-                        className="text-xs font-semibold text-gray-500 hover:text-gray-800 underline ml-1 cursor-pointer"
-                    >
-                        Clear all
-                    </button>
-                </div>
-            )}
+            <ActiveFilterChips chips={activeProgressChips} onClearAll={handleClearFilters} className="mb-2" />
 
             {/* Empty State when filters/search yield 0 results */}
             {filteredProgress.length === 0 ? (
@@ -1025,7 +1067,10 @@ const ShowSubLevelTablesData = () => {
 
     const [activeTab, setActiveTab] = useState(null);
     const [activeSection, setActiveSection] = useState("Students");
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm, setSearchTerm] = usePersistentState(`sublevel_search_${effectiveLevelId || "all"}`, "");
+    const [selectedSessionId, setSelectedSessionId] = usePersistentState(`level_students_session_${effectiveLevelId || "all"}`, "");
+    const { data: sessionsRes } = useGetAllSessionsQuery(true);
+    const sessions = sessionsRes?.data || [];
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
     const [subLevelToDelete, setSubLevelToDelete] = useState(null);
     const [isEditSubLevelOpen, setIsEditSubLevelOpen] = useState(false);
@@ -1326,7 +1371,7 @@ const ShowSubLevelTablesData = () => {
                 )}
 
                 {/* Tab Content — only when sublevels exist */}
-                {subLevels.length > 0 && (
+                {subLevels.length > 0 && activeTab && (
                     <div className="py-4 sm:py-6">
                         {activeSection === "Students" && (
                             <StudentsTab
@@ -1334,6 +1379,9 @@ const ShowSubLevelTablesData = () => {
                                 subdepartmentId={subdepartment?._id || querySubdeptId || level?.subDepartmentId?._id || level?.subDepartmentId}
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
+                                selectedSessionId={selectedSessionId}
+                                setSelectedSessionId={setSelectedSessionId}
+                                sessions={sessions}
                                 departmentName={effectiveDepartmentName}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: row.raw, level, subdepartment } })}
                                 onTaskBoard={(row) => navigate("/student/task-board", { state: { student: row.raw, level, subdepartment } })}

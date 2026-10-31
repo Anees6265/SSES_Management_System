@@ -23,6 +23,8 @@ import CommonCard from "../CommonCard";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import AddStudentModal from "../../students/AddStudentModal";
 import { UserPlus, Plus } from "lucide-react";
+import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const UNIVERSITY_OPTIONS = [
   {
@@ -64,7 +66,7 @@ const DepartmentManagement = () => {
 
   const canManageDepartment = role === "superadmin" || role === "admin";
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = usePersistentState("department_search", "");
 
   const departments = [...(departmentsData?.data || [])].sort((a, b) => b.isActive - a.isActive);
 
@@ -208,6 +210,22 @@ const DepartmentManagement = () => {
             </span>
           </div>
         </div>
+
+        {searchQuery && (
+          <ActiveFilterChips
+            chips={[
+              {
+                key: "search",
+                label: "Search",
+                value: searchQuery,
+                displayValue: `"${searchQuery}"`,
+                onRemove: () => setSearchQuery(""),
+              },
+            ]}
+            onClearAll={() => setSearchQuery("")}
+            className="mb-4"
+          />
+        )}
 
         {/* Departments Cards Grid or Empty State */}
         {filteredDepartments.length === 0 ? (

@@ -10,6 +10,8 @@ import SearchBox from "../../shared/search-export/SearchBox";
 import Header from "../../shared/sidebar/Header";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
+import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
+import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 
 const toTitleCase = (str) =>
   str
@@ -21,11 +23,31 @@ const toTitleCase = (str) =>
 const StudentLevelData = () => {
   const { id } = useParams();
   const { data, isLoading, error } = useGetLevelInterviewQuery(id);
-  const [activeTab, setActiveTab] = useState("Level 1A");
-  const [searchTerm, setSearchTerm] = useState("");
+
+  const defaultFilters = useMemo(() => ({
+    activeTab: "Level 1A",
+    searchTerm: "",
+    trackFilter: [],
+    resultFilter: [],
+  }), []);
+
+  const {
+    filters,
+    updateFilter,
+    resetAllFilters,
+  } = usePersistentFilters(`student_level_data_${id || "all"}`, defaultFilters);
+
+  const activeTab = filters.activeTab || "Level 1A";
+  const searchTerm = filters.searchTerm || "";
+  const trackFilter = filters.trackFilter || [];
+  const resultFilter = filters.resultFilter || [];
+
+  const setActiveTab = (tab) => updateFilter("activeTab", tab);
+  const setSearchTerm = (s) => updateFilter("searchTerm", s);
+  const setTrackFilter = (t) => updateFilter("trackFilter", t);
+  const setResultFilter = (r) => updateFilter("resultFilter", r);
+
   const [rowsPerPage] = useState(10);
-  const [trackFilter, setTrackFilter] = useState([]);
-  const [resultFilter, setResultFilter] = useState([]);
   const [isTaskUploadModalOpen, setIsTaskUploadModalOpen] = useState(false);
 
   // Define all level tabs
@@ -219,6 +241,47 @@ const StudentLevelData = () => {
               size="sm"
             />
           </div>
+
+          {/* Active Filter Chips */}
+          {(searchTerm || trackFilter.length > 0 || resultFilter.length > 0) && (
+            <ActiveFilterChips
+              chips={[
+                ...(searchTerm
+                  ? [{
+                      key: "search",
+                      label: "Search",
+                      value: searchTerm,
+                      displayValue: `"${searchTerm}"`,
+                      onRemove: () => setSearchTerm(""),
+                    }]
+                  : []),
+                ...(trackFilter.length > 0
+                  ? [{
+                      key: "track",
+                      label: "Track",
+                      value: trackFilter,
+                      displayValue: trackFilter.join(", "),
+                      onRemove: () => setTrackFilter([]),
+                    }]
+                  : []),
+                ...(resultFilter.length > 0
+                  ? [{
+                      key: "result",
+                      label: "Result",
+                      value: resultFilter,
+                      displayValue: resultFilter.join(", "),
+                      onRemove: () => setResultFilter([]),
+                    }]
+                  : []),
+              ]}
+              onClearAll={() => {
+                setSearchTerm("");
+                setTrackFilter([]);
+                setResultFilter([]);
+              }}
+              className="mb-2"
+            />
+          )}
         </div>
         
         {/* Data Table */}

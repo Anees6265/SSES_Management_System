@@ -9,6 +9,8 @@ import Avatar from '../../shared/Avatar';
 import EmptyState from '../../shared/empty-state/EmptyState';
 import TableDownloadDropdown from '../../shared/table/TableDownloadDropdown';
 import { exportStudentsToExcel, exportStudentsToPDF } from '../../../utils/studentExportHelpers';
+import { usePersistentState } from '../../../hooks/usePersistentFilters';
+import ActiveFilterChips from '../../shared/search-export/ActiveFilterChips';
 import { 
   MdArrowBack, MdPeople, MdEmail, MdPhone, 
   MdSearch, MdClose, MdCalendarToday, MdArrowForward 
@@ -29,7 +31,7 @@ const PlacedStudents = () => {
   const apiCompanyName = data?.company || companyName;
   const totalPlaced = data?.totalPlaced || students.length;
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = usePersistentState(`placed_students_search_${companyId || 'all'}`, '');
   const [mobilePage, setMobilePage] = useState(1);
   const MOBILE_PAGE_SIZE = 10;
 
@@ -264,6 +266,23 @@ const PlacedStudents = () => {
             />
           </div>
         </div>
+
+        {/* Active Filter Chips */}
+        {searchTerm && (
+          <ActiveFilterChips
+            chips={[
+              {
+                key: 'search',
+                label: 'Search',
+                value: searchTerm,
+                displayValue: `"${searchTerm}"`,
+                onRemove: () => setSearchTerm(''),
+              },
+            ]}
+            onClearAll={() => setSearchTerm('')}
+            className="mb-2"
+          />
+        )}
 
         {/* ── Desktop View: Common Table ── */}
         <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

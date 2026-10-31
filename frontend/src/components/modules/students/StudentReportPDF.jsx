@@ -556,15 +556,34 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             const subjectPerformance = getSection("SubjectPerformanceTable");
             const softSkills = getSection("SoftSkillsRating");
             const interview = getSection("InterviewRating");
-            const careerReadiness = getSection("CareerStatus") || (reportCardData?.careerReadiness ? {
+            const hasResumeInProfile = Boolean(
+              studentData?.placement?.resumeURL ||
+              studentData?.resumeURL ||
+              studentData?.resume ||
+              studentData?.resumeUrl ||
+              studentData?.resume_url ||
+              studentData?.studentPlacement?.resumeURL ||
+              studentData?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+            );
+            const careerReadinessRaw = getSection("CareerStatus") || (reportCardData?.careerReadiness ? {
               sectionName: "Career Readiness",
               items: [
-                { itemName: "Resume", value: (reportCardData.careerReadiness.resumeStatus === "Uploaded" || reportCardData.careerReadiness.resumeStatus === "Created") ? "Created" : "Not created" },
+                { itemName: "Resume", value: (reportCardData.careerReadiness.resumeStatus === "Uploaded" || reportCardData.careerReadiness.resumeStatus === "Created" || hasResumeInProfile) ? "Created" : "Not created" },
                 { itemName: "LinkedIn", value: reportCardData.careerReadiness.linkedinStatus || "Not created" },
                 { itemName: "Aptitude", value: reportCardData.careerReadiness.aptitudeStatus || "In Progress" },
                 { itemName: "Placement Ready", value: reportCardData.careerReadiness.placementReady || "Not Ready" }
               ]
             } : null);
+            const careerReadiness = careerReadinessRaw ? {
+              ...careerReadinessRaw,
+              items: (careerReadinessRaw.items || []).map(item => {
+                const nameLower = (item.itemName || "").toLowerCase();
+                if (nameLower.includes("resume") && hasResumeInProfile) {
+                  return { ...item, value: "Created" };
+                }
+                return item;
+              })
+            } : null;
             const attendanceDiscipline = getSection("AttendanceDiscipline");
             const strengthsImprovement = getSection("StrengthsImprovement");
             let overallPerformance = getSection("OverallPerformanceSummary");
@@ -573,6 +592,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
               (i.itemName === "Subject Performance" && (i.value === 4.1 || i.value === "4.10" || i.value === 4.10))
             );
 
+            let overallVal = 0;
             if (hasLegacyDummy) {
               const subjs = subjectPerformance?.items || [];
               const gradedSubjs = subjs.filter(s => s.remark && s.remark !== "—" && !isNaN(parseFloat(s.remark)) && parseFloat(s.remark) > 0);
@@ -586,7 +606,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
               const avgInt = ints.length > 0 ? Number((ints.reduce((a, b) => a + parseFloat(b.value), 0) / ints.length).toFixed(2)) : 0;
 
               const scComponents = [avgSubj, avgSoft, avgInt].filter(v => v > 0);
-              const overallVal = scComponents.length > 0 ? Number((scComponents.reduce((a, b) => a + b, 0) / scComponents.length).toFixed(2)) : 0;
+              overallVal = scComponents.length > 0 ? Number((scComponents.reduce((a, b) => a + b, 0) / scComponents.length).toFixed(2)) : 0;
 
               let overallRemark = reportCardData?.overallGrade || (overallVal >= 4.0 ? "Excellent" : overallVal >= 3.0 ? "Good" : "Pending Evaluation");
 
@@ -600,6 +620,9 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   { itemName: "Overall Rating", value: overallVal, remark: overallRemark }
                 ]
               };
+            } else {
+              const savedVal = overallPerformance?.items?.find(i => (i.itemName || "").toLowerCase().includes("overall rating"))?.value;
+              overallVal = parseFloat(savedVal) || 0;
             }
 
             return (
@@ -887,7 +910,14 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
                 {/* 12. Faculty / Mentor Feedback */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                    <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
+                    {overallVal > 0 && (
+                      <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#D97706" }}>
+                        Rating: {overallVal.toFixed(1)} / 5.0 (Recommended for Placement)
+                      </Text>
+                    )}
+                  </View>
                   <Text style={{ fontSize: 9, color: "#374151", fontStyle: "italic", lineHeight: 1.4 }}>
                     "{reportCardData.facultyRemark || "No comments provided yet."}"
                   </Text>

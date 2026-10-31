@@ -310,7 +310,15 @@ export default function StudentReportForm() {
   };
 
   const generateDynamicSections = (templateType, student, tasks, taskPerf = null) => {
-    const hasResume = !!(student?.placement?.resumeURL || student?.resumeURL || student?.resume || student?.resumeUrl || student?.resume_url);
+    const hasResume = Boolean(
+      student?.placement?.resumeURL ||
+      student?.resumeURL ||
+      student?.resume ||
+      student?.resumeUrl ||
+      student?.resume_url ||
+      student?.studentPlacement?.resumeURL ||
+      student?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+    );
     const resumeStatus = hasResume ? "Created" : "Not created";
     const aptitudeVal = (student?.placement?.aptitudeStatus || "").toLowerCase().trim();
     const hasAptitudeReady = ["done", "completed", "cleared", "passed", "ready"].includes(aptitudeVal);
@@ -542,11 +550,16 @@ export default function StudentReportForm() {
     const batchYear = student.batchYear || student.sessionId?.name || "";
     const dynamicSections = generateDynamicSections(templateType, student, tasks, taskPerf);
 
-    let resumeStatus = "Not created";
-    const hasResume = student.placement?.resumeURL || student.resumeURL || student.resume || student.resumeUrl || student.resume_url;
-    if (hasResume) {
-      resumeStatus = "Updated";
-    }
+    const hasResume = Boolean(
+      student?.placement?.resumeURL ||
+      student?.resumeURL ||
+      student?.resume ||
+      student?.resumeUrl ||
+      student?.resume_url ||
+      student?.studentPlacement?.resumeURL ||
+      student?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+    );
+    const resumeStatus = hasResume ? "Created" : "Not created";
 
     let placementReady = "Not Ready";
     const aptitudeVal = (student.placement?.aptitudeStatus || "").toLowerCase().trim();
@@ -719,6 +732,16 @@ export default function StudentReportForm() {
   useEffect(() => {
     if (existingReportData?.data) {
       const reportData = existingReportData.data;
+      const studentObj = studentData?.data;
+      const hasResumeInProfile = Boolean(
+        studentObj?.placement?.resumeURL ||
+        studentObj?.resumeURL ||
+        studentObj?.resume ||
+        studentObj?.resumeUrl ||
+        studentObj?.resume_url ||
+        studentObj?.studentPlacement?.resumeURL ||
+        studentObj?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+      );
       const templateType = studentData?.data?.subDepartmentId?.departmentId?.reportConfig?.templateType || reportData.templateType || "ITEG_STANDARD";
 
       // Always auto-fill LevelProgressTable, SubjectPerformanceTable, and SoftSkills (if syllabus exists)
@@ -747,8 +770,12 @@ export default function StudentReportForm() {
               const mappedItems = (autoSec.items || []).map(item => {
                 const nameLower = (item.itemName || "").toLowerCase();
                 let val = item.value;
-                if (nameLower.includes("resume") && cr.resumeStatus) {
-                  val = (cr.resumeStatus === "Uploaded" || cr.resumeStatus === "Created") ? "Created" : (cr.resumeStatus === "Not Uploaded" ? "Not created" : cr.resumeStatus);
+                if (nameLower.includes("resume")) {
+                  if (hasResumeInProfile) {
+                    val = "Created";
+                  } else if (cr.resumeStatus) {
+                    val = (cr.resumeStatus === "Uploaded" || cr.resumeStatus === "Created") ? "Created" : (cr.resumeStatus === "Not Uploaded" ? "Not created" : cr.resumeStatus);
+                  }
                 } else if (nameLower.includes("linkedin") && cr.linkedinStatus) {
                   val = (cr.linkedinStatus === "Up-to-date" || cr.linkedinStatus === "Created") ? "Created" : (cr.linkedinStatus === "Need Improvement" ? "In Progress" : "Not created");
                 } else if (nameLower.includes("aptitude") && cr.aptitudeStatus) {
@@ -772,6 +799,16 @@ export default function StudentReportForm() {
           }
           if (existingSec.sectionType === "SoftSkillsRating" && autoSoftSkills?.hasSyllabusTasks) {
             return autoSoftSkills;
+          }
+          if (existingSec.sectionType === "CareerStatus") {
+            const mappedItems = (existingSec.items || []).map(item => {
+              const nameLower = (item.itemName || "").toLowerCase();
+              if (nameLower.includes("resume") && hasResumeInProfile) {
+                return { ...item, value: "Created" };
+              }
+              return item;
+            });
+            return { ...existingSec, items: mappedItems };
           }
           if (existingSec.sectionType === "OverallPerformanceSummary") {
             const hasDummyValues = existingSec.items?.some(i => 
@@ -834,6 +871,12 @@ export default function StudentReportForm() {
         }
         if (reportData.careerReadiness) {
           merged.careerReadiness = { ...(merged.careerReadiness || {}), ...reportData.careerReadiness };
+        }
+        if (hasResumeInProfile) {
+          merged.careerReadiness = {
+            ...(merged.careerReadiness || {}),
+            resumeStatus: "Created"
+          };
         }
         if (reportData.academicPerformance?.yearWiseSGPA?.length > 0) {
           merged.academicPerformance = { ...(merged.academicPerformance || {}), ...reportData.academicPerformance };

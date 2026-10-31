@@ -29,7 +29,7 @@ import {
   FaAward
 } from "react-icons/fa";
 import { RiDoubleQuotesL } from "react-icons/ri";
-import { useGetMyReportCardQuery, useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
+import { useGetMyReportCardQuery, useGetMyStudentProfileQuery, useGetMyStudentTasksQuery } from "../../../redux/api/studentApi";
 import collegeLogo from "../../../assets/images/logo-ssism.png";
 import itegLogo from "../../../assets/images/iteg-logo.png";
 import megLogo from "../../../assets/images/meg-logo.png";
@@ -207,6 +207,7 @@ export default function StudentReportCard() {
 
   const { data: rcData, isLoading: rcLoading } = useGetMyReportCardQuery();
   const { data: profileData, isLoading: profileLoading } = useGetMyStudentProfileQuery();
+  const { data: tasksData } = useGetMyStudentTasksQuery();
 
 
   const isLoading = rcLoading || profileLoading;
@@ -238,6 +239,19 @@ export default function StudentReportCard() {
   const careerReadinessSection = getSection("CareerStatus");
   const strengthsImprovementSection = getSection("StrengthsImprovement");
 
+  // Check if student profile has resume attached
+  const hasResumeInProfile = useMemo(() => {
+    return Boolean(
+      raw?.placement?.resumeURL ||
+      raw?.resumeURL ||
+      raw?.resume ||
+      raw?.resumeUrl ||
+      raw?.resume_url ||
+      raw?.studentPlacement?.resumeURL ||
+      raw?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+    );
+  }, [raw]);
+
   // Dynamic Career / Placement Readiness Check (Defaults to "Not Ready")
   const isCareerReady = useMemo(() => {
     const pr = (rc?.careerReadiness?.placementReady || "").trim();
@@ -253,7 +267,7 @@ export default function StudentReportCard() {
 
     const resumeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("resume"));
     const resumeVal = (resumeItem?.value || rc?.careerReadiness?.resumeStatus || "").toLowerCase().trim();
-    const hasResumeReady = ["created", "uploaded", "updated", "ready", "completed"].includes(resumeVal);
+    const hasResumeReady = hasResumeInProfile || ["created", "uploaded", "updated", "ready", "completed"].includes(resumeVal);
 
     const aptitudeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("aptitude"));
     const aptitudeVal = (aptitudeItem?.value || rc?.careerReadiness?.aptitudeStatus || "").toLowerCase().trim();
@@ -264,7 +278,7 @@ export default function StudentReportCard() {
     }
 
     return false;
-  }, [rc, careerReadinessSection]);
+  }, [rc, careerReadinessSection, hasResumeInProfile]);
 
   const interviewItemsList = useMemo(() => {
     return (interviewSection?.items?.length > 0 ? interviewSection.items : deptConfig.interviewItems) || [];
@@ -275,6 +289,68 @@ export default function StudentReportCard() {
     const total = interviewItemsList.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
     return (total / interviewItemsList.length).toFixed(1);
   }, [interviewItemsList]);
+
+  const allStudentTasks = useMemo(() => {
+    const subjectGroups = tasksData?.groupedBySubject || {};
+    return Object.values(subjectGroups).flatMap(g => g.tasks || []);
+  }, [tasksData]);
+
+  // Real-time Overall Task / Performance Rating for Placement Recommendation
+  const placementRating = useMemo(() => {
+    // 1. Evaluate from actual completed tasks with marks across all levels
+    const gradedTasks = allStudentTasks.filter(
+      (t) => t.status === "completed" && typeof t.marks === "number" && !isNaN(t.marks) && t.marks >= 0
+    );
+
+    if (gradedTasks.length > 0) {
+      const sum = gradedTasks.reduce((acc, t) => {
+        const max = t.maxMarks && t.maxMarks > 0 ? t.maxMarks : 5;
+        return acc + (t.marks / max) * 5;
+      }, 0);
+      return Number((sum / gradedTasks.length).toFixed(1));
+    }
+
+    // 2. Evaluate from subjectPerformanceSection & softSkillsSection in dynamicSections
+    const subjectItems = subjectPerformanceSection?.items || [];
+    const gradedSubjects = subjectItems
+      .map((s) => parseFloat(s.remark))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const softItems = softSkillsSection?.items || [];
+    const gradedSoft = softItems
+      .map((s) => parseFloat(s.value))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const interviewItems = interviewSection?.items || [];
+    const gradedInterview = interviewItems
+      .map((s) => parseFloat(s.value))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const components = [...gradedSubjects, ...gradedSoft, ...gradedInterview];
+    if (components.length > 0) {
+      const avg = components.reduce((acc, v) => acc + v, 0) / components.length;
+      return Number(avg.toFixed(1));
+    }
+
+    // 3. From overallPerformanceSection if saved with real (non-dummy) value
+    const overallItem = dynamicSections
+      .find((s) => s.sectionType === "OverallPerformanceSummary")
+      ?.items?.find((i) => (i.itemName || "").toLowerCase().includes("overall rating"));
+    const overallVal = parseFloat(overallItem?.value);
+    if (!isNaN(overallVal) && overallVal > 0 && overallVal !== 4.02) {
+      return Number(overallVal.toFixed(1));
+    }
+
+    // 4. From overall task completion percentage if tasks exist without marks
+    if (allStudentTasks.length > 0) {
+      const completed = allStudentTasks.filter((t) => t.status === "completed").length;
+      if (completed > 0) {
+        return Number(((completed / allStudentTasks.length) * 5).toFixed(1));
+      }
+    }
+
+    return 0;
+  }, [allStudentTasks, subjectPerformanceSection, softSkillsSection, interviewSection, dynamicSections]);
 
   if (isLoading) {
     return (
@@ -612,14 +688,20 @@ export default function StudentReportCard() {
                 {(careerReadinessSection?.items?.length > 0
                   ? careerReadinessSection.items
                   : [
-                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Not created" },
-                    { itemName: "LinkedIn", value: rc.careerReadiness?.linkedinStatus || "Not created" },
-                    { itemName: "Aptitude", value: rc.careerReadiness?.aptitudeStatus || "Not Started" },
+                    { itemName: "Resume", value: hasResumeInProfile ? "Created" : (rc?.careerReadiness?.resumeStatus || "Not created") },
+                    { itemName: "LinkedIn", value: rc?.careerReadiness?.linkedinStatus || "Not created" },
+                    { itemName: "Aptitude", value: rc?.careerReadiness?.aptitudeStatus || "Not Started" },
                     { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
                   ]
                 ).map((item, idx) => {
                   const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
-                  const val = isPlacementItem ? (isCareerReady ? "Ready" : "Not Ready") : (item.value || "Not Started");
+                  const isResumeItem = (item.itemName || "").toLowerCase().includes("resume");
+                  let val = item.value || "Not Started";
+                  if (isPlacementItem) {
+                    val = isCareerReady ? "Ready" : "Not Ready";
+                  } else if (isResumeItem && hasResumeInProfile) {
+                    val = "Created";
+                  }
                   return (
                     <div key={idx} className="bg-slate-50 p-2 rounded-lg text-center">
                       <span className="text-[10px] text-slate-400 block font-semibold truncate">{item.itemName}</span>
@@ -796,7 +878,12 @@ export default function StudentReportCard() {
               </p>
               <div className="text-[11px] text-slate-500 font-semibold flex items-center justify-between pt-1">
                 <span>By: {rc.generatedByName || "Faculty Mentor"}</span>
-                <span className="text-emerald-600 font-bold">Recommended</span>
+                <div className="flex items-center gap-1.5">
+                  <StarRating rating={placementRating} size="text-[10px]" />
+                  <span className="text-emerald-600 font-bold">
+                    {placementRating > 0 ? `${placementRating.toFixed(1)} / 5.0` : "Recommended"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1224,14 +1311,20 @@ export default function StudentReportCard() {
                 {(careerReadinessSection?.items?.length > 0
                   ? careerReadinessSection.items
                   : [
-                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Not created" },
-                    { itemName: "LinkedIn Profile", value: rc.careerReadiness?.linkedinStatus || "Not created" },
-                    { itemName: "Aptitude Score", value: rc.careerReadiness?.aptitudeStatus || "Not Started" },
+                    { itemName: "Resume", value: hasResumeInProfile ? "Created" : (rc?.careerReadiness?.resumeStatus || "Not created") },
+                    { itemName: "LinkedIn Profile", value: rc?.careerReadiness?.linkedinStatus || "Not created" },
+                    { itemName: "Aptitude Score", value: rc?.careerReadiness?.aptitudeStatus || "Not Started" },
                     { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
                   ]
                 ).map((item, idx) => {
                   const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
-                  const val = isPlacementItem ? (isCareerReady ? "Ready" : "Not Ready") : (item.value || "Not Started");
+                  const isResumeItem = (item.itemName || "").toLowerCase().includes("resume");
+                  let val = item.value || "Not Started";
+                  if (isPlacementItem) {
+                    val = isCareerReady ? "Ready" : "Not Ready";
+                  } else if (isResumeItem && hasResumeInProfile) {
+                    val = "Created";
+                  }
                   const isReady = ["Created", "Updated", "Ready", "Completed", "Done"].includes(val);
 
                   return (
@@ -1327,8 +1420,10 @@ export default function StudentReportCard() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <StarRating rating={4.5} />
-                  <span className="text-xs font-bold text-slate-700">Recommended for Placement</span>
+                  <StarRating rating={placementRating} />
+                  <span className="text-xs font-bold text-slate-700">
+                    {placementRating > 0 ? `${placementRating.toFixed(1)} / 5.0 · Recommended for Placement` : "Recommended for Placement"}
+                  </span>
                 </div>
               </div>
 

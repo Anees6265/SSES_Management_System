@@ -38,14 +38,25 @@ export default function StudentTasks() {
     const allSubjects   = Object.keys(subjectGroups);
     const allTasks      = Object.values(subjectGroups).flatMap(g => g.tasks || []);
 
-    // Sort allTasks by assignedAt/createdAt descending (latest first)
-    const sortedTasks = [...allTasks].sort((a, b) => {
-        const dateA = new Date(a.assignedAt || a.createdAt || 0);
-        const dateB = new Date(b.assignedAt || b.createdAt || 0);
-        return dateB - dateA;
-    });
+    // Sort allTasks strictly by assignedAt/createdAt descending (latest first)
+    const sortedTasks = useMemo(() => {
+        return [...allTasks].sort((a, b) => {
+            const timeA = new Date(a.assignedAt || a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+            const timeB = new Date(b.assignedAt || b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+            if (timeB !== timeA) return timeB - timeA;
+            return (b._id || "").toString().localeCompare((a._id || "").toString());
+        });
+    }, [allTasks]);
 
-    const filtered = sortedTasks.filter(t => {
+    // Assign sequential serial numbers (1 is latest overall task)
+    const tasksWithSno = useMemo(() => {
+        return sortedTasks.map((t, idx) => ({
+            ...t,
+            sno: idx + 1
+        }));
+    }, [sortedTasks]);
+
+    const filtered = tasksWithSno.filter(t => {
         const matchSearch  = t.title?.toLowerCase().includes(search.toLowerCase()) ||
                              t.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
                              t.topicName?.toLowerCase().includes(search.toLowerCase());
@@ -459,11 +470,16 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
             >
                 {/* Row 1: Subject Tag & Status / Score */}
                 <div className="flex items-center justify-between gap-2">
-                    {task.subjectName ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/60 truncate max-w-[65%]">
-                            {task.subjectName}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                            #{task.sno || 1}
                         </span>
-                    ) : <span />}
+                        {task.subjectName ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100/60 truncate">
+                                {task.subjectName}
+                            </span>
+                        ) : null}
+                    </div>
 
                     {task.status === "completed" ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/50">
@@ -548,11 +564,16 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                 <div>
                     {/* Subject tag + Drag Handle */}
                     <div className="flex items-center justify-between mb-2">
-                        {task.subjectName ? (
-                            <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100/50">
-                                {task.subjectName}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                                #{task.sno || 1}
                             </span>
-                        ) : <span />}
+                            {task.subjectName ? (
+                                <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100/50 truncate">
+                                    {task.subjectName}
+                                </span>
+                            ) : null}
+                        </div>
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => onSelectTask(task)}

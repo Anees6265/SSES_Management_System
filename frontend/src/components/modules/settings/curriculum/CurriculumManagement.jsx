@@ -1055,7 +1055,14 @@ const CurriculumManagement = () => {
   }, [tasks]);
 
   const curriculumRows = useMemo(() => {
-    return (versionsData?.data || []).map((version) => {
+    const rawVersions = versionsData?.data || [];
+    const versions = [...rawVersions].sort((a, b) => {
+      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
+    });
+    return versions.map((version) => {
       const level = version.levelId || {};
       const subDepartment = level.subDepartmentId || {};
       const department = subDepartment.departmentId || {};
@@ -1421,10 +1428,13 @@ const CurriculumManagement = () => {
             <>
               {/* Mobile Cards Layout (block md:hidden) */}
               <div className="block md:hidden p-3 space-y-3">
-                {paginatedData.map((row) => (
+                {paginatedData.map((row, idx) => (
                   <div key={row.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-3 hover:border-orange-200 transition">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                          #{startIndex + idx + 1}
+                        </span>
                         <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
                           {row.academicYear} • {row.session}
                         </span>
@@ -1478,6 +1488,7 @@ const CurriculumManagement = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      <th className="py-4 px-4 text-center w-14">S.NO</th>
                       <th className="py-4 px-6">ACADEMIC YEAR</th>
                       <th className="py-4 px-4">SESSION</th>
                       <th className="py-4 px-6">DEPARTMENT</th>
@@ -1489,8 +1500,13 @@ const CurriculumManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                    {paginatedData.map((row) => (
+                    {paginatedData.map((row, idx) => (
                       <tr key={row.id} className="hover:bg-slate-50/80 transition">
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-flex w-7 h-7 rounded-lg bg-slate-900 text-white text-xs font-black items-center justify-center shadow-2xs">
+                            #{startIndex + idx + 1}
+                          </span>
+                        </td>
                         <td className="py-4 px-6 font-extrabold text-slate-900">{row.academicYear}</td>
                         <td className="py-4 px-4 text-slate-600 font-medium">{row.session}</td>
                         <td className="py-4 px-6 font-bold text-slate-900">{row.department}</td>

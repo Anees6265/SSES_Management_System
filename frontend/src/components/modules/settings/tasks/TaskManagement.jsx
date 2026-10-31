@@ -498,7 +498,13 @@ const TaskManagement = () => {
     const subLevelsList = subLevelsData?.data || [];
 
     const taskRows = useMemo(() => {
-        const tasks = tasksResponse?.data || [];
+        const rawTasks = tasksResponse?.data || [];
+        const tasks = [...rawTasks].sort((a, b) => {
+            const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+            const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+            if (timeB !== timeA) return timeB - timeA;
+            return (b._id || "").toString().localeCompare((a._id || "").toString());
+        });
         return tasks.map((task) => {
             const context = task.context || {};
             return {
@@ -990,7 +996,7 @@ const TaskManagement = () => {
                                     {/* Mobile Cards Mode (Active only when user explicitly toggles to 'cards' on mobile) */}
                                     {viewMode === "cards" ? (
                                         <div className="md:hidden p-3 space-y-3">
-                                            {paginatedData.map((r) => (
+                                            {paginatedData.map((r, idx) => (
                                                 <div
                                                     key={r.id}
                                                     className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3 hover:border-orange-200 transition"
@@ -998,6 +1004,9 @@ const TaskManagement = () => {
                                                     {/* Top Row: Year/Session Chip + Priority Pill + Action */}
                                                     <div className="flex items-center justify-between gap-2">
                                                         <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                                                                #{startIndex + idx + 1}
+                                                            </span>
                                                             <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
                                                                 {r.academicYear} • {r.session}
                                                             </span>
@@ -1060,6 +1069,9 @@ const TaskManagement = () => {
                                             <table className="w-full text-left border-collapse min-w-[780px] sm:min-w-[860px]">
                                                 <thead>
                                                     <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                                        <th className="py-3 sm:py-3.5 px-3 text-center w-14 whitespace-nowrap">
+                                                            S.NO
+                                                        </th>
                                                         {/* Sticky Left: Task Info */}
                                                         <th className="sticky left-0 z-20 bg-slate-50/95 backdrop-blur-xs py-3 sm:py-3.5 px-3 sm:px-4 border-r border-slate-200/80 shadow-[3px_0_6px_-3px_rgba(0,0,0,0.08)] min-w-[170px] sm:min-w-[220px] max-w-[210px] sm:max-w-[280px]">
                                                             TASK INFO
@@ -1078,8 +1090,13 @@ const TaskManagement = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                                                    {paginatedData.map((r) => (
+                                                    {paginatedData.map((r, idx) => (
                                                         <tr key={r.id} className="group hover:bg-slate-50/80 transition-colors">
+                                                            <td className="py-2.5 sm:py-3.5 px-3 text-center">
+                                                                <span className="inline-flex w-7 h-7 rounded-lg bg-slate-900 text-white text-xs font-black items-center justify-center shadow-2xs">
+                                                                    #{startIndex + idx + 1}
+                                                                </span>
+                                                            </td>
                                                             {/* Sticky Left Column: Task Title + Subject + Priority */}
                                                             <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 py-2.5 sm:py-3.5 px-3 sm:px-4 border-r border-slate-200/80 shadow-[3px_0_6px_-3px_rgba(0,0,0,0.08)] min-w-[170px] sm:min-w-[220px] max-w-[210px] sm:max-w-[280px] transition-colors">
                                                                 <button

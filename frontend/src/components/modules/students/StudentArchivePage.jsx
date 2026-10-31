@@ -68,7 +68,15 @@ const StudentArchivePage = () => {
 
   const archiveData = archiveResponse?.data || {};
   const student = archiveData.student || {};
-  const tasks = useMemo(() => archiveData.tasks || [], [archiveData.tasks]);
+  const tasks = useMemo(() => {
+    const raw = archiveData.tasks || [];
+    return [...raw].sort((a, b) => {
+      const timeA = new Date(a.archivedAt || a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.archivedAt || b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
+    });
+  }, [archiveData.tasks]);
   const previousSyllabus = archiveData.previousSyllabus || null;
 
   const studentName = student.fullName || `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
@@ -526,6 +534,9 @@ const StudentArchivePage = () => {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div className="space-y-1.5 flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-black shrink-0 shadow-2xs">
+                                #{idx + 1}
+                              </span>
                               <span className="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200/70 px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
                                 {t.subjectName || "Subject"}
                               </span>

@@ -1555,7 +1555,13 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
   const { data, isLoading } = useGetTasksBySyllabusVersionQuery(versionId, { skip: !versionId });
   const allTasks = useMemo(() => {
     if (!versionId) return [];
-    return data?.tasks || data?.data || [];
+    const list = data?.tasks || data?.data || [];
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
+    });
   }, [versionId, data]);
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -2135,10 +2141,18 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
   );
   const rawVersions = versionsData?.data || [];
   const allVersions = useMemo(() => {
-    if (!selectedSessionId) return rawVersions;
-    return rawVersions.filter((v) => {
-      const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
-      return String(vSessionId) === String(selectedSessionId);
+    let list = rawVersions;
+    if (selectedSessionId) {
+      list = rawVersions.filter((v) => {
+        const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
+        return String(vSessionId) === String(selectedSessionId);
+      });
+    }
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
     });
   }, [rawVersions, selectedSessionId]);
 
@@ -2391,10 +2405,18 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
   );
   const rawVersions = versionsData?.data || [];
   const allVersions = useMemo(() => {
-    if (!selectedSessionId) return rawVersions;
-    return rawVersions.filter((v) => {
-      const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
-      return String(vSessionId) === String(selectedSessionId);
+    let list = rawVersions;
+    if (selectedSessionId) {
+      list = rawVersions.filter((v) => {
+        const vSessionId = typeof v.sessionId === "object" ? v.sessionId?._id : v.sessionId;
+        return String(vSessionId) === String(selectedSessionId);
+      });
+    }
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
     });
   }, [rawVersions, selectedSessionId]);
 

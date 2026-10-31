@@ -100,7 +100,7 @@ router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), as
 
     const tasks = await Task.find(filter)
       .populate(populateTaskContext)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .lean();
 
     res.status(200).json({
@@ -268,7 +268,7 @@ router.get("/level/:subLevelId", verifyToken, checkRole([...writeRoles, "placeme
       filter = { subLevelId, isGeneralTask: true, isActive: true };
     }
 
-    const tasks = await Task.find(filter).sort({ createdAt: -1 });
+    const tasks = await Task.find(filter).sort({ createdAt: -1, _id: -1 });
 
     res.status(200).json({
       success: true,
@@ -515,7 +515,7 @@ router.get("/student/:studentId", verifyToken, checkRole([...writeRoles, "placem
     const tasks = await StudentTask.find(filter)
       .populate("subLevelId", "name")
       .populate("levelId", "name")
-      .sort({ createdAt: -1 });
+      .sort({ assignedAt: -1, createdAt: -1, _id: -1 });
 
     res.status(200).json({
       success: true,

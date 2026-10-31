@@ -151,7 +151,13 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   );
   const allTasks = useMemo(() => {
     if (selectedSessionId && !effectiveVersionId) return [];
-    return tasksData?.data || [];
+    const list = tasksData?.data || [];
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b._id || "").toString().localeCompare((a._id || "").toString());
+    });
   }, [selectedSessionId, effectiveVersionId, tasksData]);
 
   const [createTask, { isLoading: creating }] = useCreateTaskManualMutation();
@@ -908,7 +914,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-                  {filteredTasks.map(task => {
+                  {filteredTasks.map((task, idx) => {
                     const pKey = (task.priority || "medium").toLowerCase();
                     const pColors = {
                       high: "bg-rose-50 text-rose-700 border-rose-200",
@@ -927,12 +933,17 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                       >
                         <div className="flex-1 min-w-0 space-y-2 w-full">
                           <div className="flex items-start justify-between gap-2">
-                            <h4
-                              className="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2 break-words min-w-0 flex-1"
-                              title={task.title}
-                            >
-                              {task.title}
-                            </h4>
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-black shrink-0 shadow-2xs">
+                                #{idx + 1}
+                              </span>
+                              <h4
+                                className="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2 break-words min-w-0 flex-1"
+                                title={task.title}
+                              >
+                                {task.title}
+                              </h4>
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-2 flex-wrap">

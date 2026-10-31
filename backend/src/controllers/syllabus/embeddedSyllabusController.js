@@ -366,7 +366,7 @@ exports.getTasksBySyllabusVersion = async (req, res) => {
     if (subjectId) filter.subjectId = subjectId;
     if (topicId) filter.topicId = topicId;
     if (subTopicId) filter.subTopicId = subTopicId;
-    const tasks = await Task.find(filter).sort({ order: 1, createdAt: 1 });
+    const tasks = await Task.find(filter).sort({ createdAt: -1, _id: -1 });
     res.status(200).json({ success: true, tasks });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

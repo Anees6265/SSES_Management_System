@@ -4,7 +4,7 @@ import {
     MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
     MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified,
-    MdExpandMore, MdCheck, MdHistory
+    MdExpandMore, MdCheck, MdHistory, MdTableChart, MdViewList, MdTopic, MdAssignment
 } from "react-icons/md";
 import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
@@ -172,7 +172,7 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
 };
 
 // ── Task Card ─────────────────────────────────────────────────────────────────
-const TaskCard = ({ task, onDragStart, onStatusChange }) => {
+const TaskCard = ({ task, index, onDragStart, onStatusChange }) => {
     const priority    = task.priority || "medium";
     const isCompleted = task.status === "completed";
     const isInProgress = task.status === "inProgress";
@@ -191,13 +191,21 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
             onDragStart={() => onDragStart(task)}
             className={`bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-grab active:cursor-grabbing select-none space-y-3 ${activeBorderClass}`}
         >
-            {/* Header: Priority Badge + Status Dropdown */}
+            {/* Header: S.No + Priority Badge + Status Dropdown */}
             <div className="flex items-center justify-between gap-2 pb-0.5">
-                <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                    isCompleted ? "bg-slate-50 text-slate-400 border-slate-200" : (PRIORITY_BADGES[priority] || PRIORITY_BADGES.medium)
-                }`}>
-                    {isCompleted ? "COMPLETED" : `${priority} PRIORITY`}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                        className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs"
+                        title={`Serial No. ${task.sno || (typeof index === "number" ? index + 1 : 1)}`}
+                    >
+                        #{task.sno || (typeof index === "number" ? index + 1 : 1)}
+                    </span>
+                    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full border shadow-2xs truncate ${
+                        isCompleted ? "bg-slate-50 text-slate-400 border-slate-200" : (PRIORITY_BADGES[priority] || PRIORITY_BADGES.medium)
+                    }`}>
+                        {isCompleted ? "COMPLETED" : `${priority} PRIORITY`}
+                    </span>
+                </div>
 
                 <StatusDropdown
                     currentStatus={task.status || "pending"}
@@ -252,32 +260,56 @@ const TaskCard = ({ task, onDragStart, onStatusChange }) => {
                 )}
 
                 <div className="flex items-center gap-1">
-                    <div className="flex items-center gap-0.5">
-                        {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
-                            const isSelected = star <= (task.marks || 0);
-                            return (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    disabled={isCompleted}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onStatusChange(task, task.status, { marks: star });
-                                    }}
-                                    className={`p-0.5 transition ${isCompleted ? "cursor-default" : "hover:scale-125 cursor-pointer"}`}
-                                >
-                                    {isSelected ? (
-                                        <MdStar size={15} className="text-orange-400" />
-                                    ) : (
-                                        <MdStarBorder size={15} className="text-slate-300" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {isInProgress ? (
+                        <div className="flex items-center gap-0.5" title="Give rating in progress">
+                            {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                                const isSelected = star <= (task.marks || 0);
+                                return (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onStatusChange(task, task.status, { marks: star });
+                                        }}
+                                        className="p-0.5 transition hover:scale-125 cursor-pointer"
+                                        title={`Give rating: ${star}/${task.maxMarks || 5}`}
+                                    >
+                                        {isSelected ? (
+                                            <MdStar size={15} className="text-orange-400" />
+                                        ) : (
+                                            <MdStarBorder size={15} className="text-slate-300" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : isCompleted ? (
+                        <div className="flex items-center gap-0.5" title="Completed rating">
+                            {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                                const isSelected = star <= (task.marks || 0);
+                                return (
+                                    <span key={star} className="p-0.5 cursor-default">
+                                        {isSelected ? (
+                                            <MdStar size={15} className="text-emerald-500" />
+                                        ) : (
+                                            <MdStarBorder size={15} className="text-slate-200" />
+                                        )}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <span className="text-[10px] font-semibold text-slate-400 italic">
+                            Move to In Progress to rate
+                        </span>
+                    )}
+
                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
                         task.marks !== null && task.marks !== undefined
-                            ? "bg-amber-50 text-amber-800 border border-amber-200"
+                            ? isCompleted
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : "bg-amber-50 text-amber-800 border border-amber-200"
                             : "bg-slate-100 text-slate-500"
                     }`}>
                         Marks: {task.marks !== null && task.marks !== undefined ? task.marks : 0}/{task.maxMarks || 5}
@@ -557,6 +589,7 @@ const StudentTaskBoard = () => {
     const [dragOver,          setDragOver]          = useState(null);
     const [saving,            setSaving]            = useState(false);
     const [showExtraModal,    setShowExtraModal]    = useState(false);
+    const [viewMode,          setViewMode]          = useState("board"); // "board" | "list"
     const [activeMobileTab,   setActiveMobileTab]   = useState("all");
     const [showNotifications, setShowNotifications] = useState(false);
     const { data: boardNotifsData } = useGetNotificationsQuery(
@@ -618,15 +651,46 @@ const StudentTaskBoard = () => {
         setSubjectFilter("");
     };
 
+    const getTaskTimestamp = (task) => {
+        if (!task) return 0;
+        if (task.assignedAt) {
+            const t = new Date(task.assignedAt).getTime();
+            if (!isNaN(t) && t > 0) return t;
+        }
+        if (task.createdAt) {
+            const t = new Date(task.createdAt).getTime();
+            if (!isNaN(t) && t > 0) return t;
+        }
+        if (task._id) {
+            try {
+                const hex = task._id.toString().substring(0, 8);
+                const t = parseInt(hex, 16) * 1000;
+                if (!isNaN(t) && t > 0) return t;
+            } catch (_) {}
+        }
+        return 0;
+    };
+
     const allTasks = tasks
         ?? Object.values(data?.groupedBySubject || {}).flatMap(g => g.tasks || []);
 
-    // Sort allTasks by assignedAt/createdAt descending (latest first)
-    const sortedTasks = [...allTasks].sort((a, b) => {
-        const dateA = new Date(a.assignedAt || a.createdAt || 0);
-        const dateB = new Date(b.assignedAt || b.createdAt || 0);
-        return dateB - dateA;
-    });
+    // Sort allTasks strictly by assignedAt/createdAt descending (latest first)
+    const sortedTasks = useMemo(() => {
+        return [...allTasks].sort((a, b) => {
+            const timeA = getTaskTimestamp(a);
+            const timeB = getTaskTimestamp(b);
+            if (timeB !== timeA) return timeB - timeA;
+            return (b._id || "").toString().localeCompare((a._id || "").toString());
+        });
+    }, [allTasks]);
+
+    // Assign sequential serial numbers (1 is latest overall task)
+    const tasksWithSno = useMemo(() => {
+        return sortedTasks.map((t, idx) => ({
+            ...t,
+            sno: idx + 1
+        }));
+    }, [sortedTasks]);
 
     // Extract unique clean subject names directly from allTasks and groups
     const subjectsFromGroups = Object.keys(data?.groupedBySubject || {}).map(k => k.replace(/\s*\([^)]*\)$/, '').trim());
@@ -647,28 +711,30 @@ const StudentTaskBoard = () => {
         return counts;
     }, [allTasks]);
 
-    const filtered = sortedTasks.filter(t => {
-        const matchSearch = !search ||
-            t.title?.toLowerCase().includes(search.toLowerCase()) ||
-            t.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
-            t.topicName?.toLowerCase().includes(search.toLowerCase());
+    const filtered = useMemo(() => {
+        return tasksWithSno.filter(t => {
+            const matchSearch = !search ||
+                t.title?.toLowerCase().includes(search.toLowerCase()) ||
+                t.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
+                t.topicName?.toLowerCase().includes(search.toLowerCase());
 
-        const taskSubName = t.subjectName?.trim().toLowerCase() || "";
-        const filterSubName = subjectFilter?.trim().toLowerCase() || "";
+            const taskSubName = t.subjectName?.trim().toLowerCase() || "";
+            const filterSubName = subjectFilter?.trim().toLowerCase() || "";
 
-        const matchSubject = !subjectFilter || (
-            taskSubName === filterSubName ||
-            (taskSubName && filterSubName && filterSubName.startsWith(taskSubName)) ||
-            (taskSubName && filterSubName && taskSubName.startsWith(filterSubName))
-        );
-        return matchSearch && matchSubject;
-    });
+            const matchSubject = !subjectFilter || (
+                taskSubName === filterSubName ||
+                (taskSubName && filterSubName && filterSubName.startsWith(taskSubName)) ||
+                (taskSubName && filterSubName && taskSubName.startsWith(filterSubName))
+            );
+            return matchSearch && matchSubject;
+        });
+    }, [tasksWithSno, search, subjectFilter]);
 
-    const byStatus = {
+    const byStatus = useMemo(() => ({
         pending:    filtered.filter(t => t.status === "pending" || !t.status),
         inProgress: filtered.filter(t => t.status === "inProgress"),
         completed:  filtered.filter(t => t.status === "completed"),
-    };
+    }), [filtered]);
 
     const total     = filtered.length;
     const completed = filtered.filter(t => t.status === "completed").length;
@@ -1151,6 +1217,39 @@ const StudentTaskBoard = () => {
                                 </>
                             )}
                         </div>
+
+                        {/* View Mode Switcher: Board vs List */}
+                        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setViewMode("board")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    viewMode === "board"
+                                        ? "bg-white text-orange-600 shadow-2xs"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                                title="Kanban Board View"
+                            >
+                                <MdTableChart size={15} />
+                                <span className="hidden sm:inline">Board</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewMode("list")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    viewMode === "list"
+                                        ? "bg-white text-orange-600 shadow-2xs"
+                                        : "text-slate-600 hover:text-slate-900"
+                                }`}
+                                title="Serial Wise Linear List View"
+                            >
+                                <MdViewList size={15} />
+                                <span className="hidden sm:inline">List View</span>
+                                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${viewMode === "list" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-700"}`}>
+                                    {filtered.length}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1264,68 +1363,258 @@ const StudentTaskBoard = () => {
                         </div>
                     </div>
 
-                    {/* Columns Grid: md:grid-cols-3, on mobile respects activeMobileTab */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                        {STATUS_COLUMNS.map(col => {
-                            const isHiddenOnMobile = activeMobileTab !== "all" && activeMobileTab !== col.key;
-                            return (
-                                <div
-                                    key={col.key}
-                                    onDragOver={e => handleDragOver(e, col.key)}
-                                    onDragLeave={() => setDragOver(null)}
-                                    onDrop={e => handleDrop(e, col.key)}
-                                    className={`space-y-3 sm:space-y-4 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 transition-all duration-200 ${
-                                        isHiddenOnMobile ? "hidden md:block" : "block"
-                                    } ${
-                                        dragOver === col.key ? "ring-2 ring-orange-400 bg-orange-50/50" : "bg-slate-100/40"
-                                    }`}
-                                >
-                                    {/* Column Header */}
-                                    <div className="flex items-center justify-between px-2 py-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
-                                            <h3 className="text-sm font-black text-slate-900">{col.label}</h3>
-                                            <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${col.badgeBg}`}>
-                                                {byStatus[col.key].length}
-                                            </span>
-                                        </div>
-                                        <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                                            <MdMoreHoriz size={18} />
-                                        </button>
-                                    </div>
-
-                                    {/* Task Cards List */}
-                                    <div className="space-y-3 min-h-[160px] sm:min-h-[300px]">
-                                        {byStatus[col.key].length === 0 ? (
-                                            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 sm:p-8 text-center bg-white/70">
-                                                <p className="text-xs font-bold text-slate-400">
-                                                    {dragOver === col.key ? "Drop task here" : `No ${col.label.toLowerCase()} tasks`}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            byStatus[col.key].map(task => (
-                                                <TaskCard
-                                                    key={task._id}
-                                                    task={task}
-                                                    onDragStart={handleDragStart}
-                                                    onStatusChange={(t, st, extra = {}) => {
-                                                        if (st === "completed" && (t.marks === null || t.marks === undefined) && extra.marks === undefined) {
-                                                            toast.error("Please rate/mark the task before completing it!");
-                                                            return;
-                                                        }
-                                                        const finalMarks = extra.marks !== undefined
-                                                            ? extra.marks
-                                                            : (st === "pending" ? null : t.marks);
-                                                        applyStatusChange(t, st, { marks: finalMarks, ...extra });
-                                                    }}
-                                                />
-                                            ))
-                                        )}
-                                    </div>
+                    {viewMode === "list" ? (
+                        /* LINEAR LIST VIEW: ALL TASKS SERIAL WISE LINE SE */
+                        <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div className="flex items-center gap-2">
+                                    <MdViewList size={18} className="text-orange-500" />
+                                    <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">
+                                        All Tasks (Serial Wise · Latest First)
+                                    </h3>
                                 </div>
-                            );
-                        })}
-                    </div>
+                                <span className="text-xs font-bold text-slate-500 bg-slate-200/70 px-2.5 py-0.5 rounded-full">
+                                    {filtered.length} tasks
+                                </span>
+                            </div>
+
+                            {filtered.length === 0 ? (
+                                <div className="p-8 sm:p-12 text-center bg-slate-50/40">
+                                    <p className="text-xs font-bold text-slate-400">No tasks matched your search or filter criteria.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                <th className="py-3.5 px-4 text-center w-16">S.NO</th>
+                                                <th className="py-3.5 px-4 min-w-[240px]">TASK & CURRICULUM</th>
+                                                <th className="py-3.5 px-3 text-center min-w-[120px]">PRIORITY</th>
+                                                <th className="py-3.5 px-3 text-center min-w-[140px]">STATUS</th>
+                                                <th className="py-3.5 px-4 min-w-[180px]">RATING / MARKS</th>
+                                                <th className="py-3.5 px-4 min-w-[160px]">ASSIGNMENT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                                            {filtered.map((task, idx) => {
+                                                const priority = task.priority || "medium";
+                                                const isCompleted = task.status === "completed";
+
+                                                return (
+                                                    <tr key={task._id} className="hover:bg-slate-50/80 transition-colors">
+                                                        {/* S.No */}
+                                                        <td className="py-3.5 px-4 text-center">
+                                                            <span className="inline-flex w-7 h-7 rounded-lg bg-slate-900 text-white text-xs font-black items-center justify-center shadow-2xs">
+                                                                #{task.sno || idx + 1}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Task & Curriculum */}
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="min-w-0 space-y-1">
+                                                                <h4 className={`text-xs sm:text-sm font-extrabold text-slate-900 leading-snug break-words ${isCompleted ? "line-through text-slate-400" : ""}`}>
+                                                                    {task.title}
+                                                                </h4>
+                                                                <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-slate-500">
+                                                                    {task.subjectName && (
+                                                                        <span className="inline-flex items-center font-bold text-[10px] text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                                            {task.subjectName}
+                                                                        </span>
+                                                                    )}
+                                                                    {task.topicName && (
+                                                                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-700 font-semibold">
+                                                                            <MdTopic size={13} className="text-orange-500 shrink-0" />
+                                                                            <span>{task.topicName}</span>
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {task.description && (
+                                                                    <p className="text-[11px] text-slate-400 line-clamp-1 font-medium">
+                                                                        {task.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Priority */}
+                                                        <td className="py-3.5 px-3 text-center">
+                                                            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-2xs ${
+                                                                PRIORITY_BADGES[priority] || PRIORITY_BADGES.medium
+                                                            }`}>
+                                                                {priority}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Status */}
+                                                        <td className="py-3.5 px-3 text-center">
+                                                            <div className="inline-flex justify-center">
+                                                                <StatusDropdown
+                                                                    currentStatus={task.status || "pending"}
+                                                                    onStatusChange={(newStatus) => {
+                                                                        if (newStatus === "completed" && (task.marks === null || task.marks === undefined)) {
+                                                                            toast.error("Please rate/mark the task before completing it!");
+                                                                            return;
+                                                                        }
+                                                                        const finalMarks = newStatus === "pending" ? null : task.marks;
+                                                                        applyStatusChange(task, newStatus, { marks: finalMarks });
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Rating / Marks */}
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                {isInProgress ? (
+                                                                    <div className="flex items-center gap-0.5" title="Give rating in progress">
+                                                                        {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                                                                            const isSelected = star <= (task.marks || 0);
+                                                                            return (
+                                                                                <button
+                                                                                    key={star}
+                                                                                    type="button"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        applyStatusChange(task, task.status, { marks: star });
+                                                                                    }}
+                                                                                    className="p-0.5 transition hover:scale-125 cursor-pointer"
+                                                                                    title={`Rate: ${star}/${task.maxMarks || 5}`}
+                                                                                >
+                                                                                    {isSelected ? (
+                                                                                        <MdStar size={15} className="text-orange-400" />
+                                                                                    ) : (
+                                                                                        <MdStarBorder size={15} className="text-slate-300" />
+                                                                                    )}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : isCompleted ? (
+                                                                    <div className="flex items-center gap-0.5" title="Completed rating">
+                                                                        {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                                                                            const isSelected = star <= (task.marks || 0);
+                                                                            return (
+                                                                                <span key={star} className="p-0.5 cursor-default">
+                                                                                    {isSelected ? (
+                                                                                        <MdStar size={15} className="text-emerald-500" />
+                                                                                    ) : (
+                                                                                        <MdStarBorder size={15} className="text-slate-200" />
+                                                                                    )}
+                                                                                </span>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-[10px] font-semibold text-slate-400 italic">
+                                                                        Move to In Progress to rate
+                                                                    </span>
+                                                                )}
+
+                                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md w-fit ${
+                                                                    task.marks !== null && task.marks !== undefined
+                                                                        ? isCompleted
+                                                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                                                            : "bg-amber-50 text-amber-800 border border-amber-200"
+                                                                        : "bg-slate-100 text-slate-500"
+                                                                }`}>
+                                                                    Marks: {task.marks !== null && task.marks !== undefined ? task.marks : 0}/{task.maxMarks || 5}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Assignment details */}
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="space-y-1 text-[11px] text-slate-500">
+                                                                <div className="flex items-center gap-1 font-semibold text-slate-700">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                                                    <span>{task.assignedByName || "Auto-assigned"}</span>
+                                                                </div>
+                                                                {(task.assignedAt || task.createdAt) && (
+                                                                    <div className="text-[10px] text-slate-400">
+                                                                        {formatTimeAgo(task.assignedAt || task.createdAt)}
+                                                                    </div>
+                                                                )}
+                                                                {task.dueDate && (
+                                                                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                                                        <MdCalendarToday size={11} />
+                                                                        <span>Due: {new Date(task.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* Columns Grid: md:grid-cols-3, on mobile respects activeMobileTab */
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                            {STATUS_COLUMNS.map(col => {
+                                const isHiddenOnMobile = activeMobileTab !== "all" && activeMobileTab !== col.key;
+                                return (
+                                    <div
+                                        key={col.key}
+                                        onDragOver={e => handleDragOver(e, col.key)}
+                                        onDragLeave={() => setDragOver(null)}
+                                        onDrop={e => handleDrop(e, col.key)}
+                                        className={`space-y-3 sm:space-y-4 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 transition-all duration-200 ${
+                                            isHiddenOnMobile ? "hidden md:block" : "block"
+                                        } ${
+                                            dragOver === col.key ? "ring-2 ring-orange-400 bg-orange-50/50" : "bg-slate-100/40"
+                                        }`}
+                                    >
+                                        {/* Column Header */}
+                                        <div className="flex items-center justify-between px-2 py-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
+                                                <h3 className="text-sm font-black text-slate-900">{col.label}</h3>
+                                                <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${col.badgeBg}`}>
+                                                    {byStatus[col.key].length}
+                                                </span>
+                                            </div>
+                                            <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                                                <MdMoreHoriz size={18} />
+                                            </button>
+                                        </div>
+
+                                        {/* Task Cards List */}
+                                        <div className="space-y-3 min-h-[160px] sm:min-h-[300px]">
+                                            {byStatus[col.key].length === 0 ? (
+                                                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 sm:p-8 text-center bg-white/70">
+                                                    <p className="text-xs font-bold text-slate-400">
+                                                        {dragOver === col.key ? "Drop task here" : `No ${col.label.toLowerCase()} tasks`}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                byStatus[col.key].map((task, colIdx) => (
+                                                    <TaskCard
+                                                        key={task._id}
+                                                        task={task}
+                                                        index={colIdx}
+                                                        onDragStart={handleDragStart}
+                                                        onStatusChange={(t, st, extra = {}) => {
+                                                            if (st === "completed" && (t.marks === null || t.marks === undefined) && extra.marks === undefined) {
+                                                                toast.error("Please rate/mark the task before completing it!");
+                                                                return;
+                                                            }
+                                                            const finalMarks = extra.marks !== undefined
+                                                                ? extra.marks
+                                                                : (st === "pending" ? null : t.marks);
+                                                            applyStatusChange(t, st, { marks: finalMarks, ...extra });
+                                                        }}
+                                                    />
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
             </div>

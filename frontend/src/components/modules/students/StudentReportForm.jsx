@@ -6,12 +6,13 @@ import {
   useCreateReportCardMutation,
   useGetReportCardForEditQuery,
   useUpdateReportCardMutation,
-  useGetStudentTasksQuery
+  useGetStudentTasksQuery,
+  useGenerateReportAiFeedbackMutation
 } from "../../../redux/api/authApi";
 import Header from '../../shared/sidebar/Header';
 import Loader from "../../shared/loader/Loader";
 import { toast } from "react-toastify";
-import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus } from "react-icons/fa";
+import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus, FaMagic, FaSpinner } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { taskAPI } from "../../../services/taskService";
 import { detectDepartment, DEPARTMENT_CONFIGS } from "./reportCardDepartmentConfig";
@@ -55,6 +56,7 @@ export default function StudentReportForm() {
   const { data: tasksData, isLoading: tasksLoading } = useGetStudentTasksQuery(id);
   const [createReportCard, { isLoading: isCreating, error: mutationError }] = useCreateReportCardMutation();
   const [updateReportCard, { isLoading: isUpdating }] = useUpdateReportCardMutation();
+  const [generateReportAiFeedback, { isLoading: isGeneratingAi }] = useGenerateReportAiFeedbackMutation();
   const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
   const [taskPerformance, setTaskPerformance] = useState(null);
 
@@ -754,6 +756,130 @@ export default function StudentReportForm() {
       ...populated
     }));
     toast.success("Auto-filled from student profile & task record!");
+  };
+
+  const handleGenerateAiFeedback = async () => {
+    try {
+      const student = studentData?.data || {};
+      const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
+      const departmentName = student.subDepartmentId?.departmentId?.name || student.departmentName || "";
+      const course = student.course || "";
+
+      const getSection = (type) => (formData.dynamicSections || []).find(s => s.sectionType === type);
+
+      const levelSec = getSection("LevelProgressTable");
+      const subjSec = getSection("SubjectPerformanceTable");
+      const softSec = getSection("SoftSkillsRating");
+      const intSec = getSection("InterviewRating");
+      const careerSec = getSection("CareerStatus");
+      const overallSec = getSection("OverallPerformanceSummary");
+
+      // 1. Level Progress (Exact current level & completion)
+      const levelItems = levelSec?.items || [];
+      const currentLevelItem = levelItems.find(i => i.value === "Current") ||
+        levelItems.find(i => i.itemName === (student?.currentSubLevelId?.name || student?.currentLevel)) ||
+        levelItems[0];
+      const currentLevelName = currentLevelItem?.itemName || student?.currentSubLevelId?.name || student?.currentLevel || "1A";
+      const currentLevelCompletion = currentLevelItem?.score ?? (taskPerformance?.completionRate ?? 0);
+      const cleanLevelProgress = {
+        currentLevel: currentLevelName,
+        completionPercentage: currentLevelCompletion,
+        levels: levelItems.map(l => ({
+          level: l.itemName,
+          status: l.value,
+          score: l.score ?? 0
+        }))
+      };
+
+      // 2. Subject-wise Performance (Explicit names, marks, evaluated/total tasks & ratings)
+      const cleanSubjectPerformance = (subjSec?.items || []).map(s => ({
+        subjectName: s.itemName,
+        performanceLevel: s.value || "Good",
+        evaluatedTasks: s.score || 0,
+        totalTasks: s.maxMarks || 0,
+        averageRating: (s.remark && s.remark !== "—") ? s.remark : (s.score && s.maxMarks ? ((s.score / s.maxMarks) * 5).toFixed(2) : null)
+      }));
+
+      // 3. Soft Skills & Behavioural Evaluation (Scores out of 5)
+      const cleanSoftSkills = (softSec?.items || []).map(s => ({
+        skillName: s.itemName,
+        scoreOutOf5: Number(s.value) || 0,
+        ratingRemark: s.remark || (Number(s.value) >= 4 ? "Excellent" : Number(s.value) >= 3 ? "Good" : "Needs Improvement")
+      }));
+
+      // 4. Technical Interview & Mock Assessment
+      const cleanInterviewRatings = (intSec?.items || []).map(i => ({
+        parameterName: i.itemName,
+        scoreOutOf5: Number(i.value) || 0
+      }));
+
+      // 5. Career Readiness
+      const cleanCareerReadiness = (careerSec?.items || []).reduce((acc, it) => {
+        acc[it.itemName] = it.value;
+        return acc;
+      }, {});
+
+      // 6. Overall Performance
+      const overallItems = overallSec?.items || [];
+      const getOverallVal = (keyword) => {
+        const item = overallItems.find(i => (i.itemName || "").toLowerCase().includes(keyword.toLowerCase()));
+        return item ? item.value : null;
+      };
+      const overallRatingItem = overallItems.find(i => (i.itemName || "").toLowerCase().includes("overall"));
+      const cleanOverallPerformance = {
+        subjectScore: getOverallVal("subject"),
+        softSkillsScore: getOverallVal("soft"),
+        interviewScore: getOverallVal("interview"),
+        overallRating: overallRatingItem?.value ?? null,
+        overallRemark: overallRatingItem?.remark || "Good"
+      };
+
+      const payload = {
+        studentName,
+        departmentName,
+        course,
+        levelProgress: cleanLevelProgress,
+        subjectPerformance: cleanSubjectPerformance,
+        softSkills: cleanSoftSkills,
+        interviewRatings: cleanInterviewRatings,
+        careerReadiness: cleanCareerReadiness,
+        overallPerformance: cleanOverallPerformance
+      };
+
+      toast.info("Analyzing student's 6 evaluation cards with Gemini AI...", { autoClose: 2000 });
+      const res = await generateReportAiFeedback(payload).unwrap();
+      if (res?.data) {
+        const { strengths, growthAreas } = res.data;
+        const strengthsStr = Array.isArray(strengths) ? strengths.join("\n") : (strengths || "");
+        const growthStr = Array.isArray(growthAreas) ? growthAreas.join("\n") : (growthAreas || "");
+
+        setFormData(prev => {
+          const sIdx = (prev.dynamicSections || []).findIndex(s => s.sectionType === "StrengthsImprovement");
+          if (sIdx === -1) return prev;
+
+          const updatedSecs = [...prev.dynamicSections];
+          const sec = { ...updatedSecs[sIdx], items: [...updatedSecs[sIdx].items] };
+
+          const strIdx = sec.items.findIndex(i => (i.itemName || "").toLowerCase().includes("strength"));
+          if (strIdx !== -1) {
+            sec.items[strIdx] = { ...sec.items[strIdx], value: strengthsStr };
+          }
+
+          const growIdx = sec.items.findIndex(i => (i.itemName || "").toLowerCase().includes("improve") || (i.itemName || "").toLowerCase().includes("growth"));
+          if (growIdx !== -1) {
+            sec.items[growIdx] = { ...sec.items[growIdx], value: growthStr };
+          }
+
+          updatedSecs[sIdx] = sec;
+          return { ...prev, dynamicSections: updatedSecs };
+        });
+
+        toast.success("✨ Demonstrated Strengths & Focused Growth areas generated successfully using Gemini AI!");
+      }
+    } catch (err) {
+      console.error("AI Generation error:", err);
+      toast.error(err?.data?.message || err?.message || "Failed to generate AI feedback");
+    }
   };
 
   const addDynamicItem = (sectionIndex, defaultItem = { itemName: "New Parameter", value: 0, maxMarks: 5 }) => {
@@ -1545,7 +1671,27 @@ export default function StudentReportForm() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm sm:text-base font-bold text-orange-600">{section.sectionName}</h3>
                     </div>
-                    {(section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") ? (
+                    {section.sectionType === "StrengthsImprovement" ? (
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiFeedback}
+                        disabled={isGeneratingAi}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs hover:shadow-md transition active:scale-95 cursor-pointer disabled:opacity-60"
+                        title="Auto-generate Strengths & Growth Areas using Gemini AI based on the 6 assessment cards"
+                      >
+                        {isGeneratingAi ? (
+                          <>
+                            <FaSpinner className="animate-spin text-xs" />
+                            <span>Analyzing with AI...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaMagic className="text-xs" />
+                            <span>Auto-Generate with AI</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (section.sectionType === "LevelProgressTable" || section.sectionType === "SubjectPerformanceTable") ? (
                       <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <FaLock className="text-[10px]" /> Auto-Filled (Read-Only)
                       </span>
@@ -1997,14 +2143,25 @@ export default function StudentReportForm() {
 
                   {section.sectionType === "StrengthsImprovement" && (
                     <div className="space-y-3 sm:space-y-4">
+                      {/* AI Assistant Info Banner */}
+                      <div className="flex items-center gap-2.5 p-2.5 sm:p-3 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/80 rounded-xl text-amber-950 text-xs">
+                        <span className="p-1 bg-amber-100 text-amber-700 rounded-lg text-xs shrink-0">✨</span>
+                        <span>
+                          <strong>AI Smart Analysis:</strong> Uses Gemini AI to review the student&apos;s Level Progress, Subjects, Soft Skills, Mock Interviews, and Career Readiness to generate personalized Strengths and Growth Areas.
+                        </span>
+                      </div>
+
                       {section.items.map((item, idx) => (
                         <div key={idx} className="flex flex-col gap-1.5">
-                          <label className="text-xs sm:text-sm font-bold text-slate-700">{item.itemName}</label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs sm:text-sm font-bold text-slate-700">{item.itemName}</label>
+                            <span className="text-[11px] font-normal text-slate-400">Lines or comma-separated remarks</span>
+                          </div>
                           <textarea
                             rows={3}
                             value={item.value || ""}
                             onChange={(e) => setDynamicItemField(sIdx, idx, "value", e.target.value)}
-                            placeholder={`Enter ${item.itemName} (comma separated or detailed remarks)...`}
+                            placeholder={`Enter ${item.itemName} (e.g. bullet points or comma separated remarks)...`}
                             className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
                           />
                         </div>

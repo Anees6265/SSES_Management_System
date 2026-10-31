@@ -1,5 +1,6 @@
 const StudentReportCard = require('../../models/student/studentReportCard');
 const mongoose = require('mongoose');
+const { generateStudentFeedback } = require('../../services/reportAiService');
 
 const calcSoftSkillMarks = (softSkills) => {
   let total = 0;
@@ -471,5 +472,45 @@ exports.updateStudentReportCard = async (req, res) => {
     res.status(200).json({ success: true, message: 'Report card updated successfully', data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error while updating report card', error: error.message });
+  }
+};
+
+exports.generateAiFeedback = async (req, res) => {
+  try {
+    const {
+      studentName,
+      departmentName,
+      course,
+      levelProgress,
+      subjectPerformance,
+      softSkills,
+      interviewRatings,
+      careerReadiness,
+      overallPerformance
+    } = req.body;
+
+    const feedback = await generateStudentFeedback({
+      studentName,
+      departmentName,
+      course,
+      levelProgress,
+      subjectPerformance,
+      softSkills,
+      interviewRatings,
+      careerReadiness,
+      overallPerformance
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "AI feedback generated successfully",
+      data: feedback
+    });
+  } catch (error) {
+    console.error("[generateAiFeedback] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate AI feedback: " + error.message
+    });
   }
 };

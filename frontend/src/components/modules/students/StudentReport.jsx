@@ -1435,14 +1435,21 @@ export default function StudentReport() {
             <ul className="space-y-2 pt-1 sm:pt-2">
               {(() => {
                 const rawStrengths = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("strength"))?.value;
-                const points = rawStrengths
-                  ? rawStrengths.split(",").map(p => p.trim()).filter(Boolean)
-                  : [
-                    "Strong programming foundations and algorithmic logic",
-                    "Consistent task submission and active lab participation",
-                    "Effective team communication and peer guidance",
-                    "Curiosity towards emerging technologies and frameworks"
-                  ];
+                const points = (() => {
+                  if (!rawStrengths || typeof rawStrengths !== "string" || !rawStrengths.trim()) {
+                    return [
+                      "Strong programming foundations and algorithmic logic",
+                      "Consistent task submission and active lab participation",
+                      "Effective team communication and peer guidance",
+                      "Curiosity towards emerging technologies and frameworks"
+                    ];
+                  }
+                  if (rawStrengths.includes("\n")) {
+                    const lines = rawStrengths.split("\n").map(p => p.replace(/^[-•*✓\d.]+\s*/, "").trim()).filter(Boolean);
+                    if (lines.length > 0) return lines;
+                  }
+                  return rawStrengths.split(",").map(p => p.trim()).filter(Boolean);
+                })();
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs font-semibold text-emerald-900">
@@ -1467,9 +1474,16 @@ export default function StudentReport() {
             <ul className="space-y-2 pt-1 sm:pt-2">
               {(() => {
                 const rawAreas = strengthsImprovementSection?.items?.find(i => i.itemName.toLowerCase().includes("improve") || i.itemName.toLowerCase().includes("growth"))?.value;
-                const points = rawAreas
-                  ? rawAreas.split(/[.,]\s+/).filter(Boolean)
-                  : deptConfig.mockGrowthAreas;
+                const points = (() => {
+                  if (!rawAreas || typeof rawAreas !== "string" || !rawAreas.trim()) {
+                    return deptConfig.mockGrowthAreas;
+                  }
+                  if (rawAreas.includes("\n")) {
+                    const lines = rawAreas.split("\n").map(p => p.replace(/^[-•*✓\d.]+\s*/, "").trim()).filter(Boolean);
+                    if (lines.length > 0) return lines;
+                  }
+                  return rawAreas.split(/[.,]\s+/).map(p => p.trim()).filter(Boolean);
+                })();
 
                 return points.map((pt, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-xs font-semibold text-amber-900">

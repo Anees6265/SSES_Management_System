@@ -1359,6 +1359,15 @@ export const authApi = createApi({
       invalidatesTags: ['Student'],
     }),
 
+    // Generate AI Feedback for Report Card
+    generateReportAiFeedback: builder.mutation({
+      query: (evaluationData) => ({
+        url: '/reportcards/generate-ai-feedback',
+        method: "POST",
+        body: evaluationData,
+      }),
+    }),
+
     // Add Department
     addDepartment: builder.mutation({
       query: (formData) => ({
@@ -2194,6 +2203,7 @@ export const {
   useCreateReportCardMutation,
   useGetReportCardForEditQuery,
   useUpdateReportCardMutation,
+  useGenerateReportAiFeedbackMutation,
   useAddDepartmentMutation,
   useGetAllDepartmentsQuery,
   useUpdateDepartmentMutation,

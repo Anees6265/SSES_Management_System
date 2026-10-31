@@ -80,6 +80,13 @@ const academicPerformanceSchema = new mongoose.Schema({
       sgpa: Number,
     },
   ],
+  semesterWiseSGPA: [
+    {
+      semester: String,
+      sgpa: Number,
+      year: String,
+    },
+  ],
   cgpa: { type: Number, default: 0 },
 });
 

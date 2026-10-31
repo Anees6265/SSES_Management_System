@@ -287,6 +287,66 @@ export default function StudentReport() {
   const strengthsImprovementSection = getSection("StrengthsImprovement");
   const overallPerformanceSection = getSection("OverallPerformanceSummary");
 
+  // Check if student profile has resume attached
+  const hasResumeInProfile = useMemo(() => {
+    return Boolean(
+      studentData?.placement?.resumeURL ||
+      studentData?.resumeURL ||
+      studentData?.resume ||
+      studentData?.resumeUrl ||
+      studentData?.resume_url ||
+      studentData?.studentPlacement?.resumeURL ||
+      studentData?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+    );
+  }, [studentData]);
+
+  // Dynamic Career / Placement Readiness Check (Defaults to "Not Ready" unless placed/cleared)
+  const isCareerReady = useMemo(() => {
+    // 1. Direct placementReady from reportCardData
+    const pr = (reportCardData?.careerReadiness?.placementReady || "").trim();
+    if (["Ready", "Ready for Placement", "Ready for Interview", "Ready for Drive"].includes(pr)) {
+      return true;
+    }
+
+    // 2. Direct readiness from student object
+    const studentPR = (studentData?.placement?.readinessStatus || "").trim();
+    if (["Ready", "Ready for Placement", "Ready for Interview", "Ready for Drive"].includes(studentPR)) {
+      return true;
+    }
+    if (studentData?.isReadyForPlacement) {
+      return true;
+    }
+
+    // 3. From CareerStatus dynamic section items if present
+    const items = careerReadinessSection?.items || [];
+    const placementItem = items.find((it) => (it.itemName || "").toLowerCase().includes("placement"));
+    if (placementItem && ["ready", "completed", "cleared"].includes((placementItem.value || "").toLowerCase().trim())) {
+      return true;
+    }
+
+    // 4. Check if aptitude AND resume are ready:
+    const resumeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("resume"));
+    const resumeVal = (resumeItem?.value || reportCardData?.careerReadiness?.resumeStatus || "").toLowerCase().trim();
+    const hasResumeReady =
+      hasResumeInProfile ||
+      ["created", "uploaded", "updated", "ready", "completed"].includes(resumeVal);
+
+    const aptitudeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("aptitude"));
+    const aptitudeVal = (
+      aptitudeItem?.value ||
+      reportCardData?.careerReadiness?.aptitudeStatus ||
+      studentData?.placement?.aptitudeStatus ||
+      ""
+    ).toLowerCase().trim();
+    const hasAptitudeReady = ["done", "completed", "cleared", "passed", "ready"].includes(aptitudeVal);
+
+    if (hasResumeReady && hasAptitudeReady) {
+      return true;
+    }
+
+    return false;
+  }, [reportCardData, studentData, careerReadinessSection, hasResumeInProfile]);
+
   const interviewItemsList = useMemo(() => {
     return (interviewSection?.items?.length > 0 ? interviewSection.items : deptConfig.interviewItems) || [];
   }, [interviewSection, deptConfig]);
@@ -297,13 +357,173 @@ export default function StudentReport() {
     return (total / interviewItemsList.length).toFixed(1);
   }, [interviewItemsList]);
 
-  // CGPA calculation
-  const cgpaValue = reportCardData?.academicPerformance?.cgpa || "8.50";
-  const sgpaList = reportCardData?.academicPerformance?.yearWiseSGPA || [
-    { year: "FY", sgpa: 8.4 },
-    { year: "SY", sgpa: 8.6 },
-    { year: "TY", sgpa: 8.5 }
-  ];
+  // Academic SGPA & CGPA calculation (Dynamic & clean 0.00 fallback when not evaluated)
+  const sgpaList = useMemo(() => {
+    const list = reportCardData?.academicPerformance?.yearWiseSGPA;
+    if (Array.isArray(list) && list.length > 0) {
+      return list.map((item) => {
+        const val = typeof item.sgpa === "number" ? item.sgpa : parseFloat(item.sgpa);
+        return {
+          year: item.year,
+          sgpa: !isNaN(val) && val > 0 ? val.toFixed(2) : "0.00",
+        };
+      });
+    }
+    return [
+      { year: "FY", sgpa: "0.00" },
+      { year: "SY", sgpa: "0.00" },
+      { year: "TY", sgpa: "0.00" },
+    ];
+  }, [reportCardData]);
+
+  // B.Tech semester list (Sem 1 to Sem 8)
+  const btechSemesterList = useMemo(() => {
+    if (!isBTech) return [];
+    const rawSems = reportCardData?.academicPerformance?.semesterWiseSGPA;
+    const defaultSems = [
+      { semester: "Sem 1", year: "1st Year" },
+      { semester: "Sem 2", year: "1st Year" },
+      { semester: "Sem 3", year: "2nd Year" },
+      { semester: "Sem 4", year: "2nd Year" },
+      { semester: "Sem 5", year: "3rd Year" },
+      { semester: "Sem 6", year: "3rd Year" },
+      { semester: "Sem 7", year: "4th Year" },
+      { semester: "Sem 8", year: "4th Year" },
+    ];
+
+    return defaultSems.map((def, idx) => {
+      const found = Array.isArray(rawSems) ? rawSems.find(s => s.semester === def.semester) : null;
+      const rawVal = found ? found.sgpa : (Array.isArray(rawSems) && rawSems[idx] ? rawSems[idx].sgpa : 0);
+      const val = typeof rawVal === "number" ? rawVal : parseFloat(rawVal);
+      return {
+        semester: def.semester,
+        year: def.year,
+        sgpa: !isNaN(val) && val > 0 ? val.toFixed(2) : "0.00",
+        numericSgpa: !isNaN(val) && val > 0 ? val : 0,
+      };
+    });
+  }, [isBTech, reportCardData]);
+
+  // Group B.Tech semesters into 4 years with calculated Year CGPA
+  const btechYearList = useMemo(() => {
+    if (!isBTech) return [];
+    const yearsConfig = [
+      { year: "1st Year", sems: ["Sem 1", "Sem 2"] },
+      { year: "2nd Year", sems: ["Sem 3", "Sem 4"] },
+      { year: "3rd Year", sems: ["Sem 5", "Sem 6"] },
+      { year: "4th Year", sems: ["Sem 7", "Sem 8"] },
+    ];
+
+    return yearsConfig.map(({ year, sems }) => {
+      const yearSems = btechSemesterList.filter(s => sems.includes(s.semester));
+      const activeSems = yearSems.filter(s => s.numericSgpa > 0);
+      const yearCgpa = activeSems.length > 0
+        ? (activeSems.reduce((acc, s) => acc + s.numericSgpa, 0) / activeSems.length).toFixed(2)
+        : "0.00";
+      return {
+        year,
+        yearCgpa,
+        semesters: yearSems,
+      };
+    });
+  }, [isBTech, btechSemesterList]);
+
+  const cgpaValue = useMemo(() => {
+    const rawCgpa = reportCardData?.academicPerformance?.cgpa;
+    const parsed = typeof rawCgpa === "number" ? rawCgpa : parseFloat(rawCgpa);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed.toFixed(2);
+    }
+    if (isBTech) {
+      const activeSems = btechSemesterList.filter(s => s.numericSgpa > 0);
+      if (activeSems.length > 0) {
+        return (activeSems.reduce((acc, s) => acc + s.numericSgpa, 0) / activeSems.length).toFixed(2);
+      }
+      return "0.00";
+    }
+    const activeSgpas = sgpaList
+      .map((s) => parseFloat(s.sgpa))
+      .filter((val) => !isNaN(val) && val > 0);
+    if (activeSgpas.length > 0) {
+      return (activeSgpas.reduce((acc, v) => acc + v, 0) / activeSgpas.length).toFixed(2);
+    }
+    return "0.00";
+  }, [reportCardData, sgpaList, isBTech, btechSemesterList]);
+
+  const cgpaNumber = parseFloat(cgpaValue) || 0;
+  const classificationLabel = useMemo(() => {
+    if (cgpaNumber >= 7.5) return "Distinction Class";
+    if (cgpaNumber >= 6.0) return "First Class";
+    if (cgpaNumber >= 5.0) return "Second Class";
+    if (cgpaNumber > 0) return "Pass Class";
+    return "Not Evaluated";
+  }, [cgpaNumber]);
+
+  // Real-time Overall Task / Performance Rating for Placement Recommendation
+  const placementRating = useMemo(() => {
+    // 1. Evaluate from actual completed tasks with marks across all levels
+    const allTasks = taskPerformance?.tasks || [];
+    const gradedTasks = allTasks.filter(
+      (t) => t.status === "completed" && typeof t.marks === "number" && !isNaN(t.marks) && t.marks >= 0
+    );
+
+    if (gradedTasks.length > 0) {
+      const sum = gradedTasks.reduce((acc, t) => {
+        const max = t.maxMarks && t.maxMarks > 0 ? t.maxMarks : 5;
+        return acc + (t.marks / max) * 5;
+      }, 0);
+      return Number((sum / gradedTasks.length).toFixed(1));
+    }
+
+    // 2. Evaluate from technicalSkills ratings in taskPerformance
+    const techSkills = taskPerformance?.technicalSkills || [];
+    const validTech = techSkills.filter(
+      (s) => typeof s.rating === "number" && !isNaN(s.rating) && s.rating > 0
+    );
+    if (validTech.length > 0) {
+      const avgTech = validTech.reduce((acc, s) => acc + s.rating, 0) / validTech.length;
+      return Number(avgTech.toFixed(1));
+    }
+
+    // 3. Evaluate from subjectPerformanceSection & softSkillsSection in dynamicSections
+    const subjectItems = subjectPerformanceSection?.items || [];
+    const gradedSubjects = subjectItems
+      .map((s) => parseFloat(s.remark))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const softItems = softSkillsSection?.items || [];
+    const gradedSoft = softItems
+      .map((s) => parseFloat(s.value))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const interviewItems = interviewSection?.items || [];
+    const gradedInterview = interviewItems
+      .map((s) => parseFloat(s.value))
+      .filter((v) => !isNaN(v) && v > 0);
+
+    const components = [...gradedSubjects, ...gradedSoft, ...gradedInterview];
+    if (components.length > 0) {
+      const avg = components.reduce((acc, v) => acc + v, 0) / components.length;
+      return Number(avg.toFixed(1));
+    }
+
+    // 4. From overallPerformanceSection if saved with real (non-dummy) value
+    const overallItem = overallPerformanceSection?.items?.find(
+      (i) => (i.itemName || "").toLowerCase().includes("overall rating")
+    );
+    const overallVal = parseFloat(overallItem?.value);
+    if (!isNaN(overallVal) && overallVal > 0 && overallVal !== 4.02) {
+      return Number(overallVal.toFixed(1));
+    }
+
+    // 5. From overall task completion percentage if tasks exist without marks
+    if (taskPerformance?.totalTasks > 0 && taskPerformance?.completedTasks > 0) {
+      const rate = taskPerformance.completionRate || Math.round((taskPerformance.completedTasks / taskPerformance.totalTasks) * 100);
+      return Number(((rate / 100) * 5).toFixed(1));
+    }
+
+    return 0;
+  }, [taskPerformance, subjectPerformanceSection, softSkillsSection, interviewSection, overallPerformanceSection]);
 
   if (isLoading || reportLoading || taskLoading) {
     return (
@@ -418,21 +638,15 @@ export default function StudentReport() {
                   <h1 className="text-xs sm:text-base lg:text-lg font-black tracking-tight text-slate-900 uppercase truncate sm:whitespace-normal">
                     {collegeName}
                   </h1>
-                  <p className="text-[10px] sm:text-xs font-semibold text-orange-500 tracking-wider uppercase mt-0.5 truncate sm:whitespace-normal">
-                    {departmentName} · Comprehensive Student Performance Dossier
-                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-400" /> Session: {studentData.sessionId?.name || "AY 2025-26"}
-                </span>
                 <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500" /> Batch: {studentData.batchYear || reportCardData?.batchYear || batchYear}
                 </span>
                 <span className={`text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full ${gradeStyle.bg} flex items-center gap-1.5`}>
-                  <MdVerified size={13} /> {reportCardData?.isFinalReport ? "Official Final Evaluation" : "Semester Progress Report"}
+                  <MdVerified size={13} /> {reportCardData?.isFinalReport ? "Official Final Evaluation" : "Level Progress Report"}
                 </span>
               </div>
             </div>
@@ -575,20 +789,24 @@ export default function StudentReport() {
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1 relative overflow-hidden group hover:border-violet-200 transition">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CAREER READINESS</p>
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-violet-50 text-violet-500 border border-violet-100 flex items-center justify-center shrink-0">
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${isCareerReady ? "bg-violet-50 text-violet-500 border-violet-100" : "bg-slate-100 text-slate-500 border-slate-200"} border flex items-center justify-center shrink-0`}>
                 <FaRocket size={13} />
               </div>
             </div>
             <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-violet-600 transition">
-                {reportCardData?.careerReadiness?.placementReady || "Ready"}
+              <h3 className={`text-2xl sm:text-3xl font-black ${isCareerReady ? "text-slate-900 group-hover:text-violet-600" : "text-slate-700"} transition`}>
+                {isCareerReady ? "Ready" : "Not Ready"}
               </h3>
-              <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100 truncate">
-                Interview Eligible
+              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full border truncate ${
+                isCareerReady 
+                  ? "bg-violet-50 text-violet-700 border-violet-100" 
+                  : "bg-slate-100 text-slate-600 border-slate-200"
+              }`}>
+                {isCareerReady ? "Interview Eligible" : "In Preparation"}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
-              Resume & Aptitude Cleared
+              {isCareerReady ? "Resume & Aptitude Cleared" : "Resume & Aptitude Required"}
             </p>
           </div>
         </div>
@@ -822,49 +1040,105 @@ export default function StudentReport() {
                 <FaGraduationCap size={17} />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-800">Academic SGPA & CGPA Breakdown</h3>
-                <p className="text-[11px] sm:text-xs text-slate-400">University semester performance evaluation</p>
+                <h3 className="text-sm sm:text-base font-bold text-slate-800">
+                  {isBTech ? "Academic Semester SGPA & Year-Wise CGPA Breakdown" : "Academic SGPA & CGPA Breakdown"}
+                </h3>
+                <p className="text-[11px] sm:text-xs text-slate-400">
+                  {isBTech
+                    ? "4-Year Bachelor of Technology semester performance evaluation (2 semesters per year)"
+                    : "University semester performance evaluation"}
+                </p>
               </div>
             </div>
             <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
-              Grading: 10.0
+              {isBTech ? "4-Year / 8 Semesters" : "Grading: 10.0"}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4 items-center">
-            {/* Year Wise Cards */}
-            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-              {sgpaList.map((item, idx) => {
-                const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
-                const score = item.sgpa || "N/A";
-                return (
-                  <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 sm:p-4 hover:bg-slate-50 transition">
-                    <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
-                    <div className="flex items-baseline justify-between mt-1.5 sm:mt-2">
-                      <span className="text-xl sm:text-2xl font-black text-slate-800">{score}</span>
-                      <span className="text-xs font-bold text-slate-400">SGPA</span>
+          {isBTech ? (
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3.5 sm:gap-4 items-stretch">
+              {/* 4 Years (2 Semesters Each) */}
+              <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-3.5">
+                {btechYearList.map((yItem, idx) => (
+                  <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 sm:p-4 hover:bg-slate-50 transition flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 mb-2.5">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{yItem.year}</span>
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100/80 text-blue-800">
+                          CGPA: {yItem.yearCgpa}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {yItem.semesters.map((sem, sIdx) => (
+                          <div key={sIdx} className="bg-white rounded-xl p-2.5 border border-slate-100 flex items-center justify-between shadow-2xs">
+                            <span className="text-xs font-semibold text-slate-500">{sem.semester}</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black text-slate-800">{sem.sgpa}</span>
+                              <span className="text-[10px] font-bold text-slate-400">SGPA</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2.5 sm:mt-3 overflow-hidden">
-                      <div
-                        className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                        style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
-                      />
+                    <div className="mt-3 pt-2 border-t border-slate-200/50">
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                          style={{ width: `${(parseFloat(yItem.yearCgpa) || 0) * 10}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
 
-            {/* Overall CGPA Highlight Box */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-6 text-center shadow-md relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
-              <p className="text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
-              <p className="text-3xl sm:text-4xl font-black text-white mt-1 tracking-tight">{cgpaValue}</p>
-              <div className="mt-2 inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
-                <span>Distinction Class</span>
+              {/* Overall CGPA Highlight Box */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-6 text-center shadow-md relative overflow-hidden flex flex-col justify-center items-center">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+                <p className="text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+                <p className="text-3xl sm:text-4xl font-black text-white mt-1 tracking-tight">{cgpaValue}</p>
+                <div className="mt-2 inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
+                  <span>{classificationLabel}</span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">Across all 4 Years (8 Sems)</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4 items-center">
+              {/* Year Wise Cards */}
+              <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                {sgpaList.map((item, idx) => {
+                  const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
+                  const score = item.sgpa || "0.00";
+                  return (
+                    <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 sm:p-4 hover:bg-slate-50 transition">
+                      <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
+                      <div className="flex items-baseline justify-between mt-1.5 sm:mt-2">
+                        <span className="text-xl sm:text-2xl font-black text-slate-800">{score}</span>
+                        <span className="text-xs font-bold text-slate-400">SGPA</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2.5 sm:mt-3 overflow-hidden">
+                        <div
+                          className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                          style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Overall CGPA Highlight Box */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-6 text-center shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+                <p className="text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+                <p className="text-3xl sm:text-4xl font-black text-white mt-1 tracking-tight">{cgpaValue}</p>
+                <div className="mt-2 inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
+                  <span>{classificationLabel}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Soft Skills & Interview Evaluations ── */}
@@ -1044,15 +1318,22 @@ export default function StudentReport() {
             {(careerReadinessSection?.items?.length > 0
               ? careerReadinessSection.items
               : [
-                { itemName: "Resume", value: reportCardData?.careerReadiness?.resumeStatus || "Not created" },
+                { itemName: "Resume", value: hasResumeInProfile ? "Created" : (reportCardData?.careerReadiness?.resumeStatus || "Not created") },
                 { itemName: "LinkedIn Profile", value: reportCardData?.careerReadiness?.linkedinStatus || "Not created" },
                 { itemName: "Aptitude Score", value: reportCardData?.careerReadiness?.aptitudeStatus || "Not Started" },
-                { itemName: "Placement Ready", value: reportCardData?.careerReadiness?.placementReady || "Not Ready" }
+                { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
               ]
             ).map((item, idx) => {
-              const val = item.value || "In Progress";
-              const isReady = ["Created", "Updated", "Ready", "Completed"].includes(val);
-              const isInProgress = ["In Progress", "Need to improve"].includes(val);
+              const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
+              const isResumeItem = (item.itemName || "").toLowerCase().includes("resume");
+              let val = item.value || "Not Started";
+              if (isPlacementItem) {
+                val = isCareerReady ? "Ready" : "Not Ready";
+              } else if (isResumeItem && hasResumeInProfile) {
+                val = "Created";
+              }
+              const isReady = ["Created", "Updated", "Ready", "Completed", "Done"].includes(val);
+              const isInProgress = ["In Progress", "In-progress", "Need to improve"].includes(val);
 
               const badgeColor = isReady
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -1075,69 +1356,68 @@ export default function StudentReport() {
           </div>
         </div>
 
-        {/* ── Attendance, Discipline & Co-Curricular ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Discipline Stats */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-4">
-            <div className="flex items-center gap-2.5 sm:gap-3 pb-3 border-b border-slate-100">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-                <FaClipboardCheck size={15} />
-              </div>
-              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Conduct & Discipline</h4>
+        {/* ── Co-Curricular & Achievements (Attendance & Discipline commented out as per request) ── */}
+        {/* Conduct & Discipline Card - Commented out (values can be tracked in soft skills instead; can be re-enabled if needed)
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 pb-3 border-b border-slate-100">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+              <FaClipboardCheck size={15} />
             </div>
+            <h4 className="text-xs sm:text-sm font-bold text-slate-800">Conduct & Discipline</h4>
+          </div>
 
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-              {(attendanceDisciplineSection?.items?.length > 0
-                ? attendanceDisciplineSection.items
-                : [
-                  // { itemName: "Attendance", value: "92%" },
-                  { itemName: "Punctuality", value: "Good" },
-                  { itemName: "Discipline", value: "Excellent" },
-                  { itemName: "Class Conduct", value: "Active" }
-                ]
-              ).filter(item => !/attendance/i.test(item.itemName)).map((item, idx) => (
-                <div key={idx} className="bg-slate-50/70 rounded-xl p-2.5 sm:p-3 border border-slate-100 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">{item.itemName}</p>
-                  <p className="text-sm sm:text-base font-black text-slate-800 mt-0.5 sm:mt-1 truncate">{item.value}</p>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {(attendanceDisciplineSection?.items?.length > 0
+              ? attendanceDisciplineSection.items
+              : [
+                // { itemName: "Attendance", value: "92%" },
+                { itemName: "Punctuality", value: "Good" },
+                { itemName: "Discipline", value: "Excellent" },
+                { itemName: "Class Conduct", value: "Active" }
+              ]
+            ).filter(item => !/attendance/i.test(item.itemName)).map((item, idx) => (
+              <div key={idx} className="bg-slate-50/70 rounded-xl p-2.5 sm:p-3 border border-slate-100 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate">{item.itemName}</p>
+                <p className="text-sm sm:text-base font-black text-slate-800 mt-0.5 sm:mt-1 truncate">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        */}
+
+        {/* Co-Curricular & Achievements */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <FaAward size={15} />
+              </div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Co-Curricular & Certifications</h4>
+            </div>
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-400">
+              {reportCardData?.coCurricular?.length || 0} Activities
+            </span>
+          </div>
+
+          {reportCardData?.coCurricular && reportCardData.coCurricular.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+              {reportCardData.coCurricular.map((act, idx) => (
+                <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border border-slate-100 flex items-start gap-2.5 sm:gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                    {act.category?.toLowerCase().includes("sport") ? <MdSports size={15} /> : <FaProjectDiagram size={13} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{act.title}</p>
+                    <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{act.category} · {act.remark}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Co-Curricular & Achievements */}
-          <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <FaAward size={15} />
-                </div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-800">Co-Curricular & Certifications</h4>
-              </div>
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-400">
-                {reportCardData?.coCurricular?.length || 0} Activities
-              </span>
+          ) : (
+            <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+              Active participation recorded in Technical Workshops & Institute Events.
             </div>
-
-            {reportCardData?.coCurricular && reportCardData.coCurricular.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                {reportCardData.coCurricular.map((act, idx) => (
-                  <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border border-slate-100 flex items-start gap-2.5 sm:gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                      {act.category?.toLowerCase().includes("sport") ? <MdSports size={15} /> : <FaProjectDiagram size={13} />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">{act.title}</p>
-                      <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{act.category} · {act.remark}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                Active participation recorded in Technical Workshops & Institute Events.
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ── Strengths & Growth Areas ── */}
@@ -1216,8 +1496,10 @@ export default function StudentReport() {
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <StarRating rating={4.5} />
-              <span className="text-xs font-bold text-slate-700">Recommended for Placement</span>
+              <StarRating rating={placementRating} />
+              <span className="text-xs font-bold text-slate-700">
+                {placementRating > 0 ? `${placementRating.toFixed(1)} / 5.0 · Recommended for Placement` : "Recommended for Placement"}
+              </span>
             </div>
           </div>
 

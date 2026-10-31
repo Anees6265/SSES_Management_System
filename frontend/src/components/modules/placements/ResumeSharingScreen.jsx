@@ -11,6 +11,7 @@ import Header from "../../shared/sidebar/Header";
 import Loader from "../../shared/loader/Loader";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import { viewResume } from "../../../utils/resumeHelpers";
 import {
   MdShare, MdFileDownload, MdOpenInNew, MdSearch,
   MdCheckCircle, MdBusiness, MdWork, MdBadge, MdFilterList, MdClose
@@ -299,14 +300,16 @@ const ResumeSharingScreen = () => {
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-50 text-[11px]">
                           <div>
                             {resumeURL ? (
-                              <a
-                                href={resumeURL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition border border-orange-100"
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const cName = `${candidate.firstName || ""} ${candidate.lastName || ""}`.trim();
+                                  viewResume(resumeURL, cName);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition border border-orange-100 cursor-pointer"
                               >
                                 <MdOpenInNew size={12} /> View Resume
-                              </a>
+                              </button>
                             ) : (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-400">
                                 No Resume
@@ -425,16 +428,18 @@ const ResumeSharingScreen = () => {
 
                             <td className="p-4">
                               {resumeURL ? (
-                                <a
-                                  href={resumeURL}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition"
-                                  title="View/Download candidate resume"
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const cName = `${candidate.firstName || ""} ${candidate.lastName || ""}`.trim();
+                                    viewResume(resumeURL, cName);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition cursor-pointer"
+                                  title="View candidate resume"
                                 >
                                   <MdOpenInNew size={13} />
                                   <span>View Resume</span>
-                                </a>
+                                </button>
                               ) : (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-400">
                                   Not Uploaded

@@ -556,15 +556,34 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             const subjectPerformance = getSection("SubjectPerformanceTable");
             const softSkills = getSection("SoftSkillsRating");
             const interview = getSection("InterviewRating");
-            const careerReadiness = getSection("CareerStatus") || (reportCardData?.careerReadiness ? {
+            const hasResumeInProfile = Boolean(
+              studentData?.placement?.resumeURL ||
+              studentData?.resumeURL ||
+              studentData?.resume ||
+              studentData?.resumeUrl ||
+              studentData?.resume_url ||
+              studentData?.studentPlacement?.resumeURL ||
+              studentData?.documents?.some(d => (d?.title || "").toLowerCase().includes("resume") && (d?.fileURL || d?.url))
+            );
+            const careerReadinessRaw = getSection("CareerStatus") || (reportCardData?.careerReadiness ? {
               sectionName: "Career Readiness",
               items: [
-                { itemName: "Resume", value: (reportCardData.careerReadiness.resumeStatus === "Uploaded" || reportCardData.careerReadiness.resumeStatus === "Created") ? "Created" : "Not created" },
+                { itemName: "Resume", value: (reportCardData.careerReadiness.resumeStatus === "Uploaded" || reportCardData.careerReadiness.resumeStatus === "Created" || hasResumeInProfile) ? "Created" : "Not created" },
                 { itemName: "LinkedIn", value: reportCardData.careerReadiness.linkedinStatus || "Not created" },
                 { itemName: "Aptitude", value: reportCardData.careerReadiness.aptitudeStatus || "In Progress" },
                 { itemName: "Placement Ready", value: reportCardData.careerReadiness.placementReady || "Not Ready" }
               ]
             } : null);
+            const careerReadiness = careerReadinessRaw ? {
+              ...careerReadinessRaw,
+              items: (careerReadinessRaw.items || []).map(item => {
+                const nameLower = (item.itemName || "").toLowerCase();
+                if (nameLower.includes("resume") && hasResumeInProfile) {
+                  return { ...item, value: "Created" };
+                }
+                return item;
+              })
+            } : null;
             const attendanceDiscipline = getSection("AttendanceDiscipline");
             const strengthsImprovement = getSection("StrengthsImprovement");
             let overallPerformance = getSection("OverallPerformanceSummary");
@@ -573,6 +592,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
               (i.itemName === "Subject Performance" && (i.value === 4.1 || i.value === "4.10" || i.value === 4.10))
             );
 
+            let overallVal = 0;
             if (hasLegacyDummy) {
               const subjs = subjectPerformance?.items || [];
               const gradedSubjs = subjs.filter(s => s.remark && s.remark !== "—" && !isNaN(parseFloat(s.remark)) && parseFloat(s.remark) > 0);
@@ -586,7 +606,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
               const avgInt = ints.length > 0 ? Number((ints.reduce((a, b) => a + parseFloat(b.value), 0) / ints.length).toFixed(2)) : 0;
 
               const scComponents = [avgSubj, avgSoft, avgInt].filter(v => v > 0);
-              const overallVal = scComponents.length > 0 ? Number((scComponents.reduce((a, b) => a + b, 0) / scComponents.length).toFixed(2)) : 0;
+              overallVal = scComponents.length > 0 ? Number((scComponents.reduce((a, b) => a + b, 0) / scComponents.length).toFixed(2)) : 0;
 
               let overallRemark = reportCardData?.overallGrade || (overallVal >= 4.0 ? "Excellent" : overallVal >= 3.0 ? "Good" : "Pending Evaluation");
 
@@ -600,6 +620,9 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   { itemName: "Overall Rating", value: overallVal, remark: overallRemark }
                 ]
               };
+            } else {
+              const savedVal = overallPerformance?.items?.find(i => (i.itemName || "").toLowerCase().includes("overall rating"))?.value;
+              overallVal = parseFloat(savedVal) || 0;
             }
 
             return (
@@ -676,33 +699,90 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 )}
 
-                {/* 5. Academic Performance (SGPA & CGPA) - Moved down below Level & Subject Performance */}
+                {/* 5. Academic Performance (SGPA & CGPA) */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>5. Academic Performance (University SGPA & CGPA)</Text>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <View style={{ width: "65%" }}>
-                      <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                        <Text style={{ width: "70%" }}>Academic Year</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
+                  <Text style={styles.sectionTitle}>
+                    {isBTech
+                      ? "5. Academic Performance (Semester SGPA & Year-Wise CGPA — B.Tech 4-Year Scheme)"
+                      : "5. Academic Performance (University SGPA & CGPA)"}
+                  </Text>
+                  {isBTech ? (
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <View style={{ width: "70%" }}>
+                        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 3, fontWeight: "bold", fontSize: 7 }}>
+                          <Text style={{ width: "28%" }}>Academic Year</Text>
+                          <Text style={{ width: "24%", textAlign: "center" }}>Sem A SGPA</Text>
+                          <Text style={{ width: "24%", textAlign: "center" }}>Sem B SGPA</Text>
+                          <Text style={{ width: "24%", textAlign: "center" }}>Year CGPA</Text>
+                        </View>
+                        {[
+                          { year: "1st Year", sA: "Sem 1", sB: "Sem 2" },
+                          { year: "2nd Year", sA: "Sem 3", sB: "Sem 4" },
+                          { year: "3rd Year", sA: "Sem 5", sB: "Sem 6" },
+                          { year: "4th Year", sA: "Sem 7", sB: "Sem 8" },
+                        ].map((item, idx) => {
+                          const sems = reportCardData.academicPerformance?.semesterWiseSGPA || [];
+                          const semAObj = sems.find(s => s.semester === item.sA);
+                          const semBObj = sems.find(s => s.semester === item.sB);
+                          const valA = semAObj && semAObj.sgpa > 0 ? Number(semAObj.sgpa).toFixed(2) : "0.00";
+                          const valB = semBObj && semBObj.sgpa > 0 ? Number(semBObj.sgpa).toFixed(2) : "0.00";
+                          const numA = parseFloat(valA) || 0;
+                          const numB = parseFloat(valB) || 0;
+                          const active = [numA, numB].filter(v => v > 0);
+                          const yrCgpa = active.length > 0 ? (active.reduce((a, b) => a + b, 0) / active.length).toFixed(2) : "0.00";
+
+                          return (
+                            <View key={idx} style={{ flexDirection: "row", borderBottomWidth: idx === 3 ? 0 : 1, borderBottomColor: "#E5E7EB", padding: 3, fontSize: 7 }}>
+                              <Text style={{ width: "28%", fontWeight: "bold" }}>{item.year}</Text>
+                              <Text style={{ width: "24%", textAlign: "center" }}>{item.sA}: {valA}</Text>
+                              <Text style={{ width: "24%", textAlign: "center" }}>{item.sB}: {valB}</Text>
+                              <Text style={{ width: "24%", textAlign: "center", fontWeight: "bold", color: "#1D4ED8" }}>{yrCgpa}</Text>
+                            </View>
+                          );
+                        })}
                       </View>
-                      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "70%" }}>First Year (FY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.firstYearSgpa || "N/A"}</Text>
-                      </View>
-                      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "70%" }}>Second Year (SY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.secondYearSgpa || "N/A"}</Text>
-                      </View>
-                      <View style={{ flexDirection: "row", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "70%" }}>Third Year (TY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.thirdYearSgpa || "N/A"}</Text>
+                      <View style={{ width: "26%", backgroundColor: "#7335DD", padding: 10, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 7, color: "#FFFFFF", opacity: 0.9 }}>Cumulative CGPA</Text>
+                        <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
+                          {reportCardData.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00"}
+                        </Text>
+                        <Text style={{ fontSize: 6, color: "#EDE9FE", marginTop: 2 }}>4-Year Aggregate</Text>
                       </View>
                     </View>
-                    <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
-                      <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>{reportCardData.academicPerformance?.cgpa || "N/A"}</Text>
+                  ) : (
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <View style={{ width: "65%" }}>
+                        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
+                          <Text style={{ width: "70%" }}>Academic Year</Text>
+                          <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
+                          <Text style={{ width: "70%" }}>First Year (FY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center" }}>
+                            {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "FY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.firstYearSgpa || "0.00")}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
+                          <Text style={{ width: "70%" }}>Second Year (SY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center" }}>
+                            {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "SY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.secondYearSgpa || "0.00")}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", padding: 4, fontSize: 8 }}>
+                          <Text style={{ width: "70%" }}>Third Year (TY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center" }}>
+                            {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "TY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.thirdYearSgpa || "0.00")}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
+                        <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
+                          {reportCardData.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00"}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+                  )}
                 </View>
 
                 {/* 6. Soft Skills & Behavioural Evaluation */}
@@ -879,7 +959,14 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
                 {/* 12. Faculty / Mentor Feedback */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                    <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
+                    {overallVal > 0 && (
+                      <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#D97706" }}>
+                        Rating: {overallVal.toFixed(1)} / 5.0 (Recommended for Placement)
+                      </Text>
+                    )}
+                  </View>
                   <Text style={{ fontSize: 9, color: "#374151", fontStyle: "italic", lineHeight: 1.4 }}>
                     "{reportCardData.facultyRemark || "No comments provided yet."}"
                   </Text>
@@ -999,19 +1086,28 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
             {/* Academic Performance (Legacy Fallback) */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Academic Performance</Text>
+              <Text style={styles.sectionTitle}>
+                {isBTech ? "Academic Performance (4-Year B.Tech)" : "Academic Performance"}
+              </Text>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 {[
                   { title: "Current Level", val: `Level ${studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"}` },
-                  { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-                  { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-                  { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-                  { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
+                  ...(isBTech ? [
+                    { title: "1st Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "1st Year" || y.year === "FY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "1st Year" || y.year === "FY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "2nd Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "2nd Year" || y.year === "SY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "2nd Year" || y.year === "SY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "3rd Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "3rd Year" || y.year === "TY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "3rd Year" || y.year === "TY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "4th Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "4th Year" || y.year === "Final Year")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "4th Year" || y.year === "Final Year")?.sgpa).toFixed(2) : "0.00" },
+                  ] : [
+                    { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa).toFixed(2) : "0.00" },
+                  ]),
+                  { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00" },
                 ].map((it, idx) => (
                   <View
                     key={idx}
                     style={{
-                      width: "19.2%",
+                      width: isBTech ? "15.5%" : "19.2%",
                       backgroundColor: "#FFFFFF",
                       borderRadius: 6,
                       borderWidth: 1,

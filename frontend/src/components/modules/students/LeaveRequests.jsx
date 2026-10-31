@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import {
   CheckCircle,
@@ -64,6 +65,53 @@ const toTitleCase = (str = "") =>
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+
+const LEAVE_EXPORT_COLUMNS = [
+  { key: "studentName", label: "Student Name" },
+  { key: "prkey", label: "PR Key" },
+  { key: "mobile", label: "Mobile" },
+  { key: "department", label: "Department" },
+  { key: "level", label: "Level / Class" },
+  { key: "fromDate", label: "Leave From" },
+  { key: "toDate", label: "Leave To" },
+  { key: "days", label: "Days" },
+  { key: "reason", label: "Reason" },
+  { key: "appliedDate", label: "Applied Date" },
+  { key: "assignedTo", label: "Assigned To" },
+  { key: "status", label: "Status" },
+  { key: "approvedBy", label: "Approved By" },
+  { key: "remark", label: "Faculty Remark" },
+];
+
+const formatLeaveForExport = (list) => {
+  return (list || []).map((row, idx) => {
+    const student = row.student || {};
+    const days = getDurationInDays(row.fromDate, row.toDate);
+    const subDept = student.subDepartmentId?.name || "—";
+    const levelName = student.currentLevelId?.name || "";
+    const subLevelName = student.currentSubLevelId?.name || "";
+    const levelStr = [levelName, subLevelName].filter(Boolean).join(" • ") || "—";
+    const assignedName = row.assignedFacultyId?.name || "—";
+
+    return {
+      sno: idx + 1,
+      studentName: toTitleCase(`${student.firstName || ""} ${student.lastName || ""}`.trim()) || "—",
+      prkey: student.prkey || "—",
+      mobile: student.studentMobile || "—",
+      department: subDept,
+      level: levelStr,
+      fromDate: formatDate(row.fromDate),
+      toDate: formatDate(row.toDate),
+      days: days > 0 ? `${days} ${days === 1 ? "Day" : "Days"}` : "—",
+      reason: row.reason?.trim() || "—",
+      appliedDate: formatDate(row.uploadDate || row.createdAt),
+      assignedTo: assignedName,
+      status: toTitleCase(row.status || "pending"),
+      approvedBy: row.approvedBy || "—",
+      remark: row.remark?.trim() || "—",
+    };
+  });
+};
 
 const ResolveModal = ({ request, decision, onClose }) => {
   const [remark, setRemark] = useState("");
@@ -152,6 +200,153 @@ const ResolveModal = ({ request, decision, onClose }) => {
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ── REASON / REMARK CELL WITH ELLIPSIS & RICH HOVER TOOLTIP ──────────────────
+const ReasonCell = ({ row }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, showBelow: false });
+  const textRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (!textRef.current) return;
+    const rect = textRef.current.getBoundingClientRect();
+    const tooltipEstimatedHeight = 160;
+    const showBelow = rect.top < tooltipEstimatedHeight;
+    setCoords({
+      top: showBelow ? rect.bottom + 8 : rect.top - 8,
+      left: Math.max(16, Math.min(rect.left, window.innerWidth - 340)),
+      showBelow,
+    });
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  useEffect(() => {
+    if (!showTooltip) return;
+    const handleScroll = () => setShowTooltip(false);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [showTooltip]);
+
+  const rawReason = row.reason?.trim() || "No reason provided";
+  const singleLineReason = rawReason.replace(/\s+/g, " ");
+  const days = getDurationInDays(row.fromDate, row.toDate);
+  const student = row.student || {};
+  const studentName = toTitleCase(`${student.firstName || ""} ${student.lastName || ""}`);
+
+  return (
+    <div className="max-w-[220px] lg:max-w-[260px] xl:max-w-[300px]">
+      {/* Truncated single-line reason with ellipsis (...) */}
+      <div
+        ref={textRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="group/reason inline-flex items-center gap-1.5 max-w-full cursor-help py-0.5"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 group-hover/reason:scale-125 transition-transform" />
+        <span className="text-xs font-semibold text-gray-800 italic truncate group-hover/reason:text-orange-600 transition-colors block">
+          "{singleLineReason}"
+        </span>
+      </div>
+
+      {/* Remark (compact, 1-line truncate if present) */}
+      {row.remark && (
+        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+          <span className="font-extrabold text-[9px] uppercase tracking-wider text-gray-400 shrink-0">
+            Remark:
+          </span>
+          <span className="truncate max-w-[190px] text-gray-600 font-semibold">
+            {row.remark}
+          </span>
+        </div>
+      )}
+
+      {/* Assigned / Approved tags in a single compact line */}
+      {(row.assignedFacultyId || row.approvedBy) && (
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+          {row.assignedFacultyId && (
+            <span
+              className="text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-orange-100 truncate max-w-[130px]"
+              title={`Assigned to: ${row.assignedFacultyId.name}`}
+            >
+              {row.assignedFacultyId.name}
+            </span>
+          )}
+          {row.approvedBy && (
+            <span
+              className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-emerald-100 truncate max-w-[130px]"
+              title={`Approved by: ${row.approvedBy}`}
+            >
+              By: {row.approvedBy}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Floating Hover Tooltip Portal */}
+      {showTooltip &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              transform: coords.showBelow ? "none" : "translateY(-100%)",
+            }}
+            className="pointer-events-none z-[999999] w-72 sm:w-84 rounded-2xl bg-slate-900/95 text-white p-3.5 shadow-2xl backdrop-blur-md border border-slate-700/80 animate-in fade-in zoom-in-95 duration-150 text-xs"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-400" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">
+                  Leave Reason
+                </span>
+              </div>
+              {studentName && (
+                <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[140px]">
+                  {studentName}
+                </span>
+              )}
+            </div>
+
+            {/* Reason Body */}
+            <p className="text-slate-200 text-xs font-medium leading-relaxed italic whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+              "{rawReason}"
+            </p>
+
+            {/* Faculty Remark if present */}
+            {row.remark && (
+              <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block mb-0.5">
+                  Faculty Remark:
+                </span>
+                <p className="text-slate-300 text-[11px] font-medium leading-snug">
+                  {row.remark}
+                </p>
+              </div>
+            )}
+
+            {/* Duration Footer */}
+            <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+              <span>
+                {formatDate(row.fromDate)} to {formatDate(row.toDate)}
+              </span>
+              {days > 0 && (
+                <span className="text-orange-400 font-bold bg-orange-500/15 border border-orange-500/30 px-2 py-0.5 rounded-md">
+                  {days} {days === 1 ? "Day" : "Days"}
+                </span>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -273,8 +468,9 @@ const LeaveRequests = () => {
       label: "Leave Dates",
       render: (row) => {
         const days = getDurationInDays(row.fromDate, row.toDate);
+        const hasDoc = Boolean(row.imageURL);
         return (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="flex flex-col text-xs text-gray-700">
               <div className="flex items-center gap-1 text-gray-800 font-semibold">
                 <span>{formatDate(row.fromDate)}</span>
@@ -283,11 +479,27 @@ const LeaveRequests = () => {
                 <span>to {formatDate(row.toDate)}</span>
               </div>
             </div>
-            {days > 0 && (
-              <span className="inline-flex rounded-lg bg-orange-50 px-2.5 py-1 text-[10px] font-extrabold text-orange-600 border border-orange-100">
-                {days} {days === 1 ? "Day" : "Days"}
-              </span>
-            )}
+            <div className="flex flex-col gap-1 items-start">
+              {days > 0 && (
+                <span className="inline-flex rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold text-orange-600 border border-orange-100">
+                  {days} {days === 1 ? "Day" : "Days"}
+                </span>
+              )}
+              {hasDoc && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewUrl(row.imageURL);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-1.5 py-0.5 text-[9px] font-bold border border-indigo-200/80 transition cursor-pointer"
+                  title="View attached document"
+                >
+                  <Eye size={10} />
+                  <span>Doc</span>
+                </button>
+              )}
+            </div>
           </div>
         );
       },
@@ -295,33 +507,7 @@ const LeaveRequests = () => {
     {
       key: "reason",
       label: "Reason / Remark",
-      render: (row) => (
-        <div className="max-w-xs whitespace-normal text-xs text-gray-700">
-          <p className="font-semibold text-gray-800 border-l-2 border-orange-300 pl-2 py-0.5 italic">
-            "{row.reason || "No reason provided"}"
-          </p>
-          {row.remark && (
-            <div className="mt-1.5 flex items-start gap-1 rounded bg-gray-50 p-1.5 border border-gray-100">
-              <span className="font-extrabold text-[9px] uppercase tracking-wider text-gray-400 flex-shrink-0 mt-0.5">
-                Remark:
-              </span>
-              <span className="text-[10px] text-gray-500 font-medium">{row.remark}</span>
-            </div>
-          )}
-          {row.assignedFacultyId && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-orange-600 font-bold">
-              <span>Assigned to:</span>
-              <span className="bg-orange-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-orange-100">{row.assignedFacultyId.name}</span>
-            </div>
-          )}
-          {row.approvedBy && (
-            <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold">
-              <span>Approved by:</span>
-              <span className="bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-emerald-100">{row.approvedBy}</span>
-            </div>
-          )}
-        </div>
-      ),
+      render: (row) => <ReasonCell row={row} />,
     },
     {
       key: "applied",
@@ -359,13 +545,23 @@ const LeaveRequests = () => {
     },
   ];
 
-  const actionButton = (row) => {
-    const hasDoc = Boolean(row.imageURL);
-    const isPending = row.status === "pending";
+  // Action column is ONLY needed if there are pending leave requests in the current view/tab.
+  // When requests are approved or rejected, no action column should be displayed.
+  const hasPendingRequests = useMemo(() => {
+    return (
+      activeTab !== "approved" &&
+      activeTab !== "rejected" &&
+      filteredRequests.some((item) => item.status === "pending")
+    );
+  }, [activeTab, filteredRequests]);
 
-    if (!hasDoc && !isPending) {
-      return <span className="text-gray-400 text-xs font-semibold">—</span>;
+  const actionButton = (row) => {
+    // If the request is already approved or rejected, omit action buttons completely
+    if (row.status !== "pending") {
+      return null;
     }
+
+    const hasDoc = Boolean(row.imageURL);
 
     return (
       <div className="flex items-center gap-2">
@@ -382,34 +578,55 @@ const LeaveRequests = () => {
             <Eye size={14} />
           </button>
         )}
-        {isPending && (
-          <>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setResolveState({ request: row, decision: "approved" });
-              }}
-              className="flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-500 hover:text-white border border-emerald-100 shadow-sm transition-all duration-300 cursor-pointer"
-            >
-              <Check size={12} />
-              Approve
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setResolveState({ request: row, decision: "rejected" });
-              }}
-              className="flex items-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-500 hover:text-white border border-rose-100 shadow-sm transition-all duration-300 cursor-pointer"
-            >
-              <XCircle size={12} />
-              Reject
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setResolveState({ request: row, decision: "approved" });
+          }}
+          className="flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-500 hover:text-white border border-emerald-100 shadow-sm transition-all duration-300 cursor-pointer"
+        >
+          <Check size={12} />
+          Approve
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setResolveState({ request: row, decision: "rejected" });
+          }}
+          className="flex items-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-500 hover:text-white border border-rose-100 shadow-sm transition-all duration-300 cursor-pointer"
+        >
+          <XCircle size={12} />
+          Reject
+        </button>
       </div>
     );
+  };
+
+  const handleDownloadExcel = (customList) => {
+    const list = Array.isArray(customList) && customList.length ? customList : filteredRequests;
+    if (!list || list.length === 0) {
+      toast.info("No leave requests to export.");
+      return;
+    }
+    const formatted = formatLeaveForExport(list);
+    exportGenericToExcel(formatted, LEAVE_EXPORT_COLUMNS, {
+      filename: `Leave_Requests_${activeTab}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
+  const handleDownloadPDF = (customList) => {
+    const list = Array.isArray(customList) && customList.length ? customList : filteredRequests;
+    if (!list || list.length === 0) {
+      toast.info("No leave requests to export.");
+      return;
+    }
+    const formatted = formatLeaveForExport(list);
+    exportGenericToPDF(formatted, LEAVE_EXPORT_COLUMNS, {
+      title: `Student Leave Requests Report (${toTitleCase(activeTab)})`,
+      filename: `Leave_Requests_${activeTab}_${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
   };
 
   if (isLoading) {
@@ -555,17 +772,8 @@ const LeaveRequests = () => {
 
             <TableDownloadDropdown
               total={filteredRequests.length}
-              onDownloadExcel={() =>
-                exportGenericToExcel(filteredRequests, columns, {
-                  filename: `Leave_Requests_${new Date().toISOString().slice(0, 10)}.xlsx`,
-                })
-              }
-              onDownloadPDF={() =>
-                exportGenericToPDF(filteredRequests, columns, {
-                  title: "Leave Requests Report",
-                  filename: `Leave_Requests_${new Date().toISOString().slice(0, 10)}.pdf`,
-                })
-              }
+              onDownloadExcel={() => handleDownloadExcel(filteredRequests)}
+              onDownloadPDF={() => handleDownloadPDF(filteredRequests)}
               size="md"
             />
           </div>
@@ -576,12 +784,14 @@ const LeaveRequests = () => {
           <CommonTable
             data={filteredRequests}
             columns={columns}
-            editable
-            actionButton={actionButton}
+            editable={hasPendingRequests}
+            actionButton={hasPendingRequests ? actionButton : undefined}
+            onExportExcel={handleDownloadExcel}
+            onExportPDF={handleDownloadPDF}
             pagination
             rowsPerPage={10}
             minRows={10}
-            exportTitle="Leave_Requests"
+            exportTitle={`Leave_Requests_${activeTab}`}
             className="flex-1 flex flex-col h-full"
             wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
             emptyMessage={
@@ -711,7 +921,10 @@ const LeaveRequests = () => {
                     <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-150 text-xs space-y-2">
                       <div>
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Reason:</span>
-                        <p className="font-semibold text-gray-800 border-l-2 border-orange-400 pl-2.5 py-0.5 italic text-xs leading-relaxed">
+                        <p
+                          className="font-semibold text-gray-800 border-l-2 border-orange-400 pl-2.5 py-0.5 italic text-xs leading-relaxed line-clamp-3"
+                          title={row.reason || "No reason provided"}
+                        >
                           "{row.reason || "No reason provided"}"
                         </p>
                       </div>
@@ -739,43 +952,45 @@ const LeaveRequests = () => {
                       )}
                     </div>
 
-                    {/* Action Buttons Row */}
-                    <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                      {hasDoc && (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewUrl(row.imageURL)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition shadow-2xs cursor-pointer ${
-                            isPending ? "flex-initial" : "flex-1"
-                          }`}
-                        >
-                          <Eye size={14} className="text-indigo-600" />
-                          <span>View Doc</span>
-                        </button>
-                      )}
-
-                      {isPending && (
-                        <>
+                    {/* Action Buttons Row (only if doc attached or pending) */}
+                    {(hasDoc || isPending) && (
+                      <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                        {hasDoc && (
                           <button
                             type="button"
-                            onClick={() => setResolveState({ request: row, decision: "approved" })}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-3 py-2 text-xs font-bold shadow-2xs transition cursor-pointer"
+                            onClick={() => setPreviewUrl(row.imageURL)}
+                            className={`flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition shadow-2xs cursor-pointer ${
+                              isPending ? "flex-initial" : "flex-1"
+                            }`}
                           >
-                            <Check size={14} />
-                            <span>Approve</span>
+                            <Eye size={14} className="text-indigo-600" />
+                            <span>View Doc</span>
                           </button>
+                        )}
 
-                          <button
-                            type="button"
-                            onClick={() => setResolveState({ request: row, decision: "rejected" })}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 active:scale-95 text-rose-700 px-3 py-2 text-xs font-bold shadow-2xs transition cursor-pointer"
-                          >
-                            <XCircle size={14} />
-                            <span>Reject</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setResolveState({ request: row, decision: "approved" })}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white px-3 py-2 text-xs font-bold shadow-2xs transition cursor-pointer"
+                            >
+                              <Check size={14} />
+                              <span>Approve</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setResolveState({ request: row, decision: "rejected" })}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 active:scale-95 text-rose-700 px-3 py-2 text-xs font-bold shadow-2xs transition cursor-pointer"
+                            >
+                              <XCircle size={14} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

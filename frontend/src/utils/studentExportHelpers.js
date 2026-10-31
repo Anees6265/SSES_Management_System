@@ -215,6 +215,15 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
  * Helper to safely extract cell text from a row and column
  */
 const extractCellValue = (row, col) => {
+  if (typeof col.exportValue === "function") {
+    const customVal = col.exportValue(row);
+    if (customVal !== undefined && customVal !== null) return String(customVal).trim();
+  }
+  if (typeof col.accessorFn === "function") {
+    const customVal = col.accessorFn(row);
+    if (customVal !== undefined && customVal !== null) return String(customVal).trim();
+  }
+
   const key = col.key || col.id || col.accessorKey;
   let val = row[key];
 
@@ -227,6 +236,24 @@ const extractCellValue = (row, col) => {
     if (row.firstName || row.lastName) return `${row.firstName || ""} ${row.lastName || ""}`.trim();
     if (row.raw?.firstName || row.raw?.lastName) return `${row.raw.firstName || ""} ${row.raw.lastName || ""}`.trim();
     if (row.student?.firstName || row.student?.lastName) return `${row.student.firstName || ""} ${row.student.lastName || ""}`.trim();
+  }
+
+  // Department name extraction
+  if (key === "department" && (val === null || val === undefined)) {
+    if (row.student?.subDepartmentId?.name) return row.student.subDepartmentId.name;
+    if (row.subDepartmentId?.name) return row.subDepartmentId.name;
+    if (row.department?.name) return row.department.name;
+  }
+
+  // Applied / Upload Date extraction
+  if ((key === "applied" || key === "appliedDate" || key === "uploadDate") && (val === null || val === undefined)) {
+    const d = row.uploadDate || row.createdAt;
+    if (d) return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  // Assigned Faculty extraction
+  if ((key === "assignedTo" || key === "assignedFacultyId") && (val === null || val === undefined)) {
+    if (row.assignedFacultyId?.name) return row.assignedFacultyId.name;
   }
 
   if (val === null || val === undefined) return "—";
@@ -328,8 +355,8 @@ export const exportGenericToPDF = (data = [], columns = [], options = {}) => {
     margin: { left: 10, right: 10, bottom: 12 },
     theme: "striped",
     styles: {
-      fontSize: 8,
-      cellPadding: 2.5,
+      fontSize: validCols.length > 9 ? 6.5 : 8,
+      cellPadding: validCols.length > 9 ? 1.8 : 2.5,
       overflow: "linebreak",
       valign: "middle",
     },

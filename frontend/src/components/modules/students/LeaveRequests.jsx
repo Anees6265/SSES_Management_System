@@ -68,7 +68,6 @@ const toTitleCase = (str = "") =>
 
 const LEAVE_EXPORT_COLUMNS = [
   { key: "studentName", label: "Student Name" },
-  { key: "prkey", label: "PR Key" },
   { key: "mobile", label: "Mobile" },
   { key: "department", label: "Department" },
   { key: "level", label: "Level / Class" },
@@ -96,7 +95,6 @@ const formatLeaveForExport = (list) => {
     return {
       sno: idx + 1,
       studentName: toTitleCase(`${student.firstName || ""} ${student.lastName || ""}`.trim()) || "—",
-      prkey: student.prkey || "—",
       mobile: student.studentMobile || "—",
       department: subDept,
       level: levelStr,

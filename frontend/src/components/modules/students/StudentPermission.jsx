@@ -1,5 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useGetDummyStudentsQuery } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
@@ -8,7 +10,7 @@ import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
-import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
+import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 import {
   Search,
   X,
@@ -43,6 +45,153 @@ const formatDate = (dateStr) =>
       })
     : "N/A";
 
+const DUMMY_EXPORT_COLUMNS = [
+  { key: "studentName", label: "Student Name" },
+  { key: "mobile", label: "Mobile" },
+  { key: "course", label: "Course" },
+  { key: "level", label: "Level / Class" },
+  { key: "reason", label: "Dummy Reason" },
+  { key: "remark", label: "Remark" },
+  { key: "markedAt", label: "Marked On" },
+  { key: "status", label: "Status" },
+];
+
+const formatDummyForExport = (list) => {
+  return (list || []).map((s, idx) => ({
+    sno: idx + 1,
+    studentName: toTitleCase(`${s.firstName || ""} ${s.lastName || ""}`.trim()) || "—",
+    mobile: s.studentMobile || "—",
+    course: s.course || "—",
+    level: `${s.currentLevelId?.name || "—"} ${s.currentSubLevelId?.name ? `/ ${s.currentSubLevelId.name}` : ""}`.trim(),
+    reason: s.dummyDetails?.reason?.trim() || "No reason provided",
+    remark: s.dummyDetails?.remark?.trim() || "—",
+    markedAt: formatDate(s.dummyDetails?.markedAt),
+    status: s.status || "Dummy",
+  }));
+};
+
+// ── REASON / REMARK CELL WITH ELLIPSIS & RICH HOVER TOOLTIP ──────────────────
+const DummyReasonCell = ({ row }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, showBelow: false });
+  const textRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (!textRef.current) return;
+    const rect = textRef.current.getBoundingClientRect();
+    const tooltipEstimatedHeight = 160;
+    const showBelow = rect.top < tooltipEstimatedHeight;
+    setCoords({
+      top: showBelow ? rect.bottom + 8 : rect.top - 8,
+      left: Math.max(16, Math.min(rect.left, window.innerWidth - 340)),
+      showBelow,
+    });
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  useEffect(() => {
+    if (!showTooltip) return;
+    const handleScroll = () => setShowTooltip(false);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [showTooltip]);
+
+  const rawReason = row.dummyDetails?.reason?.trim() || "No reason provided";
+  const singleLineReason = rawReason.replace(/\s+/g, " ");
+  const studentName = toTitleCase(`${row.firstName || ""} ${row.lastName || ""}`);
+  const remark = row.dummyDetails?.remark?.trim() || "";
+  const markedAt = row.dummyDetails?.markedAt;
+  const markedByName = row.dummyDetails?.markedByName;
+
+  return (
+    <div className="max-w-[220px] lg:max-w-[260px] xl:max-w-[300px]">
+      {/* Truncated single-line reason with ellipsis (...) */}
+      <div
+        ref={textRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="group/reason inline-flex items-center gap-1.5 max-w-full cursor-help py-0.5"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 group-hover/reason:scale-125 transition-transform" />
+        <span className="text-xs font-semibold text-gray-800 italic truncate group-hover/reason:text-orange-600 transition-colors block">
+          "{singleLineReason}"
+        </span>
+      </div>
+
+      {/* Remark (compact, 1-line truncate if present) */}
+      {remark && (
+        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+          <span className="font-extrabold text-[9px] uppercase tracking-wider text-gray-400 shrink-0">
+            Remark:
+          </span>
+          <span className="truncate max-w-[190px] text-gray-600 font-semibold">
+            {remark}
+          </span>
+        </div>
+      )}
+
+      {/* Floating Hover Tooltip Portal */}
+      {showTooltip &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              transform: coords.showBelow ? "none" : "translateY(-100%)",
+            }}
+            className="pointer-events-none z-[999999] w-72 sm:w-84 rounded-2xl bg-slate-900/95 text-white p-3.5 shadow-2xl backdrop-blur-md border border-slate-700/80 animate-in fade-in zoom-in-95 duration-150 text-xs"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-400" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">
+                  Dummy Status Reason
+                </span>
+              </div>
+              {studentName && (
+                <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[140px]">
+                  {studentName}
+                </span>
+              )}
+            </div>
+
+            {/* Reason Body */}
+            <p className="text-slate-200 text-xs font-medium leading-relaxed italic whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+              "{rawReason}"
+            </p>
+
+            {/* Remark if present */}
+            {remark && (
+              <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block mb-0.5">
+                  Faculty Remark:
+                </span>
+                <p className="text-slate-300 text-[11px] font-medium leading-snug whitespace-pre-wrap break-words">
+                  {remark}
+                </p>
+              </div>
+            )}
+
+            {/* Footer with Marked Info */}
+            <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+              <span>Marked: {formatDate(markedAt)}</span>
+              {markedByName && (
+                <span className="text-slate-300">By: {markedByName}</span>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+
 const StudentPermission = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,8 +205,9 @@ const StudentPermission = () => {
   const filteredData = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return students;
+    const tokens = q.split(/\s+/).filter(Boolean);
     return students.filter((student) => {
-      return [
+      const targetStr = [
         student.firstName,
         student.lastName,
         student.studentMobile,
@@ -67,10 +217,13 @@ const StudentPermission = () => {
         student.currentSubLevelId?.name,
         student.dummyDetails?.reason,
         student.dummyDetails?.remark,
+        student.dummyDetails?.markedByName,
       ]
+        .filter(Boolean)
         .join(" ")
-        .toLowerCase()
-        .includes(q);
+        .toLowerCase();
+
+      return tokens.every((token) => targetStr.includes(token));
     });
   }, [students, searchTerm]);
 
@@ -84,10 +237,36 @@ const StudentPermission = () => {
     return filteredData.slice(start, start + mobilePageSize);
   }, [filteredData, mobilePage]);
 
+  const handleDownloadExcel = (customList) => {
+    const list = Array.isArray(customList) && customList.length ? customList : filteredData;
+    if (!list || list.length === 0) {
+      toast.info("No dummy students to export.");
+      return;
+    }
+    const formatted = formatDummyForExport(list);
+    exportGenericToExcel(formatted, DUMMY_EXPORT_COLUMNS, {
+      filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
+  const handleDownloadPDF = (customList) => {
+    const list = Array.isArray(customList) && customList.length ? customList : filteredData;
+    if (!list || list.length === 0) {
+      toast.info("No dummy students to export.");
+      return;
+    }
+    const formatted = formatDummyForExport(list);
+    exportGenericToPDF(formatted, DUMMY_EXPORT_COLUMNS, {
+      title: "Dummy Students Report",
+      filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  };
+
   const columns = [
     {
       key: "student",
       label: "Student",
+      accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
       render: (row) => (
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
@@ -103,6 +282,7 @@ const StudentPermission = () => {
     {
       key: "level",
       label: "Level",
+      accessorFn: (row) => `${row.currentLevelId?.name || ""} ${row.currentSubLevelId?.name || ""}`.trim(),
       render: (row) => (
         <div className="text-sm text-gray-700">
           <p className="font-semibold">{row.currentLevelId?.name || "-"}</p>
@@ -113,23 +293,13 @@ const StudentPermission = () => {
     {
       key: "reason",
       label: "Reason / Remark",
-      render: (row) => (
-        <div className="max-w-xs text-sm text-gray-700">
-          <p className="font-medium italic border-l-2 border-orange-300 pl-2 text-xs">
-            "{row.dummyDetails?.reason || "No reason provided"}"
-          </p>
-          {row.dummyDetails?.remark && (
-            <p className="mt-1 text-[11px] text-gray-500 bg-gray-50 p-1 rounded border border-gray-100">
-              <span className="font-bold text-gray-400 uppercase text-[9px] mr-1">Remark:</span>
-              {row.dummyDetails.remark}
-            </p>
-          )}
-        </div>
-      ),
+      accessorFn: (row) => `${row.dummyDetails?.reason || ""} ${row.dummyDetails?.remark || ""}`.trim(),
+      render: (row) => <DummyReasonCell row={row} />,
     },
     {
       key: "markedAt",
       label: "Marked On",
+      accessorFn: (row) => row.dummyDetails?.markedAt || "",
       render: (row) => (
         <span className="text-xs text-gray-600 font-medium">
           {formatDate(row.dummyDetails?.markedAt)}
@@ -139,6 +309,7 @@ const StudentPermission = () => {
     {
       key: "status",
       label: "Status",
+      accessorFn: (row) => row.status || "Dummy",
       render: (row) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[row.status] || STATUS_STYLES.Dummy}`}>
           {row.status || "Dummy"}
@@ -148,6 +319,7 @@ const StudentPermission = () => {
     {
       key: "application",
       label: "Application",
+      enableSorting: false,
       render: (row) =>
         row.dummyDetails?.applicationURL ? (
           <button
@@ -242,17 +414,8 @@ const StudentPermission = () => {
 
               <TableDownloadDropdown
                 total={filteredData.length}
-                onDownloadExcel={() =>
-                  exportStudentsToExcel(filteredData, {
-                    filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.xlsx`,
-                  })
-                }
-                onDownloadPDF={() =>
-                  exportStudentsToPDF(filteredData, {
-                    title: "Dummy Students Report",
-                    filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.pdf`,
-                  })
-                }
+                onDownloadExcel={() => handleDownloadExcel(filteredData)}
+                onDownloadPDF={() => handleDownloadPDF(filteredData)}
                 size="sm"
               />
             </div>
@@ -264,8 +427,6 @@ const StudentPermission = () => {
           <CommonTable
             data={filteredData}
             columns={columns}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
             onRowClick={(row) => navigate(`/student-profile/${row._id}`)}
             pagination
             rowsPerPage={10}
@@ -273,17 +434,8 @@ const StudentPermission = () => {
             className="flex-1 flex flex-col h-full"
             wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
             exportTitle="Dummy_Students"
-            onExportExcel={(selected) =>
-              exportStudentsToExcel(selected, {
-                filename: `Dummy_Students_${selected.length}.xlsx`,
-              })
-            }
-            onExportPDF={(selected) =>
-              exportStudentsToPDF(selected, {
-                title: "Dummy Students Report",
-                filename: `Dummy_Students_${selected.length}.pdf`,
-              })
-            }
+            onExportExcel={handleDownloadExcel}
+            onExportPDF={handleDownloadPDF}
             emptyMessage={
               searchTerm
                 ? `No dummy students matching "${searchTerm}"`
@@ -377,11 +529,11 @@ const StudentPermission = () => {
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                         Reason for Dummy:
                       </span>
-                      <p className="font-semibold text-gray-800 border-l-2 border-orange-400 pl-2.5 py-0.5 italic text-xs leading-relaxed">
+                      <p className="font-semibold text-gray-800 border-l-2 border-orange-400 pl-2.5 py-0.5 italic text-xs leading-relaxed line-clamp-3">
                         "{student.dummyDetails?.reason || "No reason provided"}"
                       </p>
                       {student.dummyDetails?.remark && (
-                        <div className="pt-1.5 border-t border-orange-100/80 text-[11px] text-gray-600">
+                        <div className="pt-1.5 border-t border-orange-100/80 text-[11px] text-gray-600 line-clamp-2">
                           <span className="font-bold text-gray-500 mr-1">Remark:</span>
                           <span>{student.dummyDetails.remark}</span>
                         </div>

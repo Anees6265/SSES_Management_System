@@ -31,6 +31,7 @@ import OfferJoiningModal from "../../placements/OfferJoiningModal";
 import Loader from "../../../shared/loader/Loader";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
+import { viewResume, downloadResume } from "../../../../utils/resumeHelpers";
 import {
     getStudentDepartmentKey,
     getFtpDomainsForStudent,
@@ -3266,20 +3267,18 @@ const StudentProfilePage = () => {
                                             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                                 <button
                                                     type="button"
-                                                    onClick={() => window.open(resumeURL, "_blank", "noopener,noreferrer")}
-                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                                                    onClick={() => viewResume(resumeURL, name)}
+                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                                                 >
                                                     <MdOpenInNew size={14} /> View Resume
                                                 </button>
-                                                <a
-                                                    href={resumeURL}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    download="Student_Resume.pdf"
-                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                                                <button
+                                                    type="button"
+                                                    onClick={() => downloadResume(resumeURL, name)}
+                                                    className="flex-1 sm:flex-none justify-center px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                                                 >
                                                     <MdFileDownload size={14} /> Download Resume
-                                                </a>
+                                                </button>
                                             </div>
                                         </div>
                                     ) : (

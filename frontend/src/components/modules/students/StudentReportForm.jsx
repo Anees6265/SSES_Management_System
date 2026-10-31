@@ -310,7 +310,10 @@ export default function StudentReportForm() {
   };
 
   const generateDynamicSections = (templateType, student, tasks, taskPerf = null) => {
-    const resumeStatus = (student?.placement?.resumeURL || student?.resumeURL || student?.resume || student?.resumeUrl || student?.resume_url) ? "Created" : "Not created";
+    const hasResume = !!(student?.placement?.resumeURL || student?.resumeURL || student?.resume || student?.resumeUrl || student?.resume_url);
+    const resumeStatus = hasResume ? "Created" : "Not created";
+    const aptitudeVal = (student?.placement?.aptitudeStatus || "").toLowerCase().trim();
+    const hasAptitudeReady = ["done", "completed", "cleared", "passed", "ready"].includes(aptitudeVal);
     
     let placementReady = "Not Ready";
     if (student?.placement?.readinessStatus) {
@@ -322,6 +325,8 @@ export default function StudentReportForm() {
       } else {
         placementReady = "Not Ready";
       }
+    } else if (hasResume && hasAptitudeReady) {
+      placementReady = "Ready";
     }
 
     const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
@@ -460,7 +465,8 @@ export default function StudentReportForm() {
       ]
     };
 
-    // 6. Attendance & Discipline
+    // 6. Attendance & Discipline (Commented out as per request; can be re-enabled if needed)
+    /*
     const attendanceVal = student?.attendanceRate ? `${student.attendanceRate}%` : "—";
     const attendanceDisciplineSection = {
       sectionName: "Attendance & Discipline",
@@ -472,6 +478,7 @@ export default function StudentReportForm() {
         { itemName: "Professional Behaviour", value: "—" }
       ]
     };
+    */
 
     // 7. Strengths & Areas for Improvement (Department-tailored)
     const strengthsItems = [
@@ -523,7 +530,7 @@ export default function StudentReportForm() {
       softSkillsSection,
       interviewSection,
       careerSection,
-      attendanceDisciplineSection,
+      // attendanceDisciplineSection, // Commented out - attendance & discipline can be tracked under soft skills
       strengthsSection,
       overallPerformanceSection
     ];
@@ -542,6 +549,9 @@ export default function StudentReportForm() {
     }
 
     let placementReady = "Not Ready";
+    const aptitudeVal = (student.placement?.aptitudeStatus || "").toLowerCase().trim();
+    const hasAptitudeReady = ["done", "completed", "cleared", "passed", "ready"].includes(aptitudeVal);
+
     if (student.placement?.readinessStatus) {
       const rs = student.placement.readinessStatus;
       if (["Ready", "Ready for Interview", "Ready for Placement", "Ready for Drive"].includes(rs)) {
@@ -551,6 +561,8 @@ export default function StudentReportForm() {
       } else {
         placementReady = "Not Ready";
       }
+    } else if (hasResume && hasAptitudeReady) {
+      placementReady = "Ready";
     }
 
     const yearWiseSGPA = [
@@ -1228,7 +1240,10 @@ export default function StudentReportForm() {
 
           {formData.dynamicSections && formData.dynamicSections.length > 0 ? (
             <div className="space-y-4 sm:space-y-6">
-              {formData.dynamicSections.map((section, sIdx) => (
+              {formData.dynamicSections.map((section, sIdx) => {
+                // Skip Attendance & Discipline as per request
+                if (section.sectionType === "AttendanceDiscipline") return null;
+                return (
                 <div key={sIdx} className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2">
@@ -1665,6 +1680,7 @@ export default function StudentReportForm() {
                     </div>
                   )}
 
+                  {/* Attendance & Discipline - commented out as per request (can be re-enabled if needed)
                   {section.sectionType === "AttendanceDiscipline" && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                       {section.items.filter(item => !item.itemName.toLowerCase().includes('attendance')).map((item, idx) => (
@@ -1681,6 +1697,7 @@ export default function StudentReportForm() {
                       ))}
                     </div>
                   )}
+                  */}
 
                   {section.sectionType === "StrengthsImprovement" && (
                     <div className="space-y-3 sm:space-y-4">
@@ -1803,7 +1820,7 @@ export default function StudentReportForm() {
                     </div>
                   )}
                 </div>
-              ))}
+              ); })}
             </div>
           ) : (
             <>

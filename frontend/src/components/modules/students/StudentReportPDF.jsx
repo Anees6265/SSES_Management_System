@@ -687,20 +687,28 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                       </View>
                       <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
                         <Text style={{ width: "70%" }}>First Year (FY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.firstYearSgpa || "N/A"}</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>
+                          {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "FY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.firstYearSgpa || "0.00")}
+                        </Text>
                       </View>
                       <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
                         <Text style={{ width: "70%" }}>Second Year (SY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.secondYearSgpa || "N/A"}</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>
+                          {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "SY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.secondYearSgpa || "0.00")}
+                        </Text>
                       </View>
                       <View style={{ flexDirection: "row", padding: 4, fontSize: 8 }}>
                         <Text style={{ width: "70%" }}>Third Year (TY)</Text>
-                        <Text style={{ width: "30%", textAlign: "center" }}>{reportCardData.academicPerformance?.thirdYearSgpa || "N/A"}</Text>
+                        <Text style={{ width: "30%", textAlign: "center" }}>
+                          {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "TY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.thirdYearSgpa || "0.00")}
+                        </Text>
                       </View>
                     </View>
                     <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
-                      <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>{reportCardData.academicPerformance?.cgpa || "N/A"}</Text>
+                      <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
+                        {reportCardData.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00"}
+                      </Text>
                     </View>
                   </View>
                 </View>

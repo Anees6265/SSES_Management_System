@@ -19,6 +19,7 @@ import PlacementModal from "./PlacementModal";
 import Loader from "../../shared/loader/Loader";
 import UpdateTechnologyModal from "./UpdateTechnologyModal";
 import { toast } from "react-toastify";
+import { viewResume, downloadResume } from "../../../utils/resumeHelpers";
 
 // Icons & Images
 import profilePlaceholder from "../../../assets/images/profile-img.png";
@@ -187,26 +188,17 @@ export default function StudentProfile() {
       null;
   };
 
-  // Function to handle resume link clicks with error handling
-  const handleResumeView = (e) => {
+  // Handlers for viewing and downloading resume with student name
+  const handleViewResume = () => {
     const resumeUrl = getResumeUrl();
-    if (!resumeUrl) {
-      e.preventDefault();
-      toast.error('Resume URL not found');
-      return;
-    }
+    const studentDisplayName = studentData?.fullName || `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "Student";
+    viewResume(resumeUrl, studentDisplayName);
+  };
 
-    // Test if URL is accessible
-    fetch(resumeUrl, { method: 'HEAD' })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Resume not accessible');
-        }
-      })
-      .catch(() => {
-        // Silently handle resume accessibility check failure
-        toast.error('Resume file may not be accessible. Please try again or contact support.');
-      });
+  const handleDownloadResume = () => {
+    const resumeUrl = getResumeUrl();
+    const studentDisplayName = studentData?.fullName || `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "Student";
+    downloadResume(resumeUrl, studentDisplayName);
   };
 
   // canChooseElective: new schema doesn't have techno/level[] — disable for now
@@ -983,15 +975,13 @@ export default function StudentProfile() {
                           <span className="text-blue-600 text-sm">📄</span>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-blue-900">
+                          <p className="text-xs font-semibold text-blue-900 truncate max-w-[200px] sm:max-w-xs">
                             {(() => {
                               try {
                                 const url = getResumeUrl();
                                 if (!url) return 'Resume.pdf';
-                                const fileName = url.split('/').pop();
-                                if (!fileName) return 'Resume.pdf';
-                                const parts = fileName.split('-');
-                                return parts.length > 1 ? parts.slice(1).join('-') : fileName;
+                                const studentDisplayName = studentData?.fullName || `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim();
+                                return studentDisplayName ? `${studentDisplayName.replace(/\s+/g, '_')}_Resume.pdf` : 'Resume.pdf';
                               } catch {
                                 return 'Resume.pdf';
                               }
@@ -1000,13 +990,6 @@ export default function StudentProfile() {
                           <p className="text-xs text-blue-600">Resume document</p>
                         </div>
                       </div>
-                      {/* <a
-                      href={getResumeUrl()}
-                      download
-                      className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded transition-colors flex items-center"
-                    >
-                      <img src={download} />
-                    </a> */}
                     </div>
                     {/* Resume Card */}
                     <div className="border border-blue-200 rounded-b-lg bg-blue-50 p-6">
@@ -1017,26 +1000,23 @@ export default function StudentProfile() {
                         <h4 className="text-lg font-semibold text-blue-900 mb-2">Resume Available</h4>
                         <p className="text-sm text-blue-700 mb-4">Student&rsquo;s resume has been uploaded successfully</p>
                         <div className="flex gap-3 justify-center">
-                          <a
-                            href={getResumeUrl()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
-                            onClick={handleResumeView}
+                          <button
+                            type="button"
+                            onClick={handleViewResume}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer shadow-xs"
                           >
                             <span className="hidden sm:inline">View Resume</span>
                             <span className="sm:hidden">View</span>
-                          </a>
-                          <a
-                            href={getResumeUrl()}
-                            download
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center gap-1 sm:gap-2"
-                            onClick={handleResumeView}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDownloadResume}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                           >
-                            <img src={download} className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <img src={download} className="w-3.5 h-3.5 sm:w-4 sm:h-4 brightness-0 invert" alt="Download" />
                             <span className="hidden sm:inline">Download</span>
                             <span className="sm:hidden">DL</span>
-                          </a>
+                          </button>
                         </div>
                       </div>
                     </div>

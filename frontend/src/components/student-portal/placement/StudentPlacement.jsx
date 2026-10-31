@@ -9,6 +9,7 @@ import {
     useGetMyStudentProfileQuery
 } from "../../../redux/api/studentApi";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import { viewResume } from "../../../utils/resumeHelpers";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -106,8 +107,11 @@ export default function StudentPlacement() {
                         <div className="flex items-center gap-2">
                             {placement.resumeURL && (
                                 <button
-                                    onClick={() => window.open(placement.resumeURL, "_blank", "noopener,noreferrer")}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 rounded-xl transition-all shadow-2xs"
+                                    onClick={() => {
+                                        const sName = profileRes?.data?.fullName || `${profileRes?.data?.firstName || ""} ${profileRes?.data?.lastName || ""}`.trim() || "My";
+                                        viewResume(placement.resumeURL, sName);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 rounded-xl transition-all shadow-2xs cursor-pointer"
                                 >
                                     <FileText size={13} className="text-orange-500" />
                                     <span>My Resume</span>

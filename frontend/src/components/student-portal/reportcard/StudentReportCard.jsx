@@ -238,6 +238,34 @@ export default function StudentReportCard() {
   const careerReadinessSection = getSection("CareerStatus");
   const strengthsImprovementSection = getSection("StrengthsImprovement");
 
+  // Dynamic Career / Placement Readiness Check (Defaults to "Not Ready")
+  const isCareerReady = useMemo(() => {
+    const pr = (rc?.careerReadiness?.placementReady || "").trim();
+    if (["Ready", "Ready for Placement", "Ready for Interview", "Ready for Drive"].includes(pr)) {
+      return true;
+    }
+
+    const items = careerReadinessSection?.items || [];
+    const placementItem = items.find((it) => (it.itemName || "").toLowerCase().includes("placement"));
+    if (placementItem && ["ready", "completed", "cleared"].includes((placementItem.value || "").toLowerCase().trim())) {
+      return true;
+    }
+
+    const resumeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("resume"));
+    const resumeVal = (resumeItem?.value || rc?.careerReadiness?.resumeStatus || "").toLowerCase().trim();
+    const hasResumeReady = ["created", "uploaded", "updated", "ready", "completed"].includes(resumeVal);
+
+    const aptitudeItem = items.find((it) => (it.itemName || "").toLowerCase().includes("aptitude"));
+    const aptitudeVal = (aptitudeItem?.value || rc?.careerReadiness?.aptitudeStatus || "").toLowerCase().trim();
+    const hasAptitudeReady = ["done", "completed", "cleared", "passed", "ready"].includes(aptitudeVal);
+
+    if (hasResumeReady && hasAptitudeReady) {
+      return true;
+    }
+
+    return false;
+  }, [rc, careerReadinessSection]);
+
   const interviewItemsList = useMemo(() => {
     return (interviewSection?.items?.length > 0 ? interviewSection.items : deptConfig.interviewItems) || [];
   }, [interviewSection, deptConfig]);
@@ -258,12 +286,47 @@ export default function StudentReportCard() {
   }
 
   // Academic SGPA & CGPA
-  const cgpaValue = rc?.academicPerformance?.cgpa || 7.5;
-  const sgpaList = rc?.academicPerformance?.yearWiseSGPA || [
-    { year: "FY", sgpa: 7.5 },
-    { year: "SY", sgpa: 7.5 },
-    { year: "TY", sgpa: 0 }
-  ];
+  const sgpaList = useMemo(() => {
+    const list = rc?.academicPerformance?.yearWiseSGPA;
+    if (Array.isArray(list) && list.length > 0) {
+      return list.map((item) => {
+        const val = typeof item.sgpa === "number" ? item.sgpa : parseFloat(item.sgpa);
+        return {
+          year: item.year,
+          sgpa: !isNaN(val) && val > 0 ? val.toFixed(2) : "0.00",
+        };
+      });
+    }
+    return [
+      { year: "FY", sgpa: "0.00" },
+      { year: "SY", sgpa: "0.00" },
+      { year: "TY", sgpa: "0.00" },
+    ];
+  }, [rc]);
+
+  const cgpaValue = useMemo(() => {
+    const rawCgpa = rc?.academicPerformance?.cgpa;
+    const parsed = typeof rawCgpa === "number" ? rawCgpa : parseFloat(rawCgpa);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed.toFixed(2);
+    }
+    const activeSgpas = sgpaList
+      .map((s) => parseFloat(s.sgpa))
+      .filter((val) => !isNaN(val) && val > 0);
+    if (activeSgpas.length > 0) {
+      return (activeSgpas.reduce((acc, v) => acc + v, 0) / activeSgpas.length).toFixed(2);
+    }
+    return "0.00";
+  }, [rc, sgpaList]);
+
+  const cgpaNumber = parseFloat(cgpaValue) || 0;
+  const classificationLabel = useMemo(() => {
+    if (cgpaNumber >= 7.5) return "Distinction Class";
+    if (cgpaNumber >= 6.0) return "First Class";
+    if (cgpaNumber >= 5.0) return "Second Class";
+    if (cgpaNumber > 0) return "Pass Class";
+    return "Not Evaluated";
+  }, [cgpaNumber]);
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-10">
@@ -458,17 +521,17 @@ export default function StudentReportCard() {
             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-xs space-y-1 relative overflow-hidden group">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">READINESS</span>
-                <div className="w-7 h-7 rounded-lg sm:rounded-xl bg-violet-50 text-violet-500 border border-violet-100 flex items-center justify-center">
+                <div className={`w-7 h-7 rounded-lg sm:rounded-xl ${isCareerReady ? "bg-violet-50 text-violet-500 border-violet-100" : "bg-slate-100 text-slate-500 border-slate-200"} border flex items-center justify-center`}>
                   <FaRocket size={12} />
                 </div>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-violet-600 transition truncate">
-                  {rc.careerReadiness?.placementReady || "Ready"}
+                <h3 className={`text-xl sm:text-2xl font-black ${isCareerReady ? "text-slate-900 group-hover:text-violet-600" : "text-slate-700"} transition truncate`}>
+                  {isCareerReady ? "Ready" : "Not Ready"}
                 </h3>
               </div>
               <p className="text-[10px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
-                Drive Eligibility
+                {isCareerReady ? "Drive Eligible" : "Drive Ineligible"}
               </p>
             </div>
           </div>
@@ -549,19 +612,23 @@ export default function StudentReportCard() {
                 {(careerReadinessSection?.items?.length > 0
                   ? careerReadinessSection.items
                   : [
-                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Created" },
-                    { itemName: "LinkedIn", value: rc.careerReadiness?.linkedinStatus || "Created" },
-                    { itemName: "Aptitude", value: rc.careerReadiness?.aptitudeStatus || "In Progress" },
-                    { itemName: "Placement Ready", value: rc.careerReadiness?.placementReady || "Ready" }
+                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Not created" },
+                    { itemName: "LinkedIn", value: rc.careerReadiness?.linkedinStatus || "Not created" },
+                    { itemName: "Aptitude", value: rc.careerReadiness?.aptitudeStatus || "Not Started" },
+                    { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
                   ]
-                ).map((item, idx) => (
-                  <div key={idx} className="bg-slate-50 p-2 rounded-lg text-center">
-                    <span className="text-[10px] text-slate-400 block font-semibold truncate">{item.itemName}</span>
-                    <span className={`text-[10px] font-bold mt-0.5 inline-block px-2 py-0.2 rounded-full border ${readinessBadge(item.value)}`}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+                ).map((item, idx) => {
+                  const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
+                  const val = isPlacementItem ? (isCareerReady ? "Ready" : "Not Ready") : (item.value || "Not Started");
+                  return (
+                    <div key={idx} className="bg-slate-50 p-2 rounded-lg text-center">
+                      <span className="text-[10px] text-slate-400 block font-semibold truncate">{item.itemName}</span>
+                      <span className={`text-[10px] font-bold mt-0.5 inline-block px-2 py-0.2 rounded-full border ${readinessBadge(val)}`}>
+                        {val}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -866,7 +933,7 @@ export default function StudentReportCard() {
                   <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
                   <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
                   <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
-                    <span>Distinction Class</span>
+                    <span>{classificationLabel}</span>
                   </div>
                 </div>
               </div>
@@ -1157,14 +1224,15 @@ export default function StudentReportCard() {
                 {(careerReadinessSection?.items?.length > 0
                   ? careerReadinessSection.items
                   : [
-                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Created" },
-                    { itemName: "LinkedIn Profile", value: rc.careerReadiness?.linkedinStatus || "Created" },
-                    { itemName: "Aptitude Score", value: rc.careerReadiness?.aptitudeStatus || "In Progress" },
-                    { itemName: "Placement Ready", value: rc.careerReadiness?.placementReady || "Ready" }
+                    { itemName: "Resume", value: rc.careerReadiness?.resumeStatus || "Not created" },
+                    { itemName: "LinkedIn Profile", value: rc.careerReadiness?.linkedinStatus || "Not created" },
+                    { itemName: "Aptitude Score", value: rc.careerReadiness?.aptitudeStatus || "Not Started" },
+                    { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
                   ]
                 ).map((item, idx) => {
-                  const val = item.value || "In Progress";
-                  const isReady = ["Created", "Updated", "Ready", "Completed"].includes(val);
+                  const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
+                  const val = isPlacementItem ? (isCareerReady ? "Ready" : "Not Ready") : (item.value || "Not Started");
+                  const isReady = ["Created", "Updated", "Ready", "Completed", "Done"].includes(val);
 
                   return (
                     <div key={idx} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 text-center hover:bg-slate-50 transition">

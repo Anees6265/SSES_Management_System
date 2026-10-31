@@ -380,11 +380,70 @@ export default function StudentReportCard() {
     ];
   }, [rc]);
 
+  // B.Tech semester list (Sem 1 to Sem 8)
+  const btechSemesterList = useMemo(() => {
+    if (!isBTech) return [];
+    const rawSems = rc?.academicPerformance?.semesterWiseSGPA;
+    const defaultSems = [
+      { semester: "Sem 1", year: "1st Year" },
+      { semester: "Sem 2", year: "1st Year" },
+      { semester: "Sem 3", year: "2nd Year" },
+      { semester: "Sem 4", year: "2nd Year" },
+      { semester: "Sem 5", year: "3rd Year" },
+      { semester: "Sem 6", year: "3rd Year" },
+      { semester: "Sem 7", year: "4th Year" },
+      { semester: "Sem 8", year: "4th Year" },
+    ];
+
+    return defaultSems.map((def, idx) => {
+      const found = Array.isArray(rawSems) ? rawSems.find(s => s.semester === def.semester) : null;
+      const rawVal = found ? found.sgpa : (Array.isArray(rawSems) && rawSems[idx] ? rawSems[idx].sgpa : 0);
+      const val = typeof rawVal === "number" ? rawVal : parseFloat(rawVal);
+      return {
+        semester: def.semester,
+        year: def.year,
+        sgpa: !isNaN(val) && val > 0 ? val.toFixed(2) : "0.00",
+        numericSgpa: !isNaN(val) && val > 0 ? val : 0,
+      };
+    });
+  }, [isBTech, rc]);
+
+  // Group B.Tech semesters into 4 years with calculated Year CGPA
+  const btechYearList = useMemo(() => {
+    if (!isBTech) return [];
+    const yearsConfig = [
+      { year: "1st Year", sems: ["Sem 1", "Sem 2"] },
+      { year: "2nd Year", sems: ["Sem 3", "Sem 4"] },
+      { year: "3rd Year", sems: ["Sem 5", "Sem 6"] },
+      { year: "4th Year", sems: ["Sem 7", "Sem 8"] },
+    ];
+
+    return yearsConfig.map(({ year, sems }) => {
+      const yearSems = btechSemesterList.filter(s => sems.includes(s.semester));
+      const activeSems = yearSems.filter(s => s.numericSgpa > 0);
+      const yearCgpa = activeSems.length > 0
+        ? (activeSems.reduce((acc, s) => acc + s.numericSgpa, 0) / activeSems.length).toFixed(2)
+        : "0.00";
+      return {
+        year,
+        yearCgpa,
+        semesters: yearSems,
+      };
+    });
+  }, [isBTech, btechSemesterList]);
+
   const cgpaValue = useMemo(() => {
     const rawCgpa = rc?.academicPerformance?.cgpa;
     const parsed = typeof rawCgpa === "number" ? rawCgpa : parseFloat(rawCgpa);
     if (!isNaN(parsed) && parsed > 0) {
       return parsed.toFixed(2);
+    }
+    if (isBTech) {
+      const activeSems = btechSemesterList.filter(s => s.numericSgpa > 0);
+      if (activeSems.length > 0) {
+        return (activeSems.reduce((acc, s) => acc + s.numericSgpa, 0) / activeSems.length).toFixed(2);
+      }
+      return "0.00";
     }
     const activeSgpas = sgpaList
       .map((s) => parseFloat(s.sgpa))
@@ -393,7 +452,7 @@ export default function StudentReportCard() {
       return (activeSgpas.reduce((acc, v) => acc + v, 0) / activeSgpas.length).toFixed(2);
     }
     return "0.00";
-  }, [rc, sgpaList]);
+  }, [rc, sgpaList, isBTech, btechSemesterList]);
 
   const cgpaNumber = parseFloat(cgpaValue) || 0;
   const classificationLabel = useMemo(() => {
@@ -662,21 +721,43 @@ export default function StudentReportCard() {
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <FaGraduationCap className="text-blue-600" />
-                  <h3 className="text-xs font-bold text-slate-800">SGPA & CGPA Summary</h3>
+                  <h3 className="text-xs font-bold text-slate-800">
+                    {isBTech ? "SGPA & CGPA Summary (B.Tech)" : "SGPA & CGPA Summary"}
+                  </h3>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
                   CGPA: {cgpaValue}
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {sgpaList.map((item, idx) => (
-                  <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
-                    <span className="text-[9px] font-bold text-slate-400 block">{item.year}</span>
-                    <span className="text-sm font-black text-slate-800 mt-0.5 block">{item.sgpa || "—"}</span>
-                  </div>
-                ))}
-              </div>
+              {isBTech ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {btechYearList.map((yItem, idx) => (
+                    <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-200/50">
+                        <span className="text-[10px] font-bold text-slate-700">{yItem.year}</span>
+                        <span className="text-[10px] font-black text-blue-700">CGPA: {yItem.yearCgpa}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-600">
+                        {yItem.semesters.map((s, sIdx) => (
+                          <span key={sIdx}>
+                            {s.semester}: <strong className="text-slate-800 font-bold">{s.sgpa}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {sgpaList.map((item, idx) => (
+                    <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 block">{item.year}</span>
+                      <span className="text-sm font-black text-slate-800 mt-0.5 block">{item.sgpa || "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Quick Career Milestones */}
@@ -976,6 +1057,7 @@ export default function StudentReportCard() {
             />
 
             {/* Academic SGPA & CGPA Breakdown */}
+            {/* Academic SGPA & CGPA Breakdown */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
                 <div className="flex items-center gap-3">
@@ -983,47 +1065,97 @@ export default function StudentReportCard() {
                     <FaGraduationCap size={18} />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">Academic SGPA & CGPA Breakdown</h3>
-                    <p className="text-xs text-slate-400">Yearly semester performance on 10.0 scale</p>
+                    <h3 className="text-base font-bold text-slate-800">
+                      {isBTech ? "Academic Semester SGPA & Year-Wise CGPA Breakdown" : "Academic SGPA & CGPA Breakdown"}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      {isBTech
+                        ? "4-Year Bachelor of Technology semester performance evaluation (2 semesters per year)"
+                        : "Yearly semester performance on 10.0 scale"}
+                    </p>
                   </div>
                 </div>
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                  Scale: 10.0
+                  {isBTech ? "4-Year / 8 Semesters" : "Scale: 10.0"}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {sgpaList.map((item, idx) => {
-                    const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
-                    const score = item.sgpa || "N/A";
-                    return (
-                      <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
-                        <div className="flex items-baseline justify-between mt-2">
-                          <span className="text-2xl font-black text-slate-800">{score}</span>
-                          <span className="text-xs font-bold text-slate-400">SGPA</span>
+              {isBTech ? (
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
+                  <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                    {btechYearList.map((yItem, idx) => (
+                      <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 mb-2">
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{yItem.year}</span>
+                            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100/80 text-blue-800">
+                              CGPA: {yItem.yearCgpa}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {yItem.semesters.map((sem, sIdx) => (
+                              <div key={sIdx} className="bg-white rounded-lg p-2 border border-slate-100 flex items-center justify-between text-xs">
+                                <span className="font-semibold text-slate-500">{sem.semester}</span>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="font-black text-slate-800">{sem.sgpa}</span>
+                                  <span className="text-[10px] font-bold text-slate-400">SGPA</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
                           <div
                             className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                            style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
+                            style={{ width: `${(parseFloat(yItem.yearCgpa) || 0) * 10}%` }}
                           />
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
 
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 text-center shadow-md relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
-                  <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
-                  <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
-                    <span>{classificationLabel}</span>
+                  <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 text-center shadow-md relative overflow-hidden flex flex-col justify-center items-center">
+                    <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+                    <p className="text-3xl font-black text-white mt-1">{cgpaValue}</p>
+                    <div className="mt-2 text-xs font-bold text-orange-400 bg-white/10 px-3 py-1 rounded-full">
+                      {classificationLabel}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                  <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {sgpaList.map((item, idx) => {
+                      const yearTitle = item.year === "FY" ? "First Year (FY)" : item.year === "SY" ? "Second Year (SY)" : item.year === "TY" ? "Third Year (TY)" : item.year;
+                      const score = item.sgpa || "N/A";
+                      return (
+                        <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 hover:bg-slate-50 transition">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{yearTitle}</p>
+                          <div className="flex items-baseline justify-between mt-2">
+                            <span className="text-2xl font-black text-slate-800">{score}</span>
+                            <span className="text-xs font-bold text-slate-400">SGPA</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                            <div
+                              className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+                              style={{ width: `${(parseFloat(score) || 0) * 10}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 text-center shadow-md relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-xl pointer-events-none" />
+                    <p className="text-[11px] uppercase font-bold tracking-widest text-slate-400">CUMULATIVE CGPA</p>
+                    <p className="text-4xl font-black text-white mt-1.5 tracking-tight">{cgpaValue}</p>
+                    <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-0.5 rounded-full">
+                      <span>{classificationLabel}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Subject-Wise Performance Matrix */}

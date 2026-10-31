@@ -1,5 +1,5 @@
 // StudentReportForm.jsx (final - safe updates, deep cloning, functional setState)
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useGetAdmittedStudentsByIdQuery,
@@ -57,6 +57,11 @@ export default function StudentReportForm() {
   const [updateReportCard, { isLoading: isUpdating }] = useUpdateReportCardMutation();
   const loggedInUser = JSON.parse(localStorage.getItem('user') || '{}');
   const [taskPerformance, setTaskPerformance] = useState(null);
+
+  const deptType = useMemo(() => {
+    return detectDepartment(studentData?.data, existingReportData?.data);
+  }, [studentData, existingReportData]);
+  const isBTech = deptType === "BTECH";
 
   useEffect(() => {
     let isMounted = true;
@@ -185,6 +190,16 @@ export default function StudentReportForm() {
         { year: "FY", sgpa: 0 },
         { year: "SY", sgpa: 0 },
         { year: "TY", sgpa: 0 }
+      ],
+      semesterWiseSGPA: [
+        { semester: "Sem 1", sgpa: 0, year: "1st Year" },
+        { semester: "Sem 2", sgpa: 0, year: "1st Year" },
+        { semester: "Sem 3", sgpa: 0, year: "2nd Year" },
+        { semester: "Sem 4", sgpa: 0, year: "2nd Year" },
+        { semester: "Sem 5", sgpa: 0, year: "3rd Year" },
+        { semester: "Sem 6", sgpa: 0, year: "3rd Year" },
+        { semester: "Sem 7", sgpa: 0, year: "4th Year" },
+        { semester: "Sem 8", sgpa: 0, year: "4th Year" }
       ],
       cgpa: 0
     },
@@ -578,30 +593,80 @@ export default function StudentReportForm() {
       placementReady = "Ready";
     }
 
-    const yearWiseSGPA = [
-      { year: "FY", sgpa: 0 },
-      { year: "SY", sgpa: 0 },
-      { year: "TY", sgpa: 0 }
-    ];
-    if (student.academicHistory && student.academicHistory.length > 0) {
-      student.academicHistory.forEach(h => {
-        const name = (h.yearName || "").toLowerCase();
-        let index = -1;
-        if (name.includes("1st") || name.includes("fy") || name.includes("first")) {
-          index = 0;
-        } else if (name.includes("2nd") || name.includes("sy") || name.includes("second")) {
-          index = 1;
-        } else if (name.includes("3rd") || name.includes("ty") || name.includes("third")) {
-          index = 2;
-        }
-        if (index !== -1 && h.percentage) {
-          yearWiseSGPA[index].sgpa = parseFloat((h.percentage / 10).toFixed(2));
-        }
-      });
+    const isBTechStudent = deptType === "BTECH";
+    let semesterWiseSGPA = [];
+    let yearWiseSGPA = [];
+    let cgpa = 0;
+
+    if (isBTechStudent) {
+      semesterWiseSGPA = [
+        { semester: "Sem 1", sgpa: 0, year: "1st Year" },
+        { semester: "Sem 2", sgpa: 0, year: "1st Year" },
+        { semester: "Sem 3", sgpa: 0, year: "2nd Year" },
+        { semester: "Sem 4", sgpa: 0, year: "2nd Year" },
+        { semester: "Sem 5", sgpa: 0, year: "3rd Year" },
+        { semester: "Sem 6", sgpa: 0, year: "3rd Year" },
+        { semester: "Sem 7", sgpa: 0, year: "4th Year" },
+        { semester: "Sem 8", sgpa: 0, year: "4th Year" }
+      ];
+
+      if (student.academicHistory && student.academicHistory.length > 0) {
+        student.academicHistory.forEach(h => {
+          const name = (h.yearName || "").toLowerCase();
+          for (let s = 1; s <= 8; s++) {
+            if (name.includes(`sem ${s}`) || name.includes(`semester ${s}`) || name.includes(`sem-${s}`) || name.includes(`sem${s}`)) {
+              if (h.percentage) {
+                semesterWiseSGPA[s - 1].sgpa = parseFloat((h.percentage / 10).toFixed(2));
+              }
+            }
+          }
+        });
+      }
+
+      const calcYearCgpa = (semA, semB) => {
+        const valA = parseFloat(semA?.sgpa) || 0;
+        const valB = parseFloat(semB?.sgpa) || 0;
+        const active = [valA, valB].filter(v => v > 0);
+        return active.length > 0 ? parseFloat((active.reduce((a, b) => a + b, 0) / active.length).toFixed(2)) : 0;
+      };
+
+      yearWiseSGPA = [
+        { year: "1st Year", sgpa: calcYearCgpa(semesterWiseSGPA[0], semesterWiseSGPA[1]) },
+        { year: "2nd Year", sgpa: calcYearCgpa(semesterWiseSGPA[2], semesterWiseSGPA[3]) },
+        { year: "3rd Year", sgpa: calcYearCgpa(semesterWiseSGPA[4], semesterWiseSGPA[5]) },
+        { year: "4th Year", sgpa: calcYearCgpa(semesterWiseSGPA[6], semesterWiseSGPA[7]) }
+      ];
+
+      const activeSems = semesterWiseSGPA.filter(s => (parseFloat(s.sgpa) || 0) > 0);
+      cgpa = activeSems.length > 0
+        ? parseFloat((activeSems.reduce((sum, s) => sum + (parseFloat(s.sgpa) || 0), 0) / activeSems.length).toFixed(2))
+        : 0;
+    } else {
+      yearWiseSGPA = [
+        { year: "FY", sgpa: 0 },
+        { year: "SY", sgpa: 0 },
+        { year: "TY", sgpa: 0 }
+      ];
+      if (student.academicHistory && student.academicHistory.length > 0) {
+        student.academicHistory.forEach(h => {
+          const name = (h.yearName || "").toLowerCase();
+          let index = -1;
+          if (name.includes("1st") || name.includes("fy") || name.includes("first")) {
+            index = 0;
+          } else if (name.includes("2nd") || name.includes("sy") || name.includes("second")) {
+            index = 1;
+          } else if (name.includes("3rd") || name.includes("ty") || name.includes("third")) {
+            index = 2;
+          }
+          if (index !== -1 && h.percentage) {
+            yearWiseSGPA[index].sgpa = parseFloat((h.percentage / 10).toFixed(2));
+          }
+        });
+      }
+      const totalSgpa = yearWiseSGPA.reduce((sum, y) => sum + y.sgpa, 0);
+      const activeCount = yearWiseSGPA.filter(y => y.sgpa > 0).length;
+      cgpa = activeCount > 0 ? parseFloat((totalSgpa / activeCount).toFixed(2)) : 0;
     }
-    const totalSgpa = yearWiseSGPA.reduce((sum, y) => sum + y.sgpa, 0);
-    const activeCount = yearWiseSGPA.filter(y => y.sgpa > 0).length;
-    const cgpa = activeCount > 0 ? parseFloat((totalSgpa / activeCount).toFixed(2)) : 0;
 
     let technicalSkills = [];
     if (tasks && tasks.groupedBySubject) {
@@ -657,6 +722,7 @@ export default function StudentReportForm() {
       },
       academicPerformance: {
         yearWiseSGPA,
+        semesterWiseSGPA,
         cgpa
       },
       technicalSkills
@@ -878,8 +944,47 @@ export default function StudentReportForm() {
             resumeStatus: "Created"
           };
         }
-        if (reportData.academicPerformance?.yearWiseSGPA?.length > 0) {
-          merged.academicPerformance = { ...(merged.academicPerformance || {}), ...reportData.academicPerformance };
+        if (reportData.academicPerformance) {
+          const ap = reportData.academicPerformance;
+          let loadedSemesters = Array.isArray(ap.semesterWiseSGPA) && ap.semesterWiseSGPA.length > 0
+            ? [...ap.semesterWiseSGPA]
+            : [];
+
+          if (isBTech && loadedSemesters.length < 8) {
+            const defaultSems = [
+              { semester: "Sem 1", sgpa: 0, year: "1st Year" },
+              { semester: "Sem 2", sgpa: 0, year: "1st Year" },
+              { semester: "Sem 3", sgpa: 0, year: "2nd Year" },
+              { semester: "Sem 4", sgpa: 0, year: "2nd Year" },
+              { semester: "Sem 5", sgpa: 0, year: "3rd Year" },
+              { semester: "Sem 6", sgpa: 0, year: "3rd Year" },
+              { semester: "Sem 7", sgpa: 0, year: "4th Year" },
+              { semester: "Sem 8", sgpa: 0, year: "4th Year" }
+            ];
+            loadedSemesters = defaultSems.map(ds => {
+              const ex = loadedSemesters.find(ls => ls.semester === ds.semester);
+              return ex ? { ...ds, sgpa: ex.sgpa } : ds;
+            });
+          }
+
+          let loadedYears = Array.isArray(ap.yearWiseSGPA) && ap.yearWiseSGPA.length > 0
+            ? [...ap.yearWiseSGPA]
+            : (isBTech ? [
+                { year: "1st Year", sgpa: 0 },
+                { year: "2nd Year", sgpa: 0 },
+                { year: "3rd Year", sgpa: 0 },
+                { year: "4th Year", sgpa: 0 }
+              ] : [
+                { year: "FY", sgpa: 0 },
+                { year: "SY", sgpa: 0 },
+                { year: "TY", sgpa: 0 }
+              ]);
+
+          merged.academicPerformance = {
+            yearWiseSGPA: loadedYears,
+            semesterWiseSGPA: loadedSemesters,
+            cgpa: typeof ap.cgpa === "number" ? ap.cgpa : (parseFloat(ap.cgpa) || 0)
+          };
         }
         if (Array.isArray(reportData.coCurricular) && reportData.coCurricular.length > 0) {
           merged.coCurricular = [...reportData.coCurricular];
@@ -1144,7 +1249,53 @@ export default function StudentReportForm() {
     });
   };
 
-  // Academic sgpa change (handles CGPA recalc)
+  // Academic semester SGPA change for B.Tech (handles Year CGPA and Cumulative CGPA recalc)
+  const setSemesterSGPA = (index, rawValue) => {
+    setFormData(prev => {
+      const next = deepClone(prev);
+      const val = parseFloat(rawValue) || 0;
+      let sems = next.academicPerformance?.semesterWiseSGPA || [];
+      if (!Array.isArray(sems) || sems.length < 8) {
+        sems = [
+          { semester: "Sem 1", sgpa: 0, year: "1st Year" },
+          { semester: "Sem 2", sgpa: 0, year: "1st Year" },
+          { semester: "Sem 3", sgpa: 0, year: "2nd Year" },
+          { semester: "Sem 4", sgpa: 0, year: "2nd Year" },
+          { semester: "Sem 5", sgpa: 0, year: "3rd Year" },
+          { semester: "Sem 6", sgpa: 0, year: "3rd Year" },
+          { semester: "Sem 7", sgpa: 0, year: "4th Year" },
+          { semester: "Sem 8", sgpa: 0, year: "4th Year" }
+        ];
+      }
+      sems[index] = { ...sems[index], sgpa: val };
+      next.academicPerformance.semesterWiseSGPA = sems;
+
+      // Recalculate year-wise CGPA
+      const calcYearCgpa = (semA, semB) => {
+        const valA = parseFloat(semA?.sgpa) || 0;
+        const valB = parseFloat(semB?.sgpa) || 0;
+        const active = [valA, valB].filter(v => v > 0);
+        return active.length > 0 ? parseFloat((active.reduce((a, b) => a + b, 0) / active.length).toFixed(2)) : 0;
+      };
+
+      next.academicPerformance.yearWiseSGPA = [
+        { year: "1st Year", sgpa: calcYearCgpa(sems[0], sems[1]) },
+        { year: "2nd Year", sgpa: calcYearCgpa(sems[2], sems[3]) },
+        { year: "3rd Year", sgpa: calcYearCgpa(sems[4], sems[5]) },
+        { year: "4th Year", sgpa: calcYearCgpa(sems[6], sems[7]) }
+      ];
+
+      // Overall cumulative CGPA across all active semesters
+      const activeSems = sems.filter(s => (parseFloat(s.sgpa) || 0) > 0);
+      next.academicPerformance.cgpa = activeSems.length > 0
+        ? parseFloat((activeSems.reduce((sum, s) => sum + (parseFloat(s.sgpa) || 0), 0) / activeSems.length).toFixed(2))
+        : 0;
+
+      return next;
+    });
+  };
+
+  // Academic sgpa change for non-BTech (handles CGPA recalc)
   const setYearSGPA = (index, rawValue) => {
     setFormData(prev => {
       const next = deepClone(prev);
@@ -1238,47 +1389,149 @@ export default function StudentReportForm() {
           </div>
 
           {/* Academic Performance */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm sm:text-base font-bold text-slate-800">Academic Performance (SGPA & CGPA)</h3>
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-800">
+                  {isBTech
+                    ? "Academic Performance — Semester-Wise SGPA & Year-Wise CGPA (B.Tech 4-Year Scheme)"
+                    : "Academic Performance (SGPA & CGPA)"}
+                </h3>
+                <p className="text-[11px] sm:text-xs text-slate-400">
+                  {isBTech
+                    ? "Enter SGPA for each semester (2 semesters per year). Year CGPA & Cumulative CGPA calculate automatically."
+                    : "Enter yearly SGPA (FY, SY, TY). Cumulative CGPA calculates automatically."}
+                </p>
+              </div>
               <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                10.0 Scale
+                {isBTech ? "4 Years · 8 Semesters" : "10.0 Scale"}
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
-              {(formData.academicPerformance?.yearWiseSGPA || []).map((year, index) => (
-                <div key={index} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100">
-                  <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    {year.year} SGPA
+
+            {isBTech ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
+                  {[
+                    { year: "1st Year", sems: [0, 1], labels: ["Sem 1", "Sem 2"] },
+                    { year: "2nd Year", sems: [2, 3], labels: ["Sem 3", "Sem 4"] },
+                    { year: "3rd Year", sems: [4, 5], labels: ["Sem 5", "Sem 6"] },
+                    { year: "4th Year", sems: [6, 7], labels: ["Sem 7", "Sem 8"] },
+                  ].map((yr, yIdx) => {
+                    const sems = formData.academicPerformance?.semesterWiseSGPA || [];
+                    const semA = sems[yr.sems[0]]?.sgpa || 0;
+                    const semB = sems[yr.sems[1]]?.sgpa || 0;
+                    const activeYearSems = [parseFloat(semA) || 0, parseFloat(semB) || 0].filter(v => v > 0);
+                    const yearCgpa = activeYearSems.length > 0
+                      ? (activeYearSems.reduce((a, b) => a + b, 0) / activeYearSems.length).toFixed(2)
+                      : "0.00";
+
+                    return (
+                      <div key={yIdx} className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 flex flex-col justify-between space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/70">
+                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{yr.year}</span>
+                          <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                            CGPA: {yearCgpa}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              {yr.labels[0]} SGPA
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="10"
+                              value={sems[yr.sems[0]]?.sgpa ?? ""}
+                              onChange={(e) => setSemesterSGPA(yr.sems[0], e.target.value)}
+                              placeholder="0.00"
+                              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                              {yr.labels[1]} SGPA
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="10"
+                              value={sems[yr.sems[1]]?.sgpa ?? ""}
+                              onChange={(e) => setSemesterSGPA(yr.sems[1], e.target.value)}
+                              placeholder="0.00"
+                              className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="bg-orange-50/60 p-3.5 sm:p-4 rounded-xl border border-orange-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-orange-900">4-Year Cumulative CGPA</h4>
+                    <p className="text-[11px] text-orange-700">Calculated automatically across evaluated semesters (Sem 1 to Sem 8).</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-orange-800">Cumulative CGPA:</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="10"
+                      value={formData.academicPerformance?.cgpa ?? 0}
+                      onChange={(e) => setFormData(prev => {
+                        const next = deepClone(prev);
+                        next.academicPerformance = next.academicPerformance || {};
+                        next.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
+                        return next;
+                      })}
+                      placeholder="0.00"
+                      className="w-24 sm:w-28 px-3 py-1.5 border border-orange-300 rounded-lg text-sm sm:text-base font-black bg-white text-orange-700 focus:outline-none focus:border-orange-500 text-center"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                {(formData.academicPerformance?.yearWiseSGPA || []).map((year, index) => (
+                  <div key={index} className="bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                    <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      {year.year} SGPA
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={year.sgpa}
+                      onChange={(e) => setYearSGPA(index, e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold bg-white text-slate-800 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                ))}
+                <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-200/60">
+                  <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-orange-700 mb-1">
+                    Cumulative CGPA
                   </label>
                   <input
                     type="number"
                     step="0.01"
-                    value={year.sgpa}
-                    onChange={(e) => setYearSGPA(index, e.target.value)}
+                    value={formData.academicPerformance?.cgpa ?? 0}
+                    onChange={(e) => setFormData(prev => {
+                      const next = deepClone(prev);
+                      next.academicPerformance = next.academicPerformance || {};
+                      next.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
+                      return next;
+                    })}
                     placeholder="0.00"
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm font-bold bg-white text-slate-800 focus:outline-none focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 border border-orange-300 rounded-lg text-xs sm:text-sm font-black bg-white text-orange-700 focus:outline-none focus:border-orange-500"
                   />
                 </div>
-              ))}
-              <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-200/60">
-                <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-orange-700 mb-1">
-                  Cumulative CGPA
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.academicPerformance.cgpa}
-                  onChange={(e) => setFormData(prev => {
-                    const next = deepClone(prev);
-                    next.academicPerformance.cgpa = parseFloat(e.target.value) || 0;
-                    return next;
-                  })}
-                  placeholder="0.00"
-                  className="w-full px-2.5 py-1.5 border border-orange-300 rounded-lg text-xs sm:text-sm font-black bg-white text-orange-700 focus:outline-none focus:border-orange-500"
-                />
               </div>
-            </div>
+            )}
           </div>
 
           {formData.dynamicSections && formData.dynamicSections.length > 0 ? (

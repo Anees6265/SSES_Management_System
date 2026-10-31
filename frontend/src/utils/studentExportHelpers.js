@@ -12,6 +12,97 @@ const safeStr = (val, fallback = "—") => {
 };
 
 /**
+ * Helper to determine if a field/column is an internal ID, PR Key, Enrollment No., or technical field
+ * that must never be exported to Excel or PDF.
+ */
+export const isExcludedExportField = (keyOrLabel = "") => {
+  if (!keyOrLabel || typeof keyOrLabel !== "string") return false;
+  const str = keyOrLabel.trim();
+  const lower = str.toLowerCase();
+  const normalized = lower.replace(/[^a-z0-9]/g, "");
+
+  // 1. PR Key & variants
+  if (
+    normalized === "prkey" ||
+    normalized === "prnumber" ||
+    normalized === "prno" ||
+    normalized === "prk" ||
+    lower.includes("pr key") ||
+    lower.includes("pr_key") ||
+    lower.includes("pr no") ||
+    lower.includes("prkey")
+  ) {
+    return true;
+  }
+
+  // 2. Enrollment / Registration / Roll number variants
+  if (
+    normalized === "enrollmentno" ||
+    normalized === "enrollmentnumber" ||
+    normalized === "enrollment" ||
+    normalized === "enrollno" ||
+    normalized === "registrationno" ||
+    normalized === "regno" ||
+    normalized === "registrationnumber" ||
+    normalized === "regnumber" ||
+    lower.includes("enrollment no") ||
+    lower.includes("enrollment number") ||
+    lower.includes("enrollmentno") ||
+    lower.includes("registration no") ||
+    lower.includes("reg no") ||
+    lower.includes("reg. no")
+  ) {
+    return true;
+  }
+
+  // 3. Technical IDs & MongoDB identifier keys
+  if (
+    normalized === "id" ||
+    normalized === "raw" ||
+    normalized === "v" ||
+    normalized === "stdid" ||
+    normalized === "studentid" ||
+    normalized === "deptid" ||
+    normalized === "departmentid" ||
+    normalized === "sessionid" ||
+    normalized === "sublevelid" ||
+    normalized === "levelid" ||
+    normalized === "roleid" ||
+    normalized === "userid" ||
+    normalized === "taskid" ||
+    normalized === "curriculumid" ||
+    normalized === "courseid" ||
+    normalized === "companyid" ||
+    normalized === "driveid" ||
+    normalized === "attendanceid" ||
+    normalized === "leaveid" ||
+    normalized === "password" ||
+    normalized === "refreshtoken" ||
+    normalized === "resetpasswordtoken" ||
+    normalized === "profileimage" ||
+    normalized === "facedescriptor" ||
+    normalized === "googleid" ||
+    lower === "id" ||
+    lower === "_id" ||
+    lower === "__v" ||
+    lower === "student id" ||
+    lower.includes("student id / reg no") ||
+    lower.includes("student id") ||
+    lower === "user id" ||
+    lower === "department id"
+  ) {
+    return true;
+  }
+
+  // Any key ending with _id or Id (e.g., student_id, creatorId)
+  if (/^.*(_id|Id)$/.test(str) && !["paid", "unpaid", "valid", "invalid", "void"].includes(lower)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * Export selected students to Excel (.xlsx)
  */
 export const exportStudentsToExcel = (students = [], options = {}) => {
@@ -37,8 +128,6 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
     return {
       "S.No.": idx + 1,
       "Student Name": fullName,
-      "PR Key": safeStr(s.prkey),
-      "Student ID / Reg No": safeStr(s.studentId || s.registrationNo || s.enrollmentNo),
       "Father's Name": safeStr(s.fatherName),
       "Mobile": safeStr(s.studentMobile),
       "Course": safeStr(courseWithIteg),
@@ -58,19 +147,18 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
   // Set column widths for clean readability
   ws["!cols"] = [
     { wch: 7 },  // S.No.
-    { wch: 22 }, // Student Name
-    { wch: 14 }, // PR Key
-    { wch: 18 }, // Student ID / Reg No
-    { wch: 20 }, // Father's Name
-    { wch: 14 }, // Mobile
-    { wch: 16 }, // Course
+    { wch: 24 }, // Student Name
+    { wch: 22 }, // Father's Name
+    { wch: 15 }, // Mobile
+    { wch: 18 }, // Course
     { wch: 12 }, // Year
     { wch: 10 }, // Level
     { wch: 12 }, // Status
+    { wch: 14 }, // UI/UX Student
     { wch: 12 }, // FTP Student
-    { wch: 22 }, // Domain
+    { wch: 24 }, // Domain
     { wch: 16 }, // Session
-    { wch: 14 }, // District
+    { wch: 16 }, // District
   ];
 
   const wb = XLSX.utils.book_new();
@@ -123,7 +211,6 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
     [
       "S.No.",
       "Student Name",
-      "PR Key",
       "Father's Name",
       "Mobile",
       "Course",
@@ -151,7 +238,6 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
     return [
       idx + 1,
       fullName,
-      safeStr(s.prkey),
       safeStr(s.fatherName),
       safeStr(s.studentMobile),
       safeStr(courseText),
@@ -183,16 +269,15 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
     },
     columnStyles: {
       0: { cellWidth: 12, halign: "center" }, // S.No.
-      1: { cellWidth: 40 }, // Name
-      2: { cellWidth: 20 }, // PR Key
-      3: { cellWidth: 32 }, // Father
-      4: { cellWidth: 24, halign: "center" }, // Mobile
-      5: { cellWidth: 26 }, // Course
-      6: { cellWidth: 26, halign: "center" }, // Year/Level
-      7: { cellWidth: 20, halign: "center" }, // Status
-      8: { cellWidth: 14, halign: "center" }, // FTP
-      9: { cellWidth: 35 }, // Domain
-      10: { cellWidth: 28, halign: "center" }, // Session
+      1: { cellWidth: 44 }, // Name
+      2: { cellWidth: 34 }, // Father
+      3: { cellWidth: 26, halign: "center" }, // Mobile
+      4: { cellWidth: 28 }, // Course
+      5: { cellWidth: 28, halign: "center" }, // Year/Level
+      6: { cellWidth: 22, halign: "center" }, // Status
+      7: { cellWidth: 16, halign: "center" }, // FTP
+      8: { cellWidth: 38 }, // Domain
+      9: { cellWidth: 30, halign: "center" }, // Session
     },
     alternateRowStyles: {
       fillColor: [255, 248, 243], // Very subtle orange-tint background
@@ -241,9 +326,21 @@ const extractCellValue = (row, col) => {
 export const exportGenericToExcel = (data = [], columns = [], options = {}) => {
   if (!data || data.length === 0) return;
 
-  const validCols = columns.filter(
-    (c) => c && c.key !== "select" && c.key !== "action" && c.id !== "select" && c.id !== "action" && c.key !== "taskboard" && c.id !== "taskboard" && c.id !== "extra"
-  );
+  const validCols = columns.filter((c) => {
+    if (!c) return false;
+    const key = c.key || c.id || c.accessorKey || "";
+    const label = typeof c.label === "string" ? c.label : typeof c.header === "string" ? c.header : "";
+
+    if (["select", "action", "taskboard", "extra"].includes(key) || ["select", "action", "taskboard", "extra"].includes(c.id)) {
+      return false;
+    }
+
+    if (isExcludedExportField(key) || isExcludedExportField(label) || isExcludedExportField(c.id)) {
+      return false;
+    }
+
+    return true;
+  });
 
   const formatted = data.map((row, idx) => {
     const item = { "S.No.": idx + 1 };
@@ -268,9 +365,21 @@ export const exportGenericToExcel = (data = [], columns = [], options = {}) => {
 export const exportGenericToPDF = (data = [], columns = [], options = {}) => {
   if (!data || data.length === 0) return;
 
-  const validCols = columns.filter(
-    (c) => c && c.key !== "select" && c.key !== "action" && c.id !== "select" && c.id !== "action" && c.key !== "taskboard" && c.id !== "taskboard" && c.id !== "extra"
-  );
+  const validCols = columns.filter((c) => {
+    if (!c) return false;
+    const key = c.key || c.id || c.accessorKey || "";
+    const label = typeof c.label === "string" ? c.label : typeof c.header === "string" ? c.header : "";
+
+    if (["select", "action", "taskboard", "extra"].includes(key) || ["select", "action", "taskboard", "extra"].includes(c.id)) {
+      return false;
+    }
+
+    if (isExcludedExportField(key) || isExcludedExportField(label) || isExcludedExportField(c.id)) {
+      return false;
+    }
+
+    return true;
+  });
 
   const doc = new jsPDF({
     orientation: "landscape",

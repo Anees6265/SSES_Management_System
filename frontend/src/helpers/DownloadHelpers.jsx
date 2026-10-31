@@ -1,17 +1,47 @@
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { isExcludedExportField } from "../utils/studentExportHelpers";
 
 /* =========================
    KEYS TO SKIP
 ========================= */
 const SKIP_KEYS = [
   "_id",
+  "id",
   "__v",
+  "raw",
   "password",
   "profileImage",
   "faceDescriptor",
   "refreshToken",
+  "resetPasswordToken",
+  "resetPasswordExpires",
+  "resetTokenUsed",
+  "googleId",
+  "prkey",
+  "prKey",
+  "pr_key",
+  "prNumber",
+  "prno",
+  "enrollmentNo",
+  "enrollment_no",
+  "enrollmentNumber",
+  "enrollment",
+  "registrationNo",
+  "registration_no",
+  "regNo",
+  "reg_no",
+  "studentId",
+  "stdId",
+  "departmentId",
+  "deptId",
+  "sessionId",
+  "subLevelId",
+  "levelId",
+  "roleId",
+  "userId",
+  "taskId",
 ];
 
 /* =========================
@@ -22,7 +52,7 @@ const cleanData = (data) =>
     const cleaned = {};
 
     Object.entries(row).forEach(([k, v]) => {
-      if (SKIP_KEYS.includes(k)) return;
+      if (SKIP_KEYS.includes(k) || isExcludedExportField(k)) return;
 
       if (v === null || v === undefined) {
         cleaned[k] = "";
@@ -67,7 +97,8 @@ export const downloadCSV = (data, filename = "data.csv") => {
   if (!data?.length) return;
 
   const cleaned = cleanData(data);
-  const keys = Object.keys(cleaned[0]);
+  const keys = Object.keys(cleaned[0] || {}).filter((k) => !SKIP_KEYS.includes(k) && !isExcludedExportField(k));
+  if (!keys.length) return;
 
   const rows = [
     ["S.NO", ...keys.map(toHeader)].join(","),
@@ -100,7 +131,8 @@ export const downloadExcel = (data, filename = "data.xlsx") => {
   if (!data?.length) return;
 
   const cleaned = cleanData(data);
-  const keys = Object.keys(cleaned[0]);
+  const keys = Object.keys(cleaned[0] || {}).filter((k) => !SKIP_KEYS.includes(k) && !isExcludedExportField(k));
+  if (!keys.length) return;
 
   const formatted = cleaned.map((row, i) => {
     const out = { "S.NO": i + 1 };
@@ -126,7 +158,8 @@ export const downloadPDF = (data, filename = "data.pdf") => {
   if (!data?.length) return;
 
   const cleaned = cleanData(data);
-  const keys = Object.keys(cleaned[0]);
+  const keys = Object.keys(cleaned[0] || {}).filter((k) => !SKIP_KEYS.includes(k) && !isExcludedExportField(k));
+  if (!keys.length) return;
 
   const doc = new jsPDF({
     orientation: "landscape",

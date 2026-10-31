@@ -342,6 +342,26 @@ export const authApi = createApi({
       }),
     }),
 
+    // ---- Change User Password (Self) ----
+    changeUserPassword: builder.mutation({
+      query: (body) => ({
+        url: '/user/change-password',
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['User'],
+    }),
+
+    // ---- Admin Reset User Password ----
+    adminResetUserPassword: builder.mutation({
+      query: ({ id, newPassword }) => ({
+        url: `/user/admin/reset-password/${id}`,
+        method: 'PATCH',
+        body: { newPassword },
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'User', id }, 'User'],
+    }),
+
     // ---- Forget Password API ----
     forgetPassword: builder.mutation({
       query: ({ email }) => ({
@@ -2264,4 +2284,6 @@ export const {
   useClearAllNotificationsMutation,
   useDismissNotificationMutation,
   useMarkNotificationReadMutation,
+  useChangeUserPasswordMutation,
+  useAdminResetUserPasswordMutation,
 } = authApi;

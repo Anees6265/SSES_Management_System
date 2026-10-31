@@ -516,20 +516,61 @@ exports.deleteUser = async (req, res) => {
 // FORGOT PASSWORD
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
+  if (!email || typeof email !== "string" || !email.trim()) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // 1. Search in User collection (case-insensitive regex)
+    const escapedEmail = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let target = await User.findOne({
+      email: { $regex: new RegExp(`^${escapedEmail}$`, "i") },
+    });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
-    user.resetTokenUsed = false;
-    await user.save();
+    let isStudent = false;
 
-    await sendResetLinkEmail(email, token);
-    res.status(200).json({ message: "Reset link sent to your email." });
+    // 2. If not found in User, search in Student collection
+    if (!target) {
+      try {
+        const Student = require("../../models/student/Student");
+        target = await Student.findOne({
+          email: { $regex: new RegExp(`^${escapedEmail}$`, "i") },
+        });
+        if (target) isStudent = true;
+      } catch (findErr) {
+        console.warn("Student lookup error in forgotPassword:", findErr.message);
+      }
+    }
+
+    if (!target) {
+      return res.status(404).json({ message: "No registered account found with this email address." });
+    }
+
+    const token = jwt.sign(
+      { id: target._id, role: isStudent ? "student" : target.role, isStudent },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    target.resetPasswordToken = token;
+    target.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    target.resetTokenUsed = false;
+    await target.save();
+
+    const origin =
+      req.headers.origin ||
+      (req.headers.referer ? new URL(req.headers.referer).origin : null);
+
+    await sendResetLinkEmail(cleanEmail, token, origin);
+    return res.status(200).json({
+      success: true,
+      message: "Password reset link sent to your email address.",
+    });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Forgot Password Error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -538,28 +579,138 @@ exports.resetPassword = async (req, res) => {
   const { token } = req.params;
   const { newPassword, confirmPassword } = req.body;
 
-  if (!newPassword || !confirmPassword) return res.status(400).json({ message: "Both fields are required" });
-  if (newPassword !== confirmPassword) return res.status(400).json({ message: "Passwords do not match" });
+  if (!newPassword || !confirmPassword) {
+    return res.status(400).json({ message: "Both fields are required" });
+  }
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    let target = await User.findById(decoded.id);
+    let isStudent = false;
 
-    if (!user || user.resetPasswordToken !== token || user.resetTokenUsed) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+    if (!target) {
+      try {
+        const Student = require("../../models/student/Student");
+        target = await Student.findById(decoded.id);
+        if (target) isStudent = true;
+      } catch (err) {
+        console.warn("Student findById error:", err.message);
+      }
     }
-    if (user.resetPasswordExpires < Date.now()) {
-      return res.status(400).json({ message: "Token has expired" });
+
+    if (!target || target.resetPasswordToken !== token || target.resetTokenUsed) {
+      return res.status(400).json({ message: "Invalid or already used reset token" });
+    }
+    if (target.resetPasswordExpires && target.resetPasswordExpires < Date.now()) {
+      return res.status(400).json({ message: "Reset token has expired. Please request a new link." });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetTokenUsed = true;
-    await user.save();
+    target.password = await bcrypt.hash(newPassword, 10);
+    target.resetTokenUsed = true;
+    target.resetPasswordToken = null;
+    target.resetPasswordExpires = null;
+    await target.save();
 
-    res.status(200).json({ message: "Password successfully reset" });
+    return res.status(200).json({
+      success: true,
+      message: "Password successfully reset! You can now log in.",
+    });
   } catch (error) {
     console.error("Reset Password Error:", error);
     return res.status(400).json({ message: "Invalid or expired token" });
+  }
+};
+
+// CHANGE MY PASSWORD (Authenticated User)
+exports.changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. Please log in again." });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Current password and new password are required." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters long." });
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "New passwords do not match." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Current password is incorrect." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password changed successfully." });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// ADMIN RESET USER PASSWORD (Admin / Superadmin only)
+exports.adminResetPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID." });
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters long." });
+    }
+
+    const requesterRole = String(req.user?.role || "").toLowerCase().trim();
+    if (!["superadmin", "admin"].includes(requesterRole)) {
+      return res.status(403).json({ success: false, message: "Forbidden: Only administrators can reset user passwords." });
+    }
+
+    const targetUser = await User.findById(id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // Non-superadmins cannot reset a superadmin's password
+    if (targetUser.role === "superadmin" && requesterRole !== "superadmin") {
+      return res.status(403).json({ success: false, message: "Forbidden: Only a Superadmin can reset another Superadmin's password." });
+    }
+
+    targetUser.password = await bcrypt.hash(newPassword, 10);
+    targetUser.resetTokenUsed = true;
+    targetUser.resetPasswordToken = null;
+    targetUser.resetPasswordExpires = null;
+    await targetUser.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Password for ${targetUser.name} has been reset successfully.`,
+    });
+  } catch (error) {
+    console.error("Admin Reset Password Error:", error);
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 

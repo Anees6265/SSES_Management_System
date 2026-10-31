@@ -147,6 +147,9 @@ const studentSchema = new mongoose.Schema({
 
   // 🔒 Auth
   password: { type: String, default: null },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
+  resetTokenUsed: { type: Boolean, default: false },
 
   // 🚦 Status
   status: {

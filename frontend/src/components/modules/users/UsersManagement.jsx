@@ -1,9 +1,11 @@
 
 
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../../redux/auth/authSlice';
 import { toast } from 'react-toastify';
 import { confirmToast } from '../../../utils/confirmToast';
-import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus, Key, Lock } from 'lucide-react';
+import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus, Key, Lock, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery, useAdminResetUserPasswordMutation } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
@@ -17,6 +19,7 @@ import * as Yup from 'yup';
 import { buttonStyles } from '../../../styles/buttonStyles';
 import profile from '../../../assets/images/profile-img.png';
 import RolesPermissions from './RolesPermissions';
+import GlobalPermissionMatrix from './GlobalPermissionMatrix';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import { usePermissions } from '../../../hooks/usePermissions';
 import SearchBox from '../../shared/search-export/SearchBox';
@@ -26,6 +29,8 @@ import EmptyState from '../../shared/empty-state/EmptyState';
 
 const UsersManagement = () => {
     const navigate = useNavigate();
+    const currentUser = useSelector(selectCurrentUser);
+    const isHod = currentUser?.role === 'hod';
     const { hasPermission } = usePermissions();
     const createUserFormRef = useRef();
     const editUserFormRef = useRef();
@@ -34,6 +39,7 @@ const UsersManagement = () => {
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
     const [resetPassModal, setResetPassModal] = useState({ show: false, user: null });
+    const [permissionMatrixUser, setPermissionMatrixUser] = useState(null);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [mobilePage, setMobilePage] = useState(1);
     const mobilePageSize = 10;
@@ -471,20 +477,34 @@ const UsersManagement = () => {
 
     const actionButton = (user) => (
         <div className="flex space-x-2">
-            <button
-                type="button"
-                onClick={() => setResetPassModal({ show: true, user })}
-                className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
-                title="Reset Password"
-            >
-                <Key size={14} />
-            </button>
+            {(hasPermission('Button_ManagePermissions', 'read') || isHod || currentUser?.role === 'superadmin') && (
+                <button
+                    type="button"
+                    onClick={() => setPermissionMatrixUser(user)}
+                    className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                    title="Manage Permissions"
+                >
+                    <ShieldCheck size={14} />
+                </button>
+            )}
+            {!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
+                <button
+                    type="button"
+                    onClick={() => setResetPassModal({ show: true, user })}
+                    className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                    title="Reset Password"
+                >
+                    <Key size={14} />
+                </button>
+            )}
             <button onClick={() => setEditModal({ show: true, user })} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Edit User">
                 <Edit size={14} />
             </button>
-            <button onClick={() => handleDeleteUser(user._id || user.id, user.name)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Delete User">
-                <Trash2 size={14} />
-            </button>
+            {!isHod && currentUser?.role === 'superadmin' && (
+                <button onClick={() => handleDeleteUser(user._id || user.id, user.name)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Delete User">
+                    <Trash2 size={14} />
+                </button>
+            )}
         </div>
     );
 
@@ -526,13 +546,20 @@ const UsersManagement = () => {
                 <div className="flex-1 min-w-0">
                     <TabsCommon tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
-                <div className="flex-shrink-0 self-end sm:self-auto">
-                    <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search users..." />
-                </div>
+                {activeTab === 'Users' && !permissionMatrixUser && (
+                    <div className="flex-shrink-0 self-end sm:self-auto">
+                        <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search users..." />
+                    </div>
+                )}
             </div>
 
             <div className="p-2.5 sm:p-4 md:p-6">
-                {activeTab === 'Users' ? (
+                {permissionMatrixUser ? (
+                    <GlobalPermissionMatrix
+                        user={permissionMatrixUser}
+                        onBack={() => setPermissionMatrixUser(null)}
+                    />
+                ) : activeTab === 'Users' ? (
                     <>
                         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
                         <div className="hidden md:block">
@@ -657,14 +684,26 @@ const UsersManagement = () => {
                                                     </button>
 
                                                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setResetPassModal({ show: true, user })}
-                                                        className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
-                                                        title="Reset Password"
-                                                    >
-                                                        <Key size={14} />
-                                                    </button>
+                                                    {(hasPermission('Button_ManagePermissions', 'read') || isHod || currentUser?.role === 'superadmin') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPermissionMatrixUser(user)}
+                                                            className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
+                                                            title="Manage Permissions"
+                                                        >
+                                                            <ShieldCheck size={14} />
+                                                        </button>
+                                                    )}
+                                                    {!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setResetPassModal({ show: true, user })}
+                                                            className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
+                                                            title="Reset Password"
+                                                        >
+                                                            <Key size={14} />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => setEditModal({ show: true, user })}
@@ -673,14 +712,16 @@ const UsersManagement = () => {
                                                     >
                                                         <Edit size={14} />
                                                     </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDeleteUser(user._id || user.id, user.name)}
-                                                        className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition"
-                                                        title="Delete User"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    {!isHod && currentUser?.role === 'superadmin' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteUser(user._id || user.id, user.name)}
+                                                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition"
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

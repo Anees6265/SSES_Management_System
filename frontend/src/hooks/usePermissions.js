@@ -1,5 +1,5 @@
 import { useSelector } from 'react-redux';
-import { selectUserPermissions } from '../redux/auth/authSlice';
+import { selectUserPermissions, selectCurrentUser } from '../redux/auth/authSlice';
 
 const PERMISSION_ALIASES = {
     Page_PlacementDashboard: ['Page_Placement'],
@@ -23,6 +23,8 @@ const PERMISSION_ALIASES = {
  */
 export const usePermissions = () => {
     const userPermissions = useSelector(selectUserPermissions);
+    const currentUser = useSelector(selectCurrentUser);
+    const userRole = String(currentUser?.role || '').toLowerCase();
 
     /**
      * Checks if the current user has a specific permission.
@@ -31,6 +33,16 @@ export const usePermissions = () => {
      * @returns {boolean} - True if the user has the permission, false otherwise.
      */
     const hasPermission = (feature, access = 'read') => {
+        // HOD default permissions fallback for User Management & Permissions
+        if (userRole === 'hod') {
+            if (['Page_UserManagement', 'Tab_Users', 'Tab_RolesAndPermissions'].includes(feature) && access === 'read') {
+                return true;
+            }
+            if (feature === 'Button_ManagePermissions') {
+                return ['read', 'update'].includes(access);
+            }
+        }
+
         if (!userPermissions || userPermissions.length === 0) {
             return false;
         }

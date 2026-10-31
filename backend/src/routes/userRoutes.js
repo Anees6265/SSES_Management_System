@@ -10,6 +10,8 @@ const router = express.Router();
 const superAdminOnly = [verifyToken, checkRole(["superadmin"])];
 const adminRoles = ["superadmin", "admin"];
 const adminOnly = [verifyToken, checkRole(adminRoles)];
+const userManagementRoles = ["superadmin", "admin", "hod"];
+const userManagementOnly = [verifyToken, checkRole(userManagementRoles)];
 
 // Rate Limiter for Login (Anti-Brute Force: Max 10 attempts per 15 min per IP)
 const loginLimiter = rateLimit({
@@ -80,13 +82,13 @@ router.get(
 );
 
 router.get("/me", verifyToken, usercontroller.getCurrentUser);
-router.get("/all", ...adminOnly, usercontroller.getAllUsers);
+router.get("/all", ...userManagementOnly, usercontroller.getAllUsers);
 router.delete("/delete/:id", ...superAdminOnly, usercontroller.deleteUser);
 
-// Permissions Management - SuperAdmin Only
-router.get("/permissions/all", ...superAdminOnly, usercontroller.getAllPossiblePermissions);
-router.get("/permissions/:id", ...superAdminOnly, usercontroller.getUserPermissions);
-router.put("/permissions/:id", ...superAdminOnly, usercontroller.updateUserPermissions);
+// Permissions Management - SuperAdmin & HOD (HOD scoped to department faculties within HOD ceiling)
+router.get("/permissions/all", ...userManagementOnly, usercontroller.getAllPossiblePermissions);
+router.get("/permissions/:id", ...userManagementOnly, usercontroller.getUserPermissions);
+router.put("/permissions/:id", ...userManagementOnly, usercontroller.updateUserPermissions);
 
 module.exports = router;
 

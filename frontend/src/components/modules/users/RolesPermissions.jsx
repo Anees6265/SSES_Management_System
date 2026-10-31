@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../../redux/auth/authSlice';
 import { useGetAllUsersQuery, useCreateRoleMutation, useGetAllRolesQuery, useDeleteUserMutation, useEditUserMutation } from '../../../redux/api/authApi';
 import { FaUserShield, FaUser, FaChalkboardTeacher, FaCrown, FaBriefcase, FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 import Loader from '../../shared/loader/Loader';
@@ -17,6 +19,8 @@ import EmptyState from '../../shared/empty-state/EmptyState';
 
 const RolesPermissions = () => {
     const navigate = useNavigate();
+    const currentUser = useSelector(selectCurrentUser);
+    const isHod = currentUser?.role === 'hod';
     const createRoleFormRef = useRef();
     const { data: usersData, isLoading: usersLoading, error: usersError } = useGetAllUsersQuery();
     const { data: rolesData, isLoading: rolesLoading, error: rolesError } = useGetAllRolesQuery();
@@ -25,6 +29,7 @@ const RolesPermissions = () => {
     const [editUser] = useEditUserMutation();
     const [showCreateRole, setShowCreateRole] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
+    const activeSelectedRole = isHod ? (selectedRole || { roleName: 'faculty' }) : selectedRole;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [editModal, setEditModal] = useState({ show: false, user: null });
@@ -36,11 +41,13 @@ const RolesPermissions = () => {
     // Extract unique roles from users data (existing system roles)
     const systemRoles = [...new Set(users.map(user => user.role).filter(Boolean))];
     
-    // Combine system roles and custom roles
-    const allRoles = [
-        ...systemRoles.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false })),
-        ...customRoles.map(role => ({ ...role, isCustom: true }))
-    ];
+    // Combine system roles and custom roles (for HOD, scope exclusively to department roles)
+    const allRoles = isHod
+        ? systemRoles.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false }))
+        : [
+            ...systemRoles.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false })),
+            ...customRoles.map(role => ({ ...role, isCustom: true }))
+        ];
     // Get role statistics
     const getRoleStats = (roleName) => {
         return users.filter(user => user.role === roleName).length;
@@ -179,33 +186,44 @@ const RolesPermissions = () => {
                 />
             ) : (
                 <>
-                    {/* If a role is selected, show users table */}
-                    {selectedRole ? (
-                <div className="mt-1 border bg-[var(--backgroundColor)] shadow-sm rounded-lg">
-                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 px-3 sm:px-5 pt-3 sm:pt-4">
-                        <button
-                            onClick={() => setSelectedRole(null)}
-                            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors shrink-0"
-                            title="Back to roles"
-                        >
-                            <ArrowLeft size={18} />
-                        </button>
-                        <div className="min-w-0">
-                            <h2 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
-                                {selectedRole.roleName.charAt(0).toUpperCase() + selectedRole.roleName.slice(1)} Users
-                            </h2>
-                            <p className="text-xs sm:text-sm text-gray-500">
-                                {users.filter(user => user.role === selectedRole.roleName).length} user{users.filter(user => user.role === selectedRole.roleName).length !== 1 ? 's' : ''} with this role
-                            </p>
+                    {/* If a role is selected (or if HOD, always show directly), show users table */}
+                    {activeSelectedRole ? (
+                <div className="bg-white border border-gray-200 shadow-2xs rounded-2xl overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-150">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {!isHod && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedRole(null)}
+                                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors shrink-0 cursor-pointer"
+                                    title="Back to roles"
+                                >
+                                    <ArrowLeft size={18} />
+                                </button>
+                            )}
+                            <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">
+                                    {isHod
+                                        ? "Faculty Users & Permissions"
+                                        : `${activeSelectedRole.roleName.charAt(0).toUpperCase() + activeSelectedRole.roleName.slice(1)} Users`
+                                    }
+                                </h2>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {isHod
+                                        ? `${users.length} faculties in your department`
+                                        : `${users.filter(user => user.role === activeSelectedRole.roleName).length} user${users.filter(user => user.role === activeSelectedRole.roleName).length !== 1 ? 's' : ''} with this role`
+                                    }
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div className="px-3 sm:px-5 flex justify-end items-center flex-wrap gap-3 sm:gap-4 mt-2 sm:mt-4">
-                        <SearchBox
-                            searchTerm={searchTerm}
-                            setSearchTerm={setSearchTerm}
-                            placeholder="Search users..."
-                        />
+                        
+                        <div className="flex-shrink-0">
+                            <SearchBox
+                                searchTerm={searchTerm}
+                                setSearchTerm={setSearchTerm}
+                                placeholder={isHod ? "Search faculties..." : "Search users..."}
+                            />
+                        </div>
                     </div>
                     
                     <CommonTable
@@ -252,7 +270,7 @@ const RolesPermissions = () => {
                             }
                         ]}
                         data={users.filter(user => {
-                            const matchesRole = user.role === selectedRole.roleName;
+                            const matchesRole = user.role === activeSelectedRole.roleName;
                             const matchesDepartment = selectedDepartments.length === 0 || selectedDepartments.includes(user.department);
                             return matchesRole && matchesDepartment;
                         })}
@@ -282,16 +300,18 @@ const RolesPermissions = () => {
                                 >
                                     <FaEye size={14} />
                                 </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteUser(user._id || user.id, user.name);
-                                    }}
-                                    className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                    title="Delete User"
-                                >
-                                    <FaTrash size={14} />
-                                </button>
+                                {!isHod && currentUser?.role === 'superadmin' && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteUser(user._id || user.id, user.name);
+                                        }}
+                                        className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                        title="Delete User"
+                                    >
+                                        <FaTrash size={14} />
+                                    </button>
+                                )}
                             </div>
                         )}
                         rowsPerPage={10}
@@ -301,7 +321,7 @@ const RolesPermissions = () => {
             <div>
                 <div className="flex justify-between items-center mb-4 sm:mb-6">
                     <h2 className="text-base sm:text-lg font-semibold text-gray-800">
-                        System Roles
+                        {isHod ? "Department Roles" : "System Roles"}
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-500">
                         {allRoles.length} role{allRoles.length !== 1 ? 's' : ''} available
@@ -309,23 +329,25 @@ const RolesPermissions = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                    {/* Create New Role Card */}
-                    <div
-                        onClick={() => setShowCreateRole(true)}
-                        className="bg-white p-5 sm:p-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-orange-400 transition-all duration-200 cursor-pointer hover:shadow-md"
-                    >
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                                <FaPlus className="text-xl text-orange-500" />
+                    {/* Create New Role Card - Only Superadmin / Non-HOD */}
+                    {!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
+                        <div
+                            onClick={() => setShowCreateRole(true)}
+                            className="bg-white p-5 sm:p-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-orange-400 transition-all duration-200 cursor-pointer hover:shadow-md"
+                        >
+                            <div className="flex flex-col items-center justify-center h-full text-center">
+                                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                                    <FaPlus className="text-xl text-orange-500" />
+                                </div>
+                                <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">
+                                    Create New Role
+                                </h3>
+                                <p className="text-xs sm:text-sm text-gray-600">
+                                    Add a new role to the system
+                                </p>
                             </div>
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">
-                                Create New Role
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-600">
-                                Add a new role to the system
-                            </p>
                         </div>
-                    </div>
+                    )}
                     
                     {/* Role Cards */}
                     {allRoles.map((role, index) => {

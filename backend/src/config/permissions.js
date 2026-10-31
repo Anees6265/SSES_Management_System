@@ -122,7 +122,11 @@ const allPermissions = {
         { feature: 'Page_CompanyDetails', description: 'Company details', access: ['read'] },
         { feature: 'Page_PlacedStudents', description: 'Placed students wall', access: ['read'] },
         { feature: 'Page_SessionManagement', description: 'Session management', access: ['read', 'update'] },
-        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] },
+        { feature: 'Page_UserManagement', description: 'User management', access: ['read'] },
+        { feature: 'Tab_Users', description: 'Users tab', access: ['read'] },
+        { feature: 'Tab_RolesAndPermissions', description: 'Roles & permissions tab', access: ['read'] },
+        { feature: 'Button_ManagePermissions', description: 'Manage permissions', access: ['read', 'update'] }
     ],
 
     // Placement Officer has placement and recruiter access

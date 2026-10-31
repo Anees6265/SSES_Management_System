@@ -3,9 +3,9 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { confirmToast } from '../../../utils/confirmToast';
-import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus } from 'lucide-react';
+import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus, Key, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery } from '../../../redux/api/authApi';
+import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery, useAdminResetUserPasswordMutation } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
 import Pagination from '../../shared/pagination/Pagination';
 import TabsCommon from '../../shared/table/TabsCommon';
@@ -33,6 +33,7 @@ const UsersManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
+    const [resetPassModal, setResetPassModal] = useState({ show: false, user: null });
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [mobilePage, setMobilePage] = useState(1);
     const mobilePageSize = 10;
@@ -470,10 +471,18 @@ const UsersManagement = () => {
 
     const actionButton = (user) => (
         <div className="flex space-x-2">
-            <button onClick={() => setEditModal({ show: true, user })} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors" title="Edit User">
+            <button
+                type="button"
+                onClick={() => setResetPassModal({ show: true, user })}
+                className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                title="Reset Password"
+            >
+                <Key size={14} />
+            </button>
+            <button onClick={() => setEditModal({ show: true, user })} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Edit User">
                 <Edit size={14} />
             </button>
-            <button onClick={() => handleDeleteUser(user._id || user.id, user.name)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors" title="Delete User">
+            <button onClick={() => handleDeleteUser(user._id || user.id, user.name)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Delete User">
                 <Trash2 size={14} />
             </button>
         </div>
@@ -648,6 +657,14 @@ const UsersManagement = () => {
                                                     </button>
 
                                                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setResetPassModal({ show: true, user })}
+                                                        className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
+                                                        title="Reset Password"
+                                                    >
+                                                        <Key size={14} />
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => setEditModal({ show: true, user })}
@@ -842,7 +859,146 @@ const UsersManagement = () => {
                     </Formik>
                 }
             />
+
+            {/* Admin Reset User Password Modal */}
+            {resetPassModal.show && (
+                <AdminResetPasswordModal
+                    user={resetPassModal.user}
+                    onClose={() => setResetPassModal({ show: false, user: null })}
+                />
+            )}
         </>
+    );
+};
+
+// ── Admin Reset Password Modal ──
+const AdminResetPasswordModal = ({ user, onClose }) => {
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPass, setShowPass] = useState(false);
+    const [adminResetUserPassword, { isLoading }] = useAdminResetUserPasswordMutation();
+
+    const handleAutoGenerate = () => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+        let gen = "";
+        for (let i = 0; i < 10; i++) {
+            gen += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setNewPassword(gen);
+        setConfirmPassword(gen);
+        setShowPass(true);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!newPassword || newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters long");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        try {
+            const res = await adminResetUserPassword({
+                id: user._id || user.id,
+                newPassword,
+            }).unwrap();
+            toast.success(res?.message || `Password for ${user.name} reset successfully!`);
+            onClose();
+        } catch (err) {
+            toast.error(err?.data?.message || err?.message || "Failed to reset password");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-xs">
+                            <Lock size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Reset Password</h3>
+                            <p className="text-[11px] text-slate-400 font-medium truncate">Set new password for {user?.name}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div className="flex items-center justify-between pb-1">
+                        <span className="text-xs text-slate-500">Need a secure password?</span>
+                        <button
+                            type="button"
+                            onClick={handleAutoGenerate}
+                            className="text-xs font-bold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                            <Key size={13} /> Autogenerate
+                        </button>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">New Password (min 6 chars)</label>
+                        <div className="relative">
+                            <input
+                                type={showPass ? "text" : "password"}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPass(!showPass)}
+                                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                            >
+                                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confirm New Password</label>
+                        <div className="relative">
+                            <input
+                                type={showPass ? "text" : "password"}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Re-enter new password"
+                                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                            {isLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                            <span>Reset Password</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 };
 

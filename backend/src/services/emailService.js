@@ -1,37 +1,41 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Function to get appropriate client URL based on environment
-function getClientBaseUrl() {
-    const urls = process.env.CLIENT_BASE_URL.split(',').map(url => url.trim());
-    
-    // Priority 1: Custom domain for AWS production
-    if (process.env.CUSTOM_DOMAIN) {
-        return process.env.CUSTOM_DOMAIN.endsWith('/') ? 
-               process.env.CUSTOM_DOMAIN + 'reset-password/' : 
-               process.env.CUSTOM_DOMAIN + '/reset-password/';
+function getClientBaseUrl(origin = null) {
+    // Priority 1: If request comes from a browser, dynamically use that exact origin
+    // (e.g. http://localhost:5173 when testing locally, https://iteg.ssism.org on production)
+    if (origin && typeof origin === 'string' && origin.startsWith('http')) {
+        return origin.replace(/\/+$/, '');
     }
-    
-    // Priority 2: Development environment (localhost)
+
+    // Priority 2: Custom domain if explicitly set in .env
+    if (process.env.CUSTOM_DOMAIN) {
+        return process.env.CUSTOM_DOMAIN.replace(/\/+$/, '');
+    }
+
+    const rawUrls = process.env.CLIENT_BASE_URL || 'http://localhost:5173';
+    const urls = rawUrls.split(',').map(url => url.trim()).filter(Boolean);
+
+    // Priority 3: On production, prioritize official domain (ssism.org)
+    const officialDomain = urls.find(url => url.includes('ssism.org'));
+    if (officialDomain && process.env.NODE_ENV === 'production') {
+        return officialDomain.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
+    }
+
+    // Priority 4: Development environment (localhost)
     if (process.env.NODE_ENV === 'development') {
         const localhostUrl = urls.find(url => url.includes('localhost'));
         if (localhostUrl) {
-            console.log('🏠 Using localhost URL for development');
-            return localhostUrl;
+            return localhostUrl.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
         }
     }
-    
-    // Priority 3: Production Vercel URL
-    const vercelUrl = urls.find(url => url.includes('vercel.app'));
-    if (vercelUrl) {
-        console.log('☁️ Using Vercel URL for production');
-        return vercelUrl;
-    }
-    
-    // Fallback to first URL
-    console.log('⚠️ Using fallback URL');
-    return urls[0];
+
+    // Priority 5: Fallback to first URL or localhost
+    const fallback = urls[0] || 'http://localhost:5173';
+    return fallback.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
 }
 
 function generateOTP() {
@@ -43,11 +47,13 @@ async function sendEmailOtp(email, otp) {
         service: 'gmail',
         auth: { 
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
         }
     });
 
-    const logoPath = path.join(__dirname, '..', process.env.EMAIL_LOGO_PATH);
+    const logoRelative = process.env.EMAIL_LOGO_PATH || 'assets/Ssism_Logo.png';
+    const logoPath = path.join(__dirname, '..', logoRelative);
+    const hasLogo = fs.existsSync(logoPath);
 
     const mailOptions = {
         from: `"ITEG Management System" <${process.env.EMAIL_USER}>`,
@@ -57,7 +63,7 @@ async function sendEmailOtp(email, otp) {
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 400px; margin: auto; padding: 30px; border-radius: 12px; background: #ffffff; border: 0.5px solid rgb(184, 182, 182); box-shadow: 0 0 10px rgba(0,0,0,0.05);">
                 
                 <div style="text-align: center;">
-                    <img src="cid:ssismLogo" alt="SSISM Logo" width="80" style="margin-bottom: 10px;" />
+                    ${hasLogo ? '<img src="cid:ssismLogo" alt="SSISM Logo" width="80" style="margin-bottom: 10px;" />' : ''}
                     <h2 style="color: #f57c00; margin: 10px 0 5px;">SSISM - ITEG Management System</h2>
                     <p style="color: #666; font-size: 14px;">Secure One-Time Password (OTP) for verification</p>
                 </div>
@@ -81,32 +87,33 @@ async function sendEmailOtp(email, otp) {
                 <p style="font-size: 13px; color: #999; color: #e65100;">ssism.org | support@santsingaji.org</p>
             </div>
         `,
-        attachments: [{
+        attachments: hasLogo ? [{
             path: logoPath,
             cid: 'ssismLogo'
-        }],
+        }] : [],
         text: `Your OTP is: ${otp} (Valid for 5 minutes)`
     };
 
     await transporter.sendMail(mailOptions);
 }
 
-async function sendResetLinkEmail(email, token) {
+async function sendResetLinkEmail(email, token, origin = null) {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
         }
     });
 
-    const logoPath = path.join(__dirname, '..', process.env.EMAIL_LOGO_PATH);
-    const baseUrl = getClientBaseUrl();
-    const resetLink = `${baseUrl}${token}`;
+    const logoRelative = process.env.EMAIL_LOGO_PATH || 'assets/Ssism_Logo.png';
+    const logoPath = path.join(__dirname, '..', logoRelative);
+    const hasLogo = fs.existsSync(logoPath);
+
+    const clientBase = getClientBaseUrl(origin);
+    const resetLink = `${clientBase}/reset-password/${token}`;
     
-    if (process.env.NODE_ENV !== 'production') {
-        console.log('🔗 Password reset email prepared for:', email);
-    }
+    console.log(`🔗 Password reset link generated for ${email}: ${resetLink}`);
 
     const mailOptions = {
         from: `"ITEG Management System" <${process.env.EMAIL_USER}>`,
@@ -116,7 +123,7 @@ async function sendResetLinkEmail(email, token) {
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 400px; margin: auto; padding: 30px; border-radius: 12px; background: #ffffff; border: 0.5px solid rgb(184, 182, 182); box-shadow: 0 0 10px rgba(0,0,0,0.05);">
                 
                 <div style="text-align: center;">
-                    <img src="cid:ssismLogo" alt="SSISM Logo" width="80" style="margin-bottom: 10px;" />
+                    ${hasLogo ? '<img src="cid:ssismLogo" alt="SSISM Logo" width="80" style="margin-bottom: 10px;" />' : ''}
                     <h2 style="color: #f57c00; margin: 10px 0 5px;">SSISM - ITEG Management System</h2>
                     <p style="color: #666; font-size: 14px;">Reset your password securely</p>
                 </div>
@@ -132,7 +139,9 @@ async function sendResetLinkEmail(email, token) {
                     <p style="font-size: 12px; color: #999; margin-top: 10px;">(This link is valid for 15 minutes)</p>
                 </div>
 
-                <p style="color: #444;">⚠️ <strong>If you did not request this reset, you can ignore this email.</strong></p>
+                <p style="color: #444; font-size: 12px; word-break: break-all;">Or copy and paste this link in your browser:<br/><a href="${resetLink}" style="color: #f57c00;">${resetLink}</a></p>
+
+                <p style="color: #444; margin-top: 12px;">⚠️ <strong>If you did not request this reset, you can ignore this email.</strong></p>
 
                 <br />
                 <p style="color: #555;">Regards,</p>
@@ -140,19 +149,26 @@ async function sendResetLinkEmail(email, token) {
                 <p style="font-size: 12px; color: #999;">ssism.org | support@santsingaji.org</p>
             </div>
         `,
-        attachments: [{
+        attachments: hasLogo ? [{
             path: logoPath,
             cid: 'ssismLogo'
-        }],
+        }] : [],
         text: `Reset your password here: ${resetLink} (valid for 15 minutes)`
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Reset email successfully sent to ${email}`);
+        return { success: true, resetLink, emailSent: true };
+    } catch (mailError) {
+        console.warn(`⚠️ Nodemailer SMTP failed to deliver to ${email}:`, mailError.message);
+        console.log(`🔗 Fallback Reset Link: ${resetLink}`);
+        return { success: true, resetLink, emailSent: false, error: mailError.message };
+    }
 }
-
 
 module.exports = {
     generateOTP,
     sendEmailOtp,
-    sendResetLinkEmail // ✅ Add this new export
+    sendResetLinkEmail
 };

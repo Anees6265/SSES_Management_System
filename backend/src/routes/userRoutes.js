@@ -20,10 +20,10 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate Limiter for Password Reset Requests (Max 5 attempts per 15 min per IP)
+// Rate Limiter for Password Reset Requests (Max 20 attempts per 15 min per IP)
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: { message: "Too many password reset requests. Please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -34,6 +34,12 @@ router.post("/signup", usercontroller.createUser);
 router.post("/login", loginLimiter, usercontroller.login);
 router.post("/logout", usercontroller.logout);
 router.patch('/update/:id', verifyToken, usercontroller.updateUserFields);
+
+// Change Password for authenticated user
+router.patch("/change-password", verifyToken, usercontroller.changeMyPassword);
+
+// Admin Reset Password for any user
+router.patch("/admin/reset-password/:id", ...adminOnly, usercontroller.adminResetPassword);
 
 router.post("/refresh_token", usercontroller.refreshAccessToken);
 

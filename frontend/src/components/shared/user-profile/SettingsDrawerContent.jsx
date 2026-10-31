@@ -1,11 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/prop-types */
 import { useState, useEffect, useRef } from "react";
-import { useUpdateUserMutation } from "../../../redux/api/authApi";
+import { useUpdateUserMutation, useChangeUserPasswordMutation } from "../../../redux/api/authApi";
 import { toast } from "react-toastify";
 import profileImg from "../../../assets/images/profile-img.png";
-// import FaceRegistration from "../../modules/face-auth/FaceRegistration"; // Face recognition disabled
-import { FiCamera, FiCheck } from "react-icons/fi";
+import { FiCamera, FiCheck, FiLock, FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiKey } from "react-icons/fi";
 import { API_BASE_URL } from "../../../config/apiConfig";
 
 const SettingsDrawerContent = ({ user, saveButtonRef }) => {
@@ -17,14 +16,57 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
         department: isGlobalAdmin ? "SSISM" : (user?.department || ""),
         isActive: user?.isActive ?? true,
     });
-    // Face recognition disabled
-    // const [showFaceRegistration, setShowFaceRegistration] = useState(false);
-    // const [hasFaceRegistered, setHasFaceRegistered] = useState(false);
     const [previewUrl, setPreviewUrl] = useState("");
     const [profileImageBase64, setProfileImageBase64] = useState("");
     const fileInputRef = useRef(null);
 
     const [updateUser, { isLoading }] = useUpdateUserMutation();
+
+    // Password Change State
+    const [showPasswordSection, setShowPasswordSection] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [showCurrentPass, setShowCurrentPass] = useState(false);
+    const [showNewPass, setShowNewPass] = useState(false);
+    const [showConfirmPass, setShowConfirmPass] = useState(false);
+    const [changeUserPassword, { isLoading: isChangingPassword }] = useChangeUserPasswordMutation();
+
+    const handlePasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (!currentPassword) {
+            toast.error("Please enter your current password");
+            return;
+        }
+        if (!newPassword) {
+            toast.error("Please enter your new password");
+            return;
+        }
+        if (newPassword.length < 6) {
+            toast.error("New password must be at least 6 characters long");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("New passwords do not match");
+            return;
+        }
+
+        try {
+            const res = await changeUserPassword({
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            }).unwrap();
+            toast.success(res?.message || "Password changed successfully!");
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setShowPasswordSection(false);
+        } catch (err) {
+            console.error("Change password error:", err);
+            toast.error(err?.data?.message || err?.message || "Failed to change password");
+        }
+    };
 
     // Face recognition disabled
     // useEffect(() => {
@@ -243,39 +285,114 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                     />
                     <span className="text-sm">Active</span>
                 </label>
-
-                {/* Face Recognition (Disabled)
-                <div className="border-t pt-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Face Recognition</h3>
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">
-                            {hasFaceRegistered ? 'Face registered ✓' : 'No face registered'}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setShowFaceRegistration(true)}
-                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
-                        >
-                            {hasFaceRegistered ? 'Update Face' : 'Register Face'}
-                        </button>
-                    </div>
-                </div>
-                */}
             </form>
 
-            {/* Face Registration Modal (Disabled)
-            {showFaceRegistration && (
-                <FaceRegistration
-                    email={user?.email}
-                    onRegistrationSuccess={() => {
-                        setShowFaceRegistration(false);
-                        setHasFaceRegistered(true);
-                        toast.success('Face registered successfully!');
-                    }}
-                    onClose={() => setShowFaceRegistration(false)}
-                />
-            )}
-            */}
+            {/* Security & Change Password Section */}
+            <div className="border-t border-gray-200 pt-5 mt-5">
+                <button
+                    type="button"
+                    onClick={() => setShowPasswordSection(!showPasswordSection)}
+                    className="w-full flex items-center justify-between p-3.5 bg-orange-50/70 hover:bg-orange-50 border border-orange-200/80 rounded-xl transition-all cursor-pointer group shadow-2xs"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center shadow-xs">
+                            <FiLock className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-xs font-bold text-gray-800">Change Password</p>
+                            <p className="text-[11px] text-gray-500">Update your account login password</p>
+                        </div>
+                    </div>
+                    <div className="text-orange-600 group-hover:translate-y-0.5 transition-transform">
+                        {showPasswordSection ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                    </div>
+                </button>
+
+                {showPasswordSection && (
+                    <form onSubmit={handlePasswordSubmit} className="mt-3 p-4 bg-gray-50/80 border border-gray-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                        {/* Current Password */}
+                        <div className="relative">
+                            <input
+                                type={showCurrentPass ? "text" : "password"}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder=" "
+                                className="peer h-11 w-full border border-gray-300 px-3 pr-10 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500 transition-all"
+                            />
+                            <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${currentPassword ? 'text-xs -top-2 text-orange-600 font-semibold' : 'text-xs text-gray-400 top-3'}`}>
+                                Current Password
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowCurrentPass(!showCurrentPass)}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                            >
+                                {showCurrentPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                            </button>
+                        </div>
+
+                        {/* New Password */}
+                        <div className="relative">
+                            <input
+                                type={showNewPass ? "text" : "password"}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder=" "
+                                className="peer h-11 w-full border border-gray-300 px-3 pr-10 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500 transition-all"
+                            />
+                            <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${newPassword ? 'text-xs -top-2 text-orange-600 font-semibold' : 'text-xs text-gray-400 top-3'}`}>
+                                New Password (min 6 chars)
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPass(!showNewPass)}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                            >
+                                {showNewPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                            </button>
+                        </div>
+
+                        {/* Confirm New Password */}
+                        <div className="relative">
+                            <input
+                                type={showConfirmPass ? "text" : "password"}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder=" "
+                                className="peer h-11 w-full border border-gray-300 px-3 pr-10 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500 transition-all"
+                            />
+                            <label className={`absolute left-3 bg-white px-1 transition-all duration-200 pointer-events-none ${confirmPassword ? 'text-xs -top-2 text-orange-600 font-semibold' : 'text-xs text-gray-400 top-3'}`}>
+                                Confirm New Password
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                            >
+                                {showConfirmPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                            </button>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isChangingPassword}
+                            className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                            {isChangingPassword ? (
+                                <>
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Updating Password...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <FiKey size={14} />
+                                    <span>Update Password</span>
+                                </>
+                            )}
+                        </button>
+                    </form>
+                )}
+            </div>
         </>
     );
 };

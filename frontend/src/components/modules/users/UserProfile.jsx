@@ -4,7 +4,9 @@ import {
   useUpdateUserMutation, 
   useGetAllSubdepartmentsQuery, 
   useGetLeaveRequestsQuery,
-  useGetAllDepartmentsQuery 
+  useGetAllDepartmentsQuery,
+  useChangeUserPasswordMutation,
+  useAdminResetUserPasswordMutation
 } from "../../../redux/api/authApi";
 import { 
   IoCamera, 
@@ -30,7 +32,9 @@ import {
   FiExternalLink, 
   FiAlertCircle, 
   FiX, 
-  FiCheckCircle 
+  FiCheckCircle,
+  FiLock,
+  FiKey
 } from "react-icons/fi";
 import Header from "../../shared/sidebar/Header";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
@@ -90,6 +94,7 @@ const UserProfile = () => {
   // Component state
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [showAadhar, setShowAadhar] = useState(false);
   const [permissionSearch, setPermissionSearch] = useState("");
@@ -413,14 +418,25 @@ const UserProfile = () => {
                 )}
 
                 {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(true)}
-                    className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
-                  >
-                    <FiEdit3 size={14} />
-                    <span>Edit Profile</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(true)}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 border border-slate-200 transition-all duration-200 cursor-pointer shadow-2xs"
+                      title={isSelf ? "Change Password" : "Reset Password"}
+                    >
+                      <FiLock className="text-orange-500 text-sm" />
+                      <span>{isSelf ? "Change Password" : "Reset Password"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(true)}
+                      className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
+                    >
+                      <FiEdit3 size={14} />
+                      <span>Edit Profile</span>
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -739,6 +755,23 @@ const UserProfile = () => {
                   label="Last Updated" 
                   value={userData?.updatedAt ? new Date(userData.updatedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"} 
                 />
+
+                <ProfessionalDetailRow 
+                  icon={<FiLock />} 
+                  label="Account Password" 
+                  value="••••••••••••" 
+                  action={
+                    canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordModal(true)}
+                        className="px-2.5 py-1 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition cursor-pointer"
+                      >
+                        {isSelf ? "Change" : "Reset"}
+                      </button>
+                    )
+                  }
+                />
               </div>
             </DetailSection>
 
@@ -805,6 +838,16 @@ const UserProfile = () => {
               toast.error(err?.data?.message || "Failed to update profile details");
             }
           }}
+        />
+      )}
+
+      {/* ── 5. Change / Reset Password Modal ── */}
+      {showPasswordModal && (
+        <UserPasswordModal
+          user={userData}
+          isSelf={isSelf}
+          onClose={() => setShowPasswordModal(false)}
+          onSuccess={() => refetch()}
         />
       )}
 
@@ -1123,6 +1166,200 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
             <span>Save Changes</span>
           </button>
         </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ── Password Modal (Self Change or Admin Reset) ──
+const UserPasswordModal = ({ user, isSelf, onClose, onSuccess }) => {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [changeUserPassword, { isLoading: isChanging }] = useChangeUserPasswordMutation();
+  const [adminResetUserPassword, { isLoading: isResetting }] = useAdminResetUserPasswordMutation();
+  const isLoading = isChanging || isResetting;
+
+  const handleGenerate = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+    let gen = "";
+    for (let i = 0; i < 10; i++) {
+      gen += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(gen);
+    setConfirmPassword(gen);
+    setShowNew(true);
+    setShowConfirm(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSelf && !currentPassword) {
+      toast.error("Please enter your current password");
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      if (isSelf) {
+        const res = await changeUserPassword({
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }).unwrap();
+        toast.success(res?.message || "Password changed successfully!");
+      } else {
+        const res = await adminResetUserPassword({
+          id: user?._id || user?.id,
+          newPassword,
+        }).unwrap();
+        toast.success(res?.message || `Password for ${user?.name} reset successfully!`);
+      }
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      toast.error(err?.data?.message || err?.message || "Failed to update password");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-xs">
+              <FiLock size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                {isSelf ? "Change Password" : "Reset Password"}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium truncate">
+                {isSelf ? "Update your active account password" : `Setting new password for ${user?.name || "employee"}`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {isSelf && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showCurrent ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showCurrent ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isSelf && (
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-xs text-slate-500">Need a secure password?</span>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="text-xs font-bold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <FiKey size={13} /> Autogenerate
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">New Password (min 6 chars)</label>
+            <div className="relative">
+              <input
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+              >
+                {showNew ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confirm New Password</label>
+            <div className="relative">
+              <input
+                type={showConfirm ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+              >
+                {showConfirm ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Footer buttons */}
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              <span>{isSelf ? "Update Password" : "Reset Password"}</span>
+            </button>
+          </div>
+        </form>
 
       </div>
     </div>

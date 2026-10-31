@@ -564,6 +564,7 @@ exports.forgotPassword = async (req, res) => {
       (req.headers.referer ? new URL(req.headers.referer).origin : null);
 
     await sendResetLinkEmail(cleanEmail, token, origin);
+
     return res.status(200).json({
       success: true,
       message: "Password reset link sent to your email address.",

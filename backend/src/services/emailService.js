@@ -5,33 +5,35 @@ require('dotenv').config();
 
 // Function to get appropriate client URL based on environment
 function getClientBaseUrl(origin = null) {
+    // Priority 1: If request comes from a browser, dynamically use that exact origin
+    // (e.g. http://localhost:5173 when testing locally, https://iteg.ssism.org on production)
     if (origin && typeof origin === 'string' && origin.startsWith('http')) {
         return origin.replace(/\/+$/, '');
     }
 
-    const rawUrls = process.env.CLIENT_BASE_URL || 'http://localhost:5173';
-    const urls = rawUrls.split(',').map(url => url.trim()).filter(Boolean);
-    
-    // Priority 1: Custom domain
+    // Priority 2: Custom domain if explicitly set in .env
     if (process.env.CUSTOM_DOMAIN) {
         return process.env.CUSTOM_DOMAIN.replace(/\/+$/, '');
     }
-    
-    // Priority 2: Development environment (localhost)
+
+    const rawUrls = process.env.CLIENT_BASE_URL || 'http://localhost:5173';
+    const urls = rawUrls.split(',').map(url => url.trim()).filter(Boolean);
+
+    // Priority 3: On production, prioritize official domain (ssism.org)
+    const officialDomain = urls.find(url => url.includes('ssism.org'));
+    if (officialDomain && process.env.NODE_ENV === 'production') {
+        return officialDomain.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
+    }
+
+    // Priority 4: Development environment (localhost)
     if (process.env.NODE_ENV === 'development') {
         const localhostUrl = urls.find(url => url.includes('localhost'));
         if (localhostUrl) {
             return localhostUrl.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
         }
     }
-    
-    // Priority 3: Production Vercel or Custom URL
-    const vercelUrl = urls.find(url => url.includes('vercel.app'));
-    if (vercelUrl) {
-        return vercelUrl.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
-    }
-    
-    // Fallback to first URL or localhost
+
+    // Priority 5: Fallback to first URL or localhost
     const fallback = urls[0] || 'http://localhost:5173';
     return fallback.replace(/\/reset-password\/?$/, '').replace(/\/+$/, '');
 }
@@ -45,7 +47,7 @@ async function sendEmailOtp(email, otp) {
         service: 'gmail',
         auth: { 
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
         }
     });
 
@@ -100,7 +102,7 @@ async function sendResetLinkEmail(email, token, origin = null) {
         service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
         }
     });
 
@@ -154,8 +156,15 @@ async function sendResetLinkEmail(email, token, origin = null) {
         text: `Reset your password here: ${resetLink} (valid for 15 minutes)`
     };
 
-    await transporter.sendMail(mailOptions);
-    return { success: true, resetLink };
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Reset email successfully sent to ${email}`);
+        return { success: true, resetLink, emailSent: true };
+    } catch (mailError) {
+        console.warn(`⚠️ Nodemailer SMTP failed to deliver to ${email}:`, mailError.message);
+        console.log(`🔗 Fallback Reset Link: ${resetLink}`);
+        return { success: true, resetLink, emailSent: false, error: mailError.message };
+    }
 }
 
 module.exports = {

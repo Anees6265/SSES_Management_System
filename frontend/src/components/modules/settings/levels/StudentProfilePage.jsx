@@ -15,6 +15,15 @@ import {
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
 import { FiCamera, FiCheck } from "react-icons/fi";
+import {
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as RechartsTooltip,
+} from "recharts";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import StudentPlacementTimeline from "../../placements/StudentPlacementTimeline";
@@ -1343,6 +1352,93 @@ const translateLevelName = (name) => {
     return name;
 };
 
+// ── CUSTOM TOOLTIP FOR TASK COMPLETION TREND CHART ──
+const TaskTrendTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const data = payload[0]?.payload;
+    if (!data) return null;
+
+    const isComplete = data.pct >= 100;
+    const isStarted = data.pct > 0;
+
+    return (
+        <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-800 text-xs min-w-[210px] z-50">
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                <span className="font-extrabold text-slate-100 truncate max-w-[150px] text-xs">
+                    {data.label || data.name}
+                </span>
+                <span
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                        isComplete
+                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                            : isStarted
+                            ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                            : "bg-slate-700/50 text-slate-400 border-slate-600/30"
+                    }`}
+                >
+                    {data.pct}%
+                </span>
+            </div>
+
+            <div className="mt-2.5 space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between text-slate-300">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Completed Tasks:
+                    </span>
+                    <span className="font-black text-emerald-400">{data.completed}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-300">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        Total Assigned:
+                    </span>
+                    <span className="font-black text-slate-200">{data.total}</span>
+                </div>
+
+                {/* Progress bar inside tooltip */}
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2.5 overflow-hidden">
+                    <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                            isComplete
+                                ? "bg-emerald-500"
+                                : "bg-gradient-to-r from-orange-500 to-amber-400"
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, data.pct))}%` }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const renderTrendDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (cx === undefined || cy === undefined) return null;
+    const isCurrent = Boolean(payload?.isCurrent);
+    return (
+        <g key={`dot-${payload?.id || props.index}`}>
+            <circle
+                cx={cx}
+                cy={cy}
+                r={isCurrent ? 5.5 : 4}
+                fill={isCurrent ? "#ea580c" : "#f97316"}
+                stroke="#ffffff"
+                strokeWidth={2.5}
+            />
+            {isCurrent && (
+                <circle
+                    cx={cx}
+                    cy={cy}
+                    r={9}
+                    fill="#ea580c"
+                    fillOpacity={0.25}
+                />
+            )}
+        </g>
+    );
+};
+
 // MAIN STUDENT PROFILE PAGE (Clean 100% Dynamic API Data + Reference UI Template)
 const StudentProfilePage = () => {
     const location = useLocation();
@@ -1398,7 +1494,6 @@ const StudentProfilePage = () => {
     const [dummyLoading, setDummyLoading] = useState(false);
     const [mobileTab, setMobileTab] = useState("overview"); // "overview" | "academics" | "placement" | "documents" | "all"
     const [taskTrendView, setTaskTrendView] = useState("subjects"); // "subjects" | "milestones"
-    const [hoveredTrendPoint, setHoveredTrendPoint] = useState(null);
 
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
@@ -1658,7 +1753,7 @@ const StudentProfilePage = () => {
     const taskTrendPoints = useMemo(() => {
         // Mode 1: Milestones across levels in student history
         if (taskTrendView === "milestones" && effectiveLevelHistory.length > 0) {
-            return effectiveLevelHistory.map((h, i) => {
+            const list = effectiveLevelHistory.map((h, i) => {
                 const isCurrent = h.status === "in_progress" || i === effectiveLevelHistory.length - 1;
                 const hTotal = h.totalTasks || (isCurrent ? totalTasks : 10);
                 const hDone = h.completedTasksCount || (isCurrent ? completedTasks : (h.status === "completed" ? hTotal : 0));
@@ -1674,45 +1769,42 @@ const StudentProfilePage = () => {
                     isCurrent
                 };
             });
+
+            if (list.length === 1) {
+                return [
+                    { id: "start", label: "Program Start", shortLabel: "Start", pct: 0, completed: 0, total: list[0].total },
+                    list[0]
+                ];
+            }
+            return list;
         }
 
         // Mode 2: Subject-wise task completion trend for current level
         if (subjects.length > 0) {
-            return [
-                {
-                    id: "start",
-                    label: "Level Start",
-                    shortLabel: "Start",
-                    pct: 0,
-                    completed: 0,
-                    total: totalTasks,
-                    isStart: true
-                },
-                ...subjects.map((s, idx) => ({
-                    id: `subj-${idx}`,
-                    label: s.name,
-                    shortLabel: s.name.length > 12 ? s.name.slice(0, 10) + "…" : s.name,
-                    pct: s.pct,
-                    completed: s.completedCount,
-                    total: s.tasksCount
-                })),
-                {
-                    id: "current",
-                    label: `Current (${currentSubLevelName})`,
-                    shortLabel: "Current",
-                    pct: completionRate,
-                    completed: completedTasks,
-                    total: totalTasks,
-                    isCurrent: true
-                }
-            ];
+            const list = subjects.map((s, idx) => ({
+                id: `subj-${idx}`,
+                label: s.name,
+                shortLabel: s.name.length > 14 ? s.name.slice(0, 12) + "…" : s.name,
+                pct: s.pct,
+                completed: s.completedCount,
+                total: s.tasksCount,
+            }));
+
+            if (list.length === 1) {
+                return [
+                    { id: "start", label: `${currentSubLevelName} Start`, shortLabel: "Start", pct: 0, completed: 0, total: totalTasks },
+                    { ...list[0], isCurrent: true }
+                ];
+            }
+
+            return list;
         }
 
         // Mode 3: Fallback if tasks exist but not grouped into subjects
         if (totalTasks > 0) {
             return [
                 { id: "p0", label: "Level Start", shortLabel: "Start", pct: 0, completed: 0, total: totalTasks, isStart: true },
-                { id: "p1", label: "Mid Progress", shortLabel: "Midway", pct: Math.round(completionRate * 0.5), completed: Math.round(completedTasks * 0.5), total: totalTasks },
+                { id: "p1", label: "Midway", shortLabel: "Midway", pct: Math.round(completionRate * 0.5), completed: Math.round(completedTasks * 0.5), total: totalTasks },
                 { id: "p2", label: `Current (${currentSubLevelName})`, shortLabel: "Current", pct: completionRate, completed: completedTasks, total: totalTasks, isCurrent: true }
             ];
         }
@@ -2829,239 +2921,159 @@ const StudentProfilePage = () => {
                         <div className={`${mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6`}>
                             {/* Left Box: Task Completion Trend Chart (2 Cols) */}
                             <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                                    <div>
-                                        <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                                            Task Completion Trend
-                                            {/* Attendance trend commented out as per request */}
-                                        </h3>
-                                        <p className="text-xs text-slate-400 font-medium">Real-time task completion progress across syllabus & subjects</p>
+                                {/* Header */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
+                                            <MdTrendingUp size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-black text-slate-900 tracking-tight">
+                                                Task Completion Trend
+                                            </h3>
+                                            <p className="text-xs text-slate-400 font-medium">
+                                                Real-time task completion progress across syllabus & subjects
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+
+                                    <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
                                         {effectiveLevelHistory.length > 1 && (
                                             <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
                                                 <button
                                                     type="button"
                                                     onClick={() => setTaskTrendView("subjects")}
-                                                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${taskTrendView === "subjects" ? "bg-white text-orange-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"}`}
+                                                    className={`px-3 py-1 rounded-lg transition-all duration-150 cursor-pointer ${
+                                                        taskTrendView === "subjects"
+                                                            ? "bg-white text-orange-600 shadow-2xs font-black"
+                                                            : "text-slate-500 hover:text-slate-800"
+                                                    }`}
                                                 >
                                                     Subjects
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => setTaskTrendView("milestones")}
-                                                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${taskTrendView === "milestones" ? "bg-white text-orange-600 shadow-2xs" : "text-slate-500 hover:text-slate-800"}`}
+                                                    className={`px-3 py-1 rounded-lg transition-all duration-150 cursor-pointer ${
+                                                        taskTrendView === "milestones"
+                                                            ? "bg-white text-orange-600 shadow-2xs font-black"
+                                                            : "text-slate-500 hover:text-slate-800"
+                                                    }`}
                                                 >
                                                     Level History
                                                 </button>
                                             </div>
                                         )}
-                                        <span className="text-xs font-black text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-                                            <MdTrendingUp size={14} className="text-orange-500" />
-                                            {completionRate}% Completed
-                                        </span>
+
+                                        <div className="flex items-center gap-1.5 text-xs font-black text-orange-700 bg-orange-50 border border-orange-200/80 px-3 py-1.5 rounded-xl shadow-2xs">
+                                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                                            <span>{completionRate}% Completed</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Dynamic Working Line Area Chart SVG */}
-                                {(() => {
-                                    const padLeft = 36;
-                                    const padRight = 24;
-                                    const padTop = 22;
-                                    const padBottom = 30;
-                                    const chartW = 500 - padLeft - padRight;
-                                    const chartH = 160 - padTop - padBottom;
-                                    const baseY = padTop + chartH;
-
-                                    if (taskTrendPoints.length === 0) {
-                                        return (
-                                            <div className="h-44 sm:h-56 flex flex-col items-center justify-center text-center p-4">
-                                                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2">
-                                                    <MdTrendingUp size={20} />
-                                                </div>
-                                                <p className="text-xs font-bold text-slate-800">No Tasks Assigned Yet</p>
-                                                <p className="text-[11px] text-slate-400 max-w-xs mt-0.5">Tasks assigned to this student in {currentSubLevelName} will plot real-time progress here.</p>
-                                            </div>
-                                        );
-                                    }
-
-                                    const coords = taskTrendPoints.map((pt, i) => {
-                                        const x = taskTrendPoints.length > 1
-                                            ? padLeft + (i / (taskTrendPoints.length - 1)) * chartW
-                                            : padLeft + chartW / 2;
-                                        const y = padTop + (1 - Math.min(100, Math.max(0, pt.pct)) / 100) * chartH;
-                                        return { ...pt, x, y };
-                                    });
-
-                                    let linePath = "";
-                                    if (coords.length === 1) {
-                                        linePath = `M ${coords[0].x} ${coords[0].y}`;
-                                    } else if (coords.length === 2) {
-                                        linePath = `M ${coords[0].x} ${coords[0].y} L ${coords[1].x} ${coords[1].y}`;
-                                    } else if (coords.length > 2) {
-                                        linePath = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
-                                        for (let i = 0; i < coords.length - 1; i++) {
-                                            const p0 = i > 0 ? coords[i - 1] : coords[i];
-                                            const p1 = coords[i];
-                                            const p2 = coords[i + 1];
-                                            const p3 = i < coords.length - 2 ? coords[i + 2] : p2;
-                                            const cp1x = p1.x + (p2.x - p0.x) / 6;
-                                            const cp1y = p1.y + (p2.y - p0.y) / 6;
-                                            const cp2x = p2.x - (p3.x - p1.x) / 6;
-                                            const cp2y = p2.y - (p3.y - p1.y) / 6;
-                                            linePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-                                        }
-                                    }
-
-                                    const firstX = coords[0].x.toFixed(1);
-                                    const lastX = coords[coords.length - 1].x.toFixed(1);
-                                    const areaPath = coords.length > 1 ? `${linePath} L ${lastX} ${baseY} L ${firstX} ${baseY} Z` : "";
-
-                                    return (
-                                        <div className="relative h-44 sm:h-56 w-full pt-1">
-                                            {/* Hover info badge */}
-                                            {hoveredTrendPoint && (
-                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xs text-white text-[11px] font-semibold py-1 px-3 rounded-full shadow-lg pointer-events-none flex items-center gap-1.5 z-10 whitespace-nowrap animate-fadeIn">
-                                                    <span className="font-black text-orange-400">{hoveredTrendPoint.label}:</span>
-                                                    <span>{hoveredTrendPoint.completed}/{hoveredTrendPoint.total} tasks completed ({hoveredTrendPoint.pct}%)</span>
-                                                </div>
-                                            )}
-
-                                            <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
+                                {/* Dynamic Responsive Area Chart */}
+                                {taskTrendPoints.length === 0 ? (
+                                    <div className="h-56 sm:h-60 flex flex-col items-center justify-center text-center p-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2.5 shadow-2xs">
+                                            <MdTrendingUp size={24} />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-800">No Tasks Assigned Yet</p>
+                                        <p className="text-xs text-slate-400 max-w-xs mt-1">
+                                            Tasks assigned to this student in {currentSubLevelName} will plot real-time progress trend here.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-56 sm:h-60 pt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart
+                                                data={taskTrendPoints}
+                                                margin={{ top: 16, right: 16, left: -22, bottom: 4 }}
+                                            >
                                                 <defs>
-                                                    <linearGradient id="taskOrangeGrad" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#f97316" stopOpacity="0.38" />
-                                                        <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                                    <linearGradient id="taskTrendOrangeGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.42} />
+                                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.01} />
                                                     </linearGradient>
                                                 </defs>
 
-                                                {/* Horizontal Gridlines & Y-Axis Labels */}
-                                                {[100, 50, 0].map((gridPct) => {
-                                                    const gridY = padTop + (1 - gridPct / 100) * chartH;
-                                                    return (
-                                                        <g key={gridPct}>
-                                                            <line
-                                                                x1={padLeft}
-                                                                y1={gridY}
-                                                                x2={padLeft + chartW}
-                                                                y2={gridY}
-                                                                stroke="#f1f5f9"
-                                                                strokeDasharray="3 3"
-                                                            />
-                                                            <text
-                                                                x={padLeft - 6}
-                                                                y={gridY + 3}
-                                                                textAnchor="end"
-                                                                className="text-[8.5px] fill-slate-300 font-bold select-none"
-                                                            >
-                                                                {gridPct}%
-                                                            </text>
-                                                        </g>
-                                                    );
-                                                })}
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
 
-                                                {/* Area Fill */}
-                                                {areaPath && (
-                                                    <path
-                                                        d={areaPath}
-                                                        fill="url(#taskOrangeGrad)"
-                                                    />
-                                                )}
+                                                <XAxis
+                                                    dataKey="shortLabel"
+                                                    tickLine={false}
+                                                    axisLine={{ stroke: "#f1f5f9" }}
+                                                    tick={{ fill: "#64748b", fontSize: 11, fontWeight: 700 }}
+                                                    dy={6}
+                                                />
 
-                                                {/* Main Line */}
-                                                {linePath && (
-                                                    <path
-                                                        d={linePath}
-                                                        fill="none"
-                                                        stroke="#f97316"
-                                                        strokeWidth="3.5"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                )}
+                                                <YAxis
+                                                    domain={[0, 100]}
+                                                    ticks={[0, 25, 50, 75, 100]}
+                                                    tickFormatter={(val) => `${val}%`}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }}
+                                                />
 
-                                                {/* Data Points */}
-                                                {coords.map((pt) => {
-                                                    const isHovered = hoveredTrendPoint?.id === pt.id;
-                                                    return (
-                                                        <g key={pt.id}>
-                                                            {/* Percentage label above dot */}
-                                                            <text
-                                                                x={pt.x}
-                                                                y={pt.y - 7}
-                                                                textAnchor="middle"
-                                                                className="text-[9.5px] font-black fill-slate-700 select-none"
-                                                            >
-                                                                {pt.pct}%
-                                                            </text>
+                                                <RechartsTooltip content={<TaskTrendTooltip />} />
 
-                                                            {/* Hover ring glow */}
-                                                            {isHovered && (
-                                                                <circle
-                                                                    cx={pt.x}
-                                                                    cy={pt.y}
-                                                                    r={9}
-                                                                    fill="#f97316"
-                                                                    fillOpacity={0.25}
-                                                                />
-                                                            )}
-
-                                                            {/* Point Circle */}
-                                                            <circle
-                                                                cx={pt.x}
-                                                                cy={pt.y}
-                                                                r={isHovered ? 5.5 : 4}
-                                                                fill={pt.isCurrent ? "#ea580c" : "#f97316"}
-                                                                stroke="#ffffff"
-                                                                strokeWidth={2.5}
-                                                                className="transition-all duration-150"
-                                                            />
-
-                                                            {/* X-axis Label below baseline */}
-                                                            <text
-                                                                x={pt.x}
-                                                                y={152}
-                                                                textAnchor="middle"
-                                                                className={`text-[9.5px] select-none ${isHovered ? "font-black fill-orange-600" : "font-bold fill-slate-400"}`}
-                                                            >
-                                                                {pt.shortLabel}
-                                                            </text>
-
-                                                            {/* Invisible large hover hit area */}
-                                                            <circle
-                                                                cx={pt.x}
-                                                                cy={pt.y}
-                                                                r={18}
-                                                                fill="transparent"
-                                                                className="cursor-pointer"
-                                                                onMouseEnter={() => setHoveredTrendPoint(pt)}
-                                                                onMouseLeave={() => setHoveredTrendPoint(null)}
-                                                            />
-                                                        </g>
-                                                    );
-                                                })}
-                                            </svg>
-                                        </div>
-                                    );
-                                })()}
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="pct"
+                                                    name="Completion %"
+                                                    stroke="#ea580c"
+                                                    strokeWidth={3}
+                                                    fillOpacity={1}
+                                                    fill="url(#taskTrendOrangeGrad)"
+                                                    dot={renderTrendDot}
+                                                    activeDot={{
+                                                        r: 6.5,
+                                                        fill: "#ea580c",
+                                                        stroke: "#ffffff",
+                                                        strokeWidth: 3,
+                                                    }}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
 
                                 {/* Micro-stats summary footer */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 mt-2">
-                                    <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5 border border-slate-100">
-                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Tasks</span>
-                                        <span className="text-xs sm:text-sm font-black text-slate-800">{totalTasks}</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3.5 border-t border-slate-100 mt-2">
+                                    <div className="bg-slate-50/80 rounded-xl px-3 py-2 border border-slate-150/70 transition-all hover:bg-slate-100/70">
+                                        <div className="flex items-center justify-between text-slate-400 mb-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Total Tasks</span>
+                                            <MdAssignment size={14} className="text-slate-400" />
+                                        </div>
+                                        <span className="text-sm sm:text-base font-black text-slate-800">{totalTasks}</span>
                                     </div>
-                                    <div className="bg-emerald-50/60 rounded-xl px-2.5 py-1.5 border border-emerald-100/80">
-                                        <span className="text-[10px] font-bold uppercase text-emerald-600 block">Completed</span>
-                                        <span className="text-xs sm:text-sm font-black text-emerald-700">{completedTasks}</span>
+
+                                    <div className="bg-emerald-50/70 rounded-xl px-3 py-2 border border-emerald-100/80 transition-all hover:bg-emerald-50">
+                                        <div className="flex items-center justify-between text-emerald-600 mb-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Completed</span>
+                                            <MdCheckCircle size={14} className="text-emerald-500" />
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-sm sm:text-base font-black text-emerald-700">{completedTasks}</span>
+                                            <span className="text-[10px] font-bold text-emerald-600/80">({completionRate}%)</span>
+                                        </div>
                                     </div>
-                                    <div className="bg-orange-50/60 rounded-xl px-2.5 py-1.5 border border-orange-100/80">
-                                        <span className="text-[10px] font-bold uppercase text-orange-600 block">Pending</span>
-                                        <span className="text-xs sm:text-sm font-black text-orange-700">{pendingTasks}</span>
+
+                                    <div className="bg-orange-50/70 rounded-xl px-3 py-2 border border-orange-100/80 transition-all hover:bg-orange-50">
+                                        <div className="flex items-center justify-between text-orange-600 mb-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Pending</span>
+                                            <MdAccessTime size={14} className="text-orange-500" />
+                                        </div>
+                                        <span className="text-sm sm:text-base font-black text-orange-700">{pendingTasks}</span>
                                     </div>
-                                    <div className="bg-rose-50/60 rounded-xl px-2.5 py-1.5 border border-rose-100/80">
-                                        <span className="text-[10px] font-bold uppercase text-rose-600 block">Overdue</span>
-                                        <span className="text-xs sm:text-sm font-black text-rose-700">{overdueTasks}</span>
+
+                                    <div className="bg-rose-50/70 rounded-xl px-3 py-2 border border-rose-100/80 transition-all hover:bg-rose-50">
+                                        <div className="flex items-center justify-between text-rose-600 mb-1">
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Overdue</span>
+                                            <MdWarning size={14} className="text-rose-500" />
+                                        </div>
+                                        <span className="text-sm sm:text-base font-black text-rose-700">{overdueTasks}</span>
                                     </div>
                                 </div>
                             </div>

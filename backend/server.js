@@ -143,26 +143,44 @@ module.exports = app;
 
 // Start Server only if this is the main module (not when testing)
 if (require.main === module) {
-  const dns = require('dns');
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
+  try {
+    const dns = require('dns');
+    dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+  } catch (dnsErr) {
+    console.warn("DNS server setup warning:", dnsErr.message);
+  }
   
   const mongoOptions = {
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
   };
 
-  mongoose
-    .connect(process.env.MONGO_URI, mongoOptions)
-    .then(async () => {
+  let isConnecting = false;
+  const connectWithRetry = async () => {
+    if (isConnecting || mongoose.connection.readyState === 1) return;
+    isConnecting = true;
+    try {
+      await mongoose.connect(process.env.MONGO_URI, mongoOptions);
       console.log("MongoDB Connected Successfully");
       try {
         await mongoose.connection.collection("syllabusversions").dropIndex("sessionId_1_levelId_1_subLevelId_1_version_1");
       } catch (_) {}
-    })
-    .catch((err) => {
-      console.error("MongoDB Connection Error:", err);
-      process.exit(1);
-    });
+    } catch (err) {
+      console.error("MongoDB Connection Error:", err.message || err);
+      console.warn("⚠️  Retrying MongoDB connection in 5 seconds... (App will NOT crash)");
+      setTimeout(connectWithRetry, 5000);
+    } finally {
+      isConnecting = false;
+    }
+  };
+
+  mongoose.connection.on("disconnected", () => {
+    console.warn("MongoDB disconnected. Attempting reconnect...");
+    setTimeout(connectWithRetry, 3000);
+  });
+
+  connectWithRetry();
 
   const PORT = parseInt(process.env.PORT, 10) || 5000;
   const HOST = '0.0.0.0';

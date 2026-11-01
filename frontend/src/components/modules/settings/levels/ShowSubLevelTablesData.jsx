@@ -460,7 +460,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
         return {
             all: progressList.length,
             active: progressList.filter(s => (s.currentStatus || "Active").toLowerCase() === "active").length,
-            placed: progressList.filter(s => (s.currentStatus || "").toLowerCase() === "placed").length,
             dropped: progressList.filter(s => (s.currentStatus || "").toLowerCase() === "dropped").length,
         };
     }, [progressList]);
@@ -717,7 +716,6 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                             {[
                                                 { id: "all", label: "All Status", count: statusCounts.all },
                                                 { id: "active", label: "Active", count: statusCounts.active },
-                                                { id: "placed", label: "Placed", count: statusCounts.placed },
                                                 { id: "dropped", label: "Dropped", count: statusCounts.dropped },
                                             ].map((opt) => {
                                                 const isSelected = statusFilter === opt.id;

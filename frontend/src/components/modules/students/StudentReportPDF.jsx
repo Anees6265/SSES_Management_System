@@ -45,14 +45,14 @@ const translateLevelName = (name) => {
   return name;
 };
 
-/* =================== Styles =================== */
+/* =================== Software Theme Styles (Orange & Slate) =================== */
 const styles = StyleSheet.create({
   page: {
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
-    paddingTop: 12,
+    paddingTop: 14,
     paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingBottom: 14,
     fontFamily: "Helvetica",
   },
 
@@ -64,64 +64,39 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 6,
     borderBottomWidth: 2,
-    borderBottomColor: "#7335DD",
+    borderBottomColor: "#EA580C",
     borderBottomStyle: "solid",
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    minWidth: 70,
-    flexShrink: 0,
-  },
-  headerCenter: { flexGrow: 1, alignItems: "center", paddingHorizontal: 8 },
-  headerRight: { minWidth: 120, alignItems: "flex-end" },
-
-  logo: {
-    width: 78,
-    height: 52,
-    objectFit: "contain",
-    maxWidth: "100%",
-  },
-
-  title: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-  subMuted: { fontSize: 9, color: "#6B7280" },
-  subBold: { fontSize: 10, color: "#111827", fontWeight: "bold" },
 
   /* Section/Card */
   section: {
     marginBottom: 8,
-    padding: 10,
-    backgroundColor: "#F9FAFB",
+    padding: 9,
+    backgroundColor: "#FFFFFF",
     borderRadius: 6,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "#E5E7EB",
+    borderColor: "#E2E8F0",
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
-    color: "#111827",
-    marginBottom: 8,
+    color: "#0F172A",
+    marginBottom: 6,
   },
 
   /* Info grid */
   infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-  infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 4 },
-  infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  icon: { width: 11, height: 11, marginRight: 6 },
-  label: { fontSize: 9, color: "#6B7280", fontWeight: "bold" },
-  value: { fontSize: 10, color: "#111827" },
+  infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 5 },
+  infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 3 },
+  icon: { width: 11, height: 11, marginRight: 5 },
+  label: { fontSize: 8.5, color: "#64748B", fontWeight: "bold" },
+  value: { fontSize: 9.5, color: "#0F172A" },
 
   /* Level Progress */
-  levelWrap: { paddingVertical: 6 },
-  levelLegend: {
-    marginTop: 6,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  badge: { fontSize: 9, color: "#374151", textAlign: "center", width: 28 },
+  levelWrap: { paddingVertical: 4 },
 
-  /* Two-column main row: left = 28%, right = 68% (adjusted) */
+  /* Two-column main row for legacy view */
   mainRow: { flexDirection: "row", gap: 8, marginBottom: 6, width: "100%" },
   leftCol30: {
     width: "28%",
@@ -129,8 +104,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "#E5E7EB",
-    padding: 10,
+    borderColor: "#E2E8F0",
+    padding: 8,
     minWidth: 0,
   },
   rightCol60: {
@@ -138,35 +113,29 @@ const styles = StyleSheet.create({
     flexDirection: "column",
   },
 
-  /* Top half inside right column: two columns (Soft | Discipline) */
-  // make row stretch children and set a minHeight so both columns equalize
   rightTopRow: {
     flexDirection: "row",
     marginBottom: 6,
     justifyContent: "space-between",
-    alignItems: "stretch", // important to equalize height
-    minHeight: 120, // adjust this value if you want taller/shorter equal boxes
+    alignItems: "stretch",
+    minHeight: 110,
   },
-  // give each column flex:1 so they share available height equally
   rightTopCol: {
     flex: 1,
     paddingHorizontal: 8,
     backgroundColor: "#FFFFFF",
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 10,
+    borderColor: "#E2E8F0",
+    padding: 8,
     minWidth: 0,
-    justifyContent: "flex-start", // content top-aligned
+    justifyContent: "flex-start",
   },
-
-  /* Add gap between the two top cols via marginRight on first */
   rightTopColLeftGap: {
     marginRight: 8,
   },
 
-  /* Bottom half inside right column: Co-curricular cards */
-  rightBottomRow: { width: "100%", marginTop: 6 },
+  rightBottomRow: { width: "100%", marginTop: 4 },
   coCardsWrap: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -176,94 +145,95 @@ const styles = StyleSheet.create({
     width: "31%",
     paddingVertical: 6,
     paddingHorizontal: 6,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginBottom: 8,
+    borderColor: "#E2E8F0",
+    marginBottom: 6,
     justifyContent: "center",
     alignItems: "center",
   },
   coCardTitle: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: "#374151",
+    fontSize: 9,
+    fontWeight: "bold",
+    color: "#475569",
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   coCardCount: {
-    fontSize: 16,
-    fontWeight: 700,
-    color: "#111827",
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#EA580C",
     textAlign: "center",
   },
 
   /* Progress list */
-  skillRow: { marginBottom: 8 },
+  skillRow: { marginBottom: 7 },
   skillHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  small: { fontSize: 9, color: "#374151" },
+  small: { fontSize: 8.5, color: "#475569" },
   barTrack: {
-    height: 8,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 5,
+    height: 7,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 4,
     overflow: "hidden",
   },
-  barFill: { height: 8, backgroundColor: "#7335DD" },
+  barFill: { height: 7, backgroundColor: "#EA580C" },
 
   /* Soft skills */
   softRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  softLeft: { fontSize: 9.5, color: "#374151" },
-  softRight: { fontSize: 9.5, fontWeight: "bold" },
+  softLeft: { fontSize: 9, color: "#334155" },
+  softRight: { fontSize: 9, fontWeight: "bold" },
 
-  /* Career readiness (4 in one row) */
+  /* Career readiness pills */
   readinessRow: { flexDirection: "row", justifyContent: "space-between" },
   pill: {
     width: "23%",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "#E5E7EB",
+    borderColor: "#FED7AA",
+    alignItems: "center",
   },
-  pillLabel: { fontSize: 9, color: "#6B7280", marginBottom: 6, textAlign: "center" },
-  pillValue: { fontSize: 10, fontWeight: "bold", color: "#111827", textAlign: "center" },
+  pillLabel: { fontSize: 8, color: "#C2410C", marginBottom: 4, textAlign: "center", fontWeight: "bold" },
+  pillValue: { fontSize: 9.5, fontWeight: "bold", color: "#9A3412", textAlign: "center" },
 
-/* Footer */
-footer: {
-  marginTop: 8,
-  padding: 12,
-  backgroundColor: "#7335DD",
-  borderRadius: 8,
-  flexDirection: "row",
-  justifyContent: "space-between",
-},
-
-footerColumn: {
-  width: "33%",
-},
-
-footerHeading: {
-  fontSize: 10,
-  color: "#FFFFFF",
-  fontWeight: "bold",
-  marginBottom: 4,
-},
-
-footerValue: {
-  fontSize: 10,
-  color: "#FFFFFF",
-},
-
+  /* Footer */
+  footer: {
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: "#0F172A",
+    borderRadius: 6,
+    borderTopWidth: 2,
+    borderTopColor: "#EA580C",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  footerColumn: {
+    width: "33%",
+  },
+  footerHeading: {
+    fontSize: 8,
+    color: "#FB923C",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
+  footerValue: {
+    fontSize: 9.5,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+  },
 });
 
 /* =================== Helpers =================== */
@@ -273,7 +243,7 @@ const InfoItem = ({ icon, label, value }) => (
       <Image src={icon} style={styles.icon} />
       <Text style={styles.label}>{label}</Text>
     </View>
-    <Text style={styles.value}>{value || "N/A"}</Text>
+    <Text style={styles.value}>{value || "—"}</Text>
   </View>
 );
 
@@ -323,18 +293,16 @@ const softStatus = (score, max) => {
 const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
 
 /* =================== Level Timeline Component =================== */
-const LevelTimeline = ({ currentLevel = "1A" }) => {
+const LevelTimeline = ({ currentLevel = "" }) => {
   const steps = LEVEL_STEPS;
   const currentLevelUpper = String(currentLevel || "1A").toUpperCase();
-  const currentIdx = Math.max(
-    0,
-    steps.findIndex((s) => s.toUpperCase() === currentLevelUpper)
-  );
+  const foundIdx = steps.findIndex((s) => s.toUpperCase() === currentLevelUpper);
+  const currentIdx = foundIdx !== -1 ? foundIdx : 0;
 
   const width = 480;
   const padding = 20;
   const yCenter = 15;
-  const circleRadius = 12;
+  const circleRadius = 11;
   const lineStrokeWidth = 3;
 
   const innerWidth = width - padding * 2;
@@ -343,13 +311,13 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
 
   return (
     <View style={styles.levelWrap}>
-      <Svg width={width} height="50" viewBox={`0 0 ${width} 50`}>
+      <Svg width={width} height="46" viewBox={`0 0 ${width} 46`}>
         <Line
           x1={pts[0]}
           y1={yCenter}
           x2={pts[steps.length - 1]}
           y2={yCenter}
-          stroke="#E5E7EB"
+          stroke="#E2E8F0"
           strokeWidth={lineStrokeWidth}
         />
         <Line
@@ -365,8 +333,8 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
           const isPassed = i < currentIdx;
           const isCurrent = i === currentIdx;
 
-          const circleFill = isPassed ? "#10B981" : isCurrent ? "#F59E0B" : "#E5E7EB";
-          const labelColor = isCurrent ? "#F59E0B" : "#374151";
+          const circleFill = isPassed ? "#10B981" : isCurrent ? "#EA580C" : "#E2E8F0";
+          const labelColor = isCurrent ? "#EA580C" : "#475569";
 
           return (
             <G key={i}>
@@ -375,8 +343,8 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
                 cy={yCenter}
                 r={circleRadius}
                 fill={circleFill}
-                stroke={isCurrent ? "#F59E0B" : "none"}
-                strokeWidth={isCurrent ? 1 : 0}
+                stroke={isCurrent ? "#FB923C" : "none"}
+                strokeWidth={isCurrent ? 1.5 : 0}
               />
 
               {isPassed && (
@@ -384,7 +352,7 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
                   x={x}
                   y={yCenter + 4}
                   textAnchor="middle"
-                  fontSize="12"
+                  fontSize="11"
                   fill="white"
                   fontWeight="bold"
                 >
@@ -397,8 +365,8 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
                   x={x}
                   y={yCenter + 3}
                   textAnchor="middle"
-                  fontSize="10"
-                  fill={isCurrent ? "white" : "#6B7280"}
+                  fontSize="9"
+                  fill={isCurrent ? "white" : "#64748B"}
                   fontWeight={isCurrent ? "bold" : "normal"}
                 >
                   {steps[i]}
@@ -407,7 +375,7 @@ const LevelTimeline = ({ currentLevel = "1A" }) => {
 
               <Text
                 x={x}
-                y={yCenter + 25}
+                y={yCenter + 22}
                 textAnchor="middle"
                 fontSize="8"
                 fill={labelColor}
@@ -450,10 +418,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
   const deptLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "SANT SINGAJI ENGINEERING COLLEGE" : "SANT SINGAJI INSTITUTE OF SCIENCE AND MANAGEMENT";
 
+  const currentLevelDisplay = studentData?.currentSubLevelId?.name || studentData?.currentLevel || "";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={{ borderBottomWidth: 2, borderBottomColor: "#7335DD", paddingBottom: 8, marginBottom: 10 }}>
+        {/* Header Banner - Software Orange Theme */}
+        <View style={{ borderBottomWidth: 2, borderBottomColor: "#EA580C", paddingBottom: 8, marginBottom: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             {/* College Logo (Left) */}
             <View style={{ width: 70, height: 50, alignItems: "center", justifyContent: "center" }}>
@@ -462,13 +433,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
 
             {/* Institution Title & Details (Center) */}
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
-              <Text style={{ fontSize: 12, fontWeight: "bold", color: "#111827", textTransform: "uppercase", textAlign: "center" }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: "#0F172A", textTransform: "uppercase", textAlign: "center" }}>
                 {collegeName}
               </Text>
-              <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B", marginTop: 2, textAlign: "center", textTransform: "uppercase" }}>
+              <Text style={{ fontSize: 9, fontWeight: "bold", color: "#EA580C", marginTop: 2, textAlign: "center", textTransform: "uppercase" }}>
                 STUDENT PERFORMANCE REPORT CARD
               </Text>
-              <Text style={{ fontSize: 7.5, color: "#4B5563", marginTop: 1, textAlign: "center" }}>
+              <Text style={{ fontSize: 7.5, color: "#475569", marginTop: 1, textAlign: "center" }}>
                 Department of {studentData?.subDepartmentId?.departmentId?.name || (isBTech ? "Computer Science & Engineering" : isBeg ? "Bio Excellence Group (BEG)" : isMeg ? "Management Excellence Group (MEG)" : "Information Technology & Emerging Growth (ITEG)")}
               </Text>
             </View>
@@ -479,11 +450,11 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             </View>
           </View>
           
-          <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#4B5563" }}>
-            <Text>Academic Session: {studentData?.sessionId?.name || "AY 2025-26"}</Text>
-            <Text>Batch Year: {studentData?.batchYear || reportCardData?.batchYear || "2025 - 2028"}</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingTop: 4, marginTop: 6, fontSize: 7, color: "#475569" }}>
+            <Text>Academic Session: {studentData?.sessionId?.name || studentData?.session || "—"}</Text>
+            <Text>Batch Year: {studentData?.batchYear || reportCardData?.batchYear || "—"}</Text>
             <Text>Department: {studentData?.subDepartmentId?.departmentId?.code || studentData?.subDepartmentId?.departmentId?.name || (isBTech ? "B.Tech" : isBeg ? "BEG" : isMeg ? "MEG" : "ITEG")}</Text>
-            <Text>Course / Level: {studentData?.course || "N/A"} ({studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"})</Text>
+            <Text>Course / Level: {studentData?.course || "—"}{currentLevelDisplay ? ` (${currentLevelDisplay})` : ""}</Text>
           </View>
         </View>
 
@@ -496,7 +467,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 <InfoItem
                   icon={profileIcon}
                   label="Full Name"
-                  value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A"}
+                  value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "—"}
                 />
                 <InfoItem icon={mailIcon} label="Email" value={studentData?.email} />
                 <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
@@ -510,15 +481,17 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             {/* Level Progress */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Level Progress</Text>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <Text style={[styles.value, { fontSize: 11 }]}>
-                  Current Level: <Text style={{ fontWeight: "bold", color: "#F59E0B" }}>Level {studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"}</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <Text style={[styles.value, { fontSize: 10 }]}>
+                  Current Level: <Text style={{ fontWeight: "bold", color: "#EA580C" }}>{currentLevelDisplay ? `Level ${currentLevelDisplay}` : "—"}</Text>
                 </Text>
-                <Text style={[styles.small, { color: "#6B7280" }]}>
-                  Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === (studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A")) + 1) / LEVEL_STEPS.length) * 100)}% Complete
-                </Text>
+                {currentLevelDisplay && (
+                  <Text style={[styles.small, { color: "#64748B" }]}>
+                    Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === currentLevelDisplay) + 1) / LEVEL_STEPS.length) * 100)}% Complete
+                  </Text>
+                )}
               </View>
-              <LevelTimeline currentLevel={studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"} />
+              <LevelTimeline currentLevel={currentLevelDisplay} />
             </View>
           </>
         ) : (
@@ -527,23 +500,23 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             <Text style={styles.sectionTitle}>1. Student Basic Information</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
               {[
-                { label: "Student Name", value: `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A" },
-                { label: "Enrollment No.", value: studentData?.enrollmentNo || studentData?.admissionNo || "N/A" },
-                { label: "Father's Name", value: studentData?.fatherName || "N/A" },
-                { label: "Mother's Name", value: studentData?.motherName || "N/A" },
-                { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || "ITEG" },
-                { label: "Course", value: studentData?.course || "N/A" },
-                { label: "Session / Batch", value: `${studentData?.sessionId?.name || "AY 2025-26"}${studentData?.batchYear || reportCardData?.batchYear ? ` (${studentData?.batchYear || reportCardData?.batchYear})` : ""}` },
-                { label: "Current Year / Level", value: `${studentData?.year || translateLevelName(studentData?.currentLevelId?.name) || "1st Year"} (${studentData?.currentLevelId?.name || "Level 1"})` },
-                { label: "Current Sub-Level", value: studentData?.currentSubLevelId?.name || "1A" }
+                { label: "Student Name", value: `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "—" },
+                { label: "Enrollment No.", value: studentData?.enrollmentNo || studentData?.admissionNo || "—" },
+                { label: "Father's Name", value: studentData?.fatherName || "—" },
+                { label: "Mother's Name", value: studentData?.motherName || "—" },
+                { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || deptConfig.name || "ITEG" },
+                { label: "Course", value: studentData?.course || "—" },
+                { label: "Session / Batch", value: `${studentData?.sessionId?.name || studentData?.session || "—"}${studentData?.batchYear || reportCardData?.batchYear ? ` (${studentData?.batchYear || reportCardData?.batchYear})` : ""}` },
+                { label: "Current Year / Level", value: `${studentData?.year || translateLevelName(studentData?.currentLevelId?.name || studentData?.currentLevel) || "—"}${studentData?.currentLevelId?.name ? ` (${studentData.currentLevelId.name})` : ""}` },
+                { label: "Current Sub-Level", value: studentData?.currentSubLevelId?.name || studentData?.currentLevel || "—" }
               ].map((info, idx) => (
-                <View key={idx} style={{ width: "25%", marginBottom: 6, paddingRight: 4 }}>
-                  <Text style={{ fontSize: 7, color: "#9CA3AF", fontWeight: "bold", textTransform: "uppercase" }}>{info.label}</Text>
-                  <Text style={{ fontSize: 9, color: "#1F2937", marginTop: 2, fontWeight: "bold" }}>{info.value}</Text>
+                <View key={idx} style={{ width: "25%", marginBottom: 5, paddingRight: 4 }}>
+                  <Text style={{ fontSize: 7, color: "#64748B", fontWeight: "bold", textTransform: "uppercase" }}>{info.label}</Text>
+                  <Text style={{ fontSize: 8.5, color: "#0F172A", marginTop: 1.5, fontWeight: "bold" }}>{info.value}</Text>
                 </View>
               ))}
             </View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 4, marginTop: 4, fontSize: 7, color: "#6B7280" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingTop: 4, marginTop: 4, fontSize: 7, color: "#64748B" }}>
               <Text>Report Generated By: {reportCardData?.generatedByName && reportCardData.generatedByName.toLowerCase() !== "system" ? (reportCardData.generatedByName.startsWith("Prof.") ? reportCardData.generatedByName : `Prof. ${reportCardData.generatedByName}`) : "Faculty Evaluator"}</Text>
               <Text>Generated On: {reportCardData?.createdAt ? new Date(reportCardData.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</Text>
             </View>
@@ -586,7 +559,6 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 return item;
               })
             } : null;
-            const attendanceDiscipline = getSection("AttendanceDiscipline");
             const strengthsImprovement = getSection("StrengthsImprovement");
             let overallPerformance = getSection("OverallPerformanceSummary");
             const hasLegacyDummy = !overallPerformance || overallPerformance.items?.some(i => 
@@ -628,18 +600,20 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
             }
 
             return (
-              <View style={{ gap: 8 }}>
-                {/* 2. Overall Performance */}
+              <View style={{ gap: 7 }}>
+                {/* 2. Overall Performance - Software Slate & Orange Accent */}
                 {overallPerformance && (
-                  <View style={{ backgroundColor: "#312E81", padding: 10, borderRadius: 6, color: "#FFFFFF" }} wrap={false}>
-                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#F59E0B", textAlign: "center", textTransform: "uppercase", marginBottom: 6 }}>2. Overall Performance</Text>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                  <View style={{ backgroundColor: "#0F172A", padding: 9, borderRadius: 6, color: "#FFFFFF", borderWidth: 1, borderColor: "#1E293B" }} wrap={false}>
+                    <Text style={{ fontSize: 9.5, fontWeight: "bold", color: "#FB923C", textAlign: "center", textTransform: "uppercase", marginBottom: 5 }}>
+                      2. Overall Performance
+                    </Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 5 }}>
                       {overallPerformance.items.map((item, idx) => {
                         if (item.itemName === "Overall Rating" || item.itemName === "Performance Level") return null;
                         return (
-                          <View key={idx} style={{ width: "23%", backgroundColor: "rgba(255, 255, 255, 0.1)", padding: 4, borderRadius: 4, alignItems: "center" }}>
-                            <Text style={{ fontSize: 7, color: "#E0E7FF" }}>{item.itemName}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 2, color: "#FFFFFF" }}>{item.value} / 5</Text>
+                          <View key={idx} style={{ width: "23%", backgroundColor: "rgba(255, 255, 255, 0.08)", padding: 4, borderRadius: 4, alignItems: "center" }}>
+                            <Text style={{ fontSize: 7, color: "#E2E8F0" }}>{item.itemName}</Text>
+                            <Text style={{ fontSize: 8.5, fontWeight: "bold", marginTop: 2, color: "#FFFFFF" }}>{item.value || 0} / 5</Text>
                           </View>
                         );
                       })}
@@ -648,9 +622,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                       const ratingItem = overallPerformance.items.find(i => i.itemName === "Overall Rating");
                       const levelItem = overallPerformance.items.find(i => i.itemName === "Performance Level") || ratingItem;
                       return (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.2)", paddingTop: 5, marginTop: 3 }}>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Overall Rating: {ratingItem?.value && Number(ratingItem.value) > 0 ? `${ratingItem.value} / 5` : "—"}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#F59E0B" }}>Performance Level: {levelItem?.remark || levelItem?.value || "Pending Evaluation"}</Text>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "rgba(255, 255, 255, 0.15)", paddingTop: 4, marginTop: 2 }}>
+                          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#FB923C" }}>
+                            Overall Rating: {ratingItem?.value && Number(ratingItem.value) > 0 ? `${ratingItem.value} / 5` : "—"}
+                          </Text>
+                          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#FED7AA" }}>
+                            Performance Level: {levelItem?.remark || levelItem?.value || "Under Evaluation"}
+                          </Text>
                         </View>
                       );
                     })()}
@@ -658,44 +636,52 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 )}
 
                 {/* 3. Level / Sub-Level Progress */}
-                {levelProgress && (
+                {levelProgress && levelProgress.items && levelProgress.items.length > 0 && (
                   <View style={styles.section} wrap={false}>
                     <Text style={styles.sectionTitle}>3. Level / Sub-Level Progress</Text>
-                    <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                      <Text style={{ width: "30%" }}>Level</Text>
-                      <Text style={{ width: "20%", textAlign: "center" }}>Sub-Level</Text>
-                      <Text style={{ width: "20%", textAlign: "center" }}>Status</Text>
-                      <Text style={{ width: "30%", textAlign: "center" }}>Performance (Rating / 5)</Text>
+                    <View style={{ flexDirection: "row", backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", padding: 4, fontWeight: "bold", fontSize: 7.5 }}>
+                      <Text style={{ width: "30%", color: "#334155" }}>Level</Text>
+                      <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>Sub-Level</Text>
+                      <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>Status</Text>
+                      <Text style={{ width: "30%", textAlign: "center", color: "#334155" }}>Performance (Rating / 5)</Text>
                     </View>
-                    {levelProgress.items.map((item, idx) => (
-                      <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "30%" }}>{item.maxMarks === 1 ? "Level 1" : "Level 2"}</Text>
-                        <Text style={{ width: "20%", textAlign: "center", color: "#7335DD", fontWeight: "bold" }}>{item.itemName}</Text>
-                        <Text style={{ width: "20%", textAlign: "center" }}>{item.value}</Text>
-                        <Text style={{ width: "30%", textAlign: "center", fontWeight: "bold" }}>{item.remark !== "—" ? `${item.remark} / 5` : "—"}</Text>
-                      </View>
-                    ))}
+                    {levelProgress.items.map((item, idx) => {
+                      const levelNum = (item.itemName || "").match(/\d+/)?.[0] || item.maxMarks;
+                      const levelTitle = levelNum ? `Level ${levelNum}` : "Level Progress";
+                      return (
+                        <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", padding: 3.5, fontSize: 7.5 }}>
+                          <Text style={{ width: "30%", color: "#475569" }}>{levelTitle}</Text>
+                          <Text style={{ width: "20%", textAlign: "center", color: "#EA580C", fontWeight: "bold" }}>{item.itemName}</Text>
+                          <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>{item.value || "—"}</Text>
+                          <Text style={{ width: "30%", textAlign: "center", fontWeight: "bold", color: "#0F172A" }}>
+                            {item.remark && item.remark !== "—" ? `${item.remark} / 5` : "—"}
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
 
                 {/* 4. Subject-wise Performance */}
-                {subjectPerformance && (
+                {subjectPerformance && subjectPerformance.items && subjectPerformance.items.length > 0 && (
                   <View style={styles.section} wrap={false}>
                     <Text style={styles.sectionTitle}>{isMeg ? "4. Subject-wise Performance & Academic Modules" : "4. Subject-wise Performance & Technical Modules"}</Text>
-                    <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                      <Text style={{ width: "30%" }}>Subject</Text>
-                      <Text style={{ width: "15%", textAlign: "center" }}>Total Tasks</Text>
-                      <Text style={{ width: "15%", textAlign: "center" }}>Evaluated</Text>
-                      <Text style={{ width: "20%", textAlign: "center" }}>Average Rating</Text>
-                      <Text style={{ width: "20%", textAlign: "center" }}>Performance</Text>
+                    <View style={{ flexDirection: "row", backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", padding: 4, fontWeight: "bold", fontSize: 7.5 }}>
+                      <Text style={{ width: "30%", color: "#334155" }}>Subject</Text>
+                      <Text style={{ width: "15%", textAlign: "center", color: "#334155" }}>Total Tasks</Text>
+                      <Text style={{ width: "15%", textAlign: "center", color: "#334155" }}>Evaluated</Text>
+                      <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>Average Rating</Text>
+                      <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>Performance</Text>
                     </View>
                     {subjectPerformance.items.map((item, idx) => (
-                      <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "30%", fontWeight: "bold" }}>{item.itemName}</Text>
-                        <Text style={{ width: "15%", textAlign: "center" }}>{item.maxMarks}</Text>
-                        <Text style={{ width: "15%", textAlign: "center" }}>{item.score}</Text>
-                        <Text style={{ width: "20%", textAlign: "center", fontWeight: "bold" }}>{item.remark && item.remark !== "—" ? `${item.remark} / 5` : "—"}</Text>
-                        <Text style={{ width: "20%", textAlign: "center" }}>{item.value}</Text>
+                      <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", padding: 3.5, fontSize: 7.5 }}>
+                        <Text style={{ width: "30%", fontWeight: "bold", color: "#0F172A" }}>{item.itemName}</Text>
+                        <Text style={{ width: "15%", textAlign: "center", color: "#475569" }}>{item.maxMarks ?? "—"}</Text>
+                        <Text style={{ width: "15%", textAlign: "center", color: "#475569" }}>{item.score ?? "—"}</Text>
+                        <Text style={{ width: "20%", textAlign: "center", fontWeight: "bold", color: "#EA580C" }}>
+                          {item.remark && item.remark !== "—" ? `${item.remark} / 5` : "—"}
+                        </Text>
+                        <Text style={{ width: "20%", textAlign: "center", color: "#334155" }}>{item.value || "—"}</Text>
                       </View>
                     ))}
                   </View>
@@ -711,11 +697,11 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   {isBTech ? (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                       <View style={{ width: "70%" }}>
-                        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 3, fontWeight: "bold", fontSize: 7 }}>
-                          <Text style={{ width: "28%" }}>Academic Year</Text>
-                          <Text style={{ width: "24%", textAlign: "center" }}>Sem A SGPA</Text>
-                          <Text style={{ width: "24%", textAlign: "center" }}>Sem B SGPA</Text>
-                          <Text style={{ width: "24%", textAlign: "center" }}>Year CGPA</Text>
+                        <View style={{ flexDirection: "row", backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", padding: 3, fontWeight: "bold", fontSize: 7 }}>
+                          <Text style={{ width: "28%", color: "#334155" }}>Academic Year</Text>
+                          <Text style={{ width: "24%", textAlign: "center", color: "#334155" }}>Sem A SGPA</Text>
+                          <Text style={{ width: "24%", textAlign: "center", color: "#334155" }}>Sem B SGPA</Text>
+                          <Text style={{ width: "24%", textAlign: "center", color: "#334155" }}>Year CGPA</Text>
                         </View>
                         {[
                           { year: "1st Year", sA: "Sem 1", sB: "Sem 2" },
@@ -734,52 +720,52 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                           const yrCgpa = active.length > 0 ? (active.reduce((a, b) => a + b, 0) / active.length).toFixed(2) : "0.00";
 
                           return (
-                            <View key={idx} style={{ flexDirection: "row", borderBottomWidth: idx === 3 ? 0 : 1, borderBottomColor: "#E5E7EB", padding: 3, fontSize: 7 }}>
-                              <Text style={{ width: "28%", fontWeight: "bold" }}>{item.year}</Text>
-                              <Text style={{ width: "24%", textAlign: "center" }}>{item.sA}: {valA}</Text>
-                              <Text style={{ width: "24%", textAlign: "center" }}>{item.sB}: {valB}</Text>
-                              <Text style={{ width: "24%", textAlign: "center", fontWeight: "bold", color: "#1D4ED8" }}>{yrCgpa}</Text>
+                            <View key={idx} style={{ flexDirection: "row", borderBottomWidth: idx === 3 ? 0 : 1, borderBottomColor: "#F1F5F9", padding: 3, fontSize: 7 }}>
+                              <Text style={{ width: "28%", fontWeight: "bold", color: "#0F172A" }}>{item.year}</Text>
+                              <Text style={{ width: "24%", textAlign: "center", color: "#475569" }}>{item.sA}: {valA}</Text>
+                              <Text style={{ width: "24%", textAlign: "center", color: "#475569" }}>{item.sB}: {valB}</Text>
+                              <Text style={{ width: "24%", textAlign: "center", fontWeight: "bold", color: "#2563EB" }}>{yrCgpa}</Text>
                             </View>
                           );
                         })}
                       </View>
-                      <View style={{ width: "26%", backgroundColor: "#7335DD", padding: 10, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 7, color: "#FFFFFF", opacity: 0.9 }}>Cumulative CGPA</Text>
-                        <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
+                      <View style={{ width: "26%", backgroundColor: "#0F172A", padding: 8, borderRadius: 6, alignItems: "center", justifyContent: "center", borderTopWidth: 2, borderTopColor: "#EA580C" }}>
+                        <Text style={{ fontSize: 7, color: "#94A3B8" }}>Cumulative CGPA</Text>
+                        <Text style={{ fontSize: 15, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
                           {reportCardData.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00"}
                         </Text>
-                        <Text style={{ fontSize: 6, color: "#EDE9FE", marginTop: 2 }}>4-Year Aggregate</Text>
+                        <Text style={{ fontSize: 6, color: "#FB923C", marginTop: 2 }}>4-Year Aggregate</Text>
                       </View>
                     </View>
                   ) : (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                       <View style={{ width: "65%" }}>
-                        <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>Academic Year</Text>
-                          <Text style={{ width: "30%", textAlign: "center" }}>SGPA</Text>
+                        <View style={{ flexDirection: "row", backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", padding: 4, fontWeight: "bold", fontSize: 7.5 }}>
+                          <Text style={{ width: "70%", color: "#334155" }}>Academic Year</Text>
+                          <Text style={{ width: "30%", textAlign: "center", color: "#334155" }}>SGPA</Text>
                         </View>
-                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>First Year (FY)</Text>
-                          <Text style={{ width: "30%", textAlign: "center" }}>
+                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", padding: 3.5, fontSize: 7.5 }}>
+                          <Text style={{ width: "70%", color: "#0F172A" }}>First Year (FY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center", color: "#334155" }}>
                             {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "FY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.firstYearSgpa || "0.00")}
                           </Text>
                         </View>
-                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>Second Year (SY)</Text>
-                          <Text style={{ width: "30%", textAlign: "center" }}>
+                        <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", padding: 3.5, fontSize: 7.5 }}>
+                          <Text style={{ width: "70%", color: "#0F172A" }}>Second Year (SY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center", color: "#334155" }}>
                             {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "SY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.secondYearSgpa || "0.00")}
                           </Text>
                         </View>
-                        <View style={{ flexDirection: "row", padding: 4, fontSize: 8 }}>
-                          <Text style={{ width: "70%" }}>Third Year (TY)</Text>
-                          <Text style={{ width: "30%", textAlign: "center" }}>
+                        <View style={{ flexDirection: "row", padding: 3.5, fontSize: 7.5 }}>
+                          <Text style={{ width: "70%", color: "#0F172A" }}>Third Year (TY)</Text>
+                          <Text style={{ width: "30%", textAlign: "center", color: "#334155" }}>
                             {reportCardData.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData.academicPerformance.yearWiseSGPA.find(y => y.year === "TY").sgpa).toFixed(2) : (reportCardData.academicPerformance?.thirdYearSgpa || "0.00")}
                           </Text>
                         </View>
                       </View>
-                      <View style={{ width: "30%", backgroundColor: "#7335DD", padding: 12, borderRadius: 6, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ fontSize: 8, color: "#FFFFFF", opacity: 0.9 }}>Overall CGPA</Text>
-                        <Text style={{ fontSize: 18, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
+                      <View style={{ width: "30%", backgroundColor: "#0F172A", padding: 10, borderRadius: 6, alignItems: "center", justifyContent: "center", borderTopWidth: 2, borderTopColor: "#EA580C" }}>
+                        <Text style={{ fontSize: 7.5, color: "#94A3B8" }}>Overall CGPA</Text>
+                        <Text style={{ fontSize: 16, color: "#FFFFFF", fontWeight: "bold", marginTop: 2 }}>
                           {reportCardData.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00"}
                         </Text>
                       </View>
@@ -792,17 +778,17 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   const hasSyllabus = softSkills.hasSyllabusTasks || softSkills.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined);
                   return (
                     <View style={styles.section} wrap={false}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                         <Text style={styles.sectionTitle}>6. Soft Skills & Behavioural Evaluation</Text>
                         {hasSyllabus && (
-                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#6D28D9", backgroundColor: "#EDE9FE", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 }}>
+                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#C2410C", backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#FED7AA", paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 3 }}>
                             Subject: {softSkills.subjectName || "Soft Skills"}
                           </Text>
                         )}
                       </View>
 
                       {hasSyllabus ? (
-                        <View style={{ gap: 6 }}>
+                        <View style={{ gap: 5 }}>
                           {softSkills.items.map((item, idx) => {
                             const completed = item.completedTasks !== undefined ? item.completedTasks : item.score;
                             const total = item.totalTasks || 5;
@@ -811,15 +797,15 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                               : (total > 0 && completed !== undefined ? Math.min(Math.round((completed / total) * 100), 100) : 0);
 
                             return (
-                              <View key={idx} style={{ backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
+                              <View key={idx} style={{ backgroundColor: "#F8FAFC", padding: 5, borderRadius: 4, borderWidth: 1, borderColor: "#E2E8F0" }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
                                   <View style={{ flexDirection: "row", alignItems: "center", width: "55%" }}>
-                                    <Text style={{ fontSize: 9, color: "#6D28D9", marginRight: 4 }}>•</Text>
-                                    <Text style={{ fontSize: 8, fontWeight: "bold", color: "#1F2937" }}>{item.itemName}</Text>
+                                    <Text style={{ fontSize: 8, color: "#EA580C", marginRight: 4 }}>•</Text>
+                                    <Text style={{ fontSize: 7.5, fontWeight: "bold", color: "#0F172A" }}>{item.itemName}</Text>
                                   </View>
-                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                                     {item.completedTasks !== undefined && (
-                                      <Text style={{ fontSize: 7, color: "#4B5563" }}>
+                                      <Text style={{ fontSize: 7, color: "#475569" }}>
                                         {item.completedTasks}/{item.totalTasks} Tasks ({pct}%)
                                       </Text>
                                     )}
@@ -829,37 +815,37 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                                       </Text>
                                     )}
                                     {item.remark && (
-                                      <Text style={{ fontSize: 7, color: "#6D28D9", fontWeight: "bold", backgroundColor: "#F3E8FF", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 2 }}>
+                                      <Text style={{ fontSize: 7, color: "#C2410C", fontWeight: "bold", backgroundColor: "#FFF7ED", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 2 }}>
                                         {item.remark}
                                       </Text>
                                     )}
-                                    <Text style={{ fontSize: 8, fontWeight: "bold", color: "#7335DD" }}>
+                                    <Text style={{ fontSize: 7.5, fontWeight: "bold", color: "#EA580C" }}>
                                       {item.value} / 5
                                     </Text>
                                   </View>
                                 </View>
                                 {/* Task Completion Progress Bar */}
-                                <View style={{ width: "100%", height: 3.5, backgroundColor: "#E5E7EB", borderRadius: 2, overflow: "hidden" }}>
-                                  <View style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, height: 3.5, backgroundColor: "#7335DD", borderRadius: 2 }} />
+                                <View style={{ width: "100%", height: 3, backgroundColor: "#E2E8F0", borderRadius: 2, overflow: "hidden" }}>
+                                  <View style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, height: 3, backgroundColor: "#EA580C", borderRadius: 2 }} />
                                 </View>
                               </View>
                             );
                           })}
-                          <Text style={{ fontSize: 7, color: "#9CA3AF", textAlign: "right", marginTop: 2, fontStyle: "italic" }}>
+                          <Text style={{ fontSize: 6.5, color: "#94A3B8", textAlign: "right", marginTop: 2, fontStyle: "italic" }}>
                             * Ratings & progress automatically calculated based on live task completion
                           </Text>
                         </View>
                       ) : (
                         <>
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                             {softSkills.items.map((item, idx) => (
-                              <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
-                                <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{item.itemName}</Text>
-                                <Text style={{ fontSize: 9, fontWeight: "bold", color: "#7335DD", marginTop: 2 }}>{item.value} / 5</Text>
+                              <View key={idx} style={{ width: "48%", backgroundColor: "#F8FAFC", padding: 5, borderRadius: 4, borderWidth: 1, borderColor: "#E2E8F0" }}>
+                                <Text style={{ fontSize: 7.5, fontWeight: "bold", color: "#334155" }}>{item.itemName}</Text>
+                                <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#EA580C", marginTop: 2 }}>{item.value} / 5</Text>
                               </View>
                             ))}
                           </View>
-                          <Text style={{ fontSize: 7, color: "#9CA3AF", textAlign: "center", marginTop: 6, fontStyle: "italic" }}>
+                          <Text style={{ fontSize: 6.5, color: "#94A3B8", textAlign: "center", marginTop: 5, fontStyle: "italic" }}>
                             Evaluation Method: Faculty Observation & Interview
                           </Text>
                         </>
@@ -869,14 +855,16 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 })()}
 
                 {/* 7. Interview Evaluation / Readiness */}
-                {(interview || deptConfig.interviewItems) && (
+                {interview && interview.items && interview.items.length > 0 && (
                   <View style={styles.section} wrap={false}>
                     <Text style={styles.sectionTitle}>{deptConfig.interviewSectionTitle || "7. Interview Readiness & Mock Assessment"}</Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                      {(interview?.items?.length > 0 ? interview.items : deptConfig.interviewItems).map((item, idx) => (
-                        <View key={idx} style={{ width: "47%", backgroundColor: "#F9FAFB", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB" }}>
-                          <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>{mapInterviewItemName(item.itemName, deptType)}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#EA580C", marginTop: 2 }}>{item.value} / 5</Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {interview.items.map((item, idx) => (
+                        <View key={idx} style={{ width: "48%", backgroundColor: "#F8FAFC", padding: 5, borderRadius: 4, borderWidth: 1, borderColor: "#E2E8F0" }}>
+                          <Text style={{ fontSize: 7.5, fontWeight: "bold", color: "#334155" }}>{mapInterviewItemName(item.itemName, deptType)}</Text>
+                          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#EA580C", marginTop: 2 }}>
+                            {item.value && Number(item.value) > 0 ? `${item.value} / 5` : (item.value || "—")}
+                          </Text>
                         </View>
                       ))}
                     </View>
@@ -884,78 +872,53 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 )}
 
                 {/* 8. Career Readiness */}
-                {careerReadiness && (
+                {careerReadiness && careerReadiness.items && careerReadiness.items.length > 0 && (
                   <View style={styles.section} wrap={false}>
                     <Text style={styles.sectionTitle}>8. Career Readiness</Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
                       {careerReadiness.items.map((item, idx) => (
-                        <View key={idx} style={{ width: "23%", backgroundColor: "#EFF6FF", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#BFDBFE", alignItems: "center" }}>
-                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#1D4ED8" }}>{item.itemName}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1E40AF", marginTop: 2 }}>{item.value}</Text>
+                        <View key={idx} style={{ width: "23%", backgroundColor: "#FFF7ED", padding: 5, borderRadius: 4, borderWidth: 1, borderColor: "#FED7AA", alignItems: "center" }}>
+                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#C2410C" }}>{item.itemName}</Text>
+                          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#9A3412", marginTop: 2 }}>{item.value || "Not Started"}</Text>
                         </View>
                       ))}
                     </View>
                   </View>
                 )}
 
-                {/* 9. Attendance & Discipline */}
-                {/* {attendanceDiscipline && (
-                  <View style={styles.section} wrap={false}>
-                    <Text style={styles.sectionTitle}>9. Attendance & Discipline</Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      {attendanceDiscipline.items.map((item, idx) => (
-                        <View key={idx} style={{ width: "23%", backgroundColor: "#F3F4F6", padding: 6, borderRadius: 4, borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center" }}>
-                          <Text style={{ fontSize: 7, fontWeight: "bold", color: "#4B5563" }}>{item.itemName}</Text>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1F2937", marginTop: 2 }}>{item.value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )} */}
-
-                {/* 10. Co-Curricular Activities */}
+                {/* 10. Certifications */}
                 <View style={styles.section} wrap={false}>
-                  <Text style={styles.sectionTitle}>10. Co-Curricular Activities</Text>
-                  <View style={{ flexDirection: "row", backgroundColor: "#F3F4F6", padding: 4, fontWeight: "bold", fontSize: 8 }}>
-                    <Text style={{ width: "30%" }}>Category</Text>
-                    <Text style={{ width: "40%" }}>Activity / Certificate</Text>
-                    <Text style={{ width: "30%" }}>Remark</Text>
+                  <Text style={styles.sectionTitle}>10. Certifications</Text>
+                  <View style={{ flexDirection: "row", backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", padding: 4, fontWeight: "bold", fontSize: 7.5 }}>
+                    <Text style={{ width: "30%", color: "#334155" }}>Issuing Authority / Domain</Text>
+                    <Text style={{ width: "40%", color: "#334155" }}>Certificate Title</Text>
+                    <Text style={{ width: "30%", color: "#334155" }}>Remark / Score</Text>
                   </View>
                   {reportCardData.coCurricular && reportCardData.coCurricular.length > 0 ? (
                     reportCardData.coCurricular.map((act, idx) => (
-                      <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", padding: 4, fontSize: 8 }}>
-                        <Text style={{ width: "30%" }}>{act.category}</Text>
-                        <Text style={{ width: "40%" }}>{act.title}</Text>
-                        <Text style={{ width: "30%" }}>{act.remark}</Text>
+                      <View key={idx} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", padding: 3.5, fontSize: 7.5 }}>
+                        <Text style={{ width: "30%", color: "#475569" }}>{act.category || "Certification"}</Text>
+                        <Text style={{ width: "40%", fontWeight: "bold", color: "#0F172A" }}>{act.title}</Text>
+                        <Text style={{ width: "30%", color: "#475569" }}>{act.remark || "—"}</Text>
                       </View>
                     ))
                   ) : (
-                    <Text style={{ fontSize: 8, color: "#9CA3AF", textAlign: "center", padding: 6 }}>No co-curricular activities recorded.</Text>
+                    <Text style={{ fontSize: 7.5, color: "#94A3B8", textAlign: "center", padding: 5 }}>No certifications recorded.</Text>
                   )}
                 </View>
 
-                {/* 11. Strengths & Areas for Improvement */}
-                {(strengthsImprovement || deptConfig.mockGrowthAreas) && (
-                  <View style={{ flexDirection: "row", gap: 8 }} wrap={false}>
-                    {strengthsImprovement?.items?.length > 0 ? (
-                      strengthsImprovement.items.map((item, idx) => (
-                        <View key={idx} style={{ flex: 1, backgroundColor: idx === 0 ? "#ECFDF5" : "#FEF2F2", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: idx === 0 ? "#A7F3D0" : "#FCA5A5" }}>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: idx === 0 ? "#065F46" : "#991B1B", marginBottom: 3 }}>{item.itemName}</Text>
-                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{item.value}</Text>
+                {/* 11. Strengths & Areas for Improvement (Only actual recorded data) */}
+                {strengthsImprovement && strengthsImprovement.items && strengthsImprovement.items.length > 0 && strengthsImprovement.items.some(i => i.value && i.value.trim() && i.value !== "—") && (
+                  <View style={{ flexDirection: "row", gap: 7 }} wrap={false}>
+                    {strengthsImprovement.items.filter(i => i.value && i.value.trim() && i.value !== "—").map((item, idx) => {
+                      const isStrength = (item.itemName || "").toLowerCase().includes("strength");
+                      return (
+                        <View key={idx} style={{ flex: 1, backgroundColor: isStrength ? "#F0FDF4" : "#FFFBEB", padding: 7, borderRadius: 5, borderWidth: 1, borderColor: isStrength ? "#BBF7D0" : "#FDE68A" }}>
+                          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: isStrength ? "#166534" : "#92400E", marginBottom: 3 }}>{item.itemName}</Text>
+                          <Text style={{ fontSize: 7.5, color: "#334155", lineHeight: 1.3 }}>{item.value}</Text>
                         </View>
-                      ))
-                    ) : (
-                      <>
-                        <View style={{ flex: 1, backgroundColor: "#ECFDF5", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: "#A7F3D0" }}>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#065F46", marginBottom: 3 }}>Strengths</Text>
-                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{deptConfig.strengths}</Text>
-                        </View>
-                        <View style={{ flex: 1, backgroundColor: "#FEF2F2", padding: 8, borderRadius: 6, borderWidth: 1, borderColor: "#FCA5A5" }}>
-                          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#991B1B", marginBottom: 3 }}>Areas for Improvement</Text>
-                          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.3 }}>{deptConfig.mockGrowthAreas.join(", ")}</Text>
-                        </View>
-                      </>
-                    )}
+                      );
+                    })}
                   </View>
                 )}
 
@@ -964,13 +927,13 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
                     <Text style={styles.sectionTitle}>12. Faculty / Mentor Feedback</Text>
                     {overallVal > 0 && (
-                      <Text style={{ fontSize: 8.5, fontWeight: "bold", color: "#D97706" }}>
+                      <Text style={{ fontSize: 8, fontWeight: "bold", color: "#EA580C" }}>
                         Rating: {overallVal.toFixed(1)} / 5.0 (Recommended for Placement)
                       </Text>
                     )}
                   </View>
-                  <Text style={{ fontSize: 9, color: "#374151", fontStyle: "italic", lineHeight: 1.4 }}>
-                    "{reportCardData.facultyRemark || "No comments provided yet."}"
+                  <Text style={{ fontSize: 8, color: "#334155", fontStyle: "italic", lineHeight: 1.35 }}>
+                    "{reportCardData.facultyRemark || "No faculty feedback recorded."}"
                   </Text>
                 </View>
               </View>
@@ -978,7 +941,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           })()
         ) : (
           <>
-            {/* ======= CUSTOM TWO-COLUMN SECTION (28% | 68% with stacked rows on right) ======= */}
+            {/* ======= CUSTOM TWO-COLUMN SECTION (Legacy View) ======= */}
             <View style={styles.mainRow}>
               {/* LEFT: 28% - Technical Skills */}
               <View style={styles.leftCol30}>
@@ -996,9 +959,8 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 )}
               </View>
 
-              {/* RIGHT: 68% - Top row: Soft + Discipline side-by-side; Bottom row: Co-curricular cards */}
+              {/* RIGHT: 68% - Soft + Discipline side-by-side; Bottom: Certifications cards */}
               <View style={styles.rightCol60}>
-                {/* Top half: Soft Skills + Discipline */}
                 <View style={styles.rightTopRow}>
                   <View style={[styles.rightTopCol, styles.rightTopColLeftGap]}>
                     <Text style={styles.sectionTitle}>Soft Skills</Text>
@@ -1038,10 +1000,10 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                   </View>
                 </View>
 
-                {/* Bottom half: Co-curricular heading + cards */}
+                {/* Bottom: Certifications cards */}
                 <View style={styles.rightBottomRow}>
                   <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Co-Curricular Activities</Text>
+                    <Text style={styles.sectionTitle}>Certifications</Text>
                     <View style={styles.coCardsWrap}>
                       {coCounts.map((c) => (
                         <View key={c.title} style={styles.coCard}>
@@ -1093,16 +1055,16 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
               </Text>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 {[
-                  { title: "Current Level", val: `Level ${studentData?.currentSubLevelId?.name || studentData?.currentLevel || "1A"}` },
+                  { title: "Current Level", val: currentLevelDisplay ? `Level ${currentLevelDisplay}` : "—" },
                   ...(isBTech ? [
                     { title: "1st Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "1st Year" || y.year === "FY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "1st Year" || y.year === "FY")?.sgpa).toFixed(2) : "0.00" },
                     { title: "2nd Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "2nd Year" || y.year === "SY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "2nd Year" || y.year === "SY")?.sgpa).toFixed(2) : "0.00" },
                     { title: "3rd Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "3rd Year" || y.year === "TY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "3rd Year" || y.year === "TY")?.sgpa).toFixed(2) : "0.00" },
                     { title: "4th Year CGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "4th Year" || y.year === "Final Year")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "4th Year" || y.year === "Final Year")?.sgpa).toFixed(2) : "0.00" },
                   ] : [
-                    { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa).toFixed(2) : "0.00" },
-                    { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa).toFixed(2) : "0.00" },
-                    { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa).toFixed(2) : "0.00" },
+                    { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY").sgpa).toFixed(2) : "0.00" },
+                    { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY").sgpa).toFixed(2) : "0.00" },
+                    { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ? Number(reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY").sgpa).toFixed(2) : "0.00" },
                   ]),
                   { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ? Number(reportCardData.academicPerformance.cgpa).toFixed(2) : "0.00" },
                 ].map((it, idx) => (
@@ -1114,15 +1076,15 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                       borderRadius: 6,
                       borderWidth: 1,
                       borderStyle: "solid",
-                      borderColor: "#E5E7EB",
-                      paddingVertical: 8,
-                      paddingHorizontal: 6,
+                      borderColor: "#E2E8F0",
+                      paddingVertical: 7,
+                      paddingHorizontal: 5,
                     }}
                   >
-                    <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
+                    <Text style={{ fontSize: 8, color: "#64748B", textAlign: "center", marginBottom: 3 }}>
                       {it.title}
                     </Text>
-                    <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
+                    <Text style={{ fontSize: 10.5, fontWeight: "bold", textAlign: "center", color: "#0F172A" }}>
                       {it.val}
                     </Text>
                   </View>
@@ -1132,2544 +1094,32 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
           </>
         )}
 
-        {/* Faculty Feedback */}
-        {/* <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Faculty Feedback</Text>
-          <Text style={styles.value}>
-            {reportCardData?.facultyRemark || "No feedback available"}
-          </Text>
-
-          <View style={{ flexDirection: "row", marginTop: 8, gap: 12 }}>
-            <Text style={styles.label}>
-              Rating:{" "}
-              <Text style={styles.value}>
-                {(() => {
-                  const g = (reportCardData?.overallGrade || "").toUpperCase();
-                  if (g === "A+") return "5.0";
-                  if (g === "A") return "4.5";
-                  if (g === "B+") return "4.0";
-                  if (g === "B") return "3.5";
-                  if (g === "C+") return "3.0";
-                  if (g === "C") return "2.5";
-                  if (g === "D+") return "2.0";
-                  if (g === "D") return "1.5";
-                  if (g === "F") return "1.0";
-                  return "3.0";
-                })()} ★
-              </Text>
-            </Text>
-
-            <Text style={styles.label}>
-              Generated by:{" "}
-              <Text style={styles.value}>
-                {reportCardData?.generatedByName || "N/A"}
-              </Text>
-            </Text>
-          </View>
-        </View> */}
-
-        {/* Footer: Final Status & Result Summary (Rendered once at the end) */}
+        {/* Footer: Evaluation Stage, Academic Status, and Grade - Rendered once at the end */}
         <View style={styles.footer} wrap={false}>
           <View style={styles.footerColumn}>
-            <Text style={styles.footerHeading}>Final Status</Text>
+            <Text style={styles.footerHeading}>Evaluation Stage</Text>
             <Text style={styles.footerValue}>
-              {reportCardData?.finalStatus || "Level 2A"}
+              {reportCardData?.finalStatus || (studentData?.currentSubLevelId?.name ? `Level ${studentData.currentSubLevelId.name}` : (studentData?.currentLevelId?.name || "Level Progress"))}
             </Text>
           </View>
 
           <View style={styles.footerColumn}>
-            <Text style={styles.footerHeading}>Result</Text>
+            <Text style={styles.footerHeading}>Academic Status</Text>
             <Text style={styles.footerValue}>
-              {reportCardData?.result || "2A"}
+              {reportCardData?.result || studentData?.status || "In Progress"}
             </Text>
           </View>
 
           <View style={styles.footerColumn}>
             <Text style={styles.footerHeading}>Overall Grade</Text>
             <Text style={styles.footerValue}>
-              {reportCardData?.overallGrade || "A"}
+              {reportCardData?.overallGrade ? `${reportCardData.overallGrade} Grade` : "Under Evaluation"}
             </Text>
           </View>
         </View>
-
-
       </Page>
     </Document>
   );
 };
 
 export default StudentReportPDF;
-
-
-
-// import React from "react";
-// import {
-//   Document,
-//   Page,
-//   Text,
-//   View,
-//   StyleSheet,
-//   Image,
-//   Svg,
-//   Line,
-//   Circle,
-//   G,
-// } from "@react-pdf/renderer";
-
-// import logo from "../../../assets/images/doulLogo.png";
-// import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
-// import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
-// import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
-// import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
-// import contactIcon from "../../../assets/icons/StuReport_Phone.png";
-// import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
-
-// /* =================== Styles =================== */
-// const styles = StyleSheet.create({
-//   page: {
-//     flexDirection: "column",
-//     backgroundColor: "#FFFFFF",
-//     paddingTop: 12,
-//     paddingHorizontal: 18,
-//     paddingBottom: 12,
-//     fontFamily: "Helvetica",
-//   },
-
-//   /* Header */
-//   header: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     alignItems: "center",
-//     marginBottom: 8,
-//     paddingBottom: 6,
-//     borderBottomWidth: 2,
-//     borderBottomColor: "#7335DD",
-//     borderBottomStyle: "solid",
-//   },
-//   headerLeft: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     minWidth: 70,
-//     flexShrink: 0,
-//   },
-//   headerCenter: { flexGrow: 1, alignItems: "center", paddingHorizontal: 8 },
-//   headerRight: { minWidth: 120, alignItems: "flex-end" },
-
-//   logo: {
-//     width: 78,   // increased logo size a bit
-//     height: 52,
-//     objectFit: "contain",
-//     maxWidth: "100%",
-//   },
-
-//   title: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-//   subMuted: { fontSize: 9, color: "#6B7280" },
-//   subBold: { fontSize: 10, color: "#111827", fontWeight: "bold" },
-
-//   /* Section/Card */
-//   section: {
-//     marginBottom: 8,
-//     padding: 10,
-//     backgroundColor: "#F9FAFB",
-//     borderRadius: 6,
-//     borderWidth: 1,
-//     borderStyle: "solid",
-//     borderColor: "#E5E7EB",
-//   },
-//   sectionTitle: {
-//     fontSize: 12,
-//     fontWeight: "bold",
-//     color: "#111827",
-//     marginBottom: 8,
-//   },
-
-//   /* Info grid */
-//   infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-//   infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 4 },
-//   infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-//   icon: { width: 11, height: 11, marginRight: 6 },
-//   label: { fontSize: 9, color: "#6B7280", fontWeight: "bold" },
-//   value: { fontSize: 10, color: "#111827" },
-
-//   /* Level Progress */
-//   levelWrap: { paddingVertical: 6 },
-//   levelLegend: {
-//     marginTop: 6,
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//   },
-//   badge: { fontSize: 9, color: "#374151", textAlign: "center", width: 28 },
-
-//   /* Two-column main row: left = 28%, right = 68% (adjusted to allow wider right top columns) */
-//   mainRow: { flexDirection: "row", gap: 8, marginBottom: 6, width: "100%" },
-//   leftCol30: {
-//     width: "28%", // slightly reduced to give more space to right column
-//     backgroundColor: "#FFFFFF",
-//     borderRadius: 6,
-//     borderWidth: 1,
-//     borderStyle: "solid",
-//     borderColor: "#E5E7EB",
-//     padding: 10,
-//     minWidth: 0,
-//   },
-//   rightCol60: {
-//     width: "68%", // increased to 68% so inner columns can be wider
-//     flexDirection: "column",
-//   },
-
-//   /* Top half inside right column: two columns (Soft | Discipline) */
-//   rightTopRow: {
-//     flexDirection: "row",
-//     marginBottom: 6,
-//     // use space-between so gap exists between columns
-//     justifyContent: "space-between",
-//     alignItems: "flex-start",
-//   },
-//   // increased width for each column so they appear larger; left + right + gap ~100% of rightCol
-//   rightTopCol: {
-//     width: "49%",           // give each column 49% of rightCol so there's 2% gap
-//     paddingHorizontal: 8,
-//     backgroundColor: "#FFFFFF",
-//     borderRadius: 6,
-//     borderWidth: 1,
-//     borderColor: "#E5E7EB",
-//     padding: 10,
-//     minWidth: 0,
-//   },
-
-//   /* Bottom half inside right column: Co-curricular cards */
-//   rightBottomRow: { width: "100%", marginTop: 6 },
-//   coCardsWrap: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     flexWrap: "wrap",
-//   },
-//   coCard: {
-//     width: "31%", // slightly reduced so 3 fit with gaps
-//     paddingVertical: 6,
-//     paddingHorizontal: 6,
-//     backgroundColor: "#FFFFFF",
-//     borderRadius: 5,
-//     borderWidth: 1,
-//     borderColor: "#E5E7EB",
-//     marginBottom: 8,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   coCardTitle: {
-//     fontSize: 10,
-//     fontWeight: 700,
-//     color: "#374151",
-//     textAlign: "center",
-//     marginBottom: 4,
-//   },
-//   coCardCount: {
-//     fontSize: 16,
-//     fontWeight: 700,
-//     color: "#111827",
-//     textAlign: "center",
-//   },
-
-//   /* Progress list */
-//   skillRow: { marginBottom: 8 },
-//   skillHeader: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     marginBottom: 4,
-//   },
-//   small: { fontSize: 9, color: "#374151" },
-//   barTrack: {
-//     height: 8,
-//     backgroundColor: "#E5E7EB",
-//     borderRadius: 5,
-//     overflow: "hidden",
-//   },
-//   barFill: { height: 8, backgroundColor: "#7335DD" },
-
-//   /* Soft skills */
-//   softRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     marginBottom: 8,
-//   },
-//   softLeft: { fontSize: 9.5, color: "#374151" },
-//   softRight: { fontSize: 9.5, fontWeight: "bold" },
-
-//   /* Career readiness (4 in one row) */
-//   readinessRow: { flexDirection: "row", justifyContent: "space-between" },
-//   pill: {
-//     width: "23%",
-//     backgroundColor: "#F3F4F6",
-//     borderRadius: 8,
-//     paddingVertical: 10,
-//     paddingHorizontal: 8,
-//     borderWidth: 1,
-//     borderStyle: "solid",
-//     borderColor: "#E5E7EB",
-//   },
-//   pillLabel: { fontSize: 9, color: "#6B7280", marginBottom: 6, textAlign: "center" },
-//   pillValue: { fontSize: 10, fontWeight: "bold", color: "#111827", textAlign: "center" },
-
-//   /* Footer */
-//   footer: {
-//     marginTop: 8,
-//     padding: 8,
-//     backgroundColor: "#7335DD",
-//     borderRadius: 6,
-//   },
-//   footerText: { fontSize: 10, color: "#FFFFFF", textAlign: "center" },
-// });
-
-// /* =================== Helpers =================== */
-// const InfoItem = ({ icon, label, value }) => (
-//   <View style={styles.infoCell}>
-//     <View style={styles.infoTop}>
-//       <Image src={icon} style={styles.icon} />
-//       <Text style={styles.label}>{label}</Text>
-//     </View>
-//     <Text style={styles.value}>{value || "N/A"}</Text>
-//   </View>
-// );
-
-// const ProgressBar = ({ percent }) => (
-//   <View style={styles.barTrack}>
-//     <View
-//       style={[
-//         styles.barFill,
-//         { width: `${Math.max(0, Math.min(100, Number(percent) || 0))}%` },
-//       ]}
-//     />
-//   </View>
-// );
-
-// const SoftItem = ({ title, status }) => (
-//   <View style={styles.softRow}>
-//     <Text style={styles.softLeft}>{title}</Text>
-//     <Text
-//       style={[
-//         styles.softRight,
-//         {
-//           color:
-//             status === "Excellent"
-//               ? "#059669"
-//               : status === "Good"
-//               ? "#2563EB"
-//               : status === "Average"
-//               ? "#D97706"
-//               : "#DC2626",
-//         },
-//       ]}
-//     >
-//       {status}
-//     </Text>
-//   </View>
-// );
-
-// const softStatus = (score, max) => {
-//   const pct = (Number(score || 0) / Number(max || 1)) * 100;
-//   if (pct >= 90) return "Excellent";
-//   if (pct >= 70) return "Good";
-//   if (pct >= 50) return "Average";
-//   return "Poor";
-// };
-
-// /* Level steps array */
-// const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
-
-// /* =================== Level Timeline Component =================== */
-// const LevelTimeline = ({ currentLevel = "1A" }) => {
-//   const steps = LEVEL_STEPS;
-//   const currentLevelUpper = String(currentLevel || "1A").toUpperCase();
-//   const currentIdx = Math.max(
-//     0,
-//     steps.findIndex((s) => s.toUpperCase() === currentLevelUpper)
-//   );
-
-//   const width = 480;
-//   const padding = 20;
-//   const yCenter = 15;
-//   const circleRadius = 12;
-//   const lineStrokeWidth = 3;
-
-//   const innerWidth = width - padding * 2;
-//   const pts = steps.map((_, i) => padding + (i * innerWidth) / (steps.length - 1));
-//   const progressLineEnd = pts[currentIdx];
-
-//   return (
-//     <View style={styles.levelWrap}>
-//       <Svg width={width} height="50" viewBox={`0 0 ${width} 50`}>
-//         <Line
-//           x1={pts[0]}
-//           y1={yCenter}
-//           x2={pts[steps.length - 1]}
-//           y2={yCenter}
-//           stroke="#E5E7EB"
-//           strokeWidth={lineStrokeWidth}
-//         />
-//         <Line
-//           x1={pts[0]}
-//           y1={yCenter}
-//           x2={progressLineEnd}
-//           y2={yCenter}
-//           stroke="#10B981"
-//           strokeWidth={lineStrokeWidth}
-//         />
-
-//         {pts.map((x, i) => {
-//           const isPassed = i < currentIdx;
-//           const isCurrent = i === currentIdx;
-
-//           const circleFill = isPassed ? "#10B981" : isCurrent ? "#F59E0B" : "#E5E7EB";
-//           const labelColor = isCurrent ? "#F59E0B" : "#374151";
-
-//           return (
-//             <G key={i}>
-//               <Circle
-//                 cx={x}
-//                 cy={yCenter}
-//                 r={circleRadius}
-//                 fill={circleFill}
-//                 stroke={isCurrent ? "#F59E0B" : "none"}
-//                 strokeWidth={isCurrent ? 1 : 0}
-//               />
-
-//               {isPassed && (
-//                 <Text
-//                   x={x}
-//                   y={yCenter + 4}
-//                   textAnchor="middle"
-//                   fontSize="12"
-//                   fill="white"
-//                   fontWeight="bold"
-//                 >
-//                   ✓
-//                 </Text>
-//               )}
-
-//               {!isPassed && (
-//                 <Text
-//                   x={x}
-//                   y={yCenter + 3}
-//                   textAnchor="middle"
-//                   fontSize="10"
-//                   fill={isCurrent ? "white" : "#6B7280"}
-//                   fontWeight={isCurrent ? "bold" : "normal"}
-//                 >
-//                   {steps[i]}
-//                 </Text>
-//               )}
-
-//               <Text
-//                 x={x}
-//                 y={yCenter + 25}
-//                 textAnchor="middle"
-//                 fontSize="8"
-//                 fill={labelColor}
-//                 fontWeight={isCurrent ? "bold" : "normal"}
-//               >
-//                 {steps[i]}
-//               </Text>
-//             </G>
-//           );
-//         })}
-//       </Svg>
-//     </View>
-//   );
-// };
-
-// /* =================== Main Component =================== */
-// const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
-//   const technicalSkills =
-//     reportCardData?.technicalSkills?.map((s) => ({
-//       name: s?.skillName || "Skill",
-//       percent: Math.round(Number(s?.totalPercentage || 0)),
-//     })) || [];
-
-//   const softCats = reportCardData?.softSkills?.categories || [];
-//   const discCats = reportCardData?.discipline?.categories || [];
-
-//   const co = reportCardData?.coCurricular || [];
-//   const coCounts = ["Certificate", "Project", "Sports"].map((c) => ({
-//     title: c,
-//     count: co.filter((x) => (x?.category || "").toLowerCase() === c.toLowerCase())
-//       .length,
-//   }));
-
-//   return (
-//     <Document>
-//       <Page size="A4" style={styles.page}>
-//         {/* Header */}
-//         <View style={styles.header}>
-//           <View style={styles.headerLeft}>
-//             <Image src={logo} style={styles.logo} />
-//           </View>
-//           <View style={styles.headerCenter}>
-//             <Text style={styles.title}>Report Card</Text>
-//           </View>
-//           <View style={styles.headerRight}>
-//             <Text style={styles.subMuted}>Academic Year</Text>
-//             <Text style={styles.subBold}>Session 2024-25</Text>
-//           </View>
-//         </View>
-
-//         {/* Personal Information */}
-//         <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Personal Information</Text>
-//           <View style={styles.infoGrid}>
-//             <InfoItem
-//               icon={profileIcon}
-//               label="Full Name"
-//               value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A"}
-//             />
-//             <InfoItem icon={mailIcon} label="Email" value={studentData?.email} />
-//             <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
-//             <InfoItem icon={courseIcon} label="Course" value={studentData?.course} />
-//             <InfoItem icon={fatherIcon} label="Father's Name" value={studentData?.fatherName} />
-//             <InfoItem icon={addressIcon} label="Current Level" value={`Level ${studentData?.currentLevel || "1A"}`} />
-//           </View>
-//         </View>
-
-//         {/* Level Progress */}
-//         <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Level Progress</Text>
-//           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-//             <Text style={[styles.value, { fontSize: 11 }]}>
-//               Current Level: <Text style={{ fontWeight: "bold", color: "#F59E0B" }}>Level {studentData?.currentLevel || "1A"}</Text>
-//             </Text>
-//             <Text style={[styles.small, { color: "#6B7280" }]}>
-//               Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === (studentData?.currentLevel || "1A")) + 1) / LEVEL_STEPS.length) * 100)}% Complete
-//             </Text>
-//           </View>
-//           <LevelTimeline currentLevel={studentData?.currentLevel || "1A"} />
-//         </View>
-
-//         {/* ======= CUSTOM TWO-COLUMN SECTION (28% | 68% with stacked rows on right) ======= */}
-//         <View style={styles.mainRow}>
-//           {/* LEFT: 28% - Technical Skills */}
-//           <View style={styles.leftCol30}>
-//             <Text style={styles.sectionTitle}>Technical Skills</Text>
-//             {(technicalSkills.length ? technicalSkills : [{ name: "N/A", percent: 0 }]).map(
-//               (s, i) => (
-//                 <View key={i} style={styles.skillRow}>
-//                   <View style={styles.skillHeader}>
-//                     <Text style={styles.small}>{s.name}</Text>
-//                     <Text style={styles.small}>{s.percent}%</Text>
-//                   </View>
-//                   <ProgressBar percent={s.percent} />
-//                 </View>
-//               )
-//             )}
-//           </View>
-
-//           {/* RIGHT: 68% - Top row: Soft + Discipline side-by-side; Bottom row: Co-curricular cards */}
-//           <View style={styles.rightCol60}>
-//             {/* Top half: Soft Skills + Discipline */}
-//             <View style={styles.rightTopRow}>
-//               <View style={styles.rightTopCol}>
-//                 <Text style={styles.sectionTitle}>Soft Skills</Text>
-//                 {softCats.length ? (
-//                   softCats.map((c, i) => (
-//                     <SoftItem
-//                       key={i}
-//                       title={c?.title || "Skill"}
-//                       status={softStatus(c?.score, c?.maxMarks)}
-//                     />
-//                   ))
-//                 ) : (
-//                   <Text style={styles.small}>N/A</Text>
-//                 )}
-//               </View>
-
-//               <View style={styles.rightTopCol}>
-//                 <Text style={styles.sectionTitle}>Discipline</Text>
-//                 {discCats.length ? (
-//                   discCats.map((c, i) => {
-//                     const pct = ((Number(c?.score || 0) / Number(c?.maxMarks || 10)) * 100) || 0;
-//                     return (
-//                       <View key={i} style={styles.skillRow}>
-//                         <View style={styles.skillHeader}>
-//                           <Text style={styles.small}>{c?.title || "Metric"}</Text>
-//                           <Text style={styles.small}>
-//                             {c?.score}/{c?.maxMarks}
-//                           </Text>
-//                         </View>
-//                         <ProgressBar percent={pct} />
-//                       </View>
-//                     );
-//                   })
-//                 ) : (
-//                   <Text style={styles.small}>N/A</Text>
-//                 )}
-//               </View>
-//             </View>
-
-//             {/* Bottom half: Co-curricular heading + cards */}
-//             <View style={styles.rightBottomRow}>
-//               <View style={styles.section}>
-//                 <Text style={styles.sectionTitle}>Co-Curricular Activities</Text>
-//                 <View style={styles.coCardsWrap}>
-//                   {coCounts.map((c) => (
-//                     <View key={c.title} style={styles.coCard}>
-//                       <Text style={styles.coCardTitle}>{c.title}</Text>
-//                       <Text style={styles.coCardCount}>{c.count}</Text>
-//                     </View>
-//                   ))}
-//                 </View>
-//               </View>
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* Career Readiness */}
-//         <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Career Readiness</Text>
-//           <View style={styles.readinessRow}>
-//             <View style={styles.pill}>
-//               <Text style={styles.pillLabel}>Resume</Text>
-//               <Text style={styles.pillValue}>
-//                 {reportCardData?.careerReadiness?.resumeStatus || "Not created"}
-//               </Text>
-//             </View>
-//             <View style={styles.pill}>
-//               <Text style={styles.pillLabel}>LinkedIn</Text>
-//               <Text style={styles.pillValue}>
-//                 {reportCardData?.careerReadiness?.linkedinStatus || "Need to improve"}
-//               </Text>
-//             </View>
-//             <View style={styles.pill}>
-//               <Text style={styles.pillLabel}>Aptitude</Text>
-//               <Text style={styles.pillValue}>
-//                 {reportCardData?.careerReadiness?.aptitudeStatus || "In-progress"}
-//               </Text>
-//             </View>
-//             <View style={styles.pill}>
-//               <Text style={styles.pillLabel}>Placement</Text>
-//               <Text style={styles.pillValue}>
-//                 {reportCardData?.careerReadiness?.placementReady || "Not-ready"}
-//               </Text>
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* Academic Performance */}
-//         <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Academic Performance</Text>
-//           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-//             {[
-//               { title: "Current Level", val: `Level ${studentData?.currentLevel || "1A"}` },
-//               { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-//               { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-//               { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-//               { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
-//             ].map((it, idx) => (
-//               <View
-//                 key={idx}
-//                 style={{
-//                   width: "19.2%",
-//                   backgroundColor: "#FFFFFF",
-//                   borderRadius: 6,
-//                   borderWidth: 1,
-//                   borderStyle: "solid",
-//                   borderColor: "#E5E7EB",
-//                   paddingVertical: 8,
-//                   paddingHorizontal: 6,
-//                 }}
-//               >
-//                 <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
-//                   {it.title}
-//                 </Text>
-//                 <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
-//                   {it.val}
-//                 </Text>
-//               </View>
-//             ))}
-//           </View>
-//         </View>
-
-//         {/* Faculty Feedback */}
-//         {/* <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Faculty Feedback</Text>
-//           <Text style={styles.value}>
-//             {reportCardData?.facultyRemark || "No feedback available"}
-//           </Text>
-
-//           <View style={{ flexDirection: "row", marginTop: 8, gap: 12 }}>
-//             <Text style={styles.label}>
-//               Rating:{" "}
-//               <Text style={styles.value}>
-//                 {(() => {
-//                   const g = (reportCardData?.overallGrade || "").toUpperCase();
-//                   if (g === "A+") return "5.0";
-//                   if (g === "A") return "4.5";
-//                   if (g === "B+") return "4.0";
-//                   if (g === "B") return "3.5";
-//                   if (g === "C+") return "3.0";
-//                   if (g === "C") return "2.5";
-//                   if (g === "D+") return "2.0";
-//                   if (g === "D") return "1.5";
-//                   if (g === "F") return "1.0";
-//                   return "3.0";
-//                 })()} ★
-//               </Text>
-//             </Text>
-
-//             <Text style={styles.label}>
-//               Generated by:{" "}
-//               <Text style={styles.value}>
-//                 {reportCardData?.generatedByName || "N/A"}
-//               </Text>
-//             </Text>
-//           </View>
-//         </View> */}
-
-//         {/* Footer */}
-//         <View style={styles.footer} fixed>
-//           <Text style={styles.footerText}>
-//             Current Level: {studentData?.currentLevel || "1A"} • Overall Grade: {reportCardData?.overallGrade || "B+"} • Academic Year: 2024-25
-//           </Text>
-//         </View>
-//       </Page>
-//     </Document>
-//   );
-// };
-
-// export default StudentReportPDF;
-
-
-
-// // import React from "react";
-// // import {
-// //   Document,
-// //   Page,
-// //   Text,
-// //   View,
-// //   StyleSheet,
-// //   Image,
-// //   Svg,
-// //   Line,
-// //   Circle,
-// //   G,
-// // } from "@react-pdf/renderer";
-
-// // import logo from "../../../assets/images/doulLogo.png";
-// // import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
-// // import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
-// // import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
-// // import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
-// // import contactIcon from "../../../assets/icons/StuReport_Phone.png";
-// // import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
-
-// // /* =================== Styles =================== */
-// // const styles = StyleSheet.create({
-// //   page: {
-// //     flexDirection: "column",
-// //     backgroundColor: "#FFFFFF",
-// //     paddingTop: 12,
-// //     paddingHorizontal: 18,
-// //     paddingBottom: 12,
-// //     fontFamily: "Helvetica",
-// //   },
-
-// //   /* Header */
-// //   header: {
-// //     flexDirection: "row",
-// //     justifyContent: "space-between",
-// //     alignItems: "center",
-// //     marginBottom: 8,
-// //     paddingBottom: 6,
-// //     borderBottomWidth: 2,
-// //     borderBottomColor: "#7335DD",
-// //     borderBottomStyle: "solid",
-// //   },
-// //   headerLeft: {
-// //     flexDirection: "row",
-// //     alignItems: "center",
-// //     // Removed fixed width — allow it to size naturally but not shrink below this
-// //     minWidth: 70,
-// //     flexShrink: 0,
-// //   },
-// //   headerCenter: { flexGrow: 1, alignItems: "center", paddingHorizontal: 8 },
-// //   headerRight: { minWidth: 120, alignItems: "flex-end" },
-
-// //   logo: {
-// //     width: 68,
-// //     height: 46,
-// //     objectFit: "contain",
-// //     maxWidth: "100%",
-// //   },
-
-// //   title: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-// //   subMuted: { fontSize: 9, color: "#6B7280" },
-// //   subBold: { fontSize: 10, color: "#111827", fontWeight: "bold" },
-
-// //   /* Section/Card */
-// //   section: {
-// //     marginBottom: 8,
-// //     padding: 10,
-// //     backgroundColor: "#F9FAFB",
-// //     borderRadius: 6,
-// //     borderWidth: 1,
-// //     borderStyle: "solid",
-// //     borderColor: "#E5E7EB",
-// //   },
-// //   sectionTitle: {
-// //     fontSize: 12,
-// //     fontWeight: "bold",
-// //     color: "#111827",
-// //     marginBottom: 8,
-// //   },
-
-// //   /* Info grid */
-// //   infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-// //   infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 4 },
-// //   infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-// //   icon: { width: 11, height: 11, marginRight: 6 },
-// //   label: { fontSize: 9, color: "#6B7280", fontWeight: "bold" },
-// //   value: { fontSize: 10, color: "#111827" },
-
-// //   /* Level Progress */
-// //   levelWrap: { paddingVertical: 6 },
-// //   levelLegend: {
-// //     marginTop: 6,
-// //     flexDirection: "row",
-// //     justifyContent: "space-between",
-// //   },
-// //   badge: { fontSize: 9, color: "#374151", textAlign: "center", width: 28 },
-
-// //   /* Two-column main row: left = 30%, right = 60% (right has stacked rows) */
-// //   mainRow: { flexDirection: "row", gap: 8, marginBottom: 6, width: "100%" },
-// //   leftCol30: {
-// //     width: "30%",
-// //     backgroundColor: "#FFFFFF",
-// //     borderRadius: 6,
-// //     borderWidth: 1,
-// //     borderStyle: "solid",
-// //     borderColor: "#E5E7EB",
-// //     padding: 10,
-// //     minWidth: 0,
-// //   },
-// //   rightCol60: {
-// //     width: "60%",
-// //     flexDirection: "column",
-// //   },
-
-// //   /* Top half inside right column: two columns (Soft | Discipline) */
-// //   rightTopRow: { flexDirection: "row", marginBottom: 6 },
-// //   rightTopCol: {
-// //     width: "50%",
-// //     paddingHorizontal: 6,
-// //     backgroundColor: "#FFFFFF",
-// //     borderRadius: 6,
-// //     borderWidth: 1,
-// //     borderColor: "#E5E7EB",
-// //     padding: 10,
-// //     minWidth: 0,
-// //   },
-
-// //   /* Bottom half inside right column: Co-curricular cards */
-// //   rightBottomRow: { width: "100%", marginTop: 6 },
-// //   coCardsWrap: {
-// //     flexDirection: "row",
-// //     justifyContent: "space-between",
-// //     flexWrap: "wrap",
-// //   },
-// //   coCard: {
-// //     width: "31%", // slightly reduced so 3 fit with gaps
-// //     paddingVertical: 6,
-// //     paddingHorizontal: 6,
-// //     backgroundColor: "#FFFFFF",
-// //     borderRadius: 5,
-// //     borderWidth: 1,
-// //     borderColor: "#E5E7EB",
-// //     marginBottom: 8,
-// //     justifyContent: "center",
-// //     alignItems: "center",
-// //   },
-// //   coCardTitle: {
-// //     fontSize: 10,
-// //     fontWeight: 700,
-// //     color: "#374151",
-// //     textAlign: "center",
-// //     marginBottom: 4,
-// //   },
-// //   coCardCount: {
-// //     fontSize: 16,
-// //     fontWeight: 700,
-// //     color: "#111827",
-// //     textAlign: "center",
-// //   },
-
-// //   /* Progress list */
-// //   skillRow: { marginBottom: 8 },
-// //   skillHeader: {
-// //     flexDirection: "row",
-// //     justifyContent: "space-between",
-// //     marginBottom: 4,
-// //   },
-// //   small: { fontSize: 9, color: "#374151" },
-// //   barTrack: {
-// //     height: 8,
-// //     backgroundColor: "#E5E7EB",
-// //     borderRadius: 5,
-// //     overflow: "hidden",
-// //   },
-// //   barFill: { height: 8, backgroundColor: "#7335DD" },
-
-// //   /* Soft skills */
-// //   softRow: {
-// //     flexDirection: "row",
-// //     justifyContent: "space-between",
-// //     marginBottom: 8,
-// //   },
-// //   softLeft: { fontSize: 9.5, color: "#374151" },
-// //   softRight: { fontSize: 9.5, fontWeight: "bold" },
-
-// //   /* Career readiness (4 in one row) */
-// //   readinessRow: { flexDirection: "row", justifyContent: "space-between" },
-// //   pill: {
-// //     width: "23%",
-// //     backgroundColor: "#F3F4F6",
-// //     borderRadius: 8,
-// //     paddingVertical: 10,
-// //     paddingHorizontal: 8,
-// //     borderWidth: 1,
-// //     borderStyle: "solid",
-// //     borderColor: "#E5E7EB",
-// //   },
-// //   pillLabel: { fontSize: 9, color: "#6B7280", marginBottom: 6, textAlign: "center" },
-// //   pillValue: { fontSize: 10, fontWeight: "bold", color: "#111827", textAlign: "center" },
-
-// //   /* Footer */
-// //   footer: {
-// //     marginTop: 8,
-// //     padding: 8,
-// //     backgroundColor: "#7335DD",
-// //     borderRadius: 6,
-// //   },
-// //   footerText: { fontSize: 10, color: "#FFFFFF", textAlign: "center" },
-// // });
-
-// // /* =================== Helpers =================== */
-// // const InfoItem = ({ icon, label, value }) => (
-// //   <View style={styles.infoCell}>
-// //     <View style={styles.infoTop}>
-// //       <Image src={icon} style={styles.icon} />
-// //       <Text style={styles.label}>{label}</Text>
-// //     </View>
-// //     <Text style={styles.value}>{value || "N/A"}</Text>
-// //   </View>
-// // );
-
-// // const ProgressBar = ({ percent }) => (
-// //   <View style={styles.barTrack}>
-// //     <View
-// //       style={[
-// //         styles.barFill,
-// //         { width: `${Math.max(0, Math.min(100, Number(percent) || 0))}%` },
-// //       ]}
-// //     />
-// //   </View>
-// // );
-
-// // const SoftItem = ({ title, status }) => (
-// //   <View style={styles.softRow}>
-// //     <Text style={styles.softLeft}>{title}</Text>
-// //     <Text
-// //       style={[
-// //         styles.softRight,
-// //         {
-// //           color:
-// //             status === "Excellent"
-// //               ? "#059669"
-// //               : status === "Good"
-// //               ? "#2563EB"
-// //               : status === "Average"
-// //               ? "#D97706"
-// //               : "#DC2626",
-// //         },
-// //       ]}
-// //     >
-// //       {status}
-// //     </Text>
-// //   </View>
-// // );
-
-// // const softStatus = (score, max) => {
-// //   const pct = (Number(score || 0) / Number(max || 1)) * 100;
-// //   if (pct >= 90) return "Excellent";
-// //   if (pct >= 70) return "Good";
-// //   if (pct >= 50) return "Average";
-// //   return "Poor";
-// // };
-
-// // /* Level steps array */
-// // const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
-
-// // /* =================== Level Timeline Component =================== */
-// // const LevelTimeline = ({ currentLevel = "1A" }) => {
-// //   const steps = LEVEL_STEPS;
-// //   const currentLevelUpper = String(currentLevel || "1A").toUpperCase();
-// //   const currentIdx = Math.max(
-// //     0,
-// //     steps.findIndex((s) => s.toUpperCase() === currentLevelUpper)
-// //   );
-
-// //   const width = 480;
-// //   const padding = 20;
-// //   const yCenter = 15;
-// //   const circleRadius = 12;
-// //   const lineStrokeWidth = 3;
-
-// //   const innerWidth = width - padding * 2;
-// //   const pts = steps.map((_, i) => padding + (i * innerWidth) / (steps.length - 1));
-// //   const progressLineEnd = pts[currentIdx];
-
-// //   return (
-// //     <View style={styles.levelWrap}>
-// //       <Svg width={width} height="50" viewBox={`0 0 ${width} 50`}>
-// //         <Line
-// //           x1={pts[0]}
-// //           y1={yCenter}
-// //           x2={pts[steps.length - 1]}
-// //           y2={yCenter}
-// //           stroke="#E5E7EB"
-// //           strokeWidth={lineStrokeWidth}
-// //         />
-// //         <Line
-// //           x1={pts[0]}
-// //           y1={yCenter}
-// //           x2={progressLineEnd}
-// //           y2={yCenter}
-// //           stroke="#10B981"
-// //           strokeWidth={lineStrokeWidth}
-// //         />
-
-// //         {pts.map((x, i) => {
-// //           const isPassed = i < currentIdx;
-// //           const isCurrent = i === currentIdx;
-
-// //           const circleFill = isPassed ? "#10B981" : isCurrent ? "#F59E0B" : "#E5E7EB";
-// //           const labelColor = isCurrent ? "#F59E0B" : "#374151";
-
-// //           return (
-// //             <G key={i}>
-// //               <Circle
-// //                 cx={x}
-// //                 cy={yCenter}
-// //                 r={circleRadius}
-// //                 fill={circleFill}
-// //                 stroke={isCurrent ? "#F59E0B" : "none"}
-// //                 strokeWidth={isCurrent ? 1 : 0}
-// //               />
-
-// //               {isPassed && (
-// //                 <Text
-// //                   x={x}
-// //                   y={yCenter + 4}
-// //                   textAnchor="middle"
-// //                   fontSize="12"
-// //                   fill="white"
-// //                   fontWeight="bold"
-// //                 >
-// //                   ✓
-// //                 </Text>
-// //               )}
-
-// //               {!isPassed && (
-// //                 <Text
-// //                   x={x}
-// //                   y={yCenter + 3}
-// //                   textAnchor="middle"
-// //                   fontSize="10"
-// //                   fill={isCurrent ? "white" : "#6B7280"}
-// //                   fontWeight={isCurrent ? "bold" : "normal"}
-// //                 >
-// //                   {steps[i]}
-// //                 </Text>
-// //               )}
-
-// //               <Text
-// //                 x={x}
-// //                 y={yCenter + 25}
-// //                 textAnchor="middle"
-// //                 fontSize="8"
-// //                 fill={labelColor}
-// //                 fontWeight={isCurrent ? "bold" : "normal"}
-// //               >
-// //                 {steps[i]}
-// //               </Text>
-// //             </G>
-// //           );
-// //         })}
-// //       </Svg>
-// //     </View>
-// //   );
-// // };
-
-// // /* =================== Main Component =================== */
-// // const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
-// //   const technicalSkills =
-// //     reportCardData?.technicalSkills?.map((s) => ({
-// //       name: s?.skillName || "Skill",
-// //       percent: Math.round(Number(s?.totalPercentage || 0)),
-// //     })) || [];
-
-// //   const softCats = reportCardData?.softSkills?.categories || [];
-// //   const discCats = reportCardData?.discipline?.categories || [];
-
-// //   const co = reportCardData?.coCurricular || [];
-// //   const coCounts = ["Certificate", "Project", "Sports"].map((c) => ({
-// //     title: c,
-// //     count: co.filter((x) => (x?.category || "").toLowerCase() === c.toLowerCase())
-// //       .length,
-// //   }));
-
-// //   return (
-// //     <Document>
-// //       <Page size="A4" style={styles.page}>
-// //         {/* Header */}
-// //         <View style={styles.header}>
-// //           <View style={styles.headerLeft}>
-// //             <Image src={logo} style={styles.logo} />
-// //           </View>
-// //           <View style={styles.headerCenter}>
-// //             <Text style={styles.title}>Report Card</Text>
-// //           </View>
-// //           <View style={styles.headerRight}>
-// //             <Text style={styles.subMuted}>Academic Year</Text>
-// //             <Text style={styles.subBold}>Session 2024-25</Text>
-// //           </View>
-// //         </View>
-
-// //         {/* Personal Information */}
-// //         <View style={styles.section}>
-// //           <Text style={styles.sectionTitle}>Personal Information</Text>
-// //           <View style={styles.infoGrid}>
-// //             <InfoItem
-// //               icon={profileIcon}
-// //               label="Full Name"
-// //               value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A"}
-// //             />
-// //             <InfoItem icon={mailIcon} label="Email" value={studentData?.email} />
-// //             <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
-// //             <InfoItem icon={courseIcon} label="Course" value={studentData?.course} />
-// //             <InfoItem icon={fatherIcon} label="Father's Name" value={studentData?.fatherName} />
-// //             <InfoItem icon={addressIcon} label="Current Level" value={`Level ${studentData?.currentLevel || "1A"}`} />
-// //           </View>
-// //         </View>
-
-// //         {/* Level Progress */}
-// //         <View style={styles.section}>
-// //           <Text style={styles.sectionTitle}>Level Progress</Text>
-// //           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-// //             <Text style={[styles.value, { fontSize: 11 }]}>
-// //               Current Level: <Text style={{ fontWeight: "bold", color: "#F59E0B" }}>Level {studentData?.currentLevel || "1A"}</Text>
-// //             </Text>
-// //             <Text style={[styles.small, { color: "#6B7280" }]}>
-// //               Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === (studentData?.currentLevel || "1A")) + 1) / LEVEL_STEPS.length) * 100)}% Complete
-// //             </Text>
-// //           </View>
-// //           <LevelTimeline currentLevel={studentData?.currentLevel || "1A"} />
-// //         </View>
-
-// //         {/* ======= CUSTOM TWO-COLUMN SECTION (30% | 60% with stacked rows on right) ======= */}
-// //         <View style={styles.mainRow}>
-// //           {/* LEFT: 30% - Technical Skills */}
-// //           <View style={styles.leftCol30}>
-// //             <Text style={styles.sectionTitle}>Technical Skills</Text>
-// //             {(technicalSkills.length ? technicalSkills : [{ name: "N/A", percent: 0 }]).map(
-// //               (s, i) => (
-// //                 <View key={i} style={styles.skillRow}>
-// //                   <View style={styles.skillHeader}>
-// //                     <Text style={styles.small}>{s.name}</Text>
-// //                     <Text style={styles.small}>{s.percent}%</Text>
-// //                   </View>
-// //                   <ProgressBar percent={s.percent} />
-// //                 </View>
-// //               )
-// //             )}
-// //           </View>
-
-// //           {/* RIGHT: 60% - Top row: Soft + Discipline side-by-side; Bottom row: Co-curricular cards */}
-// //           <View style={styles.rightCol60}>
-// //             {/* Top half: Soft Skills + Discipline */}
-// //             <View style={styles.rightTopRow}>
-// //               <View style={styles.rightTopCol}>
-// //                 <Text style={styles.sectionTitle}>Soft Skills</Text>
-// //                 {softCats.length ? (
-// //                   softCats.map((c, i) => (
-// //                     <SoftItem
-// //                       key={i}
-// //                       title={c?.title || "Skill"}
-// //                       status={softStatus(c?.score, c?.maxMarks)}
-// //                     />
-// //                   ))
-// //                 ) : (
-// //                   <Text style={styles.small}>N/A</Text>
-// //                 )}
-// //               </View>
-
-// //               <View style={styles.rightTopCol}>
-// //                 <Text style={styles.sectionTitle}>Discipline</Text>
-// //                 {discCats.length ? (
-// //                   discCats.map((c, i) => {
-// //                     const pct = ((Number(c?.score || 0) / Number(c?.maxMarks || 10)) * 100) || 0;
-// //                     return (
-// //                       <View key={i} style={styles.skillRow}>
-// //                         <View style={styles.skillHeader}>
-// //                           <Text style={styles.small}>{c?.title || "Metric"}</Text>
-// //                           <Text style={styles.small}>
-// //                             {c?.score}/{c?.maxMarks}
-// //                           </Text>
-// //                         </View>
-// //                         <ProgressBar percent={pct} />
-// //                       </View>
-// //                     );
-// //                   })
-// //                 ) : (
-// //                   <Text style={styles.small}>N/A</Text>
-// //                 )}
-// //               </View>
-// //             </View>
-
-// //             {/* Bottom half: Co-curricular heading + cards */}
-// //             <View style={styles.rightBottomRow}>
-// //               <View style={styles.section}>
-// //                 <Text style={styles.sectionTitle}>Co-Curricular Activities</Text>
-// //                 <View style={styles.coCardsWrap}>
-// //                   {coCounts.map((c) => (
-// //                     <View key={c.title} style={styles.coCard}>
-// //                       <Text style={styles.coCardTitle}>{c.title}</Text>
-// //                       <Text style={styles.coCardCount}>{c.count}</Text>
-// //                     </View>
-// //                   ))}
-// //                 </View>
-// //               </View>
-// //             </View>
-// //           </View>
-// //         </View>
-
-// //         {/* Career Readiness */}
-// //         <View style={styles.section}>
-// //           <Text style={styles.sectionTitle}>Career Readiness</Text>
-// //           <View style={styles.readinessRow}>
-// //             <View style={styles.pill}>
-// //               <Text style={styles.pillLabel}>Resume</Text>
-// //               <Text style={styles.pillValue}>
-// //                 {reportCardData?.careerReadiness?.resumeStatus || "Not created"}
-// //               </Text>
-// //             </View>
-// //             <View style={styles.pill}>
-// //               <Text style={styles.pillLabel}>LinkedIn</Text>
-// //               <Text style={styles.pillValue}>
-// //                 {reportCardData?.careerReadiness?.linkedinStatus || "Need to improve"}
-// //               </Text>
-// //             </View>
-// //             <View style={styles.pill}>
-// //               <Text style={styles.pillLabel}>Aptitude</Text>
-// //               <Text style={styles.pillValue}>
-// //                 {reportCardData?.careerReadiness?.aptitudeStatus || "In-progress"}
-// //               </Text>
-// //             </View>
-// //             <View style={styles.pill}>
-// //               <Text style={styles.pillLabel}>Placement</Text>
-// //               <Text style={styles.pillValue}>
-// //                 {reportCardData?.careerReadiness?.placementReady || "Not-ready"}
-// //               </Text>
-// //             </View>
-// //           </View>
-// //         </View>
-
-// //         {/* Academic Performance */}
-// //         <View style={styles.section}>
-// //           <Text style={styles.sectionTitle}>Academic Performance</Text>
-// //           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-// //             {[
-// //               { title: "Current Level", val: `Level ${studentData?.currentLevel || "1A"}` },
-// //               { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-// //               { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-// //               { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-// //               { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
-// //             ].map((it, idx) => (
-// //               <View
-// //                 key={idx}
-// //                 style={{
-// //                   width: "19.2%",
-// //                   backgroundColor: "#FFFFFF",
-// //                   borderRadius: 6,
-// //                   borderWidth: 1,
-// //                   borderStyle: "solid",
-// //                   borderColor: "#E5E7EB",
-// //                   paddingVertical: 8,
-// //                   paddingHorizontal: 6,
-// //                 }}
-// //               >
-// //                 <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
-// //                   {it.title}
-// //                 </Text>
-// //                 <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
-// //                   {it.val}
-// //                 </Text>
-// //               </View>
-// //             ))}
-// //           </View>
-// //         </View>
-
-// //         {/* Faculty Feedback */}
-// //         <View style={styles.section}>
-// //           <Text style={styles.sectionTitle}>Faculty Feedback</Text>
-// //           <Text style={styles.value}>
-// //             {reportCardData?.facultyRemark || "No feedback available"}
-// //           </Text>
-
-// //           <View style={{ flexDirection: "row", marginTop: 8, gap: 12 }}>
-// //             <Text style={styles.label}>
-// //               Rating:{" "}
-// //               <Text style={styles.value}>
-// //                 {(() => {
-// //                   const g = (reportCardData?.overallGrade || "").toUpperCase();
-// //                   if (g === "A+") return "5.0";
-// //                   if (g === "A") return "4.5";
-// //                   if (g === "B+") return "4.0";
-// //                   if (g === "B") return "3.5";
-// //                   if (g === "C+") return "3.0";
-// //                   if (g === "C") return "2.5";
-// //                   if (g === "D+") return "2.0";
-// //                   if (g === "D") return "1.5";
-// //                   if (g === "F") return "1.0";
-// //                   return "3.0";
-// //                 })()} ★
-// //               </Text>
-// //             </Text>
-
-// //             <Text style={styles.label}>
-// //               Generated by:{" "}
-// //               <Text style={styles.value}>
-// //                 {reportCardData?.generatedByName || "N/A"}
-// //               </Text>
-// //             </Text>
-// //           </View>
-// //         </View>
-
-// //         {/* Footer */}
-// //         <View style={styles.footer} fixed>
-// //           <Text style={styles.footerText}>
-// //             Current Level: {studentData?.currentLevel || "1A"} • Overall Grade: {reportCardData?.overallGrade || "B+"} • Academic Year: 2024-25
-// //           </Text>
-// //         </View>
-// //       </Page>
-// //     </Document>
-// //   );
-// // };
-
-// // export default StudentReportPDF;
-
-
-
-// // // import React from "react";
-// // // import {
-// // //   Document,
-// // //   Page,
-// // //   Text,
-// // //   View,
-// // //   StyleSheet,
-// // //   Image,
-// // //   Svg,
-// // //   Line,
-// // //   Circle,
-// // //   G, // Use G for grouping elements for better rendering/styling in react-pdf
-// // // } from "@react-pdf/renderer";
-
-// // // import logo from "../../../assets/images/doulLogo.png";
-// // // import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
-// // // import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
-// // // import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
-// // // import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
-// // // import contactIcon from "../../../assets/icons/StuReport_Phone.png";
-// // // import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
-
-// // // /* =================== Styles (adjusted to use page more, larger text + spacing) =================== */
-// // // const styles = StyleSheet.create({
-// // //   page: {
-// // //     flexDirection: "column",
-// // //     backgroundColor: "#FFFFFF",
-// // //     // a little more horizontal space to use the whole page
-// // //     paddingTop: 12,
-// // //     paddingHorizontal: 18,
-// // //     paddingBottom: 12,
-// // //     fontFamily: "Helvetica",
-// // //   },
-
-// // //   /* Header */
-// // //   header: {
-// // //     flexDirection: "row",
-// // //     justifyContent: "space-between",
-// // //     alignItems: "center",
-// // //     marginBottom: 8,
-// // //     paddingBottom: 6,
-// // //     borderBottomWidth: 2,
-// // //     borderBottomColor: "#7335DD",
-// // //     borderBottomStyle: "solid",
-// // //   },
-// // //   headerLeft: { flexDirection: "row", alignItems: "center", width: 140 },
-// // //   headerCenter: { flexGrow: 1, alignItems: "center" },
-// // //   headerRight: { width: 140, alignItems: "flex-end" },
-
-// // //   // slightly larger logo
-// // //   logo: { width: 68, height: 46 },
-// // //   // larger title
-// // //   title: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-// // //   subMuted: { fontSize: 9, color: "#6B7280" },
-// // //   subBold: { fontSize: 10, color: "#111827", fontWeight: "bold" },
-
-// // //   /* Section/Card */
-// // //   section: {
-// // //     marginBottom: 8,
-// // //     padding: 10, // more padding for breathing room
-// // //     backgroundColor: "#F9FAFB",
-// // //     borderRadius: 6,
-// // //     borderWidth: 1,
-// // //     borderStyle: "solid",
-// // //     borderColor: "#E5E7EB",
-// // //   },
-// // //   sectionTitle: {
-// // //     fontSize: 12, // bigger title
-// // //     fontWeight: "bold",
-// // //     color: "#111827",
-// // //     marginBottom: 8,
-// // //   },
-
-// // //   /* Info grid - now two columns for more space */
-// // //   infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-// // //   // increased width to 50% to make two columns and more horizontal space for values
-// // //   infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 4 },
-// // //   infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-// // //   icon: { width: 11, height: 11, marginRight: 6 }, // slightly larger icon
-// // //   label: { fontSize: 9, color: "#6B7280", fontWeight: "bold" }, // larger label
-// // //   value: { fontSize: 10, color: "#111827" }, // larger value font
-
-// // //   /* Level Progress */
-// // //   levelWrap: { paddingVertical: 6 },
-// // //   levelLegend: {
-// // //     marginTop: 6,
-// // //     flexDirection: "row",
-// // //     justifyContent: "space-between",
-// // //   },
-// // //   badge: { fontSize: 9, color: "#374151", textAlign: "center", width: 28 },
-
-// // //   /* Two-column main row: left = 30%, right = 60% (right has stacked rows) */
-// // //   mainRow: { flexDirection: "row", gap: 8, marginBottom: 6, width: '100%' },
-// // //   leftCol30: {
-// // //     width: "30%",
-// // //     backgroundColor: "#FFFFFF",
-// // //     borderRadius: 6,
-// // //     borderWidth: 1,
-// // //     borderStyle: "solid",
-// // //     borderColor: "#E5E7EB",
-// // //     padding: 10,
-// // //     minWidth: 0,
-// // //   },
-// // //   rightCol60: {
-// // //     width: "60%",
-// // //     flexDirection: 'column',
-// // //   },
-
-// // //   /* Top half inside right column: two columns (Soft | Discipline) */
-// // //   rightTopRow: { flexDirection: 'row', marginBottom: 6 },
-// // //   rightTopCol: { width: '50%', paddingHorizontal: 6, backgroundColor: '#FFFFFF', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', padding: 10 },
-
-// // //   /* Bottom half inside right column: Co-curricular cards */
-// // //   rightBottomRow: { width: '100%', marginTop: 6 },
-// // //   coCardsWrap: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
-// // //   coCard: {
-// // //     width: '30%',
-// // //     paddingVertical: 8,
-// // //     paddingHorizontal: 8,
-// // //     backgroundColor: '#FFFFFF',
-// // //     borderRadius: 5,
-// // //     borderWidth: 1,
-// // //     borderColor: '#E5E7EB',
-// // //     marginBottom: 6,
-// // //   },
-// // //   coCardTitle: {
-// // //     fontSize: 10,
-// // //     fontWeight: 700,
-// // //     color: '#374151',
-// // //     textAlign: 'center',
-// // //     marginBottom: 4,
-// // //   },
-// // //   coCardCount: {
-// // //     fontSize: 16,
-// // //     fontWeight: 700,
-// // //     color: '#111827',
-// // //     textAlign: 'center',
-// // //   },
-
-// // //   /* Progress list */
-// // //   skillRow: { marginBottom: 8 },
-// // //   skillHeader: {
-// // //     flexDirection: "row",
-// // //     justifyContent: "space-between",
-// // //     marginBottom: 4,
-// // //   },
-// // //   small: { fontSize: 9, color: "#374151" }, // slightly larger
-// // //   barTrack: {
-// // //     height: 8, // increased height
-// // //     backgroundColor: "#E5E7EB",
-// // //     borderRadius: 5,
-// // //     overflow: "hidden",
-// // //   },
-// // //   barFill: { height: 8, backgroundColor: "#7335DD" },
-
-// // //   /* Soft skills */
-// // //   softRow: {
-// // //     flexDirection: "row",
-// // //     justifyContent: "space-between",
-// // //     marginBottom: 8,
-// // //   },
-// // //   softLeft: { fontSize: 9.5, color: "#374151" },
-// // //   softRight: { fontSize: 9.5, fontWeight: "bold" },
-
-// // //   /* Career readiness (4 in one row) */
-// // //   readinessRow: { flexDirection: "row", justifyContent: "space-between" },
-// // //   pill: {
-// // //     width: "23%",
-// // //     backgroundColor: "#F3F4F6",
-// // //     borderRadius: 8,
-// // //     paddingVertical: 10,
-// // //     paddingHorizontal: 8,
-// // //     borderWidth: 1,
-// // //     borderStyle: "solid",
-// // //     borderColor: "#E5E7EB",
-// // //   },
-// // //   pillLabel: { fontSize: 9, color: "#6B7280", marginBottom: 6, textAlign: "center" },
-// // //   pillValue: { fontSize: 10, fontWeight: "bold", color: "#111827", textAlign: "center" },
-
-// // //   /* Footer */
-// // //   footer: {
-// // //     marginTop: 8,
-// // //     padding: 8,
-// // //     backgroundColor: "#7335DD",
-// // //     borderRadius: 6,
-// // //   },
-// // //   footerText: { fontSize: 10, color: "#FFFFFF", textAlign: "center" },
-// // // });
-
-// // // /* =================== Helpers =================== */
-// // // const InfoItem = ({ icon, label, value }) => (
-// // //   <View style={styles.infoCell}>
-// // //     <View style={styles.infoTop}>
-// // //       <Image src={icon} style={styles.icon} />
-// // //       <Text style={styles.label}>{label}</Text>
-// // //     </View>
-// // //     <Text style={styles.value}>{value || "N/A"}</Text>
-// // //   </View>
-// // // );
-
-// // // const ProgressBar = ({ percent }) => (
-// // //   <View style={styles.barTrack}>
-// // //     <View
-// // //       style={[
-// // //         styles.barFill,
-// // //         { width: `${Math.max(0, Math.min(100, Number(percent) || 0))}%` },
-// // //       ]}
-// // //     />
-// // //   </View>
-// // // );
-
-// // // const SoftItem = ({ title, status }) => (
-// // //   <View style={styles.softRow}>
-// // //     <Text style={styles.softLeft}>{title}</Text>
-// // //     <Text
-// // //       style={[
-// // //         styles.softRight,
-// // //         {
-// // //           color:
-// // //             status === "Excellent"
-// // //               ? "#059669"
-// // //               : status === "Good"
-// // //               ? "#2563EB"
-// // //               : status === "Average"
-// // //               ? "#D97706"
-// // //               : "#DC2626",
-// // //         },
-// // //       ]}
-// // //     >
-// // //       {status}
-// // //     </Text>
-// // //   </View>
-// // // );
-
-// // // const softStatus = (score, max) => {
-// // //   const pct = (Number(score || 0) / Number(max || 1)) * 100;
-// // //   if (pct >= 90) return "Excellent";
-// // //   if (pct >= 70) return "Good";
-// // //   if (pct >= 50) return "Average";
-// // //   return "Poor";
-// // // };
-
-
-// // // /* Level steps array - Adjusted to match the visual steps 1A through 2C */
-// // // const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
-
-// // // /* =================== Level Timeline Component (UPDATED) =================== */
-// // // const LevelTimeline = ({ currentLevel = "1A" }) => {
-// // //   const steps = LEVEL_STEPS;
-// // //   const currentLevelUpper = String(currentLevel || "1A").toUpperCase();
-// // //   // Find the index of the current level
-// // //   const currentIdx = Math.max(
-// // //     0,
-// // //     steps.findIndex((s) => s.toUpperCase() === currentLevelUpper)
-// // //   );
-
-// // //   // Constants for SVG dimensions and positioning
-// // //   const width = 480; // Total width for the SVG canvas (matches typical react-pdf A4 width)
-// // //   const padding = 20; // Padding from the edges for circles
-// // //   const yCenter = 15; // Vertical center for the line and circles
-// // //   const circleRadius = 12;
-// // //   const lineStrokeWidth = 3;
-
-// // //   const innerWidth = width - padding * 2;
-// // //   // Calculate the horizontal position for each step's circle center
-// // //   const pts = steps.map(
-// // //     (_, i) => padding + (i * innerWidth) / (steps.length - 1)
-// // //   );
-
-// // //   // The progress line ends at the center of the current circle
-// // //   const progressLineEnd = pts[currentIdx];
-
-// // //   return (
-// // //     <View style={styles.levelWrap}>
-// // //       <Svg width={width} height="50" viewBox={`0 0 ${width} 50`}>
-// // //         {/* 1. Background line (Gray) */}
-// // //         <Line
-// // //           x1={pts[0]}
-// // //           y1={yCenter}
-// // //           x2={pts[steps.length - 1]}
-// // //           y2={yCenter}
-// // //           stroke="#E5E7EB" // Light gray for inactive track
-// // //           strokeWidth={lineStrokeWidth}
-// // //         />
-
-// // //         {/* 2. Progress line (Green) */}
-// // //         <Line
-// // //           x1={pts[0]}
-// // //           y1={yCenter}
-// // //           x2={progressLineEnd}
-// // //           y2={yCenter}
-// // //           stroke="#10B981" // Green for active progress
-// // //           strokeWidth={lineStrokeWidth}
-// // //         />
-
-// // //         {/* 3. Level circles and labels */}
-// // //         {pts.map((x, i) => {
-// // //           const isPassed = i < currentIdx;
-// // //           const isCurrent = i === currentIdx;
-// // //           const isUpcoming = i > currentIdx;
-
-// // //           // Determine circle color: Green for passed, Yellow for current, Gray for upcoming
-// // //           const circleFill = isPassed
-// // //             ? "#10B981" // Green
-// // //             : isCurrent
-// // //             ? "#F59E0B" // Yellow
-// // //             : "#E5E7EB"; // Light Gray
-
-// // //           // Determine text color for the label below the circle
-// // //           const labelColor = isCurrent ? "#F59E0B" : "#374151";
-
-// // //           return (
-// // //             <G key={i}>
-// // //               {/* Circle */}
-// // //               <Circle
-// // //                 cx={x}
-// // //                 cy={yCenter}
-// // //                 r={circleRadius}
-// // //                 fill={circleFill}
-// // //                 stroke={isCurrent ? "#F59E0B" : "none"} // Optional: yellow stroke for current
-// // //                 strokeWidth={isCurrent ? 1 : 0}
-// // //               />
-
-// // //               {/* Checkmark for Passed Levels */}
-// // //               {isPassed && (
-// // //                 <Text
-// // //                   x={x}
-// // //                   y={yCenter + 4} // Adjusted Y for better vertical centering
-// // //                   textAnchor="middle"
-// // //                   fontSize="12"
-// // //                   fill="white"
-// // //                   fontWeight="bold"
-// // //                 >
-// // //                   ✓
-// // //                 </Text>
-// // //               )}
-              
-// // //               {/* Level Text (Current and Upcoming) */}
-// // //               {!isPassed && (
-// // //                 <Text
-// // //                   x={x}
-// // //                   y={yCenter + 3} // Adjusted Y for better vertical centering
-// // //                   textAnchor="middle"
-// // //                   fontSize="10"
-// // //                   fill={isCurrent ? "white" : "#6B7280"} // White text on yellow, gray text on light gray
-// // //                   fontWeight={isCurrent ? "bold" : "normal"}
-// // //                 >
-// // //                   {steps[i]}
-// // //                 </Text>
-// // //               )}
-
-// // //               {/* Label below the circle */}
-// // //               <Text
-// // //                 x={x}
-// // //                 y={yCenter + 25}
-// // //                 textAnchor="middle"
-// // //                 fontSize="8"
-// // //                 fill={labelColor}
-// // //                 fontWeight={isCurrent ? "bold" : "normal"}
-// // //               >
-// // //                 {steps[i]}
-// // //               </Text>
-// // //             </G>
-// // //           );
-// // //         })}
-// // //       </Svg>
-// // //     </View>
-// // //   );
-// // // };
-
-// // // /* =================== Main Component =================== */
-// // // const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
-// // //   const technicalSkills =
-// // //     reportCardData?.technicalSkills?.map((s) => ({
-// // //       name: s?.skillName || "Skill",
-// // //       percent: Math.round(Number(s?.totalPercentage || 0)),
-// // //     })) || [];
-
-// // //   const softCats = reportCardData?.softSkills?.categories || [];
-// // //   const discCats = reportCardData?.discipline?.categories || [];
-
-// // //   // co-curricular calculation (uncommented and used)
-// // //   const co = reportCardData?.coCurricular || [];
-// // //   const coCounts = ["Certificate", "Project", "Sports"].map((c) => ({
-// // //     title: c,
-// // //     count: co.filter((x) => (x?.category || "").toLowerCase() === c.toLowerCase()).length,
-// // //   }));
-
-// // //   return (
-// // //     <Document>
-// // //       <Page size="A4" style={styles.page}>
-// // //         {/* Header */}
-// // //         <View style={styles.header}>
-// // //           <View style={styles.headerLeft}>
-// // //             <Image src={logo} style={styles.logo} />
-// // //           </View>
-// // //           <View style={styles.headerCenter}>
-// // //             <Text style={styles.title}>Report Card</Text>
-// // //           </View>
-// // //           <View style={styles.headerRight}>
-// // //             <Text style={styles.subMuted}>Academic Year</Text>
-// // //             <Text style={styles.subBold}>Session 2024-25</Text>
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Personal Information - now two columns */}
-// // //         <View style={styles.section}>
-// // //           <Text style={styles.sectionTitle}>Personal Information</Text>
-// // //           <View style={styles.infoGrid}>
-// // //             <InfoItem
-// // //               icon={profileIcon}
-// // //               label="Full Name"
-// // //               value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A"}
-// // //             />
-// // //             <InfoItem icon={mailIcon} label="Email" value={studentData?.email} />
-// // //             <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
-// // //             <InfoItem icon={courseIcon} label="Course" value={studentData?.course} />
-// // //             <InfoItem icon={fatherIcon} label="Father's Name" value={studentData?.fatherName} />
-// // //             <InfoItem icon={addressIcon} label="Current Level" value={`Level ${studentData?.currentLevel || "1A"}`} />
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Level Progress (UPDATED) */}
-// // //         <View style={styles.section}>
-// // //           <Text style={styles.sectionTitle}>Level Progress</Text>
-// // //           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-// // //             <Text style={[styles.value, { fontSize: 11 }]}>
-// // //               Current Level: <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Level {studentData?.currentLevel || "1A"}</Text>
-// // //             </Text>
-// // //             <Text style={[styles.small, { color: '#6B7280' }]}>
-// // //               Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === (studentData?.currentLevel || "1A")) + 1) / LEVEL_STEPS.length) * 100)}% Complete
-// // //             </Text>
-// // //           </View>
-// // //           <LevelTimeline currentLevel={studentData?.currentLevel || "1A"} />
-// // //         </View>
-
-// // //         {/* ======= CUSTOM TWO-COLUMN SECTION (30% | 60% with stacked rows on right) ======= */}
-// // //         <View style={styles.mainRow}>
-// // //           {/* LEFT: 30% - Technical Skills */}
-// // //           <View style={styles.leftCol30}>
-// // //             <Text style={styles.sectionTitle}>Technical Skills</Text>
-// // //             {(technicalSkills.length ? technicalSkills : [{ name: "N/A", percent: 0 }]).map(
-// // //               (s, i) => (
-// // //                 <View key={i} style={styles.skillRow}>
-// // //                   <View style={styles.skillHeader}>
-// // //                     <Text style={styles.small}>{s.name}</Text>
-// // //                     <Text style={styles.small}>{s.percent}%</Text>
-// // //                   </View>
-// // //                   <ProgressBar percent={s.percent} />
-// // //                 </View>
-// // //               )
-// // //             )}
-// // //           </View>
-
-// // //           {/* RIGHT: 60% - Top row: Soft + Discipline side-by-side; Bottom row: Co-curricular cards */}
-// // //           <View style={styles.rightCol60}>
-// // //             {/* Top half: Soft Skills + Discipline */}
-// // //             <View style={styles.rightTopRow}>
-// // //               <View style={styles.rightTopCol}>
-// // //                 <Text style={styles.sectionTitle}>Soft Skills</Text>
-// // //                 {softCats.length ? (
-// // //                   softCats.map((c, i) => (
-// // //                     <SoftItem
-// // //                       key={i}
-// // //                       title={c?.title || "Skill"}
-// // //                       status={softStatus(c?.score, c?.maxMarks)}
-// // //                     />
-// // //                   ))
-// // //                 ) : (
-// // //                   <Text style={styles.small}>N/A</Text>
-// // //                 )}
-// // //               </View>
-
-// // //               <View style={styles.rightTopCol}>
-// // //                 <Text style={styles.sectionTitle}>Discipline</Text>
-// // //                 {discCats.length ? (
-// // //                   discCats.map((c, i) => {
-// // //                     const pct = ((Number(c?.score || 0) / Number(c?.maxMarks || 10)) * 100) || 0;
-// // //                     return (
-// // //                       <View key={i} style={styles.skillRow}>
-// // //                         <View style={styles.skillHeader}>
-// // //                           <Text style={styles.small}>{c?.title || "Metric"}</Text>
-// // //                           <Text style={styles.small}>
-// // //                             {c?.score}/{c?.maxMarks}
-// // //                           </Text>
-// // //                         </View>
-// // //                         <ProgressBar percent={pct} />
-// // //                       </View>
-// // //                     );
-// // //                   })
-// // //                 ) : (
-// // //                   <Text style={styles.small}>N/A</Text>
-// // //                 )}
-// // //               </View>
-// // //             </View>
-
-// // //             {/* Bottom half: Co-curricular full width (cards) */}
-// // //             <View style={[styles.rightBottomRow, styles.section]}>
-// // //               <Text style={styles.sectionTitle}>Co-Curricular Activities</Text>
-// // //               <View style={styles.coCardsWrap}>
-// // //                 {coCounts.map((c) => (
-// // //                   <View key={c.title} style={styles.coCard}>
-// // //                     <Text style={styles.coCardTitle}>{c.title}</Text>
-// // //                     <Text style={styles.coCardCount}>{c.count}</Text>
-// // //                   </View>
-// // //                 ))}
-// // //               </View>
-// // //             </View>
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Career Readiness (4 in one row) */}
-// // //         <View style={styles.section}>
-// // //           <Text style={styles.sectionTitle}>Career Readiness</Text>
-// // //           <View style={styles.readinessRow}>
-// // //             <View style={styles.pill}>
-// // //               <Text style={styles.pillLabel}>Resume</Text>
-// // //               <Text style={styles.pillValue}>
-// // //                 {reportCardData?.careerReadiness?.resumeStatus || "Not created"}
-// // //               </Text>
-// // //             </View>
-// // //             <View style={styles.pill}>
-// // //               <Text style={styles.pillLabel}>LinkedIn</Text>
-// // //               <Text style={styles.pillValue}>
-// // //                 {reportCardData?.careerReadiness?.linkedinStatus || "Need to improve"}
-// // //               </Text>
-// // //             </View>
-// // //             <View style={styles.pill}>
-// // //               <Text style={styles.pillLabel}>Aptitude</Text>
-// // //               <Text style={styles.pillValue}>
-// // //                 {reportCardData?.careerReadiness?.aptitudeStatus || "In-progress"}
-// // //               </Text>
-// // //             </View>
-// // //             <View style={styles.pill}>
-// // //               <Text style={styles.pillLabel}>Placement</Text>
-// // //               <Text style={styles.pillValue}>
-// // //                 {reportCardData?.careerReadiness?.placementReady || "Not-ready"}
-// // //               </Text>
-// // //             </View>
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Academic Performance (summary row) */}
-// // //         <View style={styles.section}>
-// // //           <Text style={styles.sectionTitle}>Academic Performance</Text>
-// // //           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-// // //             {[
-// // //               { title: "Current Level", val: `Level ${studentData?.currentLevel || "1A"}` },
-// // //               { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-// // //               { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-// // //               { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-// // //               { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
-// // //             ].map((it, idx) => (
-// // //               <View
-// // //                 key={idx}
-// // //                 style={{
-// // //                   width: "19.2%",
-// // //                   backgroundColor: "#FFFFFF",
-// // //                   borderRadius: 6,
-// // //                   borderWidth: 1,
-// // //                   borderStyle: "solid",
-// // //                   borderColor: "#E5E7EB",
-// // //                   paddingVertical: 8,
-// // //                   paddingHorizontal: 6,
-// // //                 }}
-// // //               >
-// // //                 <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
-// // //                   {it.title}
-// // //                 </Text>
-// // //                 <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
-// // //                   {it.val}
-// // //                 </Text>
-// // //               </View>
-// // //             ))}
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Faculty Feedback */}
-// // //         <View style={styles.section}>
-// // //           <Text style={styles.sectionTitle}>Faculty Feedback</Text>
-// // //           <Text style={styles.value}>
-// // //             {reportCardData?.facultyRemark || "No feedback available"}
-// // //           </Text>
-
-// // //           <View style={{ flexDirection: "row", marginTop: 8, gap: 12 }}>
-// // //             <Text style={styles.label}>
-// // //               Rating: {" "}
-// // //               <Text style={styles.value}>
-// // //                 {(() => {
-// // //                   const g = (reportCardData?.overallGrade || "").toUpperCase();
-// // //                   if (g === "A+") return "5.0";
-// // //                   if (g === "A") return "4.5";
-// // //                   if (g === "B+") return "4.0";
-// // //                   if (g === "B") return "3.5";
-// // //                   if (g === "C+") return "3.0";
-// // //                   if (g === "C") return "2.5";
-// // //                   if (g === "D+") return "2.0";
-// // //                   if (g === "D") return "1.5";
-// // //                   if (g === "F") return "1.0";
-// // //                   return "3.0";
-// // //                 })()} ★
-// // //               </Text>
-// // //             </Text>
-
-// // //             <Text style={styles.label}>
-// // //               Generated by: {" "}
-// // //               <Text style={styles.value}>
-// // //                 {reportCardData?.generatedByName || "N/A"}
-// // //               </Text>
-// // //             </Text>
-// // //           </View>
-// // //         </View>
-
-// // //         {/* Footer */}
-// // //         <View style={styles.footer} fixed>
-// // //           <Text style={styles.footerText}>
-// // //             Current Level: {studentData?.currentLevel || "1A"} • Overall Grade: {reportCardData?.overallGrade || "B+"} • Academic Year: 2024-25
-// // //           </Text>
-// // //         </View>
-// // //       </Page>
-// // //     </Document>
-// // //   );
-// // // };
-
-// // // export default StudentReportPDF;
-
-
-
-
-// // // // import React from "react";
-// // // // import {
-// // // //   Document,
-// // // //   Page,
-// // // //   Text,
-// // // //   View,
-// // // //   StyleSheet,
-// // // //   Image,
-// // // //   Svg,
-// // // //   Line,
-// // // //   Circle,
-// // // //   G, // Use G for grouping elements for better rendering/styling in react-pdf
-// // // // } from "@react-pdf/renderer";
-
-// // // // import logo from "../../../assets/images/doulLogo.png";
-// // // // import profileIcon from "../../../assets/icons/StuReportprofile_icon.png";
-// // // // import courseIcon from "../../../assets/icons/StuReportCourse_icon.png";
-// // // // import mailIcon from "../../../assets/icons/StuReportMail_icon.png";
-// // // // import fatherIcon from "../../../assets/icons/StuReportFather_icon.png";
-// // // // import contactIcon from "../../../assets/icons/StuReport_Phone.png";
-// // // // import addressIcon from "../../../assets/icons/StuReportAddress_icon.png";
-
-// // // // /* =================== Styles (adjusted to use page more, larger text + spacing) =================== */
-// // // // const styles = StyleSheet.create({
-// // // //   page: {
-// // // //     flexDirection: "column",
-// // // //     backgroundColor: "#FFFFFF",
-// // // //     // a little more horizontal space to use the whole page
-// // // //     paddingTop: 12,
-// // // //     paddingHorizontal: 18,
-// // // //     paddingBottom: 12,
-// // // //     fontFamily: "Helvetica",
-// // // //   },
-
-// // // //   /* Header */
-// // // //   header: {
-// // // //     flexDirection: "row",
-// // // //     justifyContent: "space-between",
-// // // //     alignItems: "center",
-// // // //     marginBottom: 8,
-// // // //     paddingBottom: 6,
-// // // //     borderBottomWidth: 2,
-// // // //     borderBottomColor: "#7335DD",
-// // // //     borderBottomStyle: "solid",
-// // // //   },
-// // // //   headerLeft: { flexDirection: "row", alignItems: "center", width: 140 },
-// // // //   headerCenter: { flexGrow: 1, alignItems: "center" },
-// // // //   headerRight: { width: 140, alignItems: "flex-end" },
-
-// // // //   // slightly larger logo
-// // // //   logo: { width: 68, height: 46 },
-// // // //   // larger title
-// // // //   title: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-// // // //   subMuted: { fontSize: 9, color: "#6B7280" },
-// // // //   subBold: { fontSize: 10, color: "#111827", fontWeight: "bold" },
-
-// // // //   /* Section/Card */
-// // // //   section: {
-// // // //     marginBottom: 8,
-// // // //     padding: 10, // more padding for breathing room
-// // // //     backgroundColor: "#F9FAFB",
-// // // //     borderRadius: 6,
-// // // //     borderWidth: 1,
-// // // //     borderStyle: "solid",
-// // // //     borderColor: "#E5E7EB",
-// // // //   },
-// // // //   sectionTitle: {
-// // // //     fontSize: 12, // bigger title
-// // // //     fontWeight: "bold",
-// // // //     color: "#111827",
-// // // //     marginBottom: 8,
-// // // //   },
-
-// // // //   /* Info grid - now two columns for more space */
-// // // //   infoGrid: { flexDirection: "row", flexWrap: "wrap" },
-// // // //   // increased width to 50% to make two columns and more horizontal space for values
-// // // //   infoCell: { width: "33.3333%", paddingRight: 4, marginBottom: 4 },
-// // // //   infoTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-// // // //   icon: { width: 11, height: 11, marginRight: 6 }, // slightly larger icon
-// // // //   label: { fontSize: 9, color: "#6B7280", fontWeight: "bold" }, // larger label
-// // // //   value: { fontSize: 10, color: "#111827" }, // larger value font
-
-// // // //   /* Level Progress */
-// // // //   levelWrap: { paddingVertical: 6 },
-// // // //   levelLegend: {
-// // // //     marginTop: 6,
-// // // //     flexDirection: "row",
-// // // //     justifyContent: "space-between",
-// // // //   },
-// // // //   badge: { fontSize: 9, color: "#374151", textAlign: "center", width: 28 },
-
-// // // //   /* Three-panels row */
-// // // //   boardRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-// // // //   boardCol: {
-// // // //     flexGrow: 1,
-// // // //     flexBasis: 0,
-// // // //     backgroundColor: "#FFFFFF",
-// // // //     borderRadius: 6,
-// // // //     borderWidth: 1,
-// // // //     borderStyle: "solid",
-// // // //     borderColor: "#E5E7EB",
-// // // //     padding: 10, // increased padding
-// // // //     minWidth: 0,
-// // // //   },
-
-// // // //   /* Progress list */
-// // // //   skillRow: { marginBottom: 8 },
-// // // //   skillHeader: {
-// // // //     flexDirection: "row",
-// // // //     justifyContent: "space-between",
-// // // //     marginBottom: 4,
-// // // //   },
-// // // //   small: { fontSize: 9, color: "#374151" }, // slightly larger
-// // // //   barTrack: {
-// // // //     height: 8, // increased height
-// // // //     backgroundColor: "#E5E7EB",
-// // // //     borderRadius: 5,
-// // // //     overflow: "hidden",
-// // // //   },
-// // // //   barFill: { height: 8, backgroundColor: "#7335DD" },
-
-// // // //   /* Soft skills */
-// // // //   softRow: {
-// // // //     flexDirection: "row",
-// // // //     justifyContent: "space-between",
-// // // //     marginBottom: 8,
-// // // //   },
-// // // //   softLeft: { fontSize: 9.5, color: "#374151" },
-// // // //   softRight: { fontSize: 9.5, fontWeight: "bold" },
-
-// // // //   /* Career readiness (4 in one row) */
-// // // //   readinessRow: { flexDirection: "row", justifyContent: "space-between" },
-// // // //   pill: {
-// // // //     width: "23%",
-// // // //     backgroundColor: "#F3F4F6",
-// // // //     borderRadius: 8,
-// // // //     paddingVertical: 10,
-// // // //     paddingHorizontal: 8,
-// // // //     borderWidth: 1,
-// // // //     borderStyle: "solid",
-// // // //     borderColor: "#E5E7EB",
-// // // //   },
-// // // //   pillLabel: { fontSize: 9, color: "#6B7280", marginBottom: 6, textAlign: "center" },
-// // // //   pillValue: { fontSize: 10, fontWeight: "bold", color: "#111827", textAlign: "center" },
-
-// // // //   /* Footer */
-// // // //   footer: {
-// // // //     marginTop: 8,
-// // // //     padding: 8,
-// // // //     backgroundColor: "#7335DD",
-// // // //     borderRadius: 6,
-// // // //   },
-// // // //   footerText: { fontSize: 10, color: "#FFFFFF", textAlign: "center" },
-// // // // });
-
-// // // // /* =================== Helpers =================== */
-// // // // const InfoItem = ({ icon, label, value }) => (
-// // // //   <View style={styles.infoCell}>
-// // // //     <View style={styles.infoTop}>
-// // // //       <Image src={icon} style={styles.icon} />
-// // // //       <Text style={styles.label}>{label}</Text>
-// // // //     </View>
-// // // //     <Text style={styles.value}>{value || "N/A"}</Text>
-// // // //   </View>
-// // // // );
-
-// // // // const ProgressBar = ({ percent }) => (
-// // // //   <View style={styles.barTrack}>
-// // // //     <View
-// // // //       style={[
-// // // //         styles.barFill,
-// // // //         { width: `${Math.max(0, Math.min(100, Number(percent) || 0))}%` },
-// // // //       ]}
-// // // //     />
-// // // //   </View>
-// // // // );
-
-// // // // const SoftItem = ({ title, status }) => (
-// // // //   <View style={styles.softRow}>
-// // // //     <Text style={styles.softLeft}>{title}</Text>
-// // // //     <Text
-// // // //       style={[
-// // // //         styles.softRight,
-// // // //         {
-// // // //           color:
-// // // //             status === "Excellent"
-// // // //               ? "#059669"
-// // // //               : status === "Good"
-// // // //               ? "#2563EB"
-// // // //               : status === "Average"
-// // // //               ? "#D97706"
-// // // //               : "#DC2626",
-// // // //         },
-// // // //       ]}
-// // // //     >
-// // // //       {status}
-// // // //     </Text>
-// // // //   </View>
-// // // // );
-
-// // // // const softStatus = (score, max) => {
-// // // //   const pct = (Number(score || 0) / Number(max || 1)) * 100;
-// // // //   if (pct >= 90) return "Excellent";
-// // // //   if (pct >= 70) return "Good";
-// // // //   if (pct >= 50) return "Average";
-// // // //   return "Poor";
-// // // // };
-
-
-// // // // /* Level steps array - Adjusted to match the visual steps 1A through 2C */
-// // // // const LEVEL_STEPS = ["1A", "1B", "1C", "2A", "2B", "2C"];
-
-// // // // /* =================== Level Timeline Component (UPDATED) =================== */
-// // // // const LevelTimeline = ({ currentLevel = "1A" }) => {
-// // // //   const steps = LEVEL_STEPS;
-// // // //   const currentLevelUpper = String(currentLevel || "1A").toUpperCase();
-// // // //   // Find the index of the current level
-// // // //   const currentIdx = Math.max(
-// // // //     0,
-// // // //     steps.findIndex((s) => s.toUpperCase() === currentLevelUpper)
-// // // //   );
-
-// // // //   // Constants for SVG dimensions and positioning
-// // // //   const width = 480; // Total width for the SVG canvas (matches typical react-pdf A4 width)
-// // // //   const padding = 20; // Padding from the edges for circles
-// // // //   const yCenter = 15; // Vertical center for the line and circles
-// // // //   const circleRadius = 12;
-// // // //   const lineStrokeWidth = 3;
-
-// // // //   const innerWidth = width - padding * 2;
-// // // //   // Calculate the horizontal position for each step's circle center
-// // // //   const pts = steps.map(
-// // // //     (_, i) => padding + (i * innerWidth) / (steps.length - 1)
-// // // //   );
-
-// // // //   // The progress line ends at the center of the current circle
-// // // //   const progressLineEnd = pts[currentIdx];
-
-// // // //   return (
-// // // //     <View style={styles.levelWrap}>
-// // // //       <Svg width={width} height="50" viewBox={`0 0 ${width} 50`}>
-// // // //         {/* 1. Background line (Gray) */}
-// // // //         <Line
-// // // //           x1={pts[0]}
-// // // //           y1={yCenter}
-// // // //           x2={pts[steps.length - 1]}
-// // // //           y2={yCenter}
-// // // //           stroke="#E5E7EB" // Light gray for inactive track
-// // // //           strokeWidth={lineStrokeWidth}
-// // // //         />
-
-// // // //         {/* 2. Progress line (Green) */}
-// // // //         <Line
-// // // //           x1={pts[0]}
-// // // //           y1={yCenter}
-// // // //           x2={progressLineEnd}
-// // // //           y2={yCenter}
-// // // //           stroke="#10B981" // Green for active progress
-// // // //           strokeWidth={lineStrokeWidth}
-// // // //         />
-
-// // // //         {/* 3. Level circles and labels */}
-// // // //         {pts.map((x, i) => {
-// // // //           const isPassed = i < currentIdx;
-// // // //           const isCurrent = i === currentIdx;
-// // // //           const isUpcoming = i > currentIdx;
-
-// // // //           // Determine circle color: Green for passed, Yellow for current, Gray for upcoming
-// // // //           const circleFill = isPassed
-// // // //             ? "#10B981" // Green
-// // // //             : isCurrent
-// // // //             ? "#F59E0B" // Yellow
-// // // //             : "#E5E7EB"; // Light Gray
-
-// // // //           // Determine text color for the label below the circle
-// // // //           const labelColor = isCurrent ? "#F59E0B" : "#374151";
-
-// // // //           return (
-// // // //             <G key={i}>
-// // // //               {/* Circle */}
-// // // //               <Circle
-// // // //                 cx={x}
-// // // //                 cy={yCenter}
-// // // //                 r={circleRadius}
-// // // //                 fill={circleFill}
-// // // //                 stroke={isCurrent ? "#F59E0B" : "none"} // Optional: yellow stroke for current
-// // // //                 strokeWidth={isCurrent ? 1 : 0}
-// // // //               />
-
-// // // //               {/* Checkmark for Passed Levels */}
-// // // //               {isPassed && (
-// // // //                 <Text
-// // // //                   x={x}
-// // // //                   y={yCenter + 4} // Adjusted Y for better vertical centering
-// // // //                   textAnchor="middle"
-// // // //                   fontSize="12"
-// // // //                   fill="white"
-// // // //                   fontWeight="bold"
-// // // //                 >
-// // // //                   ✓
-// // // //                 </Text>
-// // // //               )}
-              
-// // // //               {/* Level Text (Current and Upcoming) */}
-// // // //               {!isPassed && (
-// // // //                 <Text
-// // // //                   x={x}
-// // // //                   y={yCenter + 3} // Adjusted Y for better vertical centering
-// // // //                   textAnchor="middle"
-// // // //                   fontSize="10"
-// // // //                   fill={isCurrent ? "white" : "#6B7280"} // White text on yellow, gray text on light gray
-// // // //                   fontWeight={isCurrent ? "bold" : "normal"}
-// // // //                 >
-// // // //                   {steps[i]}
-// // // //                 </Text>
-// // // //               )}
-
-// // // //               {/* Label below the circle */}
-// // // //               <Text
-// // // //                 x={x}
-// // // //                 y={yCenter + 25}
-// // // //                 textAnchor="middle"
-// // // //                 fontSize="8"
-// // // //                 fill={labelColor}
-// // // //                 fontWeight={isCurrent ? "bold" : "normal"}
-// // // //               >
-// // // //                 {steps[i]}
-// // // //               </Text>
-// // // //             </G>
-// // // //           );
-// // // //         })}
-// // // //       </Svg>
-// // // //     </View>
-// // // //   );
-// // // // };
-
-// // // // /* =================== Main Component =================== */
-// // // // const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
-// // // //   const technicalSkills =
-// // // //     reportCardData?.technicalSkills?.map((s) => ({
-// // // //       name: s?.skillName || "Skill",
-// // // //       percent: Math.round(Number(s?.totalPercentage || 0)),
-// // // //     })) || [];
-
-// // // //   const softCats = reportCardData?.softSkills?.categories || [];
-// // // //   const discCats = reportCardData?.discipline?.categories || [];
-
-// // // //   // co-curricular calculation (not used in the commented-out section)
-// // // //   // const co = reportCardData?.coCurricular || [];
-// // // //   // const coCounts = ["Certificate", "Project", "Sports"].map((c) => ({
-// // // //   //   title: c,
-// // // //   //   count: co.filter(
-// // // //   //     (x) => (x?.category || "").toLowerCase() === c.toLowerCase()
-// // // //   //   ).length,
-// // // //   // }));
-
-// // // //   return (
-// // // //     <Document>
-// // // //       <Page size="A4" style={styles.page}>
-// // // //         {/* Header */}
-// // // //         <View style={styles.header}>
-// // // //           <View style={styles.headerLeft}>
-// // // //             <Image src={logo} style={styles.logo} />
-// // // //           </View>
-// // // //           <View style={styles.headerCenter}>
-// // // //             <Text style={styles.title}>Report Card</Text>
-// // // //           </View>
-// // // //           <View style={styles.headerRight}>
-// // // //             <Text style={styles.subMuted}>Academic Year</Text>
-// // // //             <Text style={styles.subBold}>Session 2024-25</Text>
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Personal Information - now two columns */}
-// // // //         <View style={styles.section}>
-// // // //           <Text style={styles.sectionTitle}>Personal Information</Text>
-// // // //           <View style={styles.infoGrid}>
-// // // //             <InfoItem
-// // // //               icon={profileIcon}
-// // // //               label="Full Name"
-// // // //               value={`${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A"}
-// // // //             />
-// // // //             <InfoItem icon={mailIcon} label="Email" value={studentData?.email} />
-// // // //             <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
-// // // //             <InfoItem icon={courseIcon} label="Course" value={studentData?.course} />
-// // // //             <InfoItem icon={fatherIcon} label="Father's Name" value={studentData?.fatherName} />
-// // // //             <InfoItem icon={addressIcon} label="Current Level" value={`Level ${studentData?.currentLevel || "1A"}`} />
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Level Progress (UPDATED) */}
-// // // //         <View style={styles.section}>
-// // // //           <Text style={styles.sectionTitle}>Level Progress</Text>
-// // // //           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-// // // //             <Text style={[styles.value, { fontSize: 11 }]}>
-// // // //               Current Level: <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Level {studentData?.currentLevel || "1A"}</Text>
-// // // //             </Text>
-// // // //             <Text style={[styles.small, { color: '#6B7280' }]}>
-// // // //               Progress: {Math.round(((LEVEL_STEPS.findIndex(s => s === (studentData?.currentLevel || "1A")) + 1) / LEVEL_STEPS.length) * 100)}% Complete
-// // // //             </Text>
-// // // //           </View>
-// // // //           <LevelTimeline currentLevel={studentData?.currentLevel || "1A"} />
-// // // //         </View>
-
-// // // //         {/* Technical | Soft | Discipline */}
-// // // //         <View style={styles.boardRow}>
-// // // //           {/* Technical */}
-// // // //           <View style={styles.boardCol}>
-// // // //             <Text style={styles.sectionTitle}>Technical Skills</Text>
-// // // //             {(technicalSkills.length ? technicalSkills : [{ name: "N/A", percent: 0 }]).map(
-// // // //               (s, i) => (
-// // // //                 <View key={i} style={styles.skillRow}>
-// // // //                   <View style={styles.skillHeader}>
-// // // //                     <Text style={styles.small}>{s.name}</Text>
-// // // //                     <Text style={styles.small}>{s.percent}%</Text>
-// // // //                   </View>
-// // // //                   <ProgressBar percent={s.percent} />
-// // // //                 </View>
-// // // //               )
-// // // //             )}
-// // // //           </View>
-
-// // // //           {/* Soft */}
-// // // //           <View style={styles.boardCol}>
-// // // //             <Text style={styles.sectionTitle}>Soft Skills</Text>
-// // // //             {softCats.length ? (
-// // // //               softCats.map((c, i) => (
-// // // //                 <SoftItem
-// // // //                   key={i}
-// // // //                   title={c?.title || "Skill"}
-// // // //                   status={softStatus(c?.score, c?.maxMarks)}
-// // // //                 />
-// // // //               ))
-// // // //             ) : (
-// // // //               <Text style={styles.small}>N/A</Text>
-// // // //             )}
-// // // //           </View>
-
-// // // //           {/* Discipline */}
-// // // //           <View style={styles.boardCol}>
-// // // //             <Text style={styles.sectionTitle}>Discipline</Text>
-// // // //             {discCats.length ? (
-// // // //               discCats.map((c, i) => {
-// // // //                 const pct =
-// // // //                   ((Number(c?.score || 0) / Number(c?.maxMarks || 10)) * 100) || 0;
-// // // //                 return (
-// // // //                   <View key={i} style={styles.skillRow}>
-// // // //                     <View style={styles.skillHeader}>
-// // // //                       <Text style={styles.small}>{c?.title || "Metric"}</Text>
-// // // //                       <Text style={styles.small}>
-// // // //                         {c?.score}/{c?.maxMarks}
-// // // //                       </Text>
-// // // //                     </View>
-// // // //                     <ProgressBar percent={pct} />
-// // // //                   </View>
-// // // //                 );
-// // // //               })
-// // // //             ) : (
-// // // //               <Text style={styles.small}>N/A</Text>
-// // // //             )}
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Career Readiness (4 in one row) */}
-// // // //         <View style={styles.section}>
-// // // //           <Text style={styles.sectionTitle}>Career Readiness</Text>
-// // // //           <View style={styles.readinessRow}>
-// // // //             <View style={styles.pill}>
-// // // //               <Text style={styles.pillLabel}>Resume</Text>
-// // // //               <Text style={styles.pillValue}>
-// // // //                 {reportCardData?.careerReadiness?.resumeStatus || "Not created"}
-// // // //               </Text>
-// // // //             </View>
-// // // //             <View style={styles.pill}>
-// // // //               <Text style={styles.pillLabel}>LinkedIn</Text>
-// // // //               <Text style={styles.pillValue}>
-// // // //                 {reportCardData?.careerReadiness?.linkedinStatus || "Need to improve"}
-// // // //               </Text>
-// // // //             </View>
-// // // //             <View style={styles.pill}>
-// // // //               <Text style={styles.pillLabel}>Aptitude</Text>
-// // // //               <Text style={styles.pillValue}>
-// // // //                 {reportCardData?.careerReadiness?.aptitudeStatus || "In-progress"}
-// // // //               </Text>
-// // // //             </View>
-// // // //             <View style={styles.pill}>
-// // // //               <Text style={styles.pillLabel}>Placement</Text>
-// // // //               <Text style={styles.pillValue}>
-// // // //                 {reportCardData?.careerReadiness?.placementReady || "Not-ready"}
-// // // //               </Text>
-// // // //             </View>
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Academic Performance (summary row) */}
-// // // //         <View style={styles.section}>
-// // // //           <Text style={styles.sectionTitle}>Academic Performance</Text>
-// // // //           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-// // // //             {[
-// // // //               { title: "Current Level", val: `Level ${studentData?.currentLevel || "1A"}` },
-// // // //               { title: "1st Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "FY")?.sgpa ?? "N/A" },
-// // // //               { title: "2nd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "SY")?.sgpa ?? "N/A" },
-// // // //               { title: "3rd Year SGPA", val: reportCardData?.academicPerformance?.yearWiseSGPA?.find(y => y.year === "TY")?.sgpa ?? "N/A" },
-// // // //               { title: "CGPA", val: reportCardData?.academicPerformance?.cgpa ?? "N/A" },
-// // // //             ].map((it, idx) => (
-// // // //               <View
-// // // //                 key={idx}
-// // // //                 style={{
-// // // //                   width: "19.2%",
-// // // //                   backgroundColor: "#FFFFFF",
-// // // //                   borderRadius: 6,
-// // // //                   borderWidth: 1,
-// // // //                   borderStyle: "solid",
-// // // //                   borderColor: "#E5E7EB",
-// // // //                   paddingVertical: 8,
-// // // //                   paddingHorizontal: 6,
-// // // //                 }}
-// // // //               >
-// // // //                 <Text style={{ fontSize: 9, color: "#6B7280", textAlign: "center", marginBottom: 4 }}>
-// // // //                   {it.title}
-// // // //                 </Text>
-// // // //                 <Text style={{ fontSize: 12, fontWeight: "bold", textAlign: "center", color: "#111827" }}>
-// // // //                   {it.val}
-// // // //                 </Text>
-// // // //               </View>
-// // // //             ))}
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Faculty Feedback */}
-// // // //         <View style={styles.section}>
-// // // //           <Text style={styles.sectionTitle}>Faculty Feedback</Text>
-// // // //           <Text style={styles.value}>
-// // // //             {reportCardData?.facultyRemark || "No feedback available"}
-// // // //           </Text>
-
-// // // //           <View style={{ flexDirection: "row", marginTop: 8, gap: 12 }}>
-// // // //             <Text style={styles.label}>
-// // // //               Rating:{" "}
-// // // //               <Text style={styles.value}>
-// // // //                 {(() => {
-// // // //                   const g = (reportCardData?.overallGrade || "").toUpperCase();
-// // // //                   if (g === "A+") return "5.0";
-// // // //                   if (g === "A") return "4.5";
-// // // //                   if (g === "B+") return "4.0";
-// // // //                   if (g === "B") return "3.5";
-// // // //                   if (g === "C+") return "3.0";
-// // // //                   if (g === "C") return "2.5";
-// // // //                   if (g === "D+") return "2.0";
-// // // //                   if (g === "D") return "1.5";
-// // // //                   if (g === "F") return "1.0";
-// // // //                   return "3.0";
-// // // //                 })()} ★
-// // // //               </Text>
-// // // //             </Text>
-
-// // // //             <Text style={styles.label}>
-// // // //               Generated by:{" "}
-// // // //               <Text style={styles.value}>
-// // // //                 {reportCardData?.generatedByName || "N/A"}
-// // // //               </Text>
-// // // //             </Text>
-// // // //           </View>
-// // // //         </View>
-
-// // // //         {/* Footer */}
-// // // //         <View style={styles.footer} fixed>
-// // // //           <Text style={styles.footerText}>
-// // // //             Current Level: {studentData?.currentLevel || "1A"} • Overall Grade: {reportCardData?.overallGrade || "B+"} • Academic Year: 2024-25
-// // // //           </Text>
-// // // //         </View>
-// // // //       </Page>
-// // // //     </Document>
-// // // //   );
-// // // // };
-
-// // // // export default StudentReportPDF;
-

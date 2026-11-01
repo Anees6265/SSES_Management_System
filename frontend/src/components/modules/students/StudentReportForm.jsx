@@ -12,7 +12,7 @@ import {
 import Header from '../../shared/sidebar/Header';
 import Loader from "../../shared/loader/Loader";
 import { toast } from "react-toastify";
-import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus, FaMagic, FaSpinner } from "react-icons/fa";
+import { FaLock, FaCheckCircle, FaStar, FaSyncAlt, FaPlus, FaMagic, FaSpinner, FaAward } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { taskAPI } from "../../../services/taskService";
 import { detectDepartment, DEPARTMENT_CONFIGS } from "./reportCardDepartmentConfig";
@@ -1228,10 +1228,10 @@ export default function StudentReportForm() {
       careerReadiness: resolvedCareerReadiness,
       academicPerformance: formData.academicPerformance || {},
       coCurricular: coCurr
-        .filter(item => item?.title && item.title.trim() !== "" && item?.category && item.category.trim() !== "")
+        .filter(item => item?.title && item.title.trim() !== "")
         .map(item => ({
           title: item.title.trim(),
-          category: item.category.trim(),
+          category: (item.category && item.category.trim()) || "Certification",
           remark: item.remark?.trim() || ""
         })),
       overallGrade: formData.overallGrade || "",
@@ -1360,7 +1360,15 @@ export default function StudentReportForm() {
     setFormData(prev => {
       const next = deepClone(prev);
       next.coCurricular = next.coCurricular || [];
-      next.coCurricular.push({ category: "", title: "", remark: "" });
+      next.coCurricular.push({ category: "Certification", title: "", remark: "" });
+      return next;
+    });
+  };
+
+  const removeCoCurricular = (index) => {
+    setFormData(prev => {
+      const next = deepClone(prev);
+      next.coCurricular = (next.coCurricular || []).filter((_, i) => i !== index);
       return next;
     });
   };
@@ -1369,7 +1377,7 @@ export default function StudentReportForm() {
     setFormData(prev => {
       const next = deepClone(prev);
       next.coCurricular = next.coCurricular || [];
-      while (next.coCurricular.length <= index) next.coCurricular.push({ category: "", title: "", remark: "" });
+      while (next.coCurricular.length <= index) next.coCurricular.push({ category: "Certification", title: "", remark: "" });
       next.coCurricular[index][field] = value;
       return next;
     });
@@ -2351,53 +2359,6 @@ export default function StudentReportForm() {
                 </div>
               </div>
 
-              {/* Co-Curricular Activities (Legacy fallback) */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Co-Curricular Activities</h3>
-                  <button
-                    type="button"
-                    onClick={addCoCurricular}
-                    className="px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-lg hover:bg-orange-600 transition"
-                  >
-                    + Add Activity
-                  </button>
-                </div>
-                {(formData.coCurricular || []).map((activity, index) => (
-                  <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 p-3 bg-slate-50/70 rounded-xl border border-slate-100">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Category</label>
-                      <input
-                        type="text"
-                        value={activity.category}
-                        onChange={(e) => setCoCurricularField(index, 'category', e.target.value)}
-                        placeholder="e.g. Workshop"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={activity.title}
-                        onChange={(e) => setCoCurricularField(index, 'title', e.target.value)}
-                        placeholder="Event / Activity name"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Remark</label>
-                      <input
-                        type="text"
-                        value={activity.remark}
-                        onChange={(e) => setCoCurricularField(index, 'remark', e.target.value)}
-                        placeholder="Participation remarks"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               {/* Soft Skills (Legacy fallback) */}
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">
@@ -2559,6 +2520,109 @@ export default function StudentReportForm() {
               </div>
             </>
           )}
+
+          {/* ── Certifications Section ── */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <FaAward size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Certifications</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400">
+                    Add student certifications, course completions & credentials
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addCoCurricular}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer self-start sm:self-auto"
+              >
+                <FaPlus size={10} /> Add Certificate
+              </button>
+            </div>
+
+            {(!formData.coCurricular || formData.coCurricular.length === 0) ? (
+              <div className="py-6 sm:py-8 text-center text-xs text-slate-400 font-medium bg-slate-50/60 rounded-xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-2">
+                <FaAward size={24} className="text-slate-300" />
+                <p>No certifications added yet.</p>
+                <button
+                  type="button"
+                  onClick={addCoCurricular}
+                  className="mt-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  + Add First Certificate
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.coCurricular.map((cert, index) => (
+                  <div
+                    key={index}
+                    className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 hover:border-slate-300 transition space-y-3"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-[10px] font-extrabold flex items-center justify-center">
+                          {index + 1}
+                        </span>
+                        Certificate #{index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeCoCurricular(index)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer"
+                        title="Delete certificate"
+                      >
+                        <MdDelete size={14} /> Remove
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Certificate Name / Title <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={cert.title || ""}
+                          onChange={(e) => setCoCurricularField(index, "title", e.target.value)}
+                          placeholder="e.g. AWS Certified Cloud Practitioner / React JS"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Issuing Authority / Domain
+                        </label>
+                        <input
+                          type="text"
+                          value={cert.category || ""}
+                          onChange={(e) => setCoCurricularField(index, "category", e.target.value)}
+                          placeholder="e.g. Coursera, HackerRank, Google, Udemy"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Remarks / Credential ID / Score
+                        </label>
+                        <input
+                          type="text"
+                          value={cert.remark || ""}
+                          onChange={(e) => setCoCurricularField(index, "remark", e.target.value)}
+                          placeholder="e.g. Completed with 92% / Credential ID: ABC123"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Final Section */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-3.5">

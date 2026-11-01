@@ -1042,11 +1042,11 @@ export default function StudentReportCard() {
               </ul>
             </div>
 
-            {/* Co-Curricular */}
+            {/* Certifications */}
             {rc.coCurricular?.length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-2">
                 <h4 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100">
-                  Co-Curricular ({rc.coCurricular.length})
+                  Certifications ({rc.coCurricular.length})
                 </h4>
                 <div className="space-y-2">
                   {rc.coCurricular.map((item, i) => (
@@ -1597,7 +1597,7 @@ export default function StudentReportCard() {
               </div>
             </div>
 
-            {/* Co-Curricular */}
+            {/* Certifications */}
             {rc.coCurricular?.length > 0 && (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1605,10 +1605,10 @@ export default function StudentReportCard() {
                     <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                       <FaAward size={16} />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-800">Co-Curricular & Certifications</h4>
+                    <h4 className="text-sm font-bold text-slate-800">Certifications</h4>
                   </div>
                   <span className="text-xs font-semibold text-slate-400">
-                    {rc.coCurricular.length} Activities Recorded
+                    {rc.coCurricular.length} Certifications Recorded
                   </span>
                 </div>
 
@@ -1616,11 +1616,11 @@ export default function StudentReportCard() {
                   {rc.coCurricular.map((item, i) => (
                     <div key={i} className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 flex items-start gap-3">
                       <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                        {item.category?.toLowerCase().includes("sport") ? <MdSports size={16} /> : <FaProjectDiagram size={13} />}
+                        {item.category?.toLowerCase().includes("sport") ? <MdSports size={16} /> : <FaAward size={15} className="text-amber-500" />}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-800">{item.title}</p>
-                        <p className="text-[11px] font-medium text-slate-500 mt-0.5">{item.category} · {item.remark}</p>
+                        <p className="text-[11px] font-medium text-slate-500 mt-0.5">{item.category ? `${item.category}` : "Certification"}{item.remark ? ` · ${item.remark}` : ""}</p>
                       </div>
                     </div>
                   ))}

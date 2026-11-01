@@ -44,9 +44,9 @@ const technicalSkillSchema = new mongoose.Schema({
   remark: { type: String, default: "" },
 });
 const coCurricular = new mongoose.Schema({
-  category: { type: String, required: true },
-  title:{ type:String, require: true },
-  remark:{type:String, require: true} // e.g., Sports, Arts
+  category: { type: String, default: "Certification" },
+  title: { type: String, required: true },
+  remark: { type: String, default: "" }
 });
 /* ============================== 💼 CAREER READINESS ============================== */
 const careerReadinessSchema = new mongoose.Schema({

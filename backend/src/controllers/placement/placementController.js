@@ -33,7 +33,7 @@ exports.getReadyStudents = async (req, res) => {
       queryFilter["PlacementinterviewRecord.status"] = "Selected";
       queryFilter.placedInfo = null;
     } else if (status === "Placed") {
-      queryFilter.placedInfo = { $ne: null };
+      queryFilter.$or = [{ placedInfo: { $ne: null } }, { readinessStatus: "Placed" }];
     } else if (!status || status === "all") {
       queryFilter.readinessStatus = { $in: ["Ready", "Ready for Interview", "Ready for Placement", "Ready for Drive"] };
     } else {
@@ -59,7 +59,7 @@ exports.getReadyStudents = async (req, res) => {
       .filter((p) => p.studentId)
       .map((p) => {
         let stdStatus = p.readinessStatus;
-        if (p.placedInfo) {
+        if (p.placedInfo || stdStatus === "Placed") {
           stdStatus = "Placed";
         } else if (stdStatus === "Ready") {
           stdStatus = "Ready for Placement";
@@ -712,6 +712,7 @@ exports.confirmPlacement = async (req, res) => {
     // If either fails, both are rolled back (on replica set) or both run (standalone)
     await withTransaction(async (session) => {
       placement.placedInfo = placedInfoPayload;
+      placement.readinessStatus = "Placed";
       await placement.save({ session });
       await Student.findByIdAndUpdate(
         studentId,
@@ -735,26 +736,72 @@ exports.confirmPlacement = async (req, res) => {
 // 7. GET PLACED STUDENTS
 exports.getPlacedStudents = async (req, res) => {
   try {
-    const filter = placementFilter(req, { placedInfo: { $ne: null } });
+    const extraFilter = {
+      $or: [{ placedInfo: { $ne: null } }, { readinessStatus: "Placed" }]
+    };
+    if (req.query.subDepartmentId) {
+      extraFilter.subDepartmentId = req.query.subDepartmentId;
+    }
+    const filter = placementFilter(req, extraFilter);
 
     const placements = await StudentPlacement.find(filter)
-      .populate("studentId", "firstName lastName prkey course email studentMobile image")
+      .populate("studentId", "firstName lastName prkey course email studentMobile image subDepartmentId status")
       .populate("placedInfo.companyRef", "companyName location companyLogo")
       .lean();
 
-    const data = placements.map((p) => ({
-      _id: p.studentId?._id,
-      firstName: p.studentId?.firstName,
-      lastName: p.studentId?.lastName,
-      prkey: p.studentId?.prkey,
-      course: p.studentId?.course,
-      email: p.studentId?.email,
-      studentMobile: p.studentId?.studentMobile,
-      image: p.studentId?.image,
-      readinessStatus: p.readinessStatus,
-      placedInfo: p.placedInfo,
-      PlacementinterviewRecord: p.PlacementinterviewRecord,
-    }));
+    const studentIdSet = new Set();
+    const data = placements
+      .filter((p) => p.studentId)
+      .map((p) => {
+        studentIdSet.add(p.studentId._id.toString());
+        return {
+          _id: p.studentId?._id,
+          firstName: p.studentId?.firstName,
+          lastName: p.studentId?.lastName,
+          prkey: p.studentId?.prkey,
+          course: p.studentId?.course,
+          email: p.studentId?.email,
+          studentMobile: p.studentId?.studentMobile,
+          image: p.studentId?.image,
+          subDepartmentId: p.subDepartmentId || p.studentId?.subDepartmentId,
+          status: p.studentId?.status || "Placed",
+          readinessStatus: p.readinessStatus || "Placed",
+          placedInfo: p.placedInfo,
+          PlacementinterviewRecord: p.PlacementinterviewRecord,
+        };
+      });
+
+    // Also include any Student having status: "Placed" in this department who might not have a StudentPlacement yet
+    const studentQuery = {
+      ...(req.subDeptFilter || {}),
+      status: "Placed",
+    };
+    if (req.query.subDepartmentId) {
+      studentQuery.subDepartmentId = req.query.subDepartmentId;
+    }
+    const standalonePlaced = await Student.find(studentQuery)
+      .select("firstName lastName prkey course email studentMobile image subDepartmentId status")
+      .lean();
+
+    for (const st of standalonePlaced) {
+      if (!studentIdSet.has(st._id.toString())) {
+        data.push({
+          _id: st._id,
+          firstName: st.firstName,
+          lastName: st.lastName,
+          prkey: st.prkey,
+          course: st.course,
+          email: st.email,
+          studentMobile: st.studentMobile,
+          image: st.image,
+          subDepartmentId: st.subDepartmentId,
+          status: st.status || "Placed",
+          readinessStatus: "Placed",
+          placedInfo: null,
+          PlacementinterviewRecord: [],
+        });
+      }
+    }
 
     res.json({ success: true, data });
   } catch (error) {

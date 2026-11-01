@@ -115,12 +115,14 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
         const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
         const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
+        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+
         const totalStudents = await Student.countDocuments(
           isUiUx
-            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], ...activeStatusFilter }
             : isIteg
-            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
-            : { subDepartmentId: subDepartment._id }
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }], ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
         );
         
         // Fetch levels for this sub-department
@@ -130,8 +132,8 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
             const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
             const count = await Student.countDocuments(
               isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
             );
             return {
               levelId: lvl._id,
@@ -153,8 +155,8 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
             const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
             const count = await Student.countDocuments(
               isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
             );
             return {
               subLevelId: slvl._id,
@@ -225,12 +227,14 @@ exports.getAllSubDepartments = async (req, res) => {
         const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
         const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
+        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+
         const totalStudents = await Student.countDocuments(
           isUiUx
-            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], ...activeStatusFilter }
             : isIteg
-            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
-            : { subDepartmentId: subDepartment._id }
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }], ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
         );
 
         // Fetch levels for this sub-department
@@ -240,8 +244,8 @@ exports.getAllSubDepartments = async (req, res) => {
             const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
             const count = await Student.countDocuments(
               isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
             );
             return {
               levelId: lvl._id,
@@ -263,8 +267,8 @@ exports.getAllSubDepartments = async (req, res) => {
             const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
             const count = await Student.countDocuments(
               isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
             );
             return {
               subLevelId: slvl._id,
@@ -345,12 +349,14 @@ exports.getSubDepartmentById = async (req, res) => {
     const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
     const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
+    const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+
     const totalStudents = await Student.countDocuments(
       isUiUx
-        ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }] }
+        ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], ...activeStatusFilter }
         : isIteg
-        ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }] }
-        : { subDepartmentId: subDepartment._id }
+        ? { $or: [{ subDepartmentId: subDepartment._id }, { withITEG: true }], ...activeStatusFilter }
+        : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
     );
 
     // Fetch levels for this sub-department
@@ -360,8 +366,8 @@ exports.getSubDepartmentById = async (req, res) => {
         const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
         const count = await Student.countDocuments(
           isUiUxLevel1
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }] }
-            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id }
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
         );
         return {
           levelId: lvl._id,
@@ -383,8 +389,8 @@ exports.getSubDepartmentById = async (req, res) => {
         const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
         const count = await Student.countDocuments(
           isUiUxSubLevel1A
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }] }
-            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
         );
         return {
           subLevelId: slvl._id,

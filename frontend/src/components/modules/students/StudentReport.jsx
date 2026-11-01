@@ -1390,17 +1390,17 @@ export default function StudentReport() {
         </div>
         */}
 
-        {/* Co-Curricular & Achievements */}
+        {/* Certifications */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                 <FaAward size={15} />
               </div>
-              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Co-Curricular & Certifications</h4>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800">Certifications</h4>
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-slate-400">
-              {reportCardData?.coCurricular?.length || 0} Activities
+              {reportCardData?.coCurricular?.length || 0} Certifications
             </span>
           </div>
 
@@ -1409,18 +1409,18 @@ export default function StudentReport() {
               {reportCardData.coCurricular.map((act, idx) => (
                 <div key={idx} className="bg-slate-50/70 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border border-slate-100 flex items-start gap-2.5 sm:gap-3">
                   <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                    {act.category?.toLowerCase().includes("sport") ? <MdSports size={15} /> : <FaProjectDiagram size={13} />}
+                    {act.category?.toLowerCase().includes("sport") ? <MdSports size={15} /> : <FaAward size={14} className="text-amber-500" />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-800 truncate">{act.title}</p>
-                    <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{act.category} · {act.remark}</p>
+                    <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{act.category ? `${act.category}` : "Certification"}{act.remark ? ` · ${act.remark}` : ""}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="py-6 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-              Active participation recorded in Technical Workshops & Institute Events.
+              No certifications added yet.
             </div>
           )}
         </div>

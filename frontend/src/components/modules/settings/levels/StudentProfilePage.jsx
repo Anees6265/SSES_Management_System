@@ -2685,18 +2685,26 @@ const StudentProfilePage = () => {
                                 <p className="text-[11px] sm:text-xs text-slate-500 font-normal">Contact channels, academic department & native details</p>
                             </div>
                         </div>
-                        {raw.sessionId?.name && (
-                            <div className="self-start sm:self-auto">
-                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-orange-50/70 border border-orange-200/80 px-3 py-1 rounded-full shadow-2xs">
-                                    <MdCalendarToday size={13} className="text-orange-500 shrink-0" />
-                                    <span>Session: <strong className="text-slate-900 font-bold">{raw.sessionId.name}</strong></span>
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        Active
-                                    </span>
+                        {/* Department & Session Badges */}
+                        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/90 px-3 py-1 rounded-full shadow-2xs">
+                                <MdBusiness size={13} className="text-orange-500 shrink-0" />
+                                <span>Dept: <strong className="text-slate-900 font-bold">{raw.subDepartmentId?.departmentId?.name || "ITEG"} / {subdepartment?.name || raw.subDepartmentId?.name || "TECH"}</strong></span>
+                            </span>
+
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-orange-50/70 border border-orange-200/80 px-3 py-1 rounded-full shadow-2xs">
+                                {raw.sessionId?.name && (
+                                    <>
+                                        <MdCalendarToday size={13} className="text-orange-500 shrink-0" />
+                                        <span>Session: <strong className="text-slate-900 font-bold">{raw.sessionId.name}</strong></span>
+                                    </>
+                                )}
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Active
                                 </span>
-                            </div>
-                        )}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Information Grid */}
@@ -2779,7 +2787,7 @@ const StudentProfilePage = () => {
                             </div>
                         )}
 
-                        {/* Mother's Name */}
+                        {/* 5. Mother's Name */}
                         {raw.motherName && (
                             <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
                                 <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
@@ -2795,21 +2803,6 @@ const StudentProfilePage = () => {
                                 </div>
                             </div>
                         )}
-
-                        {/* 5. Department & Sub-Department */}
-                        <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
-                                <MdBusiness size={17} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
-                                    Department / Tech
-                                </span>
-                                <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors">
-                                    {raw.subDepartmentId?.departmentId?.name || "ITEG"} / {subdepartment?.name || raw.subDepartmentId?.name || "TECH"}
-                                </p>
-                            </div>
-                        </div>
 
                         {/* 6. Village / Hometown */}
                         {raw.village && (

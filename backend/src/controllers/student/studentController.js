@@ -1034,9 +1034,15 @@ exports.getAllStudents = async (req, res) => {
       andConditions.push({ ftpDomain });
     }
     if (status) {
-      andConditions.push({ status });
+      if (status === "all") {
+        if (currentLevelId || currentSubLevelId) {
+          andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed"] } });
+        }
+      } else {
+        andConditions.push({ status });
+      }
     } else {
-      andConditions.push({ status: { $nin: ["Dummy", "Dropped"] } });
+      andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed"] } });
     }
 
     const filter = andConditions.length > 0 ? { $and: andConditions } : {};
@@ -1641,19 +1647,57 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
+    if (updateData.status === "Placed") {
+      try {
+        const StudentPlacement = require("../../models/placement/StudentPlacement");
+        let placement = await StudentPlacement.findOne({ studentId: student._id });
+        if (!placement) {
+          placement = new StudentPlacement({
+            studentId: student._id,
+            subDepartmentId: student.subDepartmentId,
+            readinessStatus: "Placed",
+            placedInfo: {
+              companyName: "Placed",
+              jobProfile: "Candidate Placed",
+              placedDate: new Date(),
+            }
+          });
+          await placement.save();
+        } else {
+          placement.readinessStatus = "Placed";
+          if (!placement.placedInfo) {
+            placement.placedInfo = {
+              companyName: "Placed",
+              jobProfile: "Candidate Placed",
+              placedDate: new Date(),
+            };
+          }
+          await placement.save();
+        }
+      } catch (placementErr) {
+        console.error("Error syncing StudentPlacement on mark Placed:", placementErr);
+      }
+    }
+
     try {
-      const { createNotification } = require("../../services/notificationService");
-      createNotification({
-        title: isTargetUIUX ? "Student Shifted to UI/UX" : "Student Department Updated",
-        message: `${student.firstName || ""} ${student.lastName || ""} (${student.prkey || ""}) has been ${isTargetUIUX ? "shifted to ITEG · UI/UX" : "updated"}`,
-        type: "info",
-        category: "level",
-        studentId: student._id,
-        recipientRole: "all",
-        actorId: req.user?.id || req.user?._id,
-        actorName: req.user?.name || "",
-        actorRole: req.user?.role || "",
-      }).catch(err => console.error("Notification creation error:", err));
+      const isTargetUIUX = Boolean(updateData.isUIUX);
+      const isUIUXShift = updateData.isUIUX !== undefined && updateData.isUIUX !== existingStudent.isUIUX;
+      const isDeptShift = updateData.subDepartmentId && String(updateData.subDepartmentId) !== String(existingStudent.subDepartmentId);
+
+      if (isUIUXShift || isDeptShift) {
+        const { createNotification } = require("../../services/notificationService");
+        createNotification({
+          title: isTargetUIUX ? "Student Shifted to UI/UX" : "Student Department Updated",
+          message: `${student.firstName || ""} ${student.lastName || ""} (${student.prkey || ""}) has been ${isTargetUIUX ? "shifted to ITEG · UI/UX" : "updated"}`,
+          type: "info",
+          category: "level",
+          studentId: student._id,
+          recipientRole: "all",
+          actorId: req.user?.id || req.user?._id,
+          actorName: req.user?.name || "",
+          actorRole: req.user?.role || "",
+        }).catch(err => console.error("Notification creation error:", err));
+      }
     } catch (notifErr) {
       console.error("Failed to trigger shift notification:", notifErr);
     }
@@ -2879,7 +2923,7 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
       ...(isUiUx1A
         ? { $or: [{ currentSubLevelId: subLevelId }, { isUIUX: true }] }
         : { currentSubLevelId: subLevelId }),
-      status: { $nin: ["Dummy", "Dropped"] },
+      status: { $nin: ["Dummy", "Dropped", "Placed"] },
     })
       .populate("currentSubLevelId", "name")
       .select("firstName lastName prkey status currentSubLevelId image attendanceRate isUIUX");

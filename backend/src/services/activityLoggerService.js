@@ -1,16 +1,97 @@
 const ActivityLog = require("../models/activity/ActivityLog");
 
 /**
- * Extracts clean IP address, handling proxy headers and IPv6 formatting
+ * Strips IPv6-mapped IPv4 prefix, trims, and normalizes
  */
-function extractClientIp(req) {
-  if (!req) return "";
-  const forwarded = req.headers["x-forwarded-for"];
-  let ip = forwarded ? forwarded.split(",")[0].trim() : (req.headers["x-real-ip"] || req.socket?.remoteAddress || req.ip || "");
+function cleanIp(rawIp) {
+  if (!rawIp || typeof rawIp !== "string") return "";
+  let ip = rawIp.trim();
   if (ip.startsWith("::ffff:")) {
     ip = ip.substring(7);
   }
-  return ip || "127.0.0.1";
+  if (ip === "::1") {
+    ip = "127.0.0.1";
+  }
+  return ip;
+}
+
+/**
+ * Checks if an IP is a local loopback/internal dev address
+ */
+function isLoopback(ip) {
+  if (!ip) return true;
+  return ip === "127.0.0.1" || ip === "::1" || ip === "localhost" || ip === "0.0.0.0";
+}
+
+/**
+ * Validates basic IPv4 or IPv6 format
+ */
+function isValidIp(ip) {
+  if (!ip || typeof ip !== "string") return false;
+  const ipv4Pattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv6Pattern = /^[0-9a-fA-F:]+$/;
+  return ipv4Pattern.test(ip) || ipv6Pattern.test(ip);
+}
+
+/**
+ * Extracts clean IP address, handling proxy headers, Cloudflare, custom client headers, and IPv6 formatting
+ */
+function extractClientIp(req) {
+  if (!req) return "127.0.0.1";
+
+  // 1. Check custom public IP passed by frontend (crucial for local testing, dev environments, or internal NAT)
+  const clientPublicIp = cleanIp(req.headers ? req.headers["x-client-public-ip"] : "");
+  if (clientPublicIp && isValidIp(clientPublicIp) && !isLoopback(clientPublicIp)) {
+    return clientPublicIp;
+  }
+
+  // 2. Cloudflare CDN (cf-connecting-ip)
+  const cfIp = cleanIp(req.headers ? req.headers["cf-connecting-ip"] : "");
+  if (cfIp && isValidIp(cfIp) && !isLoopback(cfIp)) {
+    return cfIp;
+  }
+
+  // 3. X-Real-IP (Nginx / Apache reverse proxy)
+  const realIp = cleanIp(req.headers ? req.headers["x-real-ip"] : "");
+  if (realIp && isValidIp(realIp) && !isLoopback(realIp)) {
+    return realIp;
+  }
+
+  // 4. Standard X-Forwarded-For (left-most non-loopback IP is the original client)
+  const forwarded = req.headers ? req.headers["x-forwarded-for"] : "";
+  if (forwarded) {
+    const ips = String(forwarded).split(",").map(cleanIp).filter(isValidIp);
+    const nonLocalIp = ips.find((ip) => !isLoopback(ip));
+    if (nonLocalIp) return nonLocalIp;
+    if (ips.length > 0) return ips[0];
+  }
+
+  // 5. True-Client-IP / X-Client-IP (Akamai, AWS, custom proxies)
+  const trueClientIp = cleanIp(
+    req.headers ? (req.headers["true-client-ip"] || req.headers["x-client-ip"]) : ""
+  );
+  if (trueClientIp && isValidIp(trueClientIp) && !isLoopback(trueClientIp)) {
+    return trueClientIp;
+  }
+
+  // 6. Express req.ip (now functional with trust proxy enabled)
+  const expressIp = cleanIp(req.ip);
+  if (expressIp && isValidIp(expressIp) && !isLoopback(expressIp)) {
+    return expressIp;
+  }
+
+  // 7. Socket remoteAddress
+  const socketIp = cleanIp(req.socket?.remoteAddress);
+  if (socketIp && isValidIp(socketIp) && !isLoopback(socketIp)) {
+    return socketIp;
+  }
+
+  // If everything resolved to loopback, but we have a clientPublicIp, return that
+  if (clientPublicIp && isValidIp(clientPublicIp)) {
+    return clientPublicIp;
+  }
+
+  return expressIp || socketIp || "127.0.0.1";
 }
 
 /**

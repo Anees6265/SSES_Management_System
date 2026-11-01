@@ -4,6 +4,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import CryptoJS from "crypto-js";
 import { logout, setCredentials } from "../auth/authSlice";
 import { API_BASE_URL } from "../../config/apiConfig";
+import { getClientIp } from "../../utils/clientIpHelper";
 
 const secretKey = "ITEG@123";
 
@@ -43,6 +44,12 @@ const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
   credentials: "include",
   prepareHeaders: (headers, { endpoint }) => {
+    // Attach real client public IP for activity & audit logging
+    const clientIp = getClientIp();
+    if (clientIp) {
+      headers.set("X-Client-Public-IP", clientIp);
+    }
+
     // Student portal endpoints use studentToken
     const studentEndpoints = [
       "getMyStudentProfile", "updateMyStudentProfileImage", "changeMyStudentPassword",

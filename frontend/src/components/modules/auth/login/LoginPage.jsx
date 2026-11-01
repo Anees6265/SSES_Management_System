@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { useLoginMutation, useStudentLoginMutation } from "../../../../redux/api/authApi";
+import { initClientIp } from "../../../../utils/clientIpHelper";
 import Loader from "../../../shared/loader/Loader";
 // import CompactFaceLogin from "../../face-auth/CompactFaceLogin"; // Face recognition login disabled
 import { toast } from "react-toastify";
@@ -35,6 +36,10 @@ const LoginPage = () => {
   const [studentLogin, { isLoading: isStudentLoading }] = useStudentLoginMutation();
 
   const isLoading = isAdminLoading || isStudentLoading;
+
+  useEffect(() => {
+    initClientIp();
+  }, []);
 
   // Handle Admin / Faculty Login
   const handleAdminSubmit = async (e) => {

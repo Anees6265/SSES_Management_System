@@ -5,6 +5,7 @@ const StudentEventLog = require("../../models/student/StudentEventLog");
 const cloudinary = require("../../config/cloudinaryConfig");
 const User = require("../../models/user/user");
 const SubDepartment = require("../../models/department/SubDepartment");
+const { logActivity } = require("../../services/activityLoggerService");
 
 // ✅ Student Login (Only Student Email + Password)
 exports.studentLogin = async (req, res) => {
@@ -48,8 +49,24 @@ exports.studentLogin = async (req, res) => {
       }
     }
 
-    if (!isMatch)
+    if (!isMatch) {
+      logActivity({
+        req,
+        user: {
+          id: student._id,
+          name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+          email: student.email,
+          role: "student",
+          department: student.subDepartmentId?.name || "Student",
+        },
+        action: "LOGIN",
+        module: "Auth",
+        description: `Failed student login attempt for ${student.email}`,
+        status: "FAILED",
+        severity: "WARNING",
+      });
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const token = jwt.sign(
       { id: student._id, prkey: student.prkey, role: "student" },
@@ -64,6 +81,24 @@ exports.studentLogin = async (req, res) => {
     );
 
     const isDefaultPassword = (password === "ssism@123");
+
+    // Log student login in ActivityLog
+    logActivity({
+      req,
+      user: {
+        id: student._id,
+        name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+        email: student.email,
+        role: "student",
+        department: student.subDepartmentId?.name || "Student",
+        departmentId: student.subDepartmentId?._id || null,
+      },
+      action: "LOGIN",
+      module: "Auth",
+      description: `Student ${student.firstName || ""} ${student.lastName || ""} (${student.email}) logged in`,
+      status: "SUCCESS",
+      severity: "INFO",
+    });
 
     return res.status(200).json({
       message: "Login successful",

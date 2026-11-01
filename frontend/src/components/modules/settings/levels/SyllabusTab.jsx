@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import * as XLSX from "xlsx";
 import {
   MdCloudUpload, MdCheckCircle, MdExpandMore, MdExpandLess, MdFileDownload, MdInfo,
@@ -24,6 +25,8 @@ import {
   useGetSubTopicsByTopicQuery,
   useCreateTaskManualMutation,
   useAddSubjectToVersionMutation,
+  useDeleteSubjectFromVersionMutation,
+  useUpdateSubjectInVersionMutation,
 } from "../../../../redux/api/authApi";
 import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
@@ -283,6 +286,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedDomain,    setSelectedDomain]    = useState("");
+  const [selectedCourses,   setSelectedCourses]   = useState(["All"]);
   const [subject,           setSubject]           = useState("");
   const [topics,            setTopics]            = useState([{ name: "", subTopics: [""] }]);
   const [saving,            setSaving]            = useState(false);
@@ -304,6 +308,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
 
   const reset = () => {
     setSubject(""); setSelectedSessionId(""); setSelectedDomain("");
+    setSelectedCourses(["All"]);
     setTopics([{ name: "", subTopics: [""] }]);
   };
 
@@ -332,11 +337,15 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
     if (!level?._id)         { toast.error("Level not found"); return; }
     setSaving(true);
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
       await createSyllabusVersion({
         sessionId: selectedSessionId,
         levelId: level._id,
         subLevelId: subLevel._id,
         domain: isLevel2B ? (selectedDomain || "") : "",
+        course: courseStr,
+        courses: coursesList,
         subjects: [buildSubjectPayload()],
       }).unwrap();
       toast.success("Subject saved to syllabus!");
@@ -351,133 +360,196 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   useImperativeHandle(ref, () => ({ reset, save: handleSave }));
 
   return (
-    <div className="space-y-5">
-      {/* Session */}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Academic Session <span className="text-red-500">*</span>
-        </label>
-        <SelectDropdown
-          value={selectedSessionId}
-          onChange={(val) => setSelectedSessionId(val)}
-          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-          placeholder="-- Select Session --"
-        />
+    <div className="space-y-4">
+      {/* Target Location Breadcrumb */}
+      <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 text-xs shadow-2xs">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
+          {deptIdentifier || "Department"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedCourses.includes("All") ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"}`}>
+          {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+          {level?.name || "Level"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-pink-50 text-pink-700 border border-pink-200 font-bold">
+          {subLevel?.name || "Sub-Level"}
+        </span>
       </div>
 
-      {/* Optional Domain for Level 2B */}
-      {isLevel2B && (
+      {/* STEP 1: Academic Scope & Target Courses */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            1
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Academic Scope & Target Audience
+          </span>
+        </div>
+
+        {/* Session */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
-            </label>
-            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-              Level 2B Specialization
-            </span>
-          </div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Academic Session <span className="text-red-500">*</span>
+          </label>
           <SelectDropdown
-            value={selectedDomain}
-            onChange={(val) => setSelectedDomain(val)}
-            options={[
-              { value: "", label: "-- Select Domain (Optional) --" },
-              ...departmentDomains.map((d) => ({ value: d, label: d }))
-            ]}
-            placeholder="-- Select Domain (Optional) --"
+            value={selectedSessionId}
+            onChange={(val) => setSelectedSessionId(val)}
+            options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
+            placeholder="-- Select Session --"
           />
         </div>
-      )}
 
-      {/* Subject */}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-          <MdBook size={14} className="text-orange-500" /> Subject Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 bg-white shadow-xs placeholder-slate-400"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="e.g. JavaScript Programming, Web Development"
-        />
-      </div>
-
-      {/* Topics & Subtopics */}
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <MdTopic size={14} className="text-blue-500" /> Topics & Sub-Topics
-            </label>
-            <p className="text-[11px] text-slate-400">Add learning topics and their lesson milestones</p>
-          </div>
-          <button
-            type="button"
-            onClick={addTopic}
-            className="text-xs text-orange-600 font-extrabold bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shrink-0 self-start sm:self-auto"
-          >
-            <MdAdd size={15} /> Add Topic
-          </button>
+        {/* Target Course Multi-Select */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <CourseMultiSelect
+            department={deptIdentifier}
+            selectedCourses={selectedCourses}
+            onChange={setSelectedCourses}
+            label="Target Course(s)"
+            hint="Select which course(s) this syllabus applies to (e.g. BCA, BBA, B.Com, B.Tech), or 'All Courses'."
+            size="sm"
+          />
         </div>
 
-        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-          {topics.map((topic, ti) => (
-            <div key={ti} className="border border-slate-200/80 rounded-2xl p-3 sm:p-4 space-y-3 bg-white shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-black text-[11px] flex items-center justify-center shrink-0 border border-blue-100">
-                  {ti + 1}
-                </span>
-                <input
-                  className="flex-1 h-9 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-xs font-bold focus:outline-none focus:border-orange-400 bg-white"
-                  value={topic.name}
-                  onChange={(e) => updateTopicName(ti, e.target.value)}
-                  placeholder={`Topic ${ti + 1} Name`}
-                />
-                {topics.length > 1 && (
+        {/* Optional Domain for Level 2B */}
+        {isLevel2B && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              </label>
+              <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                Level 2B Specialization
+              </span>
+            </div>
+            <SelectDropdown
+              value={selectedDomain}
+              onChange={(val) => setSelectedDomain(val)}
+              options={[
+                { value: "", label: "-- Select Domain (Optional) --" },
+                ...departmentDomains.map((d) => ({ value: d, label: d }))
+              ]}
+              placeholder="-- Select Domain (Optional) --"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* STEP 2: Subject & Curriculum Topics */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            2
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Subject & Curriculum Topics
+          </span>
+        </div>
+
+        {/* Subject */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <MdBook size={14} className="text-orange-500" /> Subject Name <span className="text-red-500">*</span>
+            </label>
+            {subject.trim() && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                {isSoftSkillSubject(subject) ? "🤝 Soft Skill" : "💻 Technical Subject"}
+              </span>
+            )}
+          </div>
+          <input
+            className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/10 bg-white shadow-xs placeholder-slate-400"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="e.g. JavaScript Programming, Web Development, Communication Skills"
+          />
+        </div>
+
+        {/* Topics & Subtopics */}
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <MdTopic size={14} className="text-blue-500" /> Topics & Sub-Topics
+              </label>
+              <p className="text-[11px] text-slate-400">Add learning topics and their lesson milestones</p>
+            </div>
+            <button
+              type="button"
+              onClick={addTopic}
+              className="text-xs text-orange-600 font-extrabold bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shrink-0 self-start sm:self-auto"
+            >
+              <MdAdd size={15} /> Add Topic
+            </button>
+          </div>
+
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+            {topics.map((topic, ti) => (
+              <div key={ti} className="border border-slate-200/80 rounded-2xl p-3 sm:p-4 space-y-3 bg-white shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 font-black text-[11px] flex items-center justify-center shrink-0 border border-blue-100">
+                    {ti + 1}
+                  </span>
+                  <input
+                    className="flex-1 h-9 border border-slate-200 rounded-xl px-2.5 sm:px-3 text-xs font-bold focus:outline-none focus:border-orange-400 bg-white"
+                    value={topic.name}
+                    onChange={(e) => updateTopicName(ti, e.target.value)}
+                    placeholder={`Topic ${ti + 1} Name`}
+                  />
+                  {topics.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeTopic(ti)}
+                      className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer shrink-0"
+                      title="Delete Topic"
+                    >
+                      <MdDelete size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Subtopics */}
+                <div className="pl-3 sm:pl-8 space-y-2 border-l-2 border-slate-100 ml-1.5 sm:ml-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sub-Topics</p>
+                  {topic.subTopics.map((st, si) => (
+                    <div key={si} className="flex items-center gap-1.5 sm:gap-2">
+                      <MdSubject size={14} className="text-slate-400 flex-shrink-0" />
+                      <input
+                        className="flex-1 h-8 border border-slate-200/70 rounded-lg px-2 sm:px-2.5 text-xs font-medium focus:outline-none focus:border-orange-400 bg-slate-50/50"
+                        value={st}
+                        onChange={(e) => updateSubTopic(ti, si, e.target.value)}
+                        placeholder={`SubTopic ${si + 1} (optional)`}
+                      />
+                      {topic.subTopics.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSubTopic(ti, si)}
+                          className="p-1 text-slate-300 hover:text-rose-400 rounded transition cursor-pointer shrink-0"
+                        >
+                          <MdDelete size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                   <button
                     type="button"
-                    onClick={() => removeTopic(ti)}
-                    className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer shrink-0"
-                    title="Delete Topic"
+                    onClick={() => addSubTopic(ti)}
+                    className="text-[11px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
                   >
-                    <MdDelete size={16} />
+                    <MdAdd size={13} />
+                    <span>Add SubTopic</span>
                   </button>
-                )}
+                </div>
               </div>
-
-              {/* Subtopics */}
-              <div className="pl-3 sm:pl-8 space-y-2 border-l-2 border-slate-100 ml-1.5 sm:ml-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sub-Topics</p>
-                {topic.subTopics.map((st, si) => (
-                  <div key={si} className="flex items-center gap-1.5 sm:gap-2">
-                    <MdSubject size={14} className="text-slate-400 flex-shrink-0" />
-                    <input
-                      className="flex-1 h-8 border border-slate-200/70 rounded-lg px-2 sm:px-2.5 text-xs font-medium focus:outline-none focus:border-orange-400 bg-slate-50/50"
-                      value={st}
-                      onChange={(e) => updateSubTopic(ti, si, e.target.value)}
-                      placeholder={`SubTopic ${si + 1} (optional)`}
-                    />
-                    {topic.subTopics.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeSubTopic(ti, si)}
-                        className="p-1 text-slate-300 hover:text-rose-400 rounded transition cursor-pointer shrink-0"
-                      >
-                        <MdDelete size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addSubTopic(ti)}
-                  className="text-[11px] text-blue-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
-                >
-                  <MdAdd size={13} />
-                  <span>Add SubTopic</span>
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -526,6 +598,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const [fileName,         setFileName]         = useState("");
   const [selectedSessionId,setSelectedSessionId]= useState("");
   const [selectedDomain,   setSelectedDomain]   = useState("");
+  const [selectedCourses,  setSelectedCourses]  = useState(["All"]);
   const [subjectMeta,      setSubjectMeta]      = useState([]); // [{ name, includeInReportCard, reportCategory }]
   const [showPreview,      setShowPreview]      = useState(false);
 
@@ -558,6 +631,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     setFileName("");
     setSelectedSessionId("");
     setSelectedDomain("");
+    setSelectedCourses(["All"]);
     setSubjectMeta([]);
     setShowPreview(false);
   };
@@ -630,15 +704,21 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
 
     setSaving(true);
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
       const taskRows = buildTaskRows(hierarchy).map((r) => ({
         ...r,
         domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+        course: courseStr,
+        courses: coursesList,
       }));
       const res = await uploadCombined({
         sessionId:   selectedSessionId,
         levelId:     level._id,
         subLevelId:  subLevel._id,
         domain:      isLevel2B ? (selectedDomain || "") : "",
+        course:      courseStr,
+        courses:     coursesList,
         tasks:       taskRows,
         subjectMeta: finalMeta,
       }).unwrap();
@@ -664,68 +744,133 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   useImperativeHandle(ref, () => ({ reset, save: () => handleSave(subjectMeta) }));
 
   return (
-    <div className="space-y-5 text-xs font-semibold">
-      {/* 1. SESSION SELECTION */}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Target Academic Session <span className="text-red-500">*</span>
-        </label>
-        <SelectDropdown
-          value={selectedSessionId}
-          onChange={(val) => setSelectedSessionId(val)}
-          options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-          placeholder="-- Select Session --"
-        />
+    <div className="space-y-4 text-xs font-semibold">
+      {/* Target Location Breadcrumb */}
+      <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-2xs">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
+          {deptIdentifier || "Department"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedCourses.includes("All") ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"}`}>
+          {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+          {level?.name || "Level"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-pink-50 text-pink-700 border border-pink-200 font-bold">
+          {subLevel?.name || "Sub-Level"}
+        </span>
       </div>
 
-      {/* Optional Domain for Level 2B */}
-      {isLevel2B && (
+      {/* STEP 1: Academic Scope & Target Audience */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            1
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Academic Scope & Target Audience
+          </span>
+        </div>
+
+        {/* Academic Session */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
-            </label>
-            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-              Level 2B Specialization
-            </span>
-          </div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Target Academic Session <span className="text-red-500">*</span>
+          </label>
           <SelectDropdown
-            value={selectedDomain}
-            onChange={(val) => setSelectedDomain(val)}
-            options={[
-              { value: "", label: "-- Select Domain (Optional) --" },
-              ...departmentDomains.map((d) => ({ value: d, label: d }))
-            ]}
-            placeholder="-- Select Domain (Optional) --"
+            value={selectedSessionId}
+            onChange={(val) => setSelectedSessionId(val)}
+            options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
+            placeholder="-- Select Session --"
           />
         </div>
-      )}
 
-      {/* 2. TEMPLATE DOWNLOAD BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
-        <div className="flex items-start gap-2.5 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
-            <MdFileDownload size={20} />
-          </div>
-          <div>
-            <h4 className="text-xs font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
-            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
-              Download the official Excel template with column headers and sample data.
-            </p>
-          </div>
+        {/* Target Course Multi-Select */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <CourseMultiSelect
+            department={deptIdentifier}
+            selectedCourses={selectedCourses}
+            onChange={setSelectedCourses}
+            label="Target Course(s)"
+            hint="Select 'All Courses' or choose course(s) (e.g. BCA, BBA, B.Com, B.Tech) to restrict this syllabus to specific students."
+            size="sm"
+          />
         </div>
-        <button
-          type="button"
-          onClick={downloadSyllabusTemplate}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
-        >
-          <MdFileDownload size={16} />
-          <span>Template (.xlsx)</span>
-        </button>
+
+        {/* Optional Domain for Level 2B */}
+        {isLevel2B && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              </label>
+              <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                Level 2B Specialization
+              </span>
+            </div>
+            <SelectDropdown
+              value={selectedDomain}
+              onChange={(val) => setSelectedDomain(val)}
+              options={[
+                { value: "", label: "-- Select Domain (Optional) --" },
+                ...departmentDomains.map((d) => ({ value: d, label: d }))
+              ]}
+              placeholder="-- Select Domain (Optional) --"
+            />
+          </div>
+        )}
       </div>
 
-      {/* 3. UPLOAD DROPZONE */}
-      <div className="space-y-2">
+      {/* STEP 2: Excel Template & Format Reference */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            2
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Template & Excel Guidelines
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+              <MdFileDownload size={20} />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
+                Official Excel template with Subject, Topic, SubTopic, Task Title and Time Days columns.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={downloadSyllabusTemplate}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
+          >
+            <MdFileDownload size={16} />
+            <span>Download Template (.xlsx)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* STEP 3: Upload Excel & Verification */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            3
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Upload Excel File & Verification <span className="text-red-500">*</span>
+          </span>
+        </div>
+
+        <div className="space-y-2">
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
           Upload Excel File <span className="text-red-500">*</span>
         </label>
@@ -835,8 +980,9 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
           </div>
         </>
       )}
+      </div>
 
-      {/* 7. UNIFIED ACTION FOOTER */}
+      {/* 4. UNIFIED ACTION FOOTER */}
       <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
@@ -1209,6 +1355,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
   const [rows,           setRows]           = useState([]);
   const [fileName,       setFileName]       = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState(["All"]);
   const [saving,         setSaving]         = useState(false);
   const [parsing,        setParsing]        = useState(false);
 
@@ -1217,7 +1364,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
   const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
-  const reset = () => { setRows([]); setFileName(""); setSelectedDomain(""); };
+  const reset = () => { setRows([]); setFileName(""); setSelectedDomain(""); setSelectedCourses(["All"]); };
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -1280,9 +1427,13 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
     if (!rows.length) { toast.error("No data to upload"); return; }
     setSaving(true);
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
       const tasksWithDomain = rows.map((r) => ({
         ...r,
         domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+        course: courseStr,
+        courses: coursesList,
       }));
       const res = await bulkUploadTasks({
         syllabusVersionId,
@@ -1308,82 +1459,184 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div>
-          <p className="text-sm font-semibold text-gray-700">Upload Tasks for <span className="text-orange-600">{subjectName} {version}</span></p>
-          <p className="text-xs text-gray-400 mt-0.5">Required columns: Subject, Topic, Sub Topic, Task Title, Time Days, Measurable Point</p>
-        </div>
-        <a
-          href="/task_template.csv"
-          download="task_template.csv"
-          className="flex items-center justify-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-semibold bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition w-full sm:w-auto"
-        >
-          ⬇ Download Template
-        </a>
+    <div className="space-y-4 text-xs font-semibold">
+      {/* Target Breadcrumb */}
+      <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-2xs">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
+          {deptIdentifier || "Department"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedCourses.includes("All") ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"}`}>
+          {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+          {level?.name || "Level"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-pink-50 text-pink-700 border border-pink-200 font-bold">
+          {subLevel?.name || "Sub-Level"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+          {subjectName} {version}
+        </span>
       </div>
 
-      {/* Optional Domain for Level 2B */}
-      {isLevel2B && (
-        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Domain <span className="text-gray-400 font-normal lowercase">(optional)</span>
-            </label>
-            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-              Level 2B Specialization
-            </span>
-          </div>
-          <SelectDropdown
-            value={selectedDomain}
-            onChange={(val) => setSelectedDomain(val)}
-            options={[
-              { value: "", label: "-- Select Domain (Optional) --" },
-              ...departmentDomains.map((d) => ({ value: d, label: d }))
-            ]}
-            placeholder="-- Select Domain (Optional) --"
+      {/* STEP 1: Target Course Selection */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            1
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Target Audience & Course Scope
+          </span>
+        </div>
+
+        {/* Target Course Multi-Select */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <CourseMultiSelect
+            department={deptIdentifier}
+            selectedCourses={selectedCourses}
+            onChange={setSelectedCourses}
+            label="Target Course(s)"
+            hint="Assign uploaded tasks to all courses or select specific course(s) for this department."
+            size="sm"
           />
         </div>
-      )}
 
-      <div
-        onClick={() => fileRef.current?.click()}
-        className="border-2 border-dashed border-orange-200 rounded-xl p-5 flex flex-col items-center cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition group"
-      >
-        {parsing ? (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-500">Parsing...</span>
+        {/* Optional Domain for Level 2B */}
+        {isLevel2B && (
+          <div className="space-y-1.5 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              </label>
+              <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                Level 2B Specialization
+              </span>
+            </div>
+            <SelectDropdown
+              value={selectedDomain}
+              onChange={(val) => setSelectedDomain(val)}
+              options={[
+                { value: "", label: "-- Select Domain (Optional) --" },
+                ...departmentDomains.map((d) => ({ value: d, label: d }))
+              ]}
+              placeholder="-- Select Domain (Optional) --"
+            />
           </div>
-        ) : (
-          <>
-            <MdAssignment size={28} className="text-orange-300 group-hover:text-orange-400 mb-1" />
-            <p className="text-sm font-semibold text-gray-700">Click to upload Task Excel</p>
-            {fileName && <p className="text-xs text-orange-500 mt-1">📄 {fileName}</p>}
-          </>
         )}
       </div>
-      <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
 
-      {rows.length > 0 && (
-        <>
-          <div className="bg-white border border-gray-100 rounded-lg px-3 py-2 text-xs text-gray-600">
-            <span className="font-semibold text-green-600">{rows.length} rows</span> ready to upload
-            <span className="ml-3 text-gray-400">Preview: {rows.slice(0, 2).map((r) => r.taskTitle).join(", ")}{rows.length > 2 ? "..." : ""}</span>
+      {/* STEP 2: Template Guidelines */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            2
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Task Template Guidelines
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
+          <div>
+            <p className="text-xs font-black text-slate-900">Task Upload Format</p>
+            <p className="text-[11px] text-slate-500 mt-0.5 font-medium">Required columns: Subject, Topic, Sub Topic, Task Title, Time Days, Measurable Point</p>
           </div>
-          <div className="flex flex-col-reverse sm:flex-row gap-2">
-            <button onClick={reset} className="w-full sm:w-auto px-4 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-center flex items-center justify-center">
-              <span>Clear</span>
-            </button>
-            <button
-              onClick={handleUpload} disabled={saving}
-              className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-sm font-semibold py-2 rounded-lg transition text-center"
-            >
-              <MdSave size={15} />{saving ? "Uploading..." : "Upload Tasks"}
-            </button>
+          <a
+            href="/task_template.csv"
+            download="task_template.csv"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
+          >
+            <MdFileDownload size={16} />
+            <span>Download Template</span>
+          </a>
+        </div>
+      </div>
+
+      {/* STEP 3: Upload Task Excel & Verification */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            3
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Upload Task Excel & Verification <span className="text-red-500">*</span>
+          </span>
+        </div>
+
+        <div
+          onClick={() => fileRef.current?.click()}
+          className="border-2 border-dashed border-orange-200 bg-white rounded-2xl p-6 flex flex-col items-center cursor-pointer hover:border-orange-400 hover:bg-orange-50/30 transition group text-center"
+        >
+          {parsing ? (
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs font-bold text-slate-600">Parsing Excel rows...</span>
+            </div>
+          ) : !fileName ? (
+            <>
+              <div className="w-11 h-11 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center mb-2">
+                <MdCloudUpload size={24} />
+              </div>
+              <p className="text-xs font-black text-slate-800">Click to upload Task Excel or CSV</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Supported formats: .xlsx, .xls, .csv</p>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <MdCheckCircle size={22} className="text-emerald-500 shrink-0" />
+              <div className="text-left">
+                <p className="text-xs font-black text-slate-900">{fileName}</p>
+                <p className="text-[10px] text-emerald-600 font-semibold">{rows.length} valid task rows loaded</p>
+              </div>
+            </div>
+          )}
+        </div>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} />
+
+        {rows.length > 0 && (
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-xs text-slate-600 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-emerald-600">{rows.length} rows ready to upload</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preview</span>
+            </div>
+            <p className="text-[11px] text-slate-500 truncate">
+              {rows.slice(0, 3).map((r) => r.taskTitle).join(" • ")}{rows.length > 3 ? "..." : ""}
+            </p>
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      {/* Action Footer */}
+      <div className="pt-2 flex flex-col-reverse sm:flex-row gap-2 justify-end">
+        <button
+          onClick={reset}
+          className="px-4 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer text-center"
+        >
+          Clear
+        </button>
+        <button
+          onClick={handleUpload}
+          disabled={saving || !rows.length}
+          className="px-6 py-2.5 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs cursor-pointer text-center"
+        >
+          {saving ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Uploading Tasks...</span>
+            </>
+          ) : (
+            <>
+              <MdSave size={16} />
+              <span>Upload Tasks ({rows.length})</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
@@ -1877,7 +2130,7 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
 
 /* ─── Manual Task Creation Form ────────────────────────── */
 const TASK_TYPES = ["writtenExam", "interview", "project", "presentation", "learning", "assessment"];
-const EMPTY_FORM = { title: "", measurablePoints: "", timeDays: "", type: "assessment", dueDate: "" };
+const EMPTY_FORM = { title: "", measurablePoints: "", timeDays: "", maxMarks: 5, priority: "medium", type: "assessment", dueDate: "" };
 
 export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, departmentId, subdepartment, onSaved, formId = "manual-task-form", showSubmitButton = true }) => {
   const subLevelId = subLevel?._id;
@@ -1887,6 +2140,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
   const [taskTarget, setTaskTarget] = useState("");
   const [subTopicId, setSubTopicId] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState(["All"]);
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
 
@@ -1929,7 +2183,15 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
   const subTopics = topics.find((t) => t._id === topicId)?.subTopics || [];
 
   const [createTask] = useCreateTaskManualMutation();
-  const resetForm = () => { setSubjectId(""); setTopicId(""); setTaskTarget(""); setSubTopicId(""); setSelectedDomain(""); setForm(EMPTY_FORM); };
+  const resetForm = () => {
+    setSubjectId("");
+    setTopicId("");
+    setTaskTarget("");
+    setSubTopicId("");
+    setSelectedDomain("");
+    setSelectedCourses(["All"]);
+    setForm(EMPTY_FORM);
+  };
   const canSubmit = taskTarget === "topic" || (taskTarget === "subtopic" && subTopicId);
 
   const handleSubmit = async (e) => {
@@ -1937,11 +2199,18 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
     if (!form.title.trim()) { toast.error("Task title is required"); return; }
     setSaving(true);
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
+
       const payload = {
         syllabusVersionId, subjectId, topicId,
         ...(taskTarget === "subtopic" && subTopicId ? { subTopicId } : {}),
         ...form,
         domain:   isLevel2B ? (selectedDomain || "") : "",
+        course:   courseStr,
+        courses:  coursesList,
+        priority: form.priority || "medium",
+        maxMarks: Number(form.maxMarks) >= 0 ? Number(form.maxMarks) : 5,
         title:    form.title.trim(),
         timeDays: form.timeDays ? Number(form.timeDays) : null,
       };
@@ -1954,21 +2223,46 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
     } finally { setSaving(false); }
   };
 
-  const ic = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400 bg-white transition";
-  const lc = "block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5";
+  const ic = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none focus:border-orange-500 bg-white shadow-2xs transition";
+  const lc = "block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5";
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="divide-y divide-gray-100">
+    <form id={formId} onSubmit={handleSubmit} className="divide-y divide-gray-100 text-xs">
+      {/* Target Location Breadcrumb */}
+      <div className="p-4 bg-slate-50/50">
+        <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-2xs">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
+          <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
+            {deptIdentifier || "Department"}
+          </span>
+          <span className="text-slate-300 font-bold">›</span>
+          <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedCourses.includes("All") ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"}`}>
+            {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+          </span>
+          <span className="text-slate-300 font-bold">›</span>
+          <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+            {level?.name || "Level"}
+          </span>
+          <span className="text-slate-300 font-bold">›</span>
+          <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-pink-50 text-pink-700 border border-pink-200 font-bold">
+            {subLevel?.name || "Sub-Level"}
+          </span>
+        </div>
+      </div>
 
-      {/* Section 1 */}
+      {/* STEP 1: Syllabus Location & Target Courses */}
       <div className="px-5 py-5 space-y-4">
         <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">1</span>
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Location</span>
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            1
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Select Location & Target Courses
+          </span>
         </div>
 
         <div>
-          <label className={lc}>Subject</label>
+          <label className={lc}>Subject <span className="text-red-500">*</span></label>
           <select className={ic} value={subjectId} onChange={(e) => { setSubjectId(e.target.value); setTopicId(""); setTaskTarget(""); setSubTopicId(""); }}>
             <option value="">-- Select Subject --</option>
             {subjects.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
@@ -1977,7 +2271,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
 
         {subjectId && (
           <div>
-            <label className={lc}>Topic</label>
+            <label className={lc}>Topic <span className="text-red-500">*</span></label>
             <select className={ic} value={topicId} onChange={(e) => { setTopicId(e.target.value); setTaskTarget(""); setSubTopicId(""); }}>
               <option value="">-- Select Topic --</option>
               {topics.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
@@ -1987,28 +2281,40 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
 
         {topicId && (
           <div>
-            <label className={lc}>Assign Task To</label>
+            <label className={lc}>Assign Task To <span className="text-red-500">*</span></label>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => { setTaskTarget("topic"); setSubTopicId(""); }}
-                className={`flex items-center gap-2.5 border rounded-xl px-3 py-2.5 transition text-left ${taskTarget === "topic" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-gray-200 bg-white text-gray-500 hover:border-orange-300"}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${taskTarget === "topic" ? "bg-orange-100" : "bg-gray-100"}`}>
-                  <MdTopic size={16} className={taskTarget === "topic" ? "text-orange-500" : "text-gray-400"} />
+                className={`flex items-center gap-2.5 border rounded-xl px-3 py-2.5 transition text-left cursor-pointer shadow-2xs ${
+                  taskTarget === "topic"
+                    ? "border-orange-500 bg-orange-50 text-orange-700 ring-2 ring-orange-500/20"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-orange-300"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${taskTarget === "topic" ? "bg-orange-100" : "bg-slate-100"}`}>
+                  <MdTopic size={16} className={taskTarget === "topic" ? "text-orange-500" : "text-slate-400"} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold">Topic Level</p>
-                  <p className="text-[10px] opacity-60">No subtopic</p>
+                  <p className="text-xs font-bold">Topic Level</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Whole topic</p>
                 </div>
               </button>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => setTaskTarget("subtopic")}
-                className={`flex items-center gap-2.5 border rounded-xl px-3 py-2.5 transition text-left ${taskTarget === "subtopic" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 bg-white text-gray-500 hover:border-blue-300"}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${taskTarget === "subtopic" ? "bg-blue-100" : "bg-gray-100"}`}>
-                  <MdSubject size={16} className={taskTarget === "subtopic" ? "text-blue-500" : "text-gray-400"} />
+                className={`flex items-center gap-2.5 border rounded-xl px-3 py-2.5 transition text-left cursor-pointer shadow-2xs ${
+                  taskTarget === "subtopic"
+                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${taskTarget === "subtopic" ? "bg-blue-100" : "bg-slate-100"}`}>
+                  <MdSubject size={16} className={taskTarget === "subtopic" ? "text-blue-500" : "text-slate-400"} />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold">SubTopic Level</p>
-                  <p className="text-[10px] opacity-60">Select subtopic</p>
+                  <p className="text-xs font-bold">SubTopic Level</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Specific lesson</p>
                 </div>
               </button>
             </div>
@@ -2017,9 +2323,9 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
 
         {taskTarget === "subtopic" && (
           <div>
-            <label className={lc}>SubTopic</label>
+            <label className={lc}>SubTopic <span className="text-red-500">*</span></label>
             {subTopics.length === 0 ? (
-              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 font-medium">
                 No subtopics found in this topic. Select Topic Level instead.
               </div>
             ) : (
@@ -2031,53 +2337,97 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
           </div>
         )}
 
+        {/* Target Course Multi-Select */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <CourseMultiSelect
+            department={deptIdentifier}
+            selectedCourses={selectedCourses}
+            onChange={setSelectedCourses}
+            label="Target Course(s)"
+            hint="Select which course(s) this task will be assigned to (e.g. BCA, BBA, B.Com, B.Tech), or 'All Courses'."
+            size="sm"
+          />
+        </div>
+
+        {/* Optional Domain for Level 2B */}
+        {isLevel2B && (
+          <div>
+            <label className={lc}>Domain <span className="text-slate-400 normal-case font-normal">(optional - Level 2B)</span></label>
+            <select className={ic} value={selectedDomain} onChange={(e) => setSelectedDomain(e.target.value)}>
+              <option value="">-- Select Domain (Optional) --</option>
+              {departmentDomains.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {canSubmit && (
-          <div className="flex items-center gap-1.5 flex-wrap bg-[#F8F7F5] border border-gray-100 rounded-xl px-3 py-2.5">
-            <MdBook size={12} className="text-orange-400" />
-            <span className="text-xs font-medium text-gray-600">{subjects.find(s => s._id === subjectId)?.name}</span>
-            <span className="text-gray-300 text-xs">â€º</span>
-            <MdTopic size={12} className="text-orange-400" />
-            <span className="text-xs font-medium text-gray-600">{topics.find(t => t._id === topicId)?.name}</span>
-            {subTopicId && (<><span className="text-gray-300 text-xs">â€º</span><MdSubject size={12} className="text-gray-400" /><span className="text-xs text-gray-500">{subTopics.find(s => s._id === subTopicId)?.name}</span></>)}
-            <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${taskTarget === "subtopic" ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"}`}>
-              {taskTarget === "subtopic" ? "SubTopic" : "Topic"}
+          <div className="flex items-center gap-1.5 flex-wrap bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2.5">
+            <MdBook size={13} className="text-orange-500 shrink-0" />
+            <span className="text-xs font-bold text-slate-700">{subjects.find(s => s._id === subjectId)?.name}</span>
+            <span className="text-slate-300 text-xs font-bold">›</span>
+            <MdTopic size={13} className="text-blue-500 shrink-0" />
+            <span className="text-xs font-bold text-slate-700">{topics.find(t => t._id === topicId)?.name}</span>
+            {subTopicId && (
+              <>
+                <span className="text-slate-300 text-xs font-bold">›</span>
+                <MdSubject size={13} className="text-slate-400 shrink-0" />
+                <span className="text-xs font-semibold text-slate-600">{subTopics.find(s => s._id === subTopicId)?.name}</span>
+              </>
+            )}
+            <span className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-full ${taskTarget === "subtopic" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+              {taskTarget === "subtopic" ? "SubTopic Task" : "Topic Task"}
             </span>
           </div>
         )}
       </div>
 
-      {/* Section 2 */}
+      {/* STEP 2: Task Information & Evaluation */}
       {canSubmit && (
         <div className="px-5 py-5 space-y-4">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">2</span>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Task Details</span>
+            <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+              2
+            </span>
+            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+              Task Information & Evaluation
+            </span>
           </div>
 
           <div>
-            <label className={lc}>Task Title <span className="text-red-400 normal-case font-normal">*</span></label>
-            <input className={ic} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Build a REST API" />
+            <label className={lc}>Task Title <span className="text-red-500">*</span></label>
+            <input className={ic} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Build a REST API using Express & MongoDB" />
           </div>
 
-          {/* Optional Domain for Level 2B */}
-          {isLevel2B && (
-            <div>
-              <label className={lc}>Domain <span className="text-gray-400 normal-case font-normal">(optional - Level 2B)</span></label>
-              <select className={ic} value={selectedDomain} onChange={(e) => setSelectedDomain(e.target.value)}>
-                <option value="">-- Select Domain (Optional) --</option>
-                {departmentDomains.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+          {/* Priority Pills */}
+          <div>
+            <label className={lc}>Priority</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: "low", label: "Low", activeColor: "bg-emerald-50 text-emerald-700 border-emerald-500 ring-2 ring-emerald-500/20", dot: "bg-emerald-500" },
+                { value: "medium", label: "Medium", activeColor: "bg-amber-50 text-amber-700 border-amber-500 ring-2 ring-amber-500/20", dot: "bg-amber-500" },
+                { value: "high", label: "High", activeColor: "bg-rose-50 text-rose-700 border-rose-500 ring-2 ring-rose-500/20", dot: "bg-rose-500" }
+              ].map((p) => {
+                const active = (form.priority || "medium") === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, priority: p.value }))}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                      active ? p.activeColor : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${p.dot}`} />
+                    <span>{p.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
-
-          <div>
-            <label className={lc}>Measurable Points</label>
-            <textarea className={ic} rows={3} value={form.measurablePoints} onChange={(e) => setForm((p) => ({ ...p, measurablePoints: e.target.value }))} placeholder="e.g. Student should be able to explain and implement..." />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className={lc}>Type</label>
               <select className={ic} value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
@@ -2085,31 +2435,56 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
               </select>
             </div>
             <div>
-              <label className={lc}>Time (Days)</label>
-              <input type="number" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7" />
+              <label className={lc}>Duration (Days)</label>
+              <input type="number" min="1" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7" />
             </div>
-            <div className="col-span-2">
-              <label className={lc}>Due Date <span className="text-gray-300 normal-case font-normal">(optional)</span></label>
-              <input type="date" className={ic} value={form.dueDate} onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))} />
+            <div>
+              <label className={lc}>Max Marks</label>
+              <input type="number" min="0" className={ic} value={form.maxMarks} onChange={(e) => setForm((p) => ({ ...p, maxMarks: e.target.value }))} placeholder="e.g. 5" />
             </div>
+          </div>
+
+          <div>
+            <label className={lc}>Due Date <span className="text-slate-400 font-normal lowercase">(optional)</span></label>
+            <input type="date" className={ic} value={form.dueDate} onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))} />
+          </div>
+
+          <div>
+            <label className={lc}>Measurable Points / Rubric</label>
+            <textarea className={ic} rows={3} value={form.measurablePoints} onChange={(e) => setForm((p) => ({ ...p, measurablePoints: e.target.value }))} placeholder="e.g. Student should be able to explain and implement models and controllers..." />
           </div>
         </div>
       )}
 
       {/* Footer */}
       {canSubmit && (
-        <div className="px-5 py-4 flex gap-2 bg-[#F8F7F5]">
+        <div className="px-5 py-4 flex gap-2.5 bg-slate-50/80 justify-end">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-4 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+          >
+            Reset
+          </button>
           {showSubmitButton && (
-            <button type="submit" disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white text-sm font-semibold py-2.5 rounded-xl transition shadow-sm shadow-orange-100">
-              <MdAssignment size={15} />
-              {saving ? "Saving..." : "Add Task"}
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2.5 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs cursor-pointer"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Creating Task...</span>
+                </>
+              ) : (
+                <>
+                  <MdAssignment size={16} />
+                  <span>Add Task</span>
+                </>
+              )}
             </button>
           )}
-          <button type="button" onClick={resetForm}
-            className="px-4 py-2.5 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center justify-center text-center">
-            <span>Reset</span>
-          </button>
         </div>
       )}
     </form>
@@ -2501,6 +2876,53 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
 
   const [deleteSyllabusVersion]   = useDeleteSyllabusVersionMutation();
   const [activateSyllabusVersion] = useActivateSyllabusVersionMutation();
+  const [deleteSubject, { isLoading: isDeletingSubject }] = useDeleteSubjectFromVersionMutation();
+  const [updateSubject, { isLoading: isUpdatingSubject }] = useUpdateSubjectInVersionMutation();
+  const [isEditingSubject, setIsEditingSubject] = useState(false);
+  const [editSubjectName, setEditSubjectName] = useState("");
+
+  const activeSubjectObj = useMemo(() => {
+    return subjectsList.find((s) => s.name === activeSubject);
+  }, [subjectsList, activeSubject]);
+
+  const handleDeleteActiveSubject = async () => {
+    if (!activeSubjectObj?._id || !currentVersionId) return;
+    const ok = await confirmToast(
+      `Are you sure you want to delete the subject "${activeSubject}"? This will delete its syllabus topics and remove all associated tasks from both task management and student task boards.`,
+      { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }
+    );
+    if (!ok) return;
+
+    try {
+      await deleteSubject({ versionId: currentVersionId, subjectId: activeSubjectObj._id }).unwrap();
+      toast.success(`Subject "${activeSubject}" deleted successfully`);
+      setActiveSubject("");
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete subject");
+    }
+  };
+
+  const handleSaveActiveSubject = async () => {
+    if (!activeSubjectObj?._id || !currentVersionId) return;
+    if (!editSubjectName.trim()) {
+      toast.error("Subject name cannot be empty");
+      return;
+    }
+    try {
+      await updateSubject({
+        versionId: currentVersionId,
+        subjectId: activeSubjectObj._id,
+        name: editSubjectName.trim()
+      }).unwrap();
+      toast.success("Subject renamed successfully");
+      setActiveSubject(editSubjectName.trim());
+      setIsEditingSubject(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update subject");
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!(await confirmToast("Delete this version?", { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
@@ -2652,28 +3074,87 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
         </div>
       </div>
 
-      {/* Subject tabs (Pill selectors) */}
+      {/* Subject tabs (Pill selectors) + Active Subject Actions */}
       {allVersions.length > 0 && Boolean(currentVersionId) && subjectsList.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
-          {subjectsList.map((s) => (
-            <button
-              key={s.name}
-              onClick={() => { setActiveSubject(s.name); setSearchTerm(""); }}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 ${
-                activeSubject === s.name
-                  ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
-                  : "border-transparent text-gray-555 hover:text-gray-805 hover:bg-gray-100/50"
-              }`}
-            >
-              <MdBook size={13} className={activeSubject === s.name ? "text-orange-500" : "text-gray-400"} />
-              <span>{s.name}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
-                activeSubject === s.name ? "bg-orange-50 text-orange-600 border border-orange-100" : "bg-gray-100 text-gray-500"
-              }`}>
-                {s.topicCount}
-              </span>
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none flex-1">
+            {subjectsList.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => { setActiveSubject(s.name); setSearchTerm(""); setIsEditingSubject(false); }}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 cursor-pointer ${
+                  activeSubject === s.name
+                    ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
+                    : "border-transparent text-gray-555 hover:text-gray-805 hover:bg-gray-100/50"
+                }`}
+              >
+                <MdBook size={13} className={activeSubject === s.name ? "text-orange-500" : "text-gray-400"} />
+                <span>{s.name}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
+                  activeSubject === s.name ? "bg-orange-50 text-orange-600 border border-orange-100" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {s.topicCount}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Actions on currently active subject */}
+          {activeSubjectObj && (
+            <div className="flex items-center gap-1.5 self-end sm:self-auto border-t sm:border-t-0 sm:border-l border-gray-200/60 pt-1.5 sm:pt-0 sm:pl-2 shrink-0">
+              {isEditingSubject ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={editSubjectName}
+                    onChange={(e) => setEditSubjectName(e.target.value)}
+                    className="px-2 py-1 text-xs border border-orange-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                    placeholder="New name"
+                  />
+                  <button
+                    type="button"
+                    disabled={isUpdatingSubject}
+                    onClick={handleSaveActiveSubject}
+                    className="px-2.5 py-1 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition cursor-pointer"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingSubject(false)}
+                    className="px-2 py-1 text-xs font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditSubjectName(activeSubject);
+                      setIsEditingSubject(true);
+                    }}
+                    className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-white rounded-lg transition border border-transparent hover:border-gray-200 cursor-pointer text-xs flex items-center gap-1 font-semibold"
+                    title={`Rename "${activeSubject}"`}
+                  >
+                    <MdEdit size={14} />
+                    <span className="hidden sm:inline">Rename</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingSubject}
+                    onClick={handleDeleteActiveSubject}
+                    className="p-1.5 text-gray-500 hover:text-rose-600 hover:bg-white rounded-lg transition border border-transparent hover:border-gray-200 cursor-pointer text-xs flex items-center gap-1 font-semibold"
+                    title={`Delete "${activeSubject}" and its tasks`}
+                  >
+                    <MdDelete size={15} />
+                    <span className="hidden sm:inline">Delete Subject</span>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 

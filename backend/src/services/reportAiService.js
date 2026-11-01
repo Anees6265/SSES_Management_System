@@ -1,4 +1,10 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+let GoogleGenerativeAI = null;
+try {
+  const genAiModule = require('@google/generative-ai');
+  GoogleGenerativeAI = genAiModule.GoogleGenerativeAI;
+} catch (e) {
+  // Graceful fallback if @google/generative-ai is not installed in node_modules
+}
 
 /**
  * Generate heuristic rule-based feedback from the 6 evaluation cards
@@ -138,6 +144,11 @@ function generateHeuristicFeedback(evaluationData) {
  */
 async function generateStudentFeedback(evaluationData) {
   const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!GoogleGenerativeAI) {
+    console.warn("[reportAiService] @google/generative-ai is not installed. Falling back to heuristic generator.");
+    return generateHeuristicFeedback(evaluationData);
+  }
 
   if (!apiKey) {
     console.warn("[reportAiService] No GEMINI_API_KEY configured. Falling back to heuristic generator.");

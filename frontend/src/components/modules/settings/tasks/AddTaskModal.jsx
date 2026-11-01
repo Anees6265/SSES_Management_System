@@ -11,6 +11,7 @@ import {
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import { buttonStyles } from "../../../../styles/buttonStyles";
 import {
     useCreateTaskManualMutation,
@@ -73,6 +74,7 @@ const AddTaskModal = ({
         description: "",
         subjectName: "",
         topicName: "",
+        course: "All",
         type: "assignment",
         priority: "medium",
         maxMarks: 5,
@@ -80,6 +82,7 @@ const AddTaskModal = ({
         dueDate: "",
         measurablePoints: "",
     });
+    const [selectedCourses, setSelectedCourses] = useState(["All"]);
 
     const [createTask, { isLoading: isCreating }] = useCreateTaskManualMutation();
 
@@ -197,6 +200,7 @@ const AddTaskModal = ({
     // Cascading selection handlers
     const handleDepartmentChange = (deptId) => {
         setSelectedDepartmentId(deptId);
+        setSelectedCourses(["All"]);
         setSelectedLevelId("");
         setSelectedSubLevelId("");
 
@@ -269,6 +273,17 @@ const AddTaskModal = ({
     const currentTopic = topics.find((t) => t._id === selectedTopicId);
     const subTopics = currentTopic?.subTopics || [];
 
+    // Course selection options (supports BBA, B.Com, or department allowedCourses)
+    const courseOptions = useMemo(() => {
+        const currentDept = departments.find((d) => d._id === selectedDepartmentId);
+        const deptCourses = (currentDept?.allowedCourses || []).map((c) => (typeof c === "string" ? c : c?.courseName)).filter(Boolean);
+        const combined = Array.from(new Set(["All", ...deptCourses, "BBA", "B.Com"]));
+        return combined.map((c) => ({
+            value: c,
+            label: c === "All" ? "All Courses (Common)" : `${c} Students Only`,
+        }));
+    }, [departments, selectedDepartmentId]);
+
     // Names for preview breadcrumb bar
     const selectedSessionName = sessionsList.find((s) => s._id === selectedSessionId)?.name;
     const selectedDeptName = departments.find((d) => d._id === selectedDepartmentId)?.name;
@@ -301,11 +316,16 @@ const AddTaskModal = ({
         }
 
         try {
+            const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+            const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
+
             const payload = {
                 title: taskForm.title.trim(),
                 description: taskForm.description.trim(),
                 type: taskForm.type || "assignment",
                 priority: taskForm.priority || "medium",
+                course: courseStr,
+                courses: coursesList,
                 maxMarks: Number(taskForm.maxMarks) >= 0 ? Number(taskForm.maxMarks) : 5,
                 timeDays: taskForm.timeDays ? Number(taskForm.timeDays) : null,
                 dueDate: taskForm.dueDate || null,
@@ -412,6 +432,14 @@ const AddTaskModal = ({
                             </span>
                             <span className="text-slate-300 font-bold">›</span>
                             <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                                selectedCourses.includes("All")
+                                    ? "bg-purple-50 text-purple-700 border border-purple-200/60"
+                                    : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"
+                            }`}>
+                                {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+                            </span>
+                            <span className="text-slate-300 font-bold">›</span>
+                            <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
                                 selectedSubDeptName ? "bg-orange-50 text-orange-700 border border-orange-200/60" : "bg-slate-100 text-slate-400"
                             }`}>
                                 {selectedSubDeptName || "Sub-Dept"}
@@ -470,6 +498,18 @@ const AddTaskModal = ({
                                     buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 shadow-2xs transition cursor-pointer"
                                 />
                             </div>
+                        </div>
+
+                        {/* Course Selection (Course-wise Assignment strictly for this department) */}
+                        <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 shadow-2xs">
+                            <CourseMultiSelect
+                                department={departments.find((d) => d._id === selectedDepartmentId)}
+                                selectedCourses={selectedCourses}
+                                onChange={setSelectedCourses}
+                                label="Target Course(s)"
+                                hint="Select 'All Courses' to assign to everyone, or pick specific course(s) like BBA, B.com(CA), BCA, B.Tech(CS), etc."
+                                size="sm"
+                            />
                         </div>
 
                         {/* Row 2: Sub-Department, Level, Sub-Level */}
@@ -852,8 +892,8 @@ const AddTaskModal = ({
                         </div>
 
                         {/* Type, Priority, Max Marks, Duration */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                            <div className="sm:col-span-3">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Task Type</label>
                                 <SelectDropdown
                                     value={taskForm.type}
@@ -861,38 +901,54 @@ const AddTaskModal = ({
                                     options={TASK_TYPES}
                                     className="w-full"
                                     menuClassName="w-full shadow-xl border border-slate-100"
-                                    buttonClassName="w-full flex items-center justify-between gap-1.5 px-3 py-2.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs transition cursor-pointer"
+                                    buttonClassName="w-full flex items-center justify-between gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-orange-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs transition cursor-pointer"
                                 />
                             </div>
-                            <div>
+                            <div className="sm:col-span-5">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Priority</label>
-                                <SelectDropdown
-                                    value={taskForm.priority}
-                                    onChange={(val) => setTaskForm({ ...taskForm, priority: val })}
-                                    options={PRIORITIES}
-                                    className="w-full"
-                                    menuClassName="w-full shadow-xl border border-slate-100"
-                                    buttonClassName="w-full flex items-center justify-between gap-1.5 px-3 py-2.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs transition cursor-pointer"
-                                />
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    {[
+                                        { value: "low", label: "Low", activeColor: "bg-emerald-50 text-emerald-700 border-emerald-500 ring-2 ring-emerald-500/20", dot: "bg-emerald-500" },
+                                        { value: "medium", label: "Medium", activeColor: "bg-amber-50 text-amber-700 border-amber-500 ring-2 ring-amber-500/20", dot: "bg-amber-500" },
+                                        { value: "high", label: "High", activeColor: "bg-rose-50 text-rose-700 border-rose-500 ring-2 ring-rose-500/20", dot: "bg-rose-500" }
+                                    ].map((p) => {
+                                        const active = taskForm.priority === p.value;
+                                        return (
+                                            <button
+                                                key={p.value}
+                                                type="button"
+                                                onClick={() => setTaskForm({ ...taskForm, priority: p.value })}
+                                                className={`py-2 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                                                    active
+                                                        ? p.activeColor
+                                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${p.dot}`} />
+                                                <span>{p.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Max Marks</label>
                                 <input
                                     type="number"
                                     min="0"
                                     value={taskForm.maxMarks}
                                     onChange={(e) => setTaskForm({ ...taskForm, maxMarks: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition shadow-2xs"
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition shadow-2xs"
                                 />
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Duration (Days)</label>
                                 <input
                                     type="number"
                                     min="1"
                                     value={taskForm.timeDays}
                                     onChange={(e) => setTaskForm({ ...taskForm, timeDays: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition shadow-2xs"
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition shadow-2xs"
                                     placeholder="e.g. 7"
                                 />
                             </div>

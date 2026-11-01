@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -19,12 +19,14 @@ import {
   MdBook,
   MdSave,
   MdAssignment,
+  MdEdit,
 } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import Pagination from "../../../shared/pagination/Pagination";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import {
@@ -39,6 +41,8 @@ import {
   useGetAllTasksQuery,
   useGetSyllabusVersionWithHierarchyQuery,
   useGetTasksBySyllabusVersionQuery,
+  useDeleteSubjectFromVersionMutation,
+  useUpdateSubjectInVersionMutation,
 } from "../../../../redux/api/authApi";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
@@ -300,10 +304,13 @@ const CurriculumUploadDrawerContent = ({
   const [fileName, setFileName] = useState("");
   const [subjectMeta, setSubjectMeta] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedCourses, setSelectedCourses] = useState(["All"]);
 
   const [uploadCombined] = useUploadCombinedSyllabusMutation();
 
+  const selectedSession = sessions.find((s) => s._id === selectedSessionId);
   const selectedDept = departments.find((d) => getId(d) === selectedDeptId);
+  const selectedSubDept = subDepartments.find((sd) => getId(sd) === selectedSubDeptId);
   const selectedLevel = levels.find((l) => getId(l) === selectedLevelId);
   const selectedSubLevel = subLevels.find((sl) => getId(sl) === selectedSubLevelId);
 
@@ -359,6 +366,7 @@ const CurriculumUploadDrawerContent = ({
   // Cascading resets
   const handleDeptChange = (val) => {
     setSelectedDeptId(val);
+    setSelectedCourses(["All"]);
     setSelectedSubDeptId("");
     setSelectedLevelId("");
     setSelectedSubLevelId("");
@@ -492,9 +500,14 @@ const CurriculumUploadDrawerContent = ({
 
     setSaving(true);
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
+
       const taskRows = buildTaskRows(hierarchy).map(r => ({
         ...r,
         domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
+        course: courseStr,
+        courses: coursesList,
       }));
       const res = await uploadCombined({
         sessionId: selectedSessionId,
@@ -503,6 +516,8 @@ const CurriculumUploadDrawerContent = ({
         title: title.trim(),
         version: version.trim() || undefined,
         domain: isLevel2B ? (selectedDomain || "") : "",
+        course: courseStr,
+        courses: coursesList,
         tasks: taskRows,
         subjectMeta: finalMeta,
       }).unwrap();
@@ -525,11 +540,44 @@ const CurriculumUploadDrawerContent = ({
 
   return (
     <div className="space-y-4 text-xs font-semibold">
-      {/* 1. SELECTION FIELDS */}
-      <div className="space-y-3 bg-slate-50/70 p-3 sm:p-4 rounded-2xl border border-slate-100">
-        <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-          Target Academic & Hierarchy Selection
-        </p>
+      {/* Dynamic Hierarchy Breadcrumb Path */}
+      <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-2xs">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Hierarchy:</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedSession ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-400"}`}>
+          {selectedSession?.name || formatSessionLabel(selectedSession) || "Session"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedDept ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-slate-100 text-slate-400"}`}>
+          {selectedDept?.name || "Department"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedCourses.includes("All") ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-purple-100 text-purple-800 border border-purple-300 font-bold"}`}>
+          {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedSubDept ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-400"}`}>
+          {selectedSubDept?.name || "Sub-Dept"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedLevel ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-slate-100 text-slate-400"}`}>
+          {selectedLevel?.name || "Level"}
+        </span>
+        <span className="text-slate-300 font-bold">›</span>
+        <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${selectedSubLevel ? "bg-pink-50 text-pink-700 border border-pink-200 font-bold" : "bg-slate-100 text-slate-400"}`}>
+          {selectedSubLevel?.name || "Sub-Level"}
+        </span>
+      </div>
+
+      {/* STEP 1: Academic & Target Hierarchy */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            1
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Academic Scope & Target Audience
+          </span>
+        </div>
 
         {/* Academic Session */}
         <div>
@@ -544,8 +592,8 @@ const CurriculumUploadDrawerContent = ({
           />
         </div>
 
-        {/* Department & Sub-Department */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Department & Target Course Selection */}
+        <div className="space-y-2.5">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Department <span className="text-red-500">*</span>
@@ -557,6 +605,22 @@ const CurriculumUploadDrawerContent = ({
               buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-400"
             />
           </div>
+
+          {/* Target Course Multi-Select right below Department */}
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+            <CourseMultiSelect
+              department={selectedDept}
+              selectedCourses={selectedCourses}
+              onChange={setSelectedCourses}
+              label="Target Course(s)"
+              hint="Select 'All Courses' to apply across the whole department, or choose specific course(s) (e.g. BCA, BBA, B.Tech)."
+              size="sm"
+            />
+          </div>
+        </div>
+
+        {/* Sub-Department, Level, Sub-Level */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Sub-Department <span className="text-red-500">*</span>
@@ -571,10 +635,6 @@ const CurriculumUploadDrawerContent = ({
               }`}
             />
           </div>
-        </div>
-
-        {/* Level & Sub-Level */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Level <span className="text-red-500">*</span>
@@ -656,34 +716,50 @@ const CurriculumUploadDrawerContent = ({
         </div>
       </div>
 
-      {/* 2. TEMPLATE DOWNLOAD BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/70 border border-orange-200/80 rounded-2xl gap-3">
-        <div className="flex items-start gap-2.5 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
-            <MdFileDownload size={20} />
-          </div>
-          <div>
-            <h4 className="text-xs font-black text-slate-900">Standard Curriculum & Tasks Template</h4>
-            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
-              One upload creates both Syllabus hierarchy and associated Tasks together.
-            </p>
-          </div>
+      {/* STEP 2: Excel Template & Guidelines */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            2
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Template & Excel Guidelines
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={downloadSyllabusTemplate}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition shrink-0 cursor-pointer w-full sm:w-auto"
-        >
-          <MdFileDownload size={16} />
-          <span>Download Template (.xlsx)</span>
-        </button>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/70 border border-orange-200/80 rounded-2xl gap-3">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
+              <MdFileDownload size={20} />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-slate-900">Standard Curriculum & Tasks Template</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
+                One Excel file uploads both Syllabus hierarchy and associated Tasks simultaneously.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={downloadSyllabusTemplate}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition shrink-0 cursor-pointer w-full sm:w-auto"
+          >
+            <MdFileDownload size={16} />
+            <span>Download Template (.xlsx)</span>
+          </button>
+        </div>
       </div>
 
-      {/* 3. UPLOAD DROPZONE */}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Upload Excel File <span className="text-red-500">*</span>
-        </label>
+      {/* STEP 3: Upload Excel & Verification */}
+      <div className="space-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+            3
+          </span>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Upload Excel File & Verification <span className="text-red-500">*</span>
+          </span>
+        </div>
 
         {parsing ? (
           <div className="border-2 border-dashed border-orange-300 bg-orange-50/30 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-2">
@@ -799,7 +875,7 @@ const CurriculumUploadDrawerContent = ({
         </>
       )}
 
-      {/* 5. ACTION BUTTONS */}
+      {/* 4. ACTION BUTTONS */}
       <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
@@ -840,9 +916,56 @@ const CurriculumDetailsModal = ({ curriculumId, onClose }) => {
     skip: !curriculumId,
   });
 
+  const [deleteSubject, { isLoading: isDeletingSubject }] = useDeleteSubjectFromVersionMutation();
+  const [updateSubject, { isLoading: isUpdatingSubject }] = useUpdateSubjectInVersionMutation();
+  const [editingSubjectId, setEditingSubjectId] = useState(null);
+  const [editSubjectName, setEditSubjectName] = useState("");
+  const [editSubjectCategory, setEditSubjectCategory] = useState("technical");
+
   const version = detailData?.data;
   const tasks = tasksData?.data || [];
   const subjects = version?.subjects || [];
+
+  const handleDeleteSubject = async (sub) => {
+    if (!sub._id) return;
+    const ok = await confirmToast(
+      `Are you sure you want to delete the subject "${sub.name}"? This will delete its syllabus and all associated tasks from both task management and student task boards.`,
+      { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }
+    );
+    if (!ok) return;
+
+    try {
+      await deleteSubject({ versionId: curriculumId, subjectId: sub._id }).unwrap();
+      toast.success(`Subject "${sub.name}" deleted successfully`);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete subject");
+    }
+  };
+
+  const handleStartEdit = (sub) => {
+    setEditingSubjectId(sub._id);
+    setEditSubjectName(sub.name || "");
+    setEditSubjectCategory(sub.reportCategory || "technical");
+  };
+
+  const handleSaveEdit = async (subjectId) => {
+    if (!editSubjectName.trim()) {
+      toast.error("Subject name cannot be empty");
+      return;
+    }
+    try {
+      await updateSubject({
+        versionId: curriculumId,
+        subjectId,
+        name: editSubjectName.trim(),
+        reportCategory: editSubjectCategory
+      }).unwrap();
+      toast.success("Subject updated successfully");
+      setEditingSubjectId(null);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update subject");
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -893,20 +1016,78 @@ const CurriculumDetailsModal = ({ curriculumId, onClose }) => {
                 ) : (
                   subjects.map((sub) => (
                     <div key={sub._id || sub.name} className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/40 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MdBook className="text-orange-500" size={17} />
-                          <span className="text-xs font-black text-slate-800">{sub.name}</span>
-                          {sub.reportCategory && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
-                              {sub.reportCategory === "technical" ? "💻 Tech" : "🤝 Soft Skill"}
-                            </span>
-                          )}
+                      {editingSubjectId === sub._id ? (
+                        <div className="bg-white p-3 rounded-xl border border-orange-200 shadow-xs space-y-2.5">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <input
+                              type="text"
+                              value={editSubjectName}
+                              onChange={(e) => setEditSubjectName(e.target.value)}
+                              className="flex-1 px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg focus:outline-none focus:border-orange-500"
+                              placeholder="Subject Name"
+                            />
+                            <select
+                              value={editSubjectCategory}
+                              onChange={(e) => setEditSubjectCategory(e.target.value)}
+                              className="px-2.5 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 bg-white"
+                            >
+                              <option value="technical">Technical</option>
+                              <option value="softskill">Soft Skill</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingSubjectId(null)}
+                              className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded-lg font-bold transition cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isUpdatingSubject}
+                              onClick={() => handleSaveEdit(sub._id)}
+                              className="px-3.5 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition cursor-pointer shadow-2xs"
+                            >
+                              {isUpdatingSubject ? "Saving..." : "Save"}
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-bold">
-                          {sub.topics?.length || 0} topics
-                        </span>
-                      </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <MdBook className="text-orange-500" size={17} />
+                            <span className="text-xs font-black text-slate-800">{sub.name}</span>
+                            {sub.reportCategory && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                                {sub.reportCategory === "technical" ? "💻 Tech" : "🤝 Soft Skill"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 font-bold">
+                              {sub.topics?.length || 0} topics
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(sub)}
+                              className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer"
+                              title="Edit Subject Name / Category"
+                            >
+                              <MdEdit size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isDeletingSubject}
+                              onClick={() => handleDeleteSubject(sub)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Delete Subject & Its Tasks"
+                            >
+                              <MdDeleteOutline size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="pl-3 space-y-1.5 border-l-2 border-orange-200 mt-2">
                         {(sub.topics || []).map((t) => (

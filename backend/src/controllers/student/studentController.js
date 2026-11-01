@@ -1877,6 +1877,7 @@ exports.getStudentTasks = async (req, res) => {
 
     const filter = {
       studentId: id,
+      isActive: { $ne: false },
       isArchived: { $ne: true }
     };
     if (subLevelId === "all") {
@@ -1945,6 +1946,8 @@ exports.getStudentTasksBySubLevel = async (req, res) => {
     const tasks = await StudentTask.find({
       studentId: id,
       subLevelId,
+      isActive: { $ne: false },
+      isArchived: { $ne: true }
     }).sort({ subjectName: 1, topicName: 1 });
 
 

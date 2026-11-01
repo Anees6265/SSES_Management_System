@@ -78,17 +78,30 @@ const serializeTask = (task) => {
 // Get all active tasks with academic context for management page
 router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), async (req, res) => {
   try {
-    const { priority, type, status, search } = req.query;
+    const { priority, type, status, search, course } = req.query;
     const filter = { deletedAt: null };
 
     if (status === "all") {
       // keep both active and inactive records, but still exclude soft-deleted rows
-    } else if (status === "active") filter.isActive = true;
-    else if (status === "inactive") filter.isActive = false;
+    } else if (status === "inactive") filter.isActive = false;
     else filter.isActive = true;
 
     if (priority) filter.priority = priority;
     if (type) filter.type = type;
+    if (course && course !== "All") {
+      const escaped = course.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const courseFilter = [
+        { course: course },
+        { courses: course },
+        { course: { $regex: escaped, $options: "i" } }
+      ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: courseFilter }];
+        delete filter.$or;
+      } else {
+        filter.$or = courseFilter;
+      }
+    }
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -130,7 +143,9 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       sessionId,
       subjectName,
       topicName,
-      domain
+      domain,
+      course,
+      courses
     } = req.body;
     
     if (!levelId || !subLevelId || !title) {
@@ -140,6 +155,14 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       });
     }
 
+    let normalizedCourses = ["All"];
+    if (Array.isArray(courses) && courses.length > 0) {
+      normalizedCourses = courses.map((c) => String(c).trim()).filter(Boolean);
+    } else if (course && typeof course === "string") {
+      normalizedCourses = course.split(",").map((c) => c.trim()).filter(Boolean);
+    }
+    if (normalizedCourses.length === 0) normalizedCourses = ["All"];
+
     const task = await Task.create({
       sessionId: sessionId || null,
       levelId,
@@ -148,6 +171,8 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       topicName: topicName || "",
       title: title.trim(),
       domain: (domain || "").trim(),
+      course: normalizedCourses.join(", "),
+      courses: normalizedCourses,
       description: description || "",
       type: type || "assignment",
       priority: priority || "medium",
@@ -187,6 +212,18 @@ const handleUpdateTaskRoute = async (req, res) => {
     // Support status ('active'/'inactive' or boolean) mapping to isActive boolean
     if (req.body.status !== undefined) {
       updateData.isActive = req.body.status === "active" || req.body.status === true;
+    }
+
+    if (req.body.courses !== undefined || req.body.course !== undefined) {
+      let normalizedCourses = ["All"];
+      if (Array.isArray(req.body.courses) && req.body.courses.length > 0) {
+        normalizedCourses = req.body.courses.map((c) => String(c).trim()).filter(Boolean);
+      } else if (req.body.course && typeof req.body.course === "string") {
+        normalizedCourses = req.body.course.split(",").map((c) => c.trim()).filter(Boolean);
+      }
+      if (normalizedCourses.length === 0) normalizedCourses = ["All"];
+      updateData.courses = normalizedCourses;
+      updateData.course = normalizedCourses.join(", ");
     }
 
     // Clean up non-schema fields so Mongoose validators don't complain
@@ -238,8 +275,42 @@ router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =
       return res.status(404).json({ success: false, message: "Task not found" });
     }
 
-    // Inactivate assigned student tasks
-    await StudentTask.updateMany({ taskId: req.params.taskId }, { $set: { isActive: false } }).catch(() => {});
+    // Match student tasks linked directly by taskId or by syllabus/title match
+    const studentTaskCriteria = [
+      { taskId: task._id },
+      { taskId: req.params.taskId }
+    ];
+    if (task.syllabusVersionId && task.title) {
+      studentTaskCriteria.push({
+        syllabusVersionId: task.syllabusVersionId,
+        title: task.title
+      });
+    }
+    if (task.subLevelId && task.title) {
+      studentTaskCriteria.push({
+        subLevelId: task.subLevelId,
+        title: task.title
+      });
+    }
+
+    // Delete pending or inProgress tasks completely so they vanish immediately from the student board
+    await StudentTask.deleteMany({
+      $or: studentTaskCriteria,
+      status: { $in: ["pending", "inProgress"] }
+    }).catch(() => {});
+
+    // For any remaining completed tasks, mark them inactive and archived
+    await StudentTask.updateMany(
+      { $or: studentTaskCriteria },
+      {
+        $set: {
+          isActive: false,
+          isArchived: true,
+          archivedAt: new Date(),
+          archivedReason: "Task deleted by faculty"
+        }
+      }
+    ).catch(() => {});
 
     res.status(200).json({
       success: true,

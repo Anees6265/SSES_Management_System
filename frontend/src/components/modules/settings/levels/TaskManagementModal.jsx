@@ -20,7 +20,8 @@ import {
   MdCheck,
   MdClose,
   MdOutlineCategory,
-  MdLayers
+  MdLayers,
+  MdAccountTree
 } from "react-icons/md";
 import {
   useGetSyllabusVersionsBySubLevelQuery,
@@ -33,6 +34,7 @@ import {
 } from "../../../../redux/api/authApi";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import { TaskUploadDrawer } from "./SyllabusTab";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
@@ -78,11 +80,13 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     description: "",
     type: "assessment",
     priority: "medium",
+    course: "All",
     maxMarks: 5,
     timeDays: "",
     measurablePoints: "",
     dueDate: ""
   });
+  const [selectedCourses, setSelectedCourses] = useState(["All"]);
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const rawSessions = sessionsData?.data || [];
@@ -188,6 +192,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
       description: "",
       type: "assessment",
       priority: "medium",
+      course: "All",
       maxMarks: 5,
       timeDays: "",
       measurablePoints: "",
@@ -196,6 +201,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     setSelectedSubjectId("");
     setSelectedTopicId("");
     setSelectedSubTopicId("");
+    setSelectedCourses(["All"]);
     setEditingTask(null);
   };
 
@@ -212,10 +218,14 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     }
 
     try {
+      const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+      const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
       const payload = {
         ...taskForm,
         title: taskForm.title.trim(),
         domain: isLevel2B ? (taskForm.domain || "").trim() : "",
+        course: courseStr,
+        courses: coursesList,
         timeDays: taskForm.timeDays ? Number(taskForm.timeDays) : null,
         maxMarks: Number(taskForm.maxMarks) || 5
       };
@@ -251,12 +261,21 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
 
   const handleEdit = (task) => {
     setEditingTask(task);
+    let taskCourses = ["All"];
+    if (Array.isArray(task.courses) && task.courses.length > 0) {
+      taskCourses = task.courses;
+    } else if (task.course && task.course !== "All") {
+      taskCourses = task.course.split(",").map((c) => c.trim()).filter(Boolean);
+    }
+    setSelectedCourses(taskCourses.length > 0 ? taskCourses : ["All"]);
+
     setTaskForm({
       title: task.title || "",
       domain: task.domain || "",
       description: task.description || "",
       type: task.type || "assessment",
       priority: task.priority || "medium",
+      course: task.course || "All",
       maxMarks: task.maxMarks || 5,
       timeDays: task.timeDays || "",
       measurablePoints: task.measurablePoints || "",
@@ -379,11 +398,94 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
 
               {addMode === "manual" || editingTask ? (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Task Scope Selection */}
+                  {/* Step 1: Academic Scope & Target Course */}
+                  <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                          1
+                        </span>
+                        <div>
+                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">
+                            Academic Scope & Target Course
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            Session aur course chunein jinko ye task assign karna hai
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md border border-orange-200">
+                        Step 1
+                      </span>
+                    </div>
+
+                    {/* Department, Level, Sublevel fixed path chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white rounded-xl border border-slate-200 text-xs shadow-2xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+                        <MdAccountTree className="text-orange-500" size={13} />
+                        Target Location:
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-orange-50 text-orange-700 border border-orange-200/60">
+                        {deptIdentifier || "Department"}
+                      </span>
+                      <span className="text-slate-300 font-bold">›</span>
+                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-orange-50 text-orange-700 border border-orange-200/60">
+                        Level {level?.name}
+                      </span>
+                      <span className="text-slate-300 font-bold">›</span>
+                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                        Sub-Level {subLevel?.name}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      {/* Session */}
+                      <div>
+                        <label className={labelCls}>Academic Session</label>
+                        <SelectDropdown
+                          value={selectedSessionId}
+                          onChange={(val) => {
+                            setSelectedSessionId(val);
+                            setSelectedVersionId("");
+                            setSelectedSubjectId("");
+                            setSelectedTopicId("");
+                            setSelectedSubTopicId("");
+                          }}
+                          options={[
+                            { value: "", label: "All Sessions" },
+                            ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
+                          ]}
+                          placeholder="All Sessions"
+                          buttonClassName={selectBtnCls}
+                        />
+                      </div>
+
+                      {/* Course Selection (Session ke theek neeche) */}
+                      <div className="bg-white border border-slate-200/80 rounded-xl p-3 shadow-2xs">
+                        <CourseMultiSelect
+                          department={deptIdentifier}
+                          selectedCourses={selectedCourses}
+                          onChange={setSelectedCourses}
+                          label="Target Course(s)"
+                          hint="Assign to all courses or select specific course(s) for this department."
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Task Source & Category */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className={labelCls}>Task Scope & Category</label>
-                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Choose mapping</span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                          2
+                        </span>
+                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">
+                          Task Source & Mapping
+                        </h4>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Choose Type</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Syllabus Task */}
@@ -455,7 +557,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                             <MdBook size={15} />
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Curriculum Hierarchy</h4>
+                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Curriculum Hierarchy Mapping</h4>
                             <p className="text-[10px] text-slate-400">Select where this task belongs in the syllabus</p>
                           </div>
                         </div>
@@ -464,28 +566,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        {/* Session */}
-                        <div>
-                          <label className={labelCls}>Academic Session</label>
-                          <SelectDropdown
-                            value={selectedSessionId}
-                            onChange={(val) => {
-                              setSelectedSessionId(val);
-                              setSelectedVersionId("");
-                              setSelectedSubjectId("");
-                              setSelectedTopicId("");
-                              setSelectedSubTopicId("");
-                            }}
-                            options={[
-                              { value: "", label: "All Sessions" },
-                              ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
-                            ]}
-                            placeholder="All Sessions"
-                            buttonClassName={selectBtnCls}
-                          />
-                        </div>
-
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         {/* Version */}
                         <div>
                           <label className={labelCls}>Syllabus Version <span className="text-red-500">*</span></label>
@@ -505,45 +586,43 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         </div>
 
                         {/* Subject */}
-                        {selectedVersionId && (
-                          <div>
-                            <label className={labelCls}>Subject <span className="text-red-500">*</span></label>
-                            <SelectDropdown
-                              value={selectedSubjectId}
-                              onChange={(val) => {
-                                setSelectedSubjectId(val);
-                                setSelectedTopicId("");
-                                setSelectedSubTopicId("");
-                              }}
-                              options={[
-                                { value: "", label: "-- Select Subject --" },
-                                ...subjects.map(s => ({ value: s._id, label: s.name }))
-                              ]}
-                              placeholder="-- Select Subject --"
-                              buttonClassName={selectBtnCls}
-                            />
-                          </div>
-                        )}
+                        <div>
+                          <label className={labelCls}>Subject <span className="text-red-500">*</span></label>
+                          <SelectDropdown
+                            value={selectedSubjectId}
+                            onChange={(val) => {
+                              setSelectedSubjectId(val);
+                              setSelectedTopicId("");
+                              setSelectedSubTopicId("");
+                            }}
+                            options={[
+                              { value: "", label: "-- Select Subject --" },
+                              ...subjects.map(s => ({ value: s._id, label: s.name }))
+                            ]}
+                            disabled={!selectedVersionId}
+                            placeholder={!selectedVersionId ? "Select Version First" : "-- Select Subject --"}
+                            buttonClassName={selectBtnCls}
+                          />
+                        </div>
 
                         {/* Topic */}
-                        {selectedSubjectId && (
-                          <div>
-                            <label className={labelCls}>Topic <span className="text-red-500">*</span></label>
-                            <SelectDropdown
-                              value={selectedTopicId}
-                              onChange={(val) => {
-                                setSelectedTopicId(val);
-                                setSelectedSubTopicId("");
-                              }}
-                              options={[
-                                { value: "", label: "-- Select Topic --" },
-                                ...topics.map(t => ({ value: t._id, label: t.name }))
-                              ]}
-                              placeholder="-- Select Topic --"
-                              buttonClassName={selectBtnCls}
-                            />
-                          </div>
-                        )}
+                        <div>
+                          <label className={labelCls}>Topic <span className="text-red-500">*</span></label>
+                          <SelectDropdown
+                            value={selectedTopicId}
+                            onChange={(val) => {
+                              setSelectedTopicId(val);
+                              setSelectedSubTopicId("");
+                            }}
+                            options={[
+                              { value: "", label: "-- Select Topic --" },
+                              ...topics.map(t => ({ value: t._id, label: t.name }))
+                            ]}
+                            disabled={!selectedSubjectId}
+                            placeholder={!selectedSubjectId ? "Select Subject First" : "-- Select Topic --"}
+                            buttonClassName={selectBtnCls}
+                          />
+                        </div>
                       </div>
 
                       {/* SubTopic (Optional) */}
@@ -586,18 +665,21 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                     </div>
                   )}
 
-                  {/* Task Details Card */}
+                  {/* Step 3: Task Details Card */}
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
                     <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
-                          <MdEdit size={15} />
-                        </div>
+                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                          3
+                        </span>
                         <div>
-                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Task Information</h4>
+                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Task Information & Evaluation</h4>
                           <p className="text-[10px] text-slate-400">Define title, type, priority, and completion criteria</p>
                         </div>
                       </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md border border-orange-200">
+                        Step 3
+                      </span>
                     </div>
 
                     {/* Title */}

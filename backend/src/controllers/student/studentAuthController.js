@@ -230,6 +230,8 @@ exports.getMyTasks = async (req, res) => {
     const { status, subLevelId } = req.query;
     const filter = {
       studentId: req.user.id,
+      isActive: { $ne: false },
+      isArchived: { $ne: true },
       $or: [
         { isGeneralTask: true },
         { isExtra: true },

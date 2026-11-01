@@ -9,12 +9,14 @@ import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
 import Header from "../../../shared/sidebar/Header";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
+import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import Pagination from "../../../shared/pagination/Pagination";
 import AddTaskModal from "./AddTaskModal";
 import { buttonStyles } from "../../../../styles/buttonStyles";
 import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import { getDepartmentCourses } from "../../../../utils/sessionDurationHelpers";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -166,12 +168,31 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
     const [priority, setPriority] = useState(task?.priority || "medium");
     const [status, setStatus] = useState(task?.status || (task?.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
 
+    const initialCourses = useMemo(() => {
+        if (Array.isArray(task?.courses) && task.courses.length > 0) return task.courses;
+        if (task?.raw?.courses && Array.isArray(task.raw.courses) && task.raw.courses.length > 0) return task.raw.courses;
+        const cStr = task?.course || task?.raw?.course;
+        if (cStr && cStr !== "All") return cStr.split(",").map((c) => c.trim()).filter(Boolean);
+        return ["All"];
+    }, [task]);
+
+    const [selectedCourses, setSelectedCourses] = useState(initialCourses);
+
+    const taskDept = task?.department || task?.raw?.department || task?.context?.department?.name || task?.raw?.context?.department?.name || "";
+
     useEffect(() => {
         if (task) {
             setTitle(task.taskTitle || task.title || "");
             setDescription(task.description || task.raw?.description || "");
             setPriority(task.priority || "medium");
             setStatus(task.status || (task.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
+            let parsed = ["All"];
+            if (Array.isArray(task.courses) && task.courses.length > 0) parsed = task.courses;
+            else if (task.raw?.courses && Array.isArray(task.raw.courses) && task.raw.courses.length > 0) parsed = task.raw.courses;
+            else if ((task.course || task.raw?.course) && (task.course || task.raw?.course) !== "All") {
+                parsed = (task.course || task.raw?.course).split(",").map((c) => c.trim()).filter(Boolean);
+            }
+            setSelectedCourses(parsed.length > 0 ? parsed : ["All"]);
         }
     }, [task]);
 
@@ -183,12 +204,16 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
             toast.error("Task title is required");
             return;
         }
+        const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
+        const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
         onSave({
             taskId: task.id || task._id,
             title: title.trim(),
             taskTitle: title.trim(),
             description: description.trim(),
             priority,
+            course: courseStr,
+            courses: coursesList,
             status,
             isActive: status === "active",
         });
@@ -239,6 +264,17 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                             rows={3}
                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition resize-none"
                             placeholder="Enter task description"
+                        />
+                    </div>
+
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <CourseMultiSelect
+                            department={taskDept}
+                            selectedCourses={selectedCourses}
+                            onChange={setSelectedCourses}
+                            label="Target Course(s)"
+                            hint="Select 'All Courses' or choose course(s) for this task's department."
+                            size="sm"
                         />
                     </div>
 
@@ -326,6 +362,9 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">
                                 {task.academicYear} • {task.session}
+                            </span>
+                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                                Course: {task.course || "All Courses"}
                             </span>
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium}`}>
                                 {task.priority}
@@ -476,6 +515,7 @@ const TaskManagement = () => {
         filterSubLevel: "",
         filterPriority: "",
         filterStatus: "",
+        filterCourse: "",
     }), []);
 
     const {
@@ -493,6 +533,7 @@ const TaskManagement = () => {
     const filterSubLevel = filters.filterSubLevel || "";
     const filterPriority = filters.filterPriority || "";
     const filterStatus = filters.filterStatus || "";
+    const filterCourse = filters.filterCourse || "";
 
     const setSearchTerm = (s) => updateFilter("searchTerm", s);
     const setFilterYear = (y) => updateFilter("filterYear", y);
@@ -503,6 +544,7 @@ const TaskManagement = () => {
     const setFilterSubLevel = (sl) => updateFilter("filterSubLevel", sl);
     const setFilterPriority = (p) => updateFilter("filterPriority", p);
     const setFilterStatus = (st) => updateFilter("filterStatus", st);
+    const setFilterCourse = (c) => updateFilter("filterCourse", c);
 
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -550,6 +592,8 @@ const TaskManagement = () => {
                 description: task.description || "",
                 subject: task.subjectName || "General",
                 topic: task.topicName || "",
+                course: task.course || "All",
+                courses: task.courses || (task.course ? task.course.split(",").map(c => c.trim()) : ["All"]),
                 priority: task.priority || "medium",
                 status: task.isActive ? "active" : "inactive",
                 isActive: task.isActive !== undefined ? task.isActive : true,
@@ -566,6 +610,12 @@ const TaskManagement = () => {
         const fromRows = getOptionValues(taskRows, "session").filter((v) => v !== "-");
         return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
     }, [sessionsList, taskRows]);
+
+    const courses = useMemo(() => {
+        const deptCourses = filterDept ? getDepartmentCourses(filterDept) : ["BCA", "ITEG Diploma", "BBA", "B.com(CA)", "BSC(BT)", "BSC(Micro)", "B.Tech(CS)", "B.Tech(AIML)", "B.Tech(IT)"];
+        const fromRows = getOptionValues(taskRows, "course").filter((v) => v !== "-" && v !== "All");
+        return [...new Set([...deptCourses, ...fromRows])].sort((a, b) => a.localeCompare(b));
+    }, [taskRows, filterDept]);
 
     const depts = useMemo(() => {
         const fromApi = departments.map((d) => d.name).filter(Boolean);
@@ -607,6 +657,7 @@ const TaskManagement = () => {
         Boolean(filterSubLevel),
         Boolean(filterPriority),
         Boolean(filterStatus),
+        Boolean(filterCourse),
     ].filter(Boolean).length;
 
     const filtered = useMemo(() => {
@@ -618,6 +669,7 @@ const TaskManagement = () => {
                 task.topic,
                 task.department,
                 task.subDept,
+                task.course,
                 task.id,
             ].join(" ").toLowerCase();
 
@@ -630,10 +682,11 @@ const TaskManagement = () => {
                 (!filterLevel || task.level === filterLevel) &&
                 (!filterSubLevel || task.subLevel === filterSubLevel) &&
                 (!filterPriority || task.priority === filterPriority) &&
-                (!filterStatus || task.status === filterStatus)
+                (!filterStatus || task.status === filterStatus) &&
+                (!filterCourse || task.course === filterCourse || (task.courses && task.courses.includes(filterCourse)) || (task.course && task.course.split(",").map(c => c.trim()).includes(filterCourse)))
             );
         });
-    }, [taskRows, searchTerm, filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterPriority, filterStatus]);
+    }, [taskRows, searchTerm, filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterPriority, filterStatus, filterCourse]);
 
     const resetFilters = () => {
         resetAllFilters();
@@ -648,11 +701,12 @@ const TaskManagement = () => {
         if (filterSub) chips.push({ key: "sub", label: "Sub-Dept", value: filterSub, displayValue: filterSub, onRemove: () => setFilterSub("") });
         if (filterLevel) chips.push({ key: "level", label: "Level", value: filterLevel, displayValue: filterLevel, onRemove: () => setFilterLevel("") });
         if (filterSubLevel) chips.push({ key: "subLevel", label: "Sub-Level", value: filterSubLevel, displayValue: filterSubLevel, onRemove: () => setFilterSubLevel("") });
+        if (filterCourse) chips.push({ key: "course", label: "Course", value: filterCourse, displayValue: filterCourse, onRemove: () => setFilterCourse("") });
         if (filterPriority) chips.push({ key: "priority", label: "Priority", value: filterPriority, displayValue: filterPriority, onRemove: () => setFilterPriority("") });
         if (filterStatus) chips.push({ key: "status", label: "Status", value: filterStatus, displayValue: filterStatus === "active" ? "Active" : "Disabled", onRemove: () => setFilterStatus("") });
         if (searchTerm) chips.push({ key: "search", label: "Search", value: searchTerm, displayValue: `"${searchTerm}"`, onRemove: () => setSearchTerm("") });
         return chips;
-    }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterPriority, filterStatus, searchTerm]);
+    }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterSubLevel, filterCourse, filterPriority, filterStatus, searchTerm]);
 
     const handleDelete = async (task) => {
         if (!task?.id || deleting) return;
@@ -793,7 +847,7 @@ const TaskManagement = () => {
                             </button>
                         )}
                     </div>
-                    <div className="grid grid-cols-4 lg:grid-cols-8 gap-2.5">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2.5">
                         <SelectDropdown
                             value={filterYear}
                             onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
@@ -833,6 +887,13 @@ const TaskManagement = () => {
                             value={filterSubLevel}
                             onChange={(val) => { setFilterSubLevel(val); setCurrentPage(1); }}
                             options={[{ value: "", label: "Sub-Level" }, ...subLevels.map((sl) => ({ value: sl, label: sl }))]}
+                            className="w-full"
+                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
+                        />
+                        <SelectDropdown
+                            value={filterCourse}
+                            onChange={(val) => { setFilterCourse(val); setCurrentPage(1); }}
+                            options={[{ value: "", label: "Course" }, ...courses.map((c) => ({ value: c, label: c }))]}
                             className="w-full"
                             buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                         />
@@ -920,6 +981,13 @@ const TaskManagement = () => {
                                 value={filterSubLevel}
                                 onChange={(val) => { setFilterSubLevel(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Sub-Level" }, ...subLevels.map((sl) => ({ value: sl, label: sl }))]}
+                                className="w-full"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                            />
+                            <SelectDropdown
+                                value={filterCourse}
+                                onChange={(val) => { setFilterCourse(val); setCurrentPage(1); }}
+                                options={[{ value: "", label: "Course" }, ...courses.map((c) => ({ value: c, label: c }))]}
                                 className="w-full"
                                 buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
                             />
@@ -1050,6 +1118,9 @@ const TaskManagement = () => {
                                                             <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
                                                                 {r.academicYear} • {r.session}
                                                             </span>
+                                                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                                                                {r.course || "All"}
+                                                            </span>
                                                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
                                                                 {r.priority}
                                                             </span>
@@ -1150,6 +1221,9 @@ const TaskManagement = () => {
                                                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                                                     <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.2 rounded truncate max-w-[100px]" title={r.subject}>
                                                                         {r.subject}
+                                                                    </span>
+                                                                    <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded" title={`Course: ${r.course || "All"}`}>
+                                                                        {r.course || "All"}
                                                                     </span>
                                                                     <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded border ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
                                                                         {r.priority}

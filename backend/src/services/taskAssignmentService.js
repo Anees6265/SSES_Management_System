@@ -26,8 +26,58 @@ const buildTaskEntries = async (syllabusVersionId) => {
     description: task.description || "",
     type: task.type || "assignment",
     mandatory: task.mandatory !== false,
+    course: task.course || "All",
+    courses: task.courses || (task.course ? [task.course] : ["All"]),
     maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5
   }));
+};
+
+const CANONICAL_COURSE_MAP = {
+  "itegdiploma": "itegdiploma",
+  "itdiploma": "itegdiploma",
+  "bca": "bca",
+  "bba": "bba",
+  "b.com(ca)": "b.com(ca)",
+  "bcom(ca)": "b.com(ca)",
+  "b.com": "b.com(ca)",
+  "bcom": "b.com(ca)",
+  "bsc(bt)": "bsc(bt)",
+  "bsc(biotechnology)": "bsc(bt)",
+  "bscbiotechnology": "bsc(bt)",
+  "bscbiotecnology": "bsc(bt)",
+  "bsc(micro)": "bsc(micro)",
+  "bsc(microbiology)": "bsc(micro)",
+  "bscmicrobiology": "bsc(micro)",
+  "b.tech(cs)": "b.tech(cs)",
+  "btech(cs)": "b.tech(cs)",
+  "b.tech(aiml)": "b.tech(aiml)",
+  "btech(aiml)": "b.tech(aiml)",
+  "b.tech(it)": "b.tech(it)",
+  "btech(it)": "b.tech(it)",
+};
+
+const normalizeCourse = (val) => {
+  if (!val) return "";
+  const clean = String(val).trim().toLowerCase().replace(/\s+/g, "");
+  return CANONICAL_COURSE_MAP[clean] || clean;
+};
+
+const matchesCourse = (studentCourse, targetCourses, targetCourse) => {
+  const list = Array.isArray(targetCourses) && targetCourses.length > 0
+    ? targetCourses.map((c) => String(c).trim())
+    : (targetCourse ? String(targetCourse).split(",").map((c) => c.trim()) : ["All"]);
+  if (list.includes("All")) return true;
+  if (!studentCourse) return false;
+
+  const sNorm = normalizeCourse(studentCourse);
+  return list.some((c) => {
+    const cNorm = normalizeCourse(c);
+    if (cNorm === sNorm) return true;
+    if (cNorm === "b.tech" || cNorm === "btech") {
+      return sNorm.startsWith("b.tech") || sNorm.startsWith("btech");
+    }
+    return false;
+  });
 };
 
 const getActorDetails = (actor = null) => ({
@@ -147,6 +197,9 @@ const buildStudentTaskPayload = (student, syllabusVersion, entry, assignmentMeta
   levelId: syllabusVersion.levelId,
   subLevelId: syllabusVersion.subLevelId,
   syllabusVersionId: syllabusVersion._id,
+  taskId: entry.taskId,
+  course: entry.course || "All",
+  courses: entry.courses || (entry.course ? [entry.course] : ["All"]),
   subjectId: entry.subjectId,
   topicId: entry.topicId,
   subTopicId: entry.subTopicId,
@@ -188,6 +241,19 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
 
   const syllabusVersion = options.syllabusVersion || await getSyllabusVersionForStudent(student, syllabusVersionId);
   validateStudentVersionMatch(student, syllabusVersion, options);
+
+  // If syllabus version is targeted to specific course(s), ensure student matches
+  if (!matchesCourse(student.course, syllabusVersion.courses, syllabusVersion.course)) {
+    return {
+      studentId: student._id,
+      syllabusVersionId: syllabusVersion._id,
+      createdCount: 0,
+      updatedCount: 0,
+      totalTasks: 0,
+      skippedReason: "Course mismatch with syllabus version"
+    };
+  }
+
   const taskEntries = options.taskEntries || await buildTaskEntries(syllabusVersion._id);
 
   if (taskEntries.length === 0) {
@@ -208,6 +274,11 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   const bulkOps = [];
 
   for (const entry of taskEntries) {
+    // Course-wise task assignment check (e.g. BBA vs B.Com)
+    if (!matchesCourse(student.course, entry.courses, entry.course)) {
+      continue; // Skip task not matching student's course
+    }
+
     const payload = buildStudentTaskPayload(student, syllabusVersion, entry, {
       assignedType: "auto"
     });
@@ -747,13 +818,13 @@ const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null)
   let syllabusVersion = null;
   if (syllabusVersionId) {
     syllabusVersion = await SyllabusVersion.findById(syllabusVersionId)
-      .select("sessionId levelId subLevelId status");
+      .select("sessionId levelId subLevelId status courses course");
   } else if (subLevelId) {
     syllabusVersion = await SyllabusVersion.findOne({
       subLevelId,
       status: "active",
       isActive: true
-    }).sort({ createdAt: -1 }).select("sessionId levelId subLevelId status");
+    }).sort({ createdAt: -1 }).select("sessionId levelId subLevelId status courses course");
   }
 
   if (!syllabusVersion) throw new Error("Syllabus version not found");
@@ -761,11 +832,18 @@ const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null)
   const effectiveVersionId = syllabusVersion._id;
 
   // Find all active students currently in this subLevel
-  const students = await Student.find({
+  const allStudents = await Student.find({
     currentSubLevelId: syllabusVersion.subLevelId,
     currentLevelId:    syllabusVersion.levelId,
     status:            { $in: ACTIVE_STUDENT_STATUSES }
   });
+
+  if (allStudents.length === 0) return [];
+
+  // Filter students who match this syllabus version's course(s)
+  const students = allStudents.filter((s) =>
+    matchesCourse(s.course, syllabusVersion.courses, syllabusVersion.course)
+  );
 
   if (students.length === 0) return [];
 
@@ -879,8 +957,37 @@ const syncTaskToStudents = async (task) => {
   if (taskDoc.levelId) {
     studentQuery.currentLevelId = taskDoc.levelId;
   }
+  const taskCourses = Array.isArray(taskDoc.courses) && taskDoc.courses.length > 0
+    ? taskDoc.courses
+    : (taskDoc.course ? String(taskDoc.course).split(",").map(c => c.trim()).filter(Boolean) : ["All"]);
 
-  const students = await Student.find(studentQuery).select("_id sessionId currentLevelId currentSubLevelId syllabusVersionId");
+  if (!taskCourses.includes("All")) {
+    const courseRegexes = [];
+    for (const c of taskCourses) {
+      const trimmed = c.trim();
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      courseRegexes.push(new RegExp(`^${escaped}$`, "i"));
+      // Add tolerant variants
+      if (/b\.?com/i.test(trimmed)) {
+        courseRegexes.push(/^B\.?com(\(CA\))?$/i);
+      }
+      if (/bsc.*bt/i.test(trimmed) || /biotech/i.test(trimmed)) {
+        courseRegexes.push(/^BSC(\(BT\)|\(Biotechnology\))$/i);
+      }
+      if (/bsc.*micro/i.test(trimmed)) {
+        courseRegexes.push(/^BSC(\(Micro\)|\(Microbiology\))$/i);
+      }
+      if (/iteg.*diploma/i.test(trimmed) || /it.*diploma/i.test(trimmed)) {
+        courseRegexes.push(/^(ITEG|IT)\s*Diploma$/i);
+      }
+      if (/b\.?tech$/i.test(trimmed)) {
+        courseRegexes.push(/^B\.?Tech.*$/i);
+      }
+    }
+    studentQuery.course = { $in: courseRegexes };
+  }
+
+  const students = await Student.find(studentQuery).select("_id course sessionId currentLevelId currentSubLevelId syllabusVersionId");
   if (students.length === 0) {
     return { success: true, count: 0, message: "No matching active students found" };
   }
@@ -891,6 +998,8 @@ const syncTaskToStudents = async (task) => {
       levelId: student.currentLevelId || taskDoc.levelId,
       subLevelId: student.currentSubLevelId || taskDoc.subLevelId,
       syllabusVersionId: taskDoc.syllabusVersionId || student.syllabusVersionId || null,
+      course: taskDoc.course || student.course || "All",
+      courses: taskCourses,
       subjectId: taskDoc.subjectId || null,
       topicId: taskDoc.topicId || null,
       subTopicId: taskDoc.subTopicId || null,

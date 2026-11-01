@@ -46,6 +46,15 @@ const syllabusVersionSchema = new mongoose.Schema({
   version: { type: String, required: true, trim: true },
   title: { type: String, default: "", trim: true },
   domain: { type: String, default: "", trim: true },
+  courses: {
+    type: [String],
+    default: ["All"]
+  },
+  course: {
+    type: String,
+    default: "All",
+    trim: true
+  },
   status: {
     type: String,
     enum: ["draft", "active", "archived"],
@@ -82,5 +91,6 @@ syllabusVersionSchema.index(
   { sessionId: 1, levelId: 1, subLevelId: 1, version: 1 },
   { unique: true, partialFilterExpression: { isActive: true } }
 );
+syllabusVersionSchema.index({ courses: 1 });
 
 module.exports = mongoose.model("SyllabusVersion", syllabusVersionSchema);

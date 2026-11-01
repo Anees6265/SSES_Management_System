@@ -101,6 +101,10 @@ exports.bulkUploadTasks = async (req, res) => {
         subTopicId: foundSubTopic?._id || null,
       });
 
+      const rowCourses = Array.isArray(row.courses) && row.courses.length > 0
+        ? row.courses
+        : (row.course ? String(row.course).split(",").map(c => c.trim()).filter(Boolean) : (sv.courses || (sv.course ? [sv.course] : ["All"])));
+
       taskDocs.push({
         syllabusVersionId,
         subjectId:        foundSubject._id,
@@ -112,6 +116,8 @@ exports.bulkUploadTasks = async (req, res) => {
         taskNodeType:     foundSubTopic ? "subTopic" : "topic",
         title:            taskTitle,
         domain:           (row.domain || domain || sv.domain || "").trim(),
+        course:           rowCourses.join(", "),
+        courses:          rowCourses,
         type:             resolvedType,
         maxMarks,
         timeDays,

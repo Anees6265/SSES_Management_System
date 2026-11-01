@@ -1883,6 +1883,23 @@ export const authApi = createApi({
       invalidatesTags: ['SyllabusVersion'],
     }),
 
+    deleteSubjectFromVersion: builder.mutation({
+      query: ({ versionId, subjectId }) => ({
+        url: `/syllabus/versions/${versionId}/subjects/${subjectId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
+    }),
+
+    updateSubjectInVersion: builder.mutation({
+      query: ({ versionId, subjectId, ...data }) => ({
+        url: `/syllabus/versions/${versionId}/subjects/${subjectId}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
+    }),
+
     createTaskManual: builder.mutation({
       query: ({ syllabusVersionId, subjectId, topicId, subTopicId, ...taskData }) => {
         if (syllabusVersionId) {
@@ -2265,6 +2282,8 @@ export const {
   useCreateTaskManualMutation,
   useDeleteTaskMutation,
   useAddSubjectToVersionMutation,
+  useDeleteSubjectFromVersionMutation,
+  useUpdateSubjectInVersionMutation,
   // Smart Syllabus hooks
   useGetStudentSmartSyllabusQuery,
   useUpdateSyllabusSmartlyMutation,

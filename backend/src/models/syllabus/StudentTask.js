@@ -136,6 +136,15 @@ const studentTaskSchema = new mongoose.Schema({
   isExtra: {
     type: Boolean,
     default: false
+  },
+  course: {
+    type: String,
+    default: "All",
+    trim: true
+  },
+  courses: {
+    type: [String],
+    default: ["All"]
   }
 }, { timestamps: true });
 
@@ -171,6 +180,8 @@ studentTaskSchema.index({ studentId: 1, taskId: 1 }, { unique: true, sparse: tru
 studentTaskSchema.index({ studentId: 1, syllabusVersionId: 1, status: 1 });
 studentTaskSchema.index({ studentId: 1, sessionId: 1, levelId: 1, subLevelId: 1, syllabusVersionId: 1 });
 studentTaskSchema.index({ studentId: 1, isExtra: 1 });
+studentTaskSchema.index({ course: 1 });
+studentTaskSchema.index({ courses: 1 });
 
 
 module.exports = mongoose.model("StudentTask", studentTaskSchema);

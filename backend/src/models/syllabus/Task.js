@@ -61,6 +61,8 @@ const taskSchema = new mongoose.Schema({
   measurablePoints: { type: String, default: "" },
   dueDate: { type: Date, default: null },
   isGeneralTask: { type: Boolean, default: false }, // Flag for general tasks
+  course: { type: String, default: "All", trim: true },
+  courses: { type: [String], default: ["All"] },
   assignedByName: { type: String, default: "" },
   isActive: { type: Boolean, default: true },
   deletedAt: { type: Date, default: null }
@@ -72,5 +74,7 @@ taskSchema.index({ syllabusVersionId: 1, subTopicId: 1 });
 taskSchema.index({ syllabusVersionId: 1, isActive: 1 });
 taskSchema.index({ levelId: 1, subLevelId: 1, isGeneralTask: 1 });
 taskSchema.index({ isActive: 1, deletedAt: 1 });
+taskSchema.index({ course: 1 });
+taskSchema.index({ courses: 1 });
 
 module.exports = mongoose.model("Task", taskSchema);

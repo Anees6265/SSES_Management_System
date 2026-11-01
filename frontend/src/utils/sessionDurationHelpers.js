@@ -124,3 +124,46 @@ export const filterSessionsByDepartment = (sessions = [], deptNameOrObj) => {
   // Return filtered list; fallback to original sessions only if no session matches duration
   return filtered.length > 0 ? filtered : sessions;
 };
+
+/**
+ * Returns the list of valid course names for a given department.
+ * Mapped to the EXACT strings stored in the database:
+ * - ITEG: ["BCA", "ITEG Diploma"]
+ * - MEG: ["BBA", "B.com(CA)"]
+ * - BEG: ["BSC(BT)", "BSC(Micro)"]
+ * - B.Tech / SSEC: ["B.Tech(CS)", "B.Tech(AIML)", "B.Tech(IT)"]
+ */
+export const getDepartmentCourses = (deptNameOrObj) => {
+  if (!deptNameOrObj) return [];
+
+  const name = String(typeof deptNameOrObj === "object" ? (deptNameOrObj.name || "") : deptNameOrObj)
+    .trim()
+    .toUpperCase();
+
+  if (name.includes("ITEG") || name.includes("IT") || name.includes("INFORMATION")) {
+    return ["BCA", "ITEG Diploma"];
+  }
+
+  if (name.includes("MEG") || name.includes("MANAGEMENT") || name.includes("COMMERCE")) {
+    return ["BBA", "B.com(CA)"];
+  }
+
+  if (name.includes("BEG") || name.includes("BIO") || name.includes("SCIENCE")) {
+    return ["BSC(BT)", "BSC(Micro)"];
+  }
+
+  if (name.includes("B.TECH") || name.includes("BTECH") || name.includes("ENGINEERING") || name.includes("SSEC")) {
+    return ["B.Tech(CS)", "B.Tech(AIML)", "B.Tech(IT)"];
+  }
+
+  // 1. Check if department object has populated allowedCourses
+  if (typeof deptNameOrObj === "object" && Array.isArray(deptNameOrObj.allowedCourses) && deptNameOrObj.allowedCourses.length > 0) {
+    const list = deptNameOrObj.allowedCourses
+      .map((c) => (typeof c === "string" ? c : c?.name || c?.courseName))
+      .filter(Boolean);
+    if (list.length > 0) return list;
+  }
+
+  return [];
+};
+

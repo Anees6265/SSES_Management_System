@@ -135,12 +135,21 @@ const extractRowsFromWorksheet = (worksheet) => {
 
 exports.createSyllabusVersion = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, version: versionInput, title, subjects, domain } = req.body;
+    const { sessionId, levelId, subLevelId, version: versionInput, title, subjects, domain, courses, course } = req.body;
     if (!sessionId || !levelId || !subLevelId) {
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     }
     if (!Array.isArray(subjects) || subjects.length === 0) {
       return res.status(400).json({ success: false, message: "subjects must be a non-empty array" });
+    }
+
+    let normalizedCourses = ["All"];
+    if (Array.isArray(courses) && courses.length > 0) {
+      normalizedCourses = courses.map((c) => String(c).trim()).filter(Boolean);
+    } else if (typeof courses === "string" && courses.trim()) {
+      normalizedCourses = courses.split(",").map((c) => c.trim()).filter(Boolean);
+    } else if (course && typeof course === "string" && course.trim()) {
+      normalizedCourses = course.split(",").map((c) => c.trim()).filter(Boolean);
     }
 
     let resolvedVersion = versionInput?.trim();
@@ -169,6 +178,10 @@ exports.createSyllabusVersion = async (req, res) => {
       existingVersion.isActive = true;
       existingVersion.status = "active";
       if (domain !== undefined) existingVersion.domain = (domain || "").trim();
+      if (courses !== undefined || course !== undefined) {
+        existingVersion.courses = normalizedCourses;
+        existingVersion.course = normalizedCourses.join(", ");
+      }
       // Add subjects to existing version instead of creating new
       upsertSubjectTree(existingVersion, subjects);
       await existingVersion.save();
@@ -184,6 +197,8 @@ exports.createSyllabusVersion = async (req, res) => {
       version: resolvedVersion,
       title: title || "",
       domain: (domain || "").trim(),
+      courses: normalizedCourses,
+      course: normalizedCourses.join(", "),
       subjects: normalizeSubjects(subjects)
     });
     res.status(201).json({ success: true, message: "Syllabus version created successfully", data: syllabusVersion });
@@ -298,7 +313,7 @@ exports.archiveSyllabusVersion = async (req, res) => {
 
 exports.addTaskToSyllabusVersion = async (req, res) => {
   try {
-    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain } = req.body;
+    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain, course, courses } = req.body;
     if (!ensureObjectId(subjectId) || !ensureObjectId(topicId) || !title) {
       return res.status(400).json({ success: false, message: "subjectId, topicId and title are required" });
     }
@@ -313,6 +328,17 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
     if (subTopicId) {
       subTopic = topic.subTopics.id(subTopicId);
       if (!subTopic) return res.status(404).json({ success: false, message: "SubTopic not found" });
+    }
+
+    let normalizedCourses = ["All"];
+    if (Array.isArray(courses) && courses.length > 0) {
+      normalizedCourses = courses.map((c) => String(c).trim()).filter(Boolean);
+    } else if (typeof courses === "string" && courses.trim()) {
+      normalizedCourses = courses.split(",").map((c) => c.trim()).filter(Boolean);
+    } else if (course && typeof course === "string" && course.trim()) {
+      normalizedCourses = course.split(",").map((c) => c.trim()).filter(Boolean);
+    } else if (sv.courses && sv.courses.length > 0 && !sv.courses.includes("All")) {
+      normalizedCourses = sv.courses;
     }
 
     const taskCount = await Task.countDocuments({ syllabusVersionId: sv._id, topicId, subTopicId: subTopicId || null });
@@ -331,6 +357,8 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       taskNodeType: subTopicId ? "subTopic" : "topic",
       title,
       domain: (domain || sv.domain || "").trim(),
+      course: normalizedCourses.join(", "),
+      courses: normalizedCourses,
       description: description || "",
       type: type || "assignment",
       priority: priority || "medium",
@@ -411,11 +439,26 @@ exports.updateSubjectInSyllabusVersion = async (req, res) => {
     if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
     const subject = getSubjectOrNull(sv, req.params.subjectId);
     if (!subject) return res.status(404).json({ success: false, message: "Subject not found" });
-    for (const f of ["name", "code", "description", "order", "isActive"]) {
+    const oldName = subject.name;
+    for (const f of ["name", "code", "description", "order", "isActive", "reportCategory", "includeInReportCard"]) {
       if (req.body[f] !== undefined) subject[f] = req.body[f];
     }
     await sv.save();
-    res.status(200).json({ success: true, message: "Subject updated", data: subject });
+
+    // If subject name changed, synchronize with Task and StudentTask collections
+    if (req.body.name && req.body.name !== oldName) {
+      await Task.updateMany(
+        { syllabusVersionId: sv._id, $or: [{ subjectId: subject._id }, { subjectName: oldName }] },
+        { $set: { subjectName: req.body.name } }
+      );
+      const StudentTask = require("../../models/syllabus/StudentTask");
+      await StudentTask.updateMany(
+        { syllabusVersionId: sv._id, $or: [{ subjectId: subject._id }, { subjectName: oldName }] },
+        { $set: { subjectName: req.body.name } }
+      );
+    }
+
+    res.status(200).json({ success: true, message: "Subject updated successfully", data: subject });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -431,6 +474,73 @@ exports.toggleSubjectActive = async (req, res) => {
     await sv.save();
     res.status(200).json({ success: true, data: subject });
   } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteSubjectFromSyllabusVersion = async (req, res) => {
+  try {
+    const sv = await SyllabusVersion.findById(req.params.id);
+    if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
+    const subject = getSubjectOrNull(sv, req.params.subjectId);
+    if (!subject) return res.status(404).json({ success: false, message: "Subject not found in curriculum" });
+
+    const subjectId = subject._id;
+    const subjectName = subject.name;
+
+    // 1. Remove subject from syllabus version
+    sv.subjects.pull({ _id: subjectId });
+    await sv.save();
+
+    // 2. Find and deactivate/delete associated tasks in Task collection
+    const tasks = await Task.find({
+      syllabusVersionId: sv._id,
+      $or: [
+        { subjectId: subjectId },
+        { subjectName: subjectName }
+      ]
+    });
+    const taskIds = tasks.map(t => t._id);
+
+    const StudentTask = require("../../models/syllabus/StudentTask");
+
+    if (taskIds.length > 0) {
+      await Task.updateMany(
+        { _id: { $in: taskIds } },
+        { $set: { isActive: false, deletedAt: new Date() } }
+      );
+
+      // 3. Inactivate/archive associated student tasks so they disappear from student task boards
+      await StudentTask.updateMany(
+        {
+          $or: [
+            { taskId: { $in: taskIds } },
+            {
+              syllabusVersionId: sv._id,
+              $or: [{ subjectId: subjectId }, { subjectName: subjectName }]
+            }
+          ]
+        },
+        { $set: { isActive: false, isArchived: true } }
+      );
+    } else {
+      // Also catch any StudentTask with this subjectName and syllabusVersionId
+      await StudentTask.updateMany(
+        {
+          syllabusVersionId: sv._id,
+          $or: [{ subjectId: subjectId }, { subjectName: subjectName }]
+        },
+        { $set: { isActive: false, isArchived: true } }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Subject "${subjectName}" and its ${taskIds.length} tasks deleted successfully`,
+      data: { subjectId, deletedTasksCount: taskIds.length }
+    });
+  } catch (error) {
+    console.error("deleteSubjectFromSyllabusVersion error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -546,11 +656,20 @@ exports.toggleSubTopicActive = async (req, res) => {
 // Rows with taskTitle = syllabus + task
 exports.uploadCombined = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version, domain } = req.body;
+    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version, domain, courses, course } = req.body;
     if (!sessionId || !levelId || !subLevelId)
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ success: false, message: "tasks array is required" });
+
+    let normalizedCourses = ["All"];
+    if (Array.isArray(courses) && courses.length > 0) {
+      normalizedCourses = courses.map((c) => String(c).trim()).filter(Boolean);
+    } else if (typeof courses === "string" && courses.trim()) {
+      normalizedCourses = courses.split(",").map((c) => c.trim()).filter(Boolean);
+    } else if (course && typeof course === "string" && course.trim()) {
+      normalizedCourses = course.split(",").map((c) => c.trim()).filter(Boolean);
+    }
 
     const isSoftSkillSubject = (name = "") => {
       if (!name || typeof name !== "string") return false;
@@ -630,6 +749,10 @@ exports.uploadCombined = async (req, res) => {
       if (title && title.trim()) sv.title = title.trim();
       if (version && version.trim()) sv.version = version.trim();
       if (domain !== undefined) sv.domain = (domain || "").trim();
+      if (courses !== undefined || course !== undefined) {
+        sv.courses = normalizedCourses;
+        sv.course = normalizedCourses.join(", ");
+      }
       upsertSubjectTree(sv, subjects);
       await sv.save();
     } else {
@@ -640,6 +763,8 @@ exports.uploadCombined = async (req, res) => {
         title: (title || "").trim(),
         version: (version || "").trim() || "v1.0",
         domain: (domain || "").trim(),
+        courses: normalizedCourses,
+        course: normalizedCourses.join(", "),
         subjects: normalizeSubjects(subjects),
         status: "active",
         isActive: true
@@ -702,6 +827,8 @@ exports.uploadCombined = async (req, res) => {
         taskNodeType: foundSubTopic ? "subTopic" : "topic",
         title:        taskTitle,
         domain:       (row.domain || domain || sv.domain || "").trim(),
+        courses:      normalizedCourses,
+        course:       normalizedCourses.join(", "),
         type:         ["assignment","project","practice","reading","assessment","other"].includes(taskType) ? taskType : "assessment",
         maxMarks,
         timeDays,

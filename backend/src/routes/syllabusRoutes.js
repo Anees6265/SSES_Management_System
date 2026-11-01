@@ -151,7 +151,9 @@ router.post("/:id/subjects/upload-excel", verifyToken, checkRole(writeRoles), ex
 // ── Subject CRUD ──
 router.post("/:id/subjects", verifyToken, checkRole(writeRoles), embeddedSyllabusController.addSubjectToSyllabusVersion);
 router.patch("/:id/subjects/:subjectId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateSubjectInSyllabusVersion);
+router.put("/:id/subjects/:subjectId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateSubjectInSyllabusVersion);
 router.patch("/:id/subjects/:subjectId/active", verifyToken, checkRole(writeRoles), embeddedSyllabusController.toggleSubjectActive);
+router.delete("/:id/subjects/:subjectId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.deleteSubjectFromSyllabusVersion);
 
 // ── Topic CRUD ──
 router.post("/:id/subjects/:subjectId/topics", verifyToken, checkRole(writeRoles), embeddedSyllabusController.addTopicToSyllabusVersion);

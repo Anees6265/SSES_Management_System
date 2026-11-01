@@ -88,8 +88,8 @@ const UsersManagement = () => {
         role: Yup.string()
             .required('Role is required'),
         department: Yup.string().when('role', {
-            is: (val) => ['faculty', 'hod'].includes(val),
-            then: (schema) => schema.required('Department is required for Faculty / HOD'),
+            is: (val) => ['faculty', 'hod', 'placement_officer', 'coordinator'].includes(val),
+            then: (schema) => schema.required('Department is required for Department Staff'),
             otherwise: (schema) => schema.notRequired(),
         }),
         position: Yup.string()
@@ -105,8 +105,8 @@ const UsersManagement = () => {
         position: Yup.string().required('Position is required'),
         role: Yup.string().required('Role is required'),
         department: Yup.string().when('role', {
-            is: (val) => ['faculty', 'hod'].includes(val),
-            then: (schema) => schema.required('Department is required for Faculty / HOD'),
+            is: (val) => ['faculty', 'hod', 'placement_officer', 'coordinator'].includes(val),
+            then: (schema) => schema.required('Department is required for Department Staff'),
             otherwise: (schema) => schema.notRequired(),
         }),
         mobileNo: Yup.string()
@@ -225,19 +225,22 @@ const UsersManagement = () => {
         if (!role) return "";
         if (role.toLowerCase() === "placement_officer") return "Placement Officer";
         if (role.toLowerCase() === "superadmin") return "Super Admin";
+        if (role.toLowerCase() === "coordinator") return "Coordinator";
+        if (role.toLowerCase() === "hod") return "HOD";
         return role.charAt(0).toUpperCase() + role.slice(1);
     };
 
     const getRoleBadgeColor = (role) => {
         switch (role?.toLowerCase()) {
-            case 'superadmin': return 'bg-red-100 text-red-800';
-            case 'admin': return 'bg-blue-100 text-blue-800';
-            case 'faculty': return 'bg-green-100 text-green-800';
-            case 'hod': return 'bg-amber-100 text-amber-800';
-            case 'placement_officer': return 'bg-teal-100 text-teal-800';
-            case 'chairman': return 'bg-purple-100 text-purple-800';
-            case 'ceo': return 'bg-yellow-100 text-yellow-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'superadmin': return 'bg-red-100 text-red-800 border-red-200';
+            case 'admin': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'faculty': return 'bg-green-100 text-green-800 border-green-200';
+            case 'hod': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'placement_officer': return 'bg-teal-100 text-teal-800 border-teal-200';
+            case 'coordinator': return 'bg-sky-100 text-sky-800 border-sky-200';
+            case 'chairman': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'ceo': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
 
@@ -303,6 +306,7 @@ const UsersManagement = () => {
                                         { value: 'faculty', label: 'Faculty' },
                                         { value: 'hod', label: 'HOD' },
                                         { value: 'placement_officer', label: 'Placement Officer' },
+                                        { value: 'coordinator', label: 'Coordinator' },
                                         { value: 'admin', label: 'Admin' },
                                         { value: 'superadmin', label: 'Super Admin' }
                                     ]} 
@@ -850,6 +854,7 @@ const UsersManagement = () => {
                                                 { value: 'faculty', label: 'Faculty' },
                                                 { value: 'hod', label: 'HOD' },
                                                 { value: 'placement_officer', label: 'Placement Officer' },
+                                                { value: 'coordinator', label: 'Coordinator' },
                                                 { value: 'admin', label: 'Admin' },
                                                 { value: 'superadmin', label: 'Super Admin' }
                                             ]} 

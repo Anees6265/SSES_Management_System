@@ -145,6 +145,22 @@ const allPermissions = {
         { feature: 'Page_AdmittedStudents', description: 'View student progress', access: ['read'] },
         { feature: 'Page_StudentProfile', description: 'View student profiles', access: ['read'] },
         { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
+    ],
+
+    // Coordinator has academic, batch, and task management access
+    coordinator: [
+        { feature: 'Page_Dashboard', description: 'Access to main dashboard', access: ['read'] },
+        { feature: 'Page_AttendanceDetails', description: 'Access to attendance details', access: ['read'] },
+        { feature: 'Page_AdmittedStudents', description: 'Student progress list', access: ['read', 'create', 'update'] },
+        { feature: 'Page_StudentProfile', description: 'Student profile view', access: ['read', 'update'] },
+        { feature: 'Page_StudentReport', description: 'Student report card preview', access: ['read'] },
+        { feature: 'Page_StudentReportEdit', description: 'Student report card marks edit', access: ['read', 'update'] },
+        { feature: 'Page_StudentTaskBoard', description: 'Student task board tracking', access: ['read', 'update'] },
+        { feature: 'Page_TaskManagement', description: 'Task evaluation', access: ['read', 'create', 'update'] },
+        { feature: 'Page_CurriculumManagement', description: 'Curriculum viewing', access: ['read'] },
+        { feature: 'Page_LeaveRequests', description: 'Student leave requests', access: ['read', 'update'] },
+        { feature: 'Page_StudentLevelInterviewHistory', description: 'Level interview history', access: ['read', 'update'] },
+        { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
     ]
 };
 

@@ -29,7 +29,7 @@ const RolesPermissions = () => {
     const [editUser] = useEditUserMutation();
     const [showCreateRole, setShowCreateRole] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
-    const activeSelectedRole = isHod ? (selectedRole || { roleName: 'faculty' }) : selectedRole;
+    const activeSelectedRole = selectedRole;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [editModal, setEditModal] = useState({ show: false, user: null });
@@ -38,12 +38,18 @@ const RolesPermissions = () => {
     const users = usersData?.users || [];
     const customRoles = rolesData?.roles || [];
     
+    // Standard department roles for HOD overview
+    const departmentRoleKeys = ['faculty', 'placement_officer', 'coordinator', 'hod'];
+    const hodRoleList = Array.from(
+        new Set([...departmentRoleKeys, ...users.map(u => u.role)])
+    ).filter(r => r && r !== 'superadmin');
+
     // Extract unique roles from users data (existing system roles)
     const systemRoles = [...new Set(users.map(user => user.role).filter(Boolean))];
     
-    // Combine system roles and custom roles (for HOD, scope exclusively to department roles)
+    // Combine system roles and custom roles (for HOD, scope to department roles)
     const allRoles = isHod
-        ? systemRoles.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false }))
+        ? hodRoleList.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false }))
         : [
             ...systemRoles.map(role => ({ roleName: role, description: getRoleDescription(role), isCustom: false })),
             ...customRoles.map(role => ({ ...role, isCustom: true }))
@@ -70,6 +76,8 @@ const RolesPermissions = () => {
                 return <FaCrown className="text-2xl text-orange-500" />;
             case 'placement_officer':
                 return <FaBriefcase className="text-2xl text-teal-500" />;
+            case 'coordinator':
+                return <FaChalkboardTeacher className="text-2xl text-sky-500" />;
             default:
                 return <FaUser className="text-2xl text-orange-500" />;
         }
@@ -92,6 +100,8 @@ const RolesPermissions = () => {
                 return 'Highest level executive access with complete organizational oversight.';
             case 'placement_officer':
                 return 'Placement officer access for managing department placement activities, student readiness, and drives.';
+            case 'coordinator':
+                return 'Department coordinator access for managing academic batches, curriculum, and tasks.';
             default:
                 return 'Custom role with specific permissions and access levels.';
         }
@@ -136,25 +146,37 @@ const RolesPermissions = () => {
     const handleUserRowClick = (user) => {
         setShowPermissionMatrix({ show: true, user });
     };
+
+    const formatRoleName = (role) => {
+        if (!role) return "";
+        const lower = role.toLowerCase();
+        if (lower === "placement_officer") return "Placement Officer";
+        if (lower === "superadmin") return "Super Admin";
+        if (lower === "coordinator") return "Coordinator";
+        if (lower === "hod") return "HOD";
+        return role.charAt(0).toUpperCase() + role.slice(1);
+    };
     
     const getRoleBadgeColor = (role) => {
         switch (role?.toLowerCase()) {
             case 'superadmin':
-                return 'bg-red-100 text-red-800';
+                return 'bg-red-100 text-red-800 border-red-200';
             case 'admin':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-blue-100 text-blue-800 border-blue-200';
             case 'faculty':
-                return 'bg-green-100 text-green-800';
+                return 'bg-green-100 text-green-800 border-green-200';
             case 'hod':
-                return 'bg-amber-100 text-amber-800';
-            case 'chairman':
-                return 'bg-purple-100 text-purple-800';
-            case 'ceo':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-amber-100 text-amber-800 border-amber-200';
             case 'placement_officer':
-                return 'bg-teal-100 text-teal-800';
+                return 'bg-teal-100 text-teal-800 border-teal-200';
+            case 'coordinator':
+                return 'bg-sky-100 text-sky-800 border-sky-200';
+            case 'chairman':
+                return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'ceo':
+                return 'bg-yellow-100 text-yellow-800 border-yellow-200';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
     
@@ -186,31 +208,26 @@ const RolesPermissions = () => {
                 />
             ) : (
                 <>
-                    {/* If a role is selected (or if HOD, always show directly), show users table */}
+                    {/* If a role is selected, show users table for that role */}
                     {activeSelectedRole ? (
                 <div className="bg-white border border-gray-200 shadow-2xs rounded-2xl overflow-hidden">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-150">
                         <div className="flex items-center gap-3 min-w-0">
-                            {!isHod && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedRole(null)}
-                                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors shrink-0 cursor-pointer"
-                                    title="Back to roles"
-                                >
-                                    <ArrowLeft size={18} />
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setSelectedRole(null)}
+                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors shrink-0 cursor-pointer"
+                                title="Back to roles"
+                            >
+                                <ArrowLeft size={18} />
+                            </button>
                             <div className="min-w-0">
                                 <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">
-                                    {isHod
-                                        ? "Faculty Users & Permissions"
-                                        : `${activeSelectedRole.roleName.charAt(0).toUpperCase() + activeSelectedRole.roleName.slice(1)} Users`
-                                    }
+                                    {`${formatRoleName(activeSelectedRole.roleName)} Users & Permissions`}
                                 </h2>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                     {isHod
-                                        ? `${users.length} faculties in your department`
+                                        ? `${users.filter(u => u.role === activeSelectedRole.roleName).length} ${formatRoleName(activeSelectedRole.roleName).toLowerCase()}s in your department`
                                         : `${users.filter(user => user.role === activeSelectedRole.roleName).length} user${users.filter(user => user.role === activeSelectedRole.roleName).length !== 1 ? 's' : ''} with this role`
                                     }
                                 </p>
@@ -221,7 +238,7 @@ const RolesPermissions = () => {
                             <SearchBox
                                 searchTerm={searchTerm}
                                 setSearchTerm={setSearchTerm}
-                                placeholder={isHod ? "Search faculties..." : "Search users..."}
+                                placeholder={`Search ${formatRoleName(activeSelectedRole.roleName).toLowerCase()}s...`}
                             />
                         </div>
                     </div>
@@ -251,8 +268,8 @@ const RolesPermissions = () => {
                                 key: 'role',
                                 label: 'Role',
                                 render: (user) => (
-                                    <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-                                        {user.role}
+                                    <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getRoleBadgeColor(user.role)}`}>
+                                        {formatRoleName(user.role)}
                                     </div>
                                 )
                             },
@@ -363,7 +380,7 @@ const RolesPermissions = () => {
                                         {getRoleIcon(role.roleName)}
                                         <div className="flex-1 ml-3 min-w-0">
                                             <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
-                                                {role.roleName?.toLowerCase() === 'placement_officer' ? 'Placement Officer' : role.roleName?.toLowerCase() === 'superadmin' ? 'Super Admin' : role.roleName}
+                                                {formatRoleName(role.roleName)}
                                             </h3>
                                         </div>
                                         <span className="text-xl sm:text-2xl font-bold text-gray-800 shrink-0">

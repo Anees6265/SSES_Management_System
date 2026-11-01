@@ -68,8 +68,8 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    if (["faculty", "hod"].includes(role) && (!department || department.toLowerCase() === "general")) {
-      return res.status(400).json({ message: "Department is required for faculty/HOD" });
+    if (["faculty", "hod", "placement_officer", "coordinator"].includes(role) && (!department || department.toLowerCase() === "general")) {
+      return res.status(400).json({ message: "Department is required for department staff roles" });
     }
 
     const mobileRegex = /^[6-9]\d{9}$/;
@@ -87,9 +87,9 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "Only institutional emails (@ssism.org) are allowed." });
     }
 
-    const allowedRoles = ["admin", "superadmin", "faculty", "hod", "placement_officer"];
+    const allowedRoles = ["admin", "superadmin", "faculty", "hod", "placement_officer", "coordinator"];
     if (!allowedRoles.includes(role)) {
-      return res.status(400).json({ message: "Invalid role. Only admin, superadmin, faculty, HOD, and Placement Officer are allowed." });
+      return res.status(400).json({ message: "Invalid role. Only admin, superadmin, faculty, HOD, Placement Officer, and Coordinator are allowed." });
     }
 
     // Privilege Protection:
@@ -153,7 +153,7 @@ exports.createUser = async (req, res) => {
       if (deptDoc) {
         departmentId = deptDoc._id;
         resolvedDepartment = deptDoc.name;
-      } else if (["faculty", "hod", "placement_officer"].includes(role)) {
+      } else if (["faculty", "hod", "placement_officer", "coordinator"].includes(role)) {
         return res.status(400).json({ message: `Selected department "${department}" does not exist or is inactive.` });
       }
     }
@@ -523,7 +523,7 @@ exports.updateUserFields = async (req, res) => {
     if (["superadmin", "admin"].includes(targetRole)) {
       updateData.department = "SSISM";
       updateData.departmentId = null;
-    } else if (["faculty", "hod", "placement_officer"].includes(targetRole)) {
+    } else if (["faculty", "hod", "placement_officer", "coordinator"].includes(targetRole)) {
       if (targetDept) {
         const deptDoc = await Department.findOne({
           isActive: true,
@@ -875,7 +875,7 @@ exports.getAllUsers = async (req, res) => {
       }
 
       filter = {
-        role: "faculty",
+        role: { $ne: "superadmin" },
         ...(deptConditions.length > 0 ? { $or: deptConditions } : { department: deptName })
       };
     }
@@ -924,6 +924,9 @@ exports.getAllPossiblePermissions = async (req, res) => {
         permissions: {
           superadmin: hodBoundList,
           hod: hodBoundList,
+          faculty: hodBoundList,
+          placement_officer: hodBoundList,
+          coordinator: hodBoundList,
         },
       });
     }
@@ -956,10 +959,10 @@ exports.getUserPermissions = async (req, res) => {
         (hodDeptId && targetUser.departmentId && String(hodDeptId) === String(targetUser.departmentId)) ||
         (hodDept && targetDept && hodDept === targetDept);
 
-      if (!isSameDept || targetUser.role !== "faculty") {
+      if (!isSameDept || targetUser.role === "superadmin") {
         return res.status(403).json({
           success: false,
-          message: "You can only view permissions for faculty members within your department."
+          message: "You can only view permissions for staff members within your department."
         });
       }
     }
@@ -1000,10 +1003,10 @@ exports.updateUserPermissions = async (req, res) => {
         (hodDeptId && targetUser.departmentId && String(hodDeptId) === String(targetUser.departmentId)) ||
         (hodDept && targetDept && hodDept === targetDept);
 
-      if (!isSameDept || targetUser.role !== "faculty") {
+      if (!isSameDept || ["superadmin", "admin"].includes(targetUser.role)) {
         return res.status(403).json({
           success: false,
-          message: "You can only manage permissions for faculty members within your department."
+          message: "You can only manage permissions for staff members within your department."
         });
       }
 

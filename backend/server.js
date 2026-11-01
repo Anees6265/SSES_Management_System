@@ -7,8 +7,8 @@ const setupSwagger = require("./src/swagger/swagger");
 
 const app = express();
 
-// Trust reverse proxies (Nginx, AWS ALB, Cloudflare, Render, etc.) to accurately detect client IP
-app.set("trust proxy", true);
+// Trust reverse proxies (Nginx, AWS ALB, Cloudflare, Render, etc.) to accurately detect client IP (1 hop)
+app.set("trust proxy", 1);
 
 // Security HTTP headers
 app.use(

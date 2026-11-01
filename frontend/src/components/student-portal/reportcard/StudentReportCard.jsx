@@ -352,15 +352,6 @@ export default function StudentReportCard() {
     return 0;
   }, [allStudentTasks, subjectPerformanceSection, softSkillsSection, interviewSection, dynamicSections]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center pt-24 space-y-3">
-        <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-slate-400">Loading student report card...</p>
-      </div>
-    );
-  }
-
   // Academic SGPA & CGPA
   const sgpaList = useMemo(() => {
     const list = rc?.academicPerformance?.yearWiseSGPA;
@@ -462,6 +453,15 @@ export default function StudentReportCard() {
     if (cgpaNumber > 0) return "Pass Class";
     return "Not Evaluated";
   }, [cgpaNumber]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center pt-24 space-y-3">
+        <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-slate-400">Loading student report card...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-10">

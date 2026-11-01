@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
     User, GraduationCap, Lock, ShieldCheck, CheckCircle2,
@@ -174,6 +175,7 @@ const InfoGrid = ({ fields }) => (
 
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function StudentProfile() {
+    const navigate = useNavigate();
     const [pwdModal, setPwdModal] = useState(false);
     const [mobileTab, setMobileTab] = useState("overview"); // "overview" | "personal" | "academic"
     const fileRef = useRef(null);
@@ -185,6 +187,14 @@ export default function StudentProfile() {
     const raw = data?.data || {};
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST";
+
+    const permissions = Array.isArray(raw.permissions) && raw.permissions.length > 0 
+        ? raw.permissions 
+        : (raw.permissionDetails?.status ? [raw.permissionDetails] : []);
+    const totalLeaves = raw.leaveStats?.total ?? permissions.length;
+    const approvedLeaves = raw.leaveStats?.approved ?? permissions.filter(p => (p.status || "").toLowerCase() === "approved").length;
+    const rejectedLeaves = raw.leaveStats?.rejected ?? permissions.filter(p => (p.status || "").toLowerCase() === "rejected").length;
+    const pendingLeaves = raw.leaveStats?.pending ?? permissions.filter(p => (p.status || "").toLowerCase() === "pending").length;
 
     const daysInSubLevel = useMemo(() => {
         if (!raw) return null;
@@ -340,6 +350,17 @@ export default function StudentProfile() {
                                     <span className="text-[11px] sm:text-xs font-bold text-blue-700 truncate">FTP Track</span>
                                 </div>
                             )}
+
+                            <div 
+                                onClick={() => navigate("/student/permissions")}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-100 transition"
+                                title="View Leave Requests"
+                            >
+                                <Calendar size={13} className="text-amber-600 shrink-0" />
+                                <span className="text-[11px] sm:text-xs font-bold truncate">
+                                    Leaves: {totalLeaves} ({approvedLeaves} Approved, {rejectedLeaves} Rejected)
+                                </span>
+                            </div>
                         </div>
 
                         {/* Progress Bar */}
@@ -477,6 +498,37 @@ export default function StudentProfile() {
                     </div>
                 </div>
 
+                {/* Leave Requests Overview Snapshot */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                        <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                            <Calendar size={15} className="text-amber-500" />
+                            <span>Leave Requests</span>
+                        </h4>
+                        <span className="text-[11px] font-black text-gray-700 bg-gray-50 px-2.5 py-0.5 rounded-full border border-gray-200">
+                            Total: {totalLeaves} Applied
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5 text-xs text-center">
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <span className="text-[10px] text-emerald-600 block font-bold uppercase">Approved</span>
+                            <span className="font-extrabold text-emerald-700 text-sm">{approvedLeaves}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-100">
+                            <span className="text-[10px] text-rose-600 block font-bold uppercase">Rejected</span>
+                            <span className="font-extrabold text-rose-700 text-sm">{rejectedLeaves}</span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate("/student/permissions")}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                    >
+                        <span>View / Apply Leave Requests</span>
+                        <Calendar size={13} />
+                    </button>
+                </div>
+
                 {/* Prior Academic Record Snapshot */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-2.5">
                     <h4 className="text-xs font-bold text-gray-800 pb-2 border-b border-gray-100 flex items-center gap-1.5">
@@ -590,6 +642,44 @@ export default function StudentProfile() {
                         <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Academic Details</h3>
                     </div>
                     <InfoGrid fields={academicFields} />
+                </div>
+
+                {/* Leave Requests Overview Card */}
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-amber-50/20">
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                <Calendar size={14} />
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Leave Requests Overview</h3>
+                                <p className="text-[11px] text-gray-400">Record of all permissions and leave applications</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-gray-600">
+                                Total Applied: <strong className="text-gray-900">{totalLeaves}</strong>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/student/permissions")}
+                                className="px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
+                            >
+                                <span>View Permissions</span>
+                                <Calendar size={13} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="p-5 grid grid-cols-2 gap-4 text-center">
+                        <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                            <span className="text-xs text-emerald-600 block font-bold uppercase tracking-wider">Approved Leaves</span>
+                            <span className="font-black text-emerald-700 text-2xl mt-1 block">{approvedLeaves}</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100">
+                            <span className="text-xs text-rose-600 block font-bold uppercase tracking-wider">Rejected Leaves</span>
+                            <span className="font-black text-rose-700 text-2xl mt-1 block">{rejectedLeaves}</span>
+                        </div>
+                    </div>
                 </div>
 
             </div>

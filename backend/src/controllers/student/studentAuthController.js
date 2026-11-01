@@ -131,6 +131,7 @@ exports.getMyProfile = async (req, res) => {
       .populate("syllabusVersionId", "version title")
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
+      .populate("permissions.assignedFacultyId", "name role position email")
       .select("-password");
 
     if (!student) return res.status(404).json({ message: "Student not found" });
@@ -140,10 +141,19 @@ exports.getMyProfile = async (req, res) => {
     const placement = await StudentPlacement.findOne({ studentId: req.user.id })
       .select("readinessStatus placedInfo PlacementinterviewRecord resumeURL");
 
+    const leaveRequests = Array.isArray(student.permissions) ? student.permissions : (student.permissionDetails?.status ? [student.permissionDetails] : []);
+    const leaveStats = {
+      total: leaveRequests.length,
+      approved: leaveRequests.filter(p => (p.status || "").toLowerCase() === "approved").length,
+      rejected: leaveRequests.filter(p => (p.status || "").toLowerCase() === "rejected").length,
+      pending: leaveRequests.filter(p => (p.status || "").toLowerCase() === "pending").length,
+    };
+
     return res.status(200).json({
       data: {
         ...student.toObject(),
         placement: placement || null,
+        leaveStats,
       },
     });
   } catch (error) {

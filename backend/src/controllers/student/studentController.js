@@ -1096,7 +1096,8 @@ exports.getStudentById = async (req, res) => {
       .populate("sessionId", "name startDate endDate status isActive")
       .populate("syllabusVersionId", "version title")
       .populate("currentLevelId", "name order")
-      .populate("currentSubLevelId", "name order");
+      .populate("currentSubLevelId", "name order")
+      .populate("permissions.assignedFacultyId", "name role position email");
 
     if (!student) return res.status(404).json({ message: "Student not found" });
 
@@ -1139,11 +1140,20 @@ exports.getStudentById = async (req, res) => {
       });
     }
 
+    const permissionHistory = Array.isArray(student.permissions) ? student.permissions : (student.permissionDetails?.status ? [student.permissionDetails] : []);
+    const leaveStats = {
+      total: permissionHistory.length,
+      approved: permissionHistory.filter(p => (p.status || "").toLowerCase() === "approved").length,
+      rejected: permissionHistory.filter(p => (p.status || "").toLowerCase() === "rejected").length,
+      pending: permissionHistory.filter(p => (p.status || "").toLowerCase() === "pending").length,
+    };
+
     return res.status(200).json({
       data: {
         ...studentObj,
         placement: placement || null,
         overallProgress: { total: overallTotal, completed: overallCompleted, percentage: overallPct },
+        leaveStats,
       }
     });
   } catch (error) {

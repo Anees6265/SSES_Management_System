@@ -379,8 +379,15 @@ export default function StudentProfile() {
   };
 
   const overallAttendanceRate = calculateOverallAttendance();
-  const hasPermission = !!(studentData?.permissionDetails && Object.keys(studentData.permissionDetails).length > 0);
-  const permissionStatus = studentData?.permissionDetails?.status || (hasPermission ? "pending" : "No Request");
+  const permissionsList = Array.isArray(studentData?.permissions) && studentData.permissions.length > 0 
+    ? studentData.permissions 
+    : (studentData?.permissionDetails?.status ? [studentData.permissionDetails] : []);
+  const totalLeaves = studentData?.leaveStats?.total ?? permissionsList.length;
+  const approvedLeaves = studentData?.leaveStats?.approved ?? permissionsList.filter(p => (p.status || "").toLowerCase() === "approved").length;
+  const rejectedLeaves = studentData?.leaveStats?.rejected ?? permissionsList.filter(p => (p.status || "").toLowerCase() === "rejected").length;
+  const pendingLeaves = studentData?.leaveStats?.pending ?? permissionsList.filter(p => (p.status || "").toLowerCase() === "pending").length;
+  const hasPermission = totalLeaves > 0;
+  const permissionStatus = studentData?.permissionDetails?.status || (pendingLeaves > 0 ? "pending" : (totalLeaves > 0 ? "Resolved" : "No Request"));
   const hasPlacement = !!(studentData?.status === "Placed");
   const placementStatus = hasPlacement ? "Placed" : "Not Placed";
   const isDummy = (studentData?.status || "").toLowerCase() === "dummy";
@@ -714,11 +721,10 @@ export default function StudentProfile() {
           />
           <ProfessionalMetricCard
             icon={permission}
-            title="Permission Status"
-            // value={studentData.permissionStatus || "None"}
-            value={permissionStatus || "None"}
+            title="Leave Requests"
+            value={`${totalLeaves} Applied`}
             bgColor="#00B8D9"
-            description="Current requests"
+            description={`${approvedLeaves} Approved · ${rejectedLeaves} Rejected`}
             onClick={() => setPermissionModalOpen(true)}
           />
           <ProfessionalMetricCard
@@ -896,12 +902,27 @@ export default function StudentProfile() {
           >
             <div className="space-y-4">
               <DetailRow
+                icon={permission}
+                label="Total Applied"
+                value={`${totalLeaves} Requests`}
+              />
+              <div className="grid grid-cols-2 gap-2 text-center text-xs py-1">
+                <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <span className="text-[10px] text-emerald-600 block font-bold uppercase">Approved</span>
+                  <span className="font-extrabold text-emerald-700 text-sm">{approvedLeaves}</span>
+                </div>
+                <div className="p-2 rounded-xl bg-rose-50 border border-rose-100">
+                  <span className="text-[10px] text-rose-600 block font-bold uppercase">Rejected</span>
+                  <span className="font-extrabold text-rose-700 text-sm">{rejectedLeaves}</span>
+                </div>
+              </div>
+              <DetailRow
                 icon={date}
                 label="Last Request"
-                value={studentData?.permissionDetails?.uploadDate
+                value={studentData?.permissionDetails?.uploadDate || permissionsList[0]?.uploadDate
                   ? (() => {
                     try {
-                      const date = new Date(studentData.permissionDetails.uploadDate);
+                      const date = new Date(studentData?.permissionDetails?.uploadDate || permissionsList[0]?.uploadDate);
                       return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Invalid date';
                     } catch {
                       return 'Invalid date';
@@ -911,8 +932,8 @@ export default function StudentProfile() {
               />
               <DetailRow
                 icon={permission}
-                label="Reason"
-                value={studentData?.permissionDetails?.remark || "Don't have any reason"}
+                label="Latest Reason"
+                value={studentData?.permissionDetails?.remark || permissionsList[0]?.reason || "No reason specified"}
               />
               <DetailRow
                 icon={permission}

@@ -1897,8 +1897,14 @@ const StudentProfilePage = () => {
     const documents = Array.isArray(raw.documents) ? raw.documents : [];
     const regularDocs = documents.filter(doc => !doc.isExtra);
     const extraDocs = documents.filter(doc => doc.isExtra);
-    const permissionHistory = Array.isArray(raw.permissions) ? raw.permissions : [];
-    const pendingPermissions = permissionHistory.filter(item => item.status === "pending").length;
+    const permissionHistory = Array.isArray(raw.permissions) && raw.permissions.length > 0 
+        ? raw.permissions 
+        : (raw.permissionDetails?.status ? [raw.permissionDetails] : []);
+    const totalLeaves = raw.leaveStats?.total ?? permissionHistory.length;
+    const approvedLeaves = raw.leaveStats?.approved ?? permissionHistory.filter(item => (item.status || "").toLowerCase() === "approved").length;
+    const rejectedLeaves = raw.leaveStats?.rejected ?? permissionHistory.filter(item => (item.status || "").toLowerCase() === "rejected").length;
+    const pendingPermissions = raw.leaveStats?.pending ?? permissionHistory.filter(item => (item.status || "").toLowerCase() === "pending").length;
+    const pendingLeaves = pendingPermissions;
 
     const breadcrumbs = useMemo(() => {
         if (origin === "department" || stateDeptId || stateDeptName) {
@@ -2272,6 +2278,83 @@ const StudentProfilePage = () => {
             >
                 <DocumentUploadPanel type="extra" loading={uploadingExtraDocument} onUpload={handleExtraDocumentUpload} />
                 {extraDocs.map(doc => <DocumentRow key={doc._id || doc.fileURL} doc={doc} />)}
+            </ProfileSectionModal>
+            <ProfileSectionModal
+                isOpen={sectionModal === "leavePermissions"}
+                onClose={() => setSectionModal(null)}
+                title="Leave Permission Requests"
+                subtitle={name}
+                countLabel={`${totalLeaves} Total (${approvedLeaves} Approved, ${rejectedLeaves} Rejected)`}
+            >
+                {/* 2-Column Quick Metrics: Approved & Rejected */}
+                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 mb-3 text-center">
+                    <div className="bg-white p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                        <span className="text-[10px] font-bold text-emerald-600 block uppercase">Approved</span>
+                        <span className="text-base font-black text-emerald-700">{approvedLeaves}</span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-rose-200/80 shadow-2xs">
+                        <span className="text-[10px] font-bold text-rose-600 block uppercase">Rejected</span>
+                        <span className="text-base font-black text-rose-700">{rejectedLeaves}</span>
+                    </div>
+                </div>
+
+                {/* List of Leave Requests */}
+                {permissionHistory.length > 0 ? (
+                    <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                        {permissionHistory.map((perm, idx) => {
+                            const status = (perm.status || "pending").toLowerCase();
+                            const statusBadge =
+                                status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                "bg-amber-50 text-amber-700 border-amber-200";
+
+                            const from = perm.fromDate ? new Date(perm.fromDate).toLocaleDateString() : "—";
+                            const to = perm.toDate ? new Date(perm.toDate).toLocaleDateString() : "—";
+                            const appliedOn = perm.uploadDate ? new Date(perm.uploadDate).toLocaleDateString() : "—";
+
+                            return (
+                                <div key={perm._id || idx} className="bg-white border border-slate-200/80 rounded-2xl p-3.5 space-y-2 shadow-2xs">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${statusBadge}`}>
+                                            {status}
+                                        </span>
+                                        <span className="text-[11px] font-semibold text-slate-400">
+                                            Applied: {appliedOn}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-800">
+                                        Reason: <span className="font-normal text-slate-600">{perm.reason || perm.remark || "Leave request submitted"}</span>
+                                    </p>
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100 flex-wrap gap-1">
+                                        <span>Duration: <strong className="text-slate-700">{from} → {to}</strong></span>
+                                        {perm.approvedBy && (
+                                            <span className="text-slate-600">Resolved by: <strong className="text-slate-800">{perm.approvedBy}</strong></span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="py-8 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                        No leave permission requests recorded for this student.
+                    </div>
+                )}
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400 font-medium">Total: {totalLeaves} Requests</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSectionModal(null);
+                            navigate(isDummy ? "/student-permission" : "/leave-requests");
+                        }}
+                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                    >
+                        <span>Manage Requests</span>
+                        <MdArrowForward size={14} />
+                    </button>
+                </div>
             </ProfileSectionModal>
             <NotificationDrawer
                 isOpen={showNotifications}
@@ -2863,7 +2946,7 @@ const StudentProfilePage = () => {
 
 
                         {/* STAT CARDS ROW */}
-                        <div className={`${mobileTab === "overview" || mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-5`}>
+                        <div className={`${mobileTab === "overview" || mobileTab === "academics" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5`}>
                             {/* Card 1: LEVEL HISTORY */}
                             <div
                                 onClick={() => setHistoryDrawerOpen(true)}
@@ -2876,8 +2959,8 @@ const StudentProfilePage = () => {
                                     </h3>
                                     <button
                                         onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPromoteModal(true);
+                                             e.stopPropagation();
+                                             setPromoteModal(true);
                                         }}
                                         className="self-start sm:self-auto bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full transition"
                                     >
@@ -2904,17 +2987,33 @@ const StudentProfilePage = () => {
                                 <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Student Report card</p>
                             </div>
 
-                            {/* Card 3: ATTENDANCE RATE */}
-                            {/* <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ATTENDANCE RATE</p>
+                            {/* Card 3: LEAVE REQUESTS */}
+                            <div
+                                onClick={() => setSectionModal("leavePermissions")}
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1.5 cursor-pointer hover:border-orange-200 transition group"
+                            >
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-base sm:text-xl font-black text-slate-900">{raw.attendanceRate ? `${raw.attendanceRate}%` : "100%"}</h3>
-                                    <span className="bg-orange-50 text-orange-600 border border-orange-100 text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2.5 py-0.5 rounded-full flex items-center gap-0.5 sm:gap-1">
-                                        <MdCheckCircle size={12} /> Active
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-orange-500 transition">LEAVE REQUESTS</p>
+                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                                        <MdCalendarToday size={15} />
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline justify-between">
+                                    <h3 className="text-base sm:text-xl font-black text-slate-900 group-hover:text-orange-500 transition">
+                                        {totalLeaves} <span className="text-xs font-semibold text-slate-400">Total Requests</span>
+                                    </h3>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-bold pt-0.5 flex-wrap">
+                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        {approvedLeaves} Approved
+                                    </span>
+                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        {rejectedLeaves} Rejected
                                     </span>
                                 </div>
-                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 truncate">Monthly attendance</p>
-                            </div> */}
+                            </div>
 
                             {/* Card 4: OVERALL PERFORMANCE */}
                             <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-3.5 sm:p-5 shadow-sm space-y-1">
@@ -3381,23 +3480,36 @@ const StudentProfilePage = () => {
                             )}
 
                             <div
-                                onClick={() => navigate(isDummy ? "/student-permission" : "/leave-requests")}
-                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
+                                onClick={() => setSectionModal("leavePermissions")}
+                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex flex-col justify-between gap-2.5 group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold">
-                                        <MdCalendarToday size={20} />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold shrink-0">
+                                            <MdCalendarToday size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">
+                                                {isDummy ? "Dummy / Permissions" : "Leave Permissions"}
+                                            </p>
+                                            <p className="text-[11px] font-semibold text-slate-500">
+                                                Total: <strong className="text-slate-800">{totalLeaves} applied</strong>
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">
-                                            {isDummy ? "Dummy / Permissions" : "Leave Permissions"}
-                                        </p>
-                                        <p className="text-[11px] font-semibold text-slate-400">
-                                            {isDummy ? "View Permission Page" : `${pendingPermissions} pending requests`}
-                                        </p>
-                                    </div>
+                                    <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition shrink-0" />
                                 </div>
-                                <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
+
+                                <div className="flex items-center gap-2 text-[10px] font-bold flex-wrap pt-1 border-t border-slate-100">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        {approvedLeaves} Approved
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        {rejectedLeaves} Rejected
+                                    </span>
+                                </div>
                             </div>
                         </div>
 

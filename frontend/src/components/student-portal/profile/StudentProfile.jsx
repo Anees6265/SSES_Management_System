@@ -252,6 +252,7 @@ export default function StudentProfile() {
         { label: "First Name", value: raw.firstName },
         { label: "Last Name", value: raw.lastName },
         { label: "Father Name", value: raw.fatherName },
+        { label: "Mother Name", value: raw.motherName },
         { label: "Date of Birth", value: formatDate(raw.dob) },
         { label: "Email Address", value: raw.email, fullWidth: true, isLink: true, linkType: "email" },
         { label: "Student Mobile", value: raw.studentMobile, isLink: true, linkType: "tel" },

@@ -536,6 +536,12 @@ const StudentDetailTable = () => {
       render: (row) => toTitle(row.fatherName || ""),
     },
     {
+      key: "motherName",
+      label: "Mother's Name",
+      accessorFn: (row) => row.motherName || "",
+      render: (row) => toTitle(row.motherName || ""),
+    },
+    {
       key: "studentMobile",
       label: "Mobile",
       align: "center",
@@ -1019,6 +1025,15 @@ const StudentDetailTable = () => {
                         <span className="text-gray-400 font-medium">Father's Name:</span>
                         <span className="font-semibold text-gray-700 truncate">
                           {toTitle(row.fatherName)}
+                        </span>
+                      </div>
+                    )}
+
+                    {row.motherName && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-gray-400 font-medium">Mother's Name:</span>
+                        <span className="font-semibold text-gray-700 truncate">
+                          {toTitle(row.motherName)}
                         </span>
                       </div>
                     )}

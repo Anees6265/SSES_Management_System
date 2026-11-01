@@ -502,6 +502,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 <InfoItem icon={contactIcon} label="Contact Number" value={studentData?.studentMobile} />
                 <InfoItem icon={courseIcon} label="Course" value={studentData?.course} />
                 <InfoItem icon={fatherIcon} label="Father's Name" value={studentData?.fatherName} />
+                <InfoItem icon={profileIcon} label="Mother's Name" value={studentData?.motherName} />
                 <InfoItem icon={addressIcon} label="Track" value={studentData?.track} />
               </View>
             </View>
@@ -529,6 +530,7 @@ const StudentReportPDF = ({ studentData = {}, reportCardData = {} }) => {
                 { label: "Student Name", value: `${studentData?.firstName || ""} ${studentData?.lastName || ""}`.trim() || "N/A" },
                 { label: "Enrollment No.", value: studentData?.enrollmentNo || studentData?.admissionNo || "N/A" },
                 { label: "Father's Name", value: studentData?.fatherName || "N/A" },
+                { label: "Mother's Name", value: studentData?.motherName || "N/A" },
                 { label: "Department", value: studentData?.subDepartmentId?.departmentId?.name || "ITEG" },
                 { label: "Course", value: studentData?.course || "N/A" },
                 { label: "Session / Batch", value: `${studentData?.sessionId?.name || "AY 2025-26"}${studentData?.batchYear || reportCardData?.batchYear ? ` (${studentData?.batchYear || reportCardData?.batchYear})` : ""}` },

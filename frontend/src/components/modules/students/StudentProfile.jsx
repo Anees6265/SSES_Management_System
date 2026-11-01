@@ -1533,6 +1533,7 @@ const ReportCardModal = ({ isOpen, onClose, studentData, currentLevel, daysInSub
             <h5 className="font-semibold text-gray-700 mb-4">👤 Personal Information</h5>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div><span className="font-medium text-gray-600">Father's Name:</span> <br />{studentData.fatherName || 'N/A'}</div>
+              <div><span className="font-medium text-gray-600">Mother's Name:</span> <br />{studentData.motherName || 'N/A'}</div>
               <div><span className="font-medium text-gray-600">Father Contact:</span> <br />{studentData.fatherContactNumber || studentData.parentMobile || 'N/A'}</div>
               <div><span className="font-medium text-gray-600">Date of Birth:</span> <br />{studentData.dobString || (studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toLocaleDateString('en-GB') : (studentData.dob ? new Date(studentData.dob).toLocaleDateString('en-GB') : 'N/A'))}</div>
               <div><span className="font-medium text-gray-600">Gender:</span> <br />{studentData.gender || 'N/A'}</div>

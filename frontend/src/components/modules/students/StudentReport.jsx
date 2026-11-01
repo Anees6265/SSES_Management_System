@@ -689,6 +689,11 @@ export default function StudentReport() {
                         Father: <strong className="text-slate-800">{studentData.fatherName}</strong>
                       </span>
                     )}
+                    {studentData.motherName && (
+                      <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100">
+                        Mother: <strong className="text-slate-800">{studentData.motherName}</strong>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

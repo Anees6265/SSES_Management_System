@@ -3,6 +3,7 @@ import Header from "../../shared/sidebar/Header";
 import TabsCommon from "../../shared/table/TabsCommon";
 import SearchBox from "../../shared/search-export/SearchBox";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
@@ -28,6 +29,7 @@ import {
   Calendar,
   Activity,
   Layers,
+  Filter,
 } from "lucide-react";
 import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 
@@ -97,6 +99,58 @@ export default function ActivityLogs() {
     });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [logUsersData, allUsersData]);
+
+  // Dropdown options matching software design
+  const userOptions = useMemo(
+    () => [
+      { value: "ALL", label: "All Users / Sources" },
+      ...availableUsers.map((u) => ({
+        value: u.name,
+        label: `${u.name}${u.role ? ` (${u.role})` : ""}`,
+      })),
+    ],
+    [availableUsers]
+  );
+
+  const roleOptions = [
+    { value: "ALL", label: "All Roles" },
+    { value: "superadmin", label: "Super Admin" },
+    { value: "admin", label: "Admin" },
+    { value: "hod", label: "HOD" },
+    { value: "faculty", label: "Faculty" },
+    { value: "student", label: "Student" },
+  ];
+
+  const actionOptions = [
+    { value: "ALL", label: "All Actions" },
+    { value: "LOGIN", label: "LOGIN" },
+    { value: "LOGOUT", label: "LOGOUT" },
+    { value: "CREATE", label: "CREATE / ADD" },
+    { value: "UPDATE", label: "UPDATE / EDIT" },
+    { value: "DELETE", label: "DELETE / REMOVE" },
+    { value: "SECURITY_ALERT", label: "🚨 SECURITY ALERT" },
+    { value: "EXPORT", label: "EXPORT" },
+  ];
+
+  const moduleOptions = [
+    { value: "ALL", label: "All Modules" },
+    { value: "Auth", label: "Auth & Sessions" },
+    { value: "Students", label: "Students & Admissions" },
+    { value: "Task Management", label: "Task Management" },
+    { value: "Curriculum", label: "Curriculum & Syllabus" },
+    { value: "Report Cards", label: "Report Cards" },
+    { value: "User Management", label: "Users & Roles" },
+    { value: "Placements", label: "Placements" },
+    { value: "System", label: "System & Hierarchy" },
+  ];
+
+  const dateOptions = [
+    { value: "", label: "All Time" },
+    { value: "today", label: "Today" },
+    { value: "yesterday", label: "Yesterday" },
+    { value: "7days", label: "Last 7 Days" },
+    { value: "30days", label: "Last 30 Days" },
+  ];
 
   // Fetch Activity Logs
   const {
@@ -329,50 +383,50 @@ export default function ActivityLogs() {
         {/* ── TOP KPI SUMMARY CARDS (Consistent App Card Theme) ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {/* Card 1: Activities Today */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition hover:shadow-sm">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-orange-200 hover:shadow-xs">
             <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Activities Today
               </p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {stats.totalToday.toLocaleString()}
               </h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Logged actions</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Logged actions</p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600">
-              <Activity size={20} />
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 shadow-2xs">
+              <Activity size={22} />
             </div>
           </div>
 
           {/* Card 2: Logins Today */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition hover:shadow-sm">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-purple-200 hover:shadow-xs">
             <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Logins Today
               </p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {stats.loginsToday.toLocaleString()}
               </h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Active sessions</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Active sessions</p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
-              <LogIn size={20} />
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-2xs">
+              <LogIn size={22} />
             </div>
           </div>
 
           {/* Card 3: Data Changes */}
-          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition hover:shadow-sm">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-blue-200 hover:shadow-xs">
             <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Data Changes
               </p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
                 {stats.modificationsToday.toLocaleString()}
               </h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">Create, Update & Delete</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Create, Update & Delete</p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
-              <Edit size={20} />
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
+              <Edit size={22} />
             </div>
           </div>
 
@@ -382,12 +436,12 @@ export default function ActivityLogs() {
               setActiveTab(threatOnly ? "All Logs" : "Security Threats (Alerts)");
               setPage(1);
             }}
-            className={`rounded-xl p-4 sm:p-5 border transition cursor-pointer shadow-2xs flex items-center justify-between ${
+            className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs flex items-center justify-between ${
               threatOnly
-                ? "bg-rose-500 text-white border-rose-600 ring-2 ring-rose-400"
+                ? "bg-gradient-to-br from-rose-500 to-rose-600 text-white border-rose-600 ring-2 ring-rose-400 shadow-sm"
                 : stats.blockedThreatsToday > 0
                 ? "bg-rose-50/70 border-rose-200 text-rose-900 hover:bg-rose-100/60"
-                : "bg-white border-slate-200/80 text-gray-900 hover:shadow-sm"
+                : "bg-white border-slate-200/90 text-slate-900 hover:border-rose-200 hover:shadow-xs"
             }`}
             title="Click to toggle Security Threats view"
           >
@@ -405,14 +459,14 @@ export default function ActivityLogs() {
                 )}
               </div>
               <h3
-                className={`text-2xl sm:text-3xl font-extrabold mt-1 ${
+                className={`text-2xl sm:text-3xl font-black mt-1 ${
                   threatOnly ? "text-white" : "text-rose-700"
                 }`}
               >
                 {stats.blockedThreatsToday.toLocaleString()}
               </h3>
               <p
-                className={`text-[11px] mt-0.5 ${
+                className={`text-[11px] mt-0.5 font-medium ${
                   threatOnly ? "text-rose-100" : "text-rose-600/80"
                 }`}
               >
@@ -420,131 +474,129 @@ export default function ActivityLogs() {
               </p>
             </div>
             <div
-              className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
+              className={`w-12 h-12 rounded-2xl border flex items-center justify-center shadow-2xs ${
                 threatOnly
-                  ? "bg-rose-600 border-rose-400 text-white"
+                  ? "bg-rose-600/80 border-rose-400 text-white"
                   : "bg-rose-100 border-rose-200 text-rose-600"
               }`}
             >
-              <ShieldAlert size={20} />
+              <ShieldAlert size={22} />
             </div>
           </div>
         </div>
 
-        {/* ── FILTER CONTROLS BAR ── */}
-        <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-gray-200 shadow-2xs w-full">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* ── FILTER CONTROLS BAR (Software Theme with SelectDropdown) ── */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs w-full space-y-3.5">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200/60 flex items-center justify-center text-orange-600">
+                <Filter size={14} />
+              </span>
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  Filter Activity Logs
+                </h4>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Refine logs by user identity, role, action, module, or time period
+                </p>
+              </div>
+            </div>
+            {activeChips.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer flex items-center gap-1 transition"
+              >
+                <RotateCcw size={12} />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* Filter by User / Source */}
             <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                 User / Source
               </label>
-              <select
+              <SelectDropdown
                 value={userNameFilter}
-                onChange={(e) => {
-                  setUserNameFilter(e.target.value);
+                onChange={(val) => {
+                  setUserNameFilter(val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-gray-700 transition"
-              >
-                <option value="ALL">All Users / Sources</option>
-                {availableUsers.map((u) => (
-                  <option key={u.name} value={u.name}>
-                    {u.name} {u.role ? `(${u.role})` : ""}
-                  </option>
-                ))}
-              </select>
+                options={userOptions}
+                placeholder="All Users / Sources"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+              />
             </div>
 
             {/* Filter by Role */}
             <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                 Role
               </label>
-              <select
+              <SelectDropdown
                 value={roleFilter}
-                onChange={(e) => {
-                  setRoleFilter(e.target.value);
+                onChange={(val) => {
+                  setRoleFilter(val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-gray-700 transition"
-              >
-                <option value="ALL">All Roles</option>
-                <option value="superadmin">Super Admin</option>
-                <option value="admin">Admin</option>
-                <option value="hod">HOD</option>
-                <option value="faculty">Faculty</option>
-                <option value="student">Student</option>
-              </select>
+                options={roleOptions}
+                placeholder="All Roles"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+              />
             </div>
 
             {/* Filter by Action */}
             <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                 Action Type
               </label>
-              <select
+              <SelectDropdown
                 value={actionFilter}
-                onChange={(e) => {
-                  setActionFilter(e.target.value);
+                onChange={(val) => {
+                  setActionFilter(val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-gray-700 transition"
-              >
-                <option value="ALL">All Actions</option>
-                <option value="LOGIN">LOGIN</option>
-                <option value="LOGOUT">LOGOUT</option>
-                <option value="CREATE">CREATE / ADD</option>
-                <option value="UPDATE">UPDATE / EDIT</option>
-                <option value="DELETE">DELETE / REMOVE</option>
-                <option value="SECURITY_ALERT">🚨 SECURITY ALERT</option>
-              </select>
+                options={actionOptions}
+                placeholder="All Actions"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+              />
             </div>
 
             {/* Filter by Module */}
             <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                 Module
               </label>
-              <select
+              <SelectDropdown
                 value={moduleFilter}
-                onChange={(e) => {
-                  setModuleFilter(e.target.value);
+                onChange={(val) => {
+                  setModuleFilter(val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-gray-700 transition"
-              >
-                <option value="ALL">All Modules</option>
-                <option value="Auth">Auth & Sessions</option>
-                <option value="Students">Students & Admissions</option>
-                <option value="Task Management">Task Management</option>
-                <option value="Curriculum">Curriculum & Syllabus</option>
-                <option value="Report Cards">Report Cards</option>
-                <option value="User Management">Users & Roles</option>
-                <option value="Placements">Placements</option>
-                <option value="System">System & Hierarchy</option>
-              </select>
+                options={moduleOptions}
+                placeholder="All Modules"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+              />
             </div>
 
             {/* Filter by Date */}
             <div>
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                 Date Range
               </label>
-              <select
+              <SelectDropdown
                 value={dateRange}
-                onChange={(e) => {
-                  setDateRange(e.target.value);
+                onChange={(val) => {
+                  setDateRange(val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-gray-700 transition"
-              >
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="7days">Last 7 Days</option>
-                <option value="30days">Last 30 Days</option>
-              </select>
+                options={dateOptions}
+                placeholder="All Time"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+              />
             </div>
           </div>
         </div>
@@ -559,7 +611,7 @@ export default function ActivityLogs() {
         )}
 
         {/* ── DATA TABLE CONTAINER (Full Width, Styled like CommonTable) ── */}
-        <div className="w-full bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+        <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           {isLoading ? (
             <div className="p-16 flex justify-center items-center">
               <Loader />
@@ -582,17 +634,17 @@ export default function ActivityLogs() {
               <div className="overflow-x-auto w-full">
                 <table className="w-full text-left text-xs sm:text-sm border-collapse">
                   <thead>
-                    <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4 whitespace-nowrap">Date & Time</th>
-                      <th className="py-3 px-4">User / Source</th>
-                      <th className="py-3 px-4">Action</th>
-                      <th className="py-3 px-4">Module</th>
-                      <th className="py-3 px-4 min-w-[240px]">Activity Description</th>
-                      <th className="py-3 px-4 whitespace-nowrap">IP & Device</th>
-                      <th className="py-3 px-4 text-center">Status</th>
+                    <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider">
+                      <th className="py-3.5 px-4 whitespace-nowrap">Date & Time</th>
+                      <th className="py-3.5 px-4">User / Source</th>
+                      <th className="py-3.5 px-4">Action</th>
+                      <th className="py-3.5 px-4">Module</th>
+                      <th className="py-3.5 px-4 min-w-[240px]">Activity Description</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">IP & Device</th>
+                      <th className="py-3.5 px-4 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-100">
                     {logs.map((log) => {
                       const isThreat = log.isSecurityAlert || log.action === "SECURITY_ALERT";
                       const formattedDate = new Date(log.createdAt).toLocaleString("en-IN", {
@@ -616,7 +668,7 @@ export default function ActivityLogs() {
                           title="Click to view full inspection"
                         >
                           {/* Date & Time */}
-                          <td className="py-3 px-4 whitespace-nowrap text-xs font-medium text-gray-600">
+                          <td className="py-3 px-4 whitespace-nowrap text-xs font-medium text-slate-600">
                             {formattedDate}
                           </td>
 
@@ -631,7 +683,7 @@ export default function ActivityLogs() {
                                     setPage(1);
                                   }
                                 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border transition ${
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0 border transition shadow-2xs ${
                                   isThreat
                                     ? "bg-rose-100 text-rose-800 border-rose-200"
                                     : "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200 hover:scale-105"
@@ -650,7 +702,7 @@ export default function ActivityLogs() {
                                       setPage(1);
                                     }
                                   }}
-                                  className="font-bold text-gray-900 hover:text-orange-600 transition truncate text-xs sm:text-sm max-w-[160px] text-left block cursor-pointer"
+                                  className="font-bold text-slate-900 hover:text-orange-600 transition truncate text-xs sm:text-sm max-w-[160px] text-left block cursor-pointer"
                                   title={log.userName ? `Click to filter logs for ${log.userName}` : undefined}
                                 >
                                   {log.userName}
@@ -660,13 +712,13 @@ export default function ActivityLogs() {
                                     className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${
                                       isThreat
                                         ? "bg-rose-100 text-rose-800 border-rose-200"
-                                        : "bg-gray-100 text-gray-600 border-gray-200"
+                                        : "bg-slate-100 text-slate-600 border-slate-200"
                                     }`}
                                   >
                                     {log.role || "unknown"}
                                   </span>
                                   {log.departmentName && (
-                                    <span className="text-[11px] text-gray-500 truncate">
+                                    <span className="text-[11px] text-slate-500 truncate">
                                       • {log.departmentName}
                                     </span>
                                   )}
@@ -679,7 +731,7 @@ export default function ActivityLogs() {
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                                ACTION_BADGES[log.action] || "bg-gray-100 text-gray-700 border-gray-200"
+                                ACTION_BADGES[log.action] || "bg-slate-100 text-slate-700 border-slate-200"
                               }`}
                             >
                               {log.action === "SECURITY_ALERT" && (
@@ -693,7 +745,7 @@ export default function ActivityLogs() {
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
                               className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
-                                MODULE_BADGES[log.module] || "bg-gray-100 text-gray-600 border-gray-200"
+                                MODULE_BADGES[log.module] || "bg-slate-100 text-slate-600 border-slate-200"
                               }`}
                             >
                               {log.module}
@@ -701,8 +753,8 @@ export default function ActivityLogs() {
                           </td>
 
                           {/* Activity Description */}
-                          <td className="py-3 px-4 text-gray-700">
-                            <p className="line-clamp-2 leading-snug text-xs sm:text-sm">
+                          <td className="py-3 px-4 text-slate-700">
+                            <p className="line-clamp-2 leading-snug text-xs sm:text-sm font-medium">
                               {log.description}
                             </p>
                             {log.threatType && (
@@ -715,10 +767,10 @@ export default function ActivityLogs() {
                           {/* IP & Device */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <div className="space-y-0.5">
-                              <span className="font-mono font-bold text-gray-800 text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200 inline-block">
+                              <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">
                                 {log.ipAddress || "—"}
                               </span>
-                              <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                              <p className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
                                 <Laptop size={11} />
                                 <span className="truncate max-w-[140px]" title={log.device}>
                                   {log.device || "Unknown Device"}
@@ -749,7 +801,7 @@ export default function ActivityLogs() {
               </div>
 
               {/* ── STANDARD APP PAGINATION ── */}
-              <div className="px-4 py-2 border-t border-gray-100 bg-white">
+              <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50">
                 <Pagination
                   totalItems={pagination.total}
                   currentPage={page}
@@ -766,9 +818,9 @@ export default function ActivityLogs() {
 
       {/* ── INSPECTION DETAIL MODAL ── */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
@@ -780,10 +832,10 @@ export default function ActivityLogs() {
                   {selectedLog.isSecurityAlert ? <ShieldAlert size={20} /> : <Info size={20} />}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">
+                  <h3 className="text-base font-extrabold text-slate-900">
                     Activity Inspection
                   </h3>
-                  <p className="text-xs text-gray-400 font-mono">
+                  <p className="text-[11px] text-slate-400 font-mono">
                     ID: {selectedLog._id}
                   </p>
                 </div>
@@ -791,59 +843,59 @@ export default function ActivityLogs() {
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-3 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">User</span>
-                  <p className="font-bold text-gray-800">{selectedLog.userName} ({selectedLog.role})</p>
-                  <p className="text-gray-500 text-xs">{selectedLog.userEmail || "No email"}</p>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">User</span>
+                  <p className="font-bold text-slate-800">{selectedLog.userName} ({selectedLog.role})</p>
+                  <p className="text-slate-500 text-xs font-medium">{selectedLog.userEmail || "No email"}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Timestamp</span>
-                  <p className="font-bold text-gray-800">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Timestamp</span>
+                  <p className="font-bold text-slate-800">
                     {new Date(selectedLog.createdAt).toLocaleString()}
                   </p>
-                  <p className="text-gray-500 text-xs">{selectedLog.departmentName || "No Department"}</p>
+                  <p className="text-slate-500 text-xs font-medium">{selectedLog.departmentName || "No Department"}</p>
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Activity Summary</span>
-                <p className="font-semibold text-gray-800 mt-0.5 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity Summary</span>
+                <p className="font-semibold text-slate-800 mt-0.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80 leading-relaxed">
                   {selectedLog.description}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Action & Module</span>
-                  <p className="font-bold text-gray-800 mt-0.5">{selectedLog.action} • {selectedLog.module}</p>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Action & Module</span>
+                  <p className="font-bold text-slate-800 mt-0.5">{selectedLog.action} • {selectedLog.module}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Status & Severity</span>
-                  <p className="font-bold text-gray-800 mt-0.5">{selectedLog.status} ({selectedLog.severity})</p>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status & Severity</span>
+                  <p className="font-bold text-slate-800 mt-0.5">{selectedLog.status} ({selectedLog.severity})</p>
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Client & Origin</span>
-                <p className="font-mono text-gray-800">IP: {selectedLog.ipAddress}</p>
-                <p className="text-gray-600">Device: {selectedLog.device}</p>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Client & Origin</span>
+                <p className="font-mono font-bold text-slate-800">IP: {selectedLog.ipAddress}</p>
+                <p className="text-slate-600 font-medium">Device: {selectedLog.device}</p>
                 {selectedLog.userAgent && (
-                  <p className="text-[11px] text-gray-400 truncate" title={selectedLog.userAgent}>
+                  <p className="text-[11px] text-slate-400 truncate font-mono" title={selectedLog.userAgent}>
                     UA: {selectedLog.userAgent}
                   </p>
                 )}
               </div>
 
               {selectedLog.meta && Object.keys(selectedLog.meta).length > 0 && (
-                <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] overflow-x-auto max-h-36">
+                <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] overflow-x-auto max-h-36 border border-slate-800">
                   <p className="text-slate-400 text-[10px] font-sans font-bold uppercase mb-1">
                     Metadata Payload
                   </p>
@@ -856,7 +908,7 @@ export default function ActivityLogs() {
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white transition cursor-pointer shadow-xs"
               >
                 Close
               </button>

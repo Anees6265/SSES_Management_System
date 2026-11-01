@@ -373,7 +373,7 @@ exports.getStudentReportCard = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid student ID' });
     }
 
-    const reportCard = await StudentReportCard.findOne({ studentRef: studentId }).populate('studentRef', 'firstName lastName prkey');
+    const reportCard = await StudentReportCard.findOne({ studentRef: studentId }).populate('studentRef', 'firstName lastName prkey fatherName motherName enrollmentNo course');
     if (!reportCard) {
       return res.status(200).json({ success: true, data: null, message: 'Report card not found for this student' });
     }
@@ -425,7 +425,7 @@ exports.getAllReportCards = async (req, res) => {
     if (isFinalReport !== undefined) filter.isFinalReport = isFinalReport === 'true';
 
     const reportCards = await StudentReportCard.find(filter)
-      .populate('studentRef', 'firstName lastName prkey')
+      .populate('studentRef', 'firstName lastName prkey fatherName motherName enrollmentNo course')
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, count: reportCards.length, data: reportCards });

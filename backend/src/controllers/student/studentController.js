@@ -200,6 +200,7 @@ exports.createStudent = async (req, res) => {
       lastName,
       fullName,
       fatherName: req.body.fatherName || "",
+      motherName: req.body.motherName || "",
       email: cleanEmail,
       studentMobile: cleanStudentMobile,
       parentMobile: cleanParentMobile,
@@ -443,6 +444,8 @@ exports.importStudentsExcel = async (req, res) => {
           normalizedRow.email = cleanVal;
         } else if (["fathername", "father", "guardianname"].includes(nk)) {
           normalizedRow.fatherName = cleanVal;
+        } else if (["mothername", "mother"].includes(nk)) {
+          normalizedRow.motherName = cleanVal;
         } else if (["gender", "sex"].includes(nk)) {
           normalizedRow.gender = cleanVal;
         } else if (["category", "caste"].includes(nk)) {
@@ -491,6 +494,7 @@ exports.importStudentsExcel = async (req, res) => {
       const lastName = String(normalizedRow.lastName || "").trim();
       const fullName = String(normalizedRow.fullName || `${firstName} ${lastName}`).trim();
       const fatherName = String(normalizedRow.fatherName || "").trim();
+      const motherName = String(normalizedRow.motherName || "").trim();
       const studentMobile = String(normalizedRow.studentMobile || "").trim();
       // Resolve student year
       const rawYearStr = String(normalizedRow.currentYear || normalizedRow.year || defaultYear || "").trim();
@@ -641,6 +645,7 @@ exports.importStudentsExcel = async (req, res) => {
         lastName,
         fullName,
         fatherName,
+        motherName: normalizedRow.motherName || motherName || "",
         studentMobile,
         parentMobile: normalizedRow.fatherContactNumber || normalizedRow.parentMobile || studentMobile,
         fatherContactNumber: normalizedRow.fatherContactNumber || normalizedRow.parentMobile || "",
@@ -763,6 +768,7 @@ exports.downloadSampleExcel = async (req, res) => {
       { header: "Father contact Number", key: "fatherContactNumber", width: 22 },
       { header: "email Id", key: "email", width: 25 },
       { header: "father Name", key: "fatherName", width: 22 },
+      { header: "mother Name", key: "motherName", width: 22 },
       { header: "gender", key: "gender", width: 12 },
       { header: "category", key: "category", width: 14 },
       { header: "DOB", key: "dob", width: 16 },
@@ -1174,7 +1180,7 @@ exports.updateStudent = async (req, res) => {
     const allowedFields = [
       "studentId", "registrationNo", "enrollmentNo", "firstName", "lastName", "fullName",
       "branch", "course", "currentYear", "year", "currentSemester", "batch", "batchYear",
-      "studentMobile", "fatherContactNumber", "parentMobile", "email", "fatherName",
+      "studentMobile", "fatherContactNumber", "parentMobile", "email", "fatherName", "motherName",
       "gender", "category", "dob", "dobString", "aadharNo", "aadharCard",
       "fullAddress", "address", "village", "tehsil", "district", "pincode",
       "trackBus", "sponsorshipType", "ssismGroup", "track", "techno", "technology",
@@ -2075,6 +2081,7 @@ exports.getStudentArchivedTasks = async (req, res) => {
           email: student.email,
           studentMobile: student.studentMobile,
           fatherName: student.fatherName,
+          motherName: student.motherName,
           gender: student.gender,
           category: student.category,
           batchYear: student.batchYear,

@@ -42,6 +42,7 @@ router.patch("/:id/set-password", ...adminAuth, studentAuthController.setStudent
 
 // Student only
 router.get("/me", ...studentAuth, studentAuthController.getMyProfile);
+router.patch("/me/profile", ...studentAuth, studentAuthController.updateMyProfile);
 router.patch("/me/profile-image", ...studentAuth, studentUploadLimiter, studentAuthController.updateMyProfileImage);
 router.patch("/me/change-password", ...studentAuth, studentPasswordLimiter, studentAuthController.changeMyPassword);
 router.get("/me/tasks", ...studentAuth, studentAuthController.getMyTasks);

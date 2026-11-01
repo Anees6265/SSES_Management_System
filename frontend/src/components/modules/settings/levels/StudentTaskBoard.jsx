@@ -798,6 +798,9 @@ const StudentTaskBoard = () => {
             return;
         }
 
+        const oldStatus = task.status || "pending";
+        const hasStatusChanged = oldStatus !== newStatus;
+
         const updated = allTasks.map(t =>
             t._id === task._id ? { ...t, status: newStatus, ...extra } : t
         );
@@ -822,7 +825,15 @@ const StudentTaskBoard = () => {
                 throw new Error(errData.message || "Update failed");
             }
 
-            toast.success(`Task moved to ${newStatus === "inProgress" ? "In Progress" : newStatus}`);
+            if (hasStatusChanged) {
+                const statusLabel =
+                    newStatus === "inProgress"
+                        ? "In Progress"
+                        : newStatus === "completed"
+                        ? "Completed"
+                        : "Pending";
+                toast.success(`Task moved to ${statusLabel}`);
+            }
             await refetch();
         } catch (err) {
             toast.error(err.message || "Failed to update task");

@@ -129,6 +129,7 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
       "S.No.": idx + 1,
       "Student Name": fullName,
       "Father's Name": safeStr(s.fatherName),
+      "Mother's Name": safeStr(s.motherName),
       "Mobile": safeStr(s.studentMobile),
       "Course": safeStr(courseWithIteg),
       "Year": safeStr(s.year, "1st Year"),

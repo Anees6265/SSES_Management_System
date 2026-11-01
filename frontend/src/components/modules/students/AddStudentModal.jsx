@@ -36,6 +36,7 @@ const manualStudentValidationSchema = Yup.object({
   lastName: Yup.string().nullable(),
   fullName: Yup.string().nullable(),
   fatherName: Yup.string().nullable(),
+  motherName: Yup.string().nullable(),
   studentMobile: Yup.string()
     .trim()
     .required("Student Mobile is required")
@@ -434,6 +435,8 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               normalized.email = cleanVal;
             } else if (["fathername", "father", "guardianname"].includes(nk)) {
               normalized.fatherName = cleanVal;
+            } else if (["mothername", "mother"].includes(nk)) {
+              normalized.motherName = cleanVal;
             } else if (["gender", "sex"].includes(nk)) {
               normalized.gender = cleanVal;
             } else if (["category", "caste"].includes(nk)) {
@@ -483,6 +486,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           const lastName = String(normalized.lastName || "").trim();
           const fullName = String(normalized.fullName || `${firstName} ${lastName}`).trim();
           const fatherName = String(normalized.fatherName || "").trim();
+          const motherName = String(normalized.motherName || "").trim();
           const course = String(normalized.course || normalized.branch || "").trim() || "General";
 
           const missing = [];
@@ -518,6 +522,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
             lastName,
             fullName,
             fatherName,
+            motherName,
             studentMobile,
             fatherContactNumber: normalized.fatherContactNumber || normalized.parentMobile || "",
             parentMobile: normalized.fatherContactNumber || normalized.parentMobile || studentMobile,
@@ -649,6 +654,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
         parentMobile: values.fatherContactNumber?.trim() || values.parentMobile?.trim() || values.studentMobile?.trim() || "",
         email: values.email?.trim().toLowerCase() || "",
         fatherName: values.fatherName?.trim() || "",
+        motherName: values.motherName?.trim() || "",
         gender: values.gender || "Male",
         category: values.category || "GEN",
         dob: values.dob || "",
@@ -1030,6 +1036,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 lastName: "",
                 fullName: "",
                 fatherName: "",
+                motherName: "",
                 email: "",
                 studentMobile: "",
                 fatherContactNumber: "",
@@ -1137,6 +1144,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         label="Father's Name"
                         name="fatherName"
                         placeholder="e.g. Suresh Sharma"
+                      />
+                      <InputField
+                        label="Mother's Name"
+                        name="motherName"
+                        placeholder="e.g. Sunita Sharma"
                       />
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">

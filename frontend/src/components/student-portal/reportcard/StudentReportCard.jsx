@@ -558,6 +558,21 @@ export default function StudentReportCard() {
                 <p className="text-[11px] sm:text-xs font-medium text-slate-500 mt-0.5 truncate">
                   {raw.course || "BCA"} · {departmentName} · {currentYear}
                 </p>
+
+                {(raw.fatherName || raw.motherName) && (
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {raw.fatherName && (
+                      <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-100">
+                        Father: <strong className="text-slate-800">{raw.fatherName}</strong>
+                      </span>
+                    )}
+                    {raw.motherName && (
+                      <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-100">
+                        Mother: <strong className="text-slate-800">{raw.motherName}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

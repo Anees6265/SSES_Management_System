@@ -542,6 +542,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
         studentMobile: raw.studentMobile || "",
         parentMobile: raw.parentMobile || "",
         fatherName: raw.fatherName || "",
+        motherName: raw.motherName || "",
         village: raw.village || "",
         address: raw.address || "",
         course: raw.course || "",
@@ -674,7 +675,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }].map(({ k, l }) => (
+                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "motherName", l: "Mother Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }].map(({ k, l }) => (
                             <div key={k}>
                                 <label className={lc}>{l}</label>
                                 <input className={ic} value={form[k]} onChange={set(k)} placeholder={l} />
@@ -1526,6 +1527,7 @@ const StudentProfilePage = () => {
         studentMobile: student?.studentMobile || "9876543210",
         parentMobile: "9876500000",
         fatherName: "Suresh Sharma",
+        motherName: "Sunita Sharma",
         village: "Indore",
         course: student?.course || "Full Stack Web Development",
         techno: student?.techno || student?.technology || student?.track || "MERN Stack",
@@ -2772,6 +2774,23 @@ const StudentProfilePage = () => {
                                     </span>
                                     <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors" title={raw.fatherName}>
                                         {raw.fatherName}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Mother's Name */}
+                        {raw.motherName && (
+                            <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                    <MdPerson size={17} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                        Mother's Name
+                                    </span>
+                                    <p className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-orange-600 truncate mt-0.5 transition-colors" title={raw.motherName}>
+                                        {raw.motherName}
                                     </p>
                                 </div>
                             </div>

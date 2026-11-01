@@ -59,6 +59,7 @@ const studentSchema = new mongoose.Schema({
   lastName: { type: String, default: "", trim: true },
   fullName: { type: String, trim: true, default: "" },
   fatherName: { type: String, default: "", trim: true },
+  motherName: { type: String, default: "", trim: true },
 
   // 📞 Contact Info
   email: { type: String, trim: true, default: "" },

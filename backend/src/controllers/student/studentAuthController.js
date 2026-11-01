@@ -798,3 +798,20 @@ exports.updateMyTaskStatus = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// ✅ Update My Profile Details (Student)
+exports.updateMyProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.user.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const allowed = ["motherName", "village", "address"];
+    allowed.forEach(f => {
+      if (req.body[f] !== undefined) student[f] = req.body[f];
+    });
+    await student.save();
+    return res.status(200).json({ success: true, message: "Profile updated successfully", data: student });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

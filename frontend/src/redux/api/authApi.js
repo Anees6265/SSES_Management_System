@@ -264,7 +264,7 @@ const baseQueryWithAutoRefresh = async (args, api, extraOptions) => {
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryWithAutoRefresh,
-  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications'],
+  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications', 'ActivityLog'],
   // Global configuration for better caching
   keepUnusedDataFor: 300, // 5 minutes default cache
   refetchOnMountOrArgChange: 30, // Only refetch if data is older than 30 seconds
@@ -360,6 +360,30 @@ export const authApi = createApi({
         body: { newPassword },
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'User', id }, 'User'],
+    }),
+
+    // ---- Activity & Security Audit Logs ----
+    getActivityLogs: builder.query({
+      query: (params) => ({
+        url: "/activity-logs",
+        method: "GET",
+        params,
+      }),
+      providesTags: ["ActivityLog"],
+    }),
+    getActivityLogStats: builder.query({
+      query: () => ({
+        url: "/activity-logs/stats",
+        method: "GET",
+      }),
+      providesTags: ["ActivityLog"],
+    }),
+    getActivityLogUsers: builder.query({
+      query: () => ({
+        url: "/activity-logs/users",
+        method: "GET",
+      }),
+      providesTags: ["ActivityLog"],
     }),
 
     // ---- Forget Password API ----
@@ -2315,4 +2339,7 @@ export const {
   useMarkNotificationReadMutation,
   useChangeUserPasswordMutation,
   useAdminResetUserPasswordMutation,
+  useGetActivityLogsQuery,
+  useGetActivityLogStatsQuery,
+  useGetActivityLogUsersQuery,
 } = authApi;

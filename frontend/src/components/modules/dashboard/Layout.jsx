@@ -45,6 +45,7 @@ import SessionManagement from "../settings/sessions/SessionManagement";
 import CurriculumManagement from "../settings/curriculum/CurriculumManagement";
 import PlacementDriveManagement from "../placements/PlacementDriveManagement";
 import ResumeSharingScreen from "../placements/ResumeSharingScreen";
+import ActivityLogs from "../activity/ActivityLogs";
 
 // admin/superadmin → DepartmentSelector, faculty → direct StudentDetailTable
 const RoleBasedStudentPage = () => {
@@ -71,6 +72,7 @@ const routeTitleMap = {
     "/task-management": "Task Management",
     "/curriculum-management": "Curriculum Management",
     "/session-management": "Session Management",
+    "/activity-logs": "Activity Logs",
     "/settings": "Settings",
     "/support": "Support & Help",
 };
@@ -146,6 +148,7 @@ const Layout = () => {
                     <Route path="/support" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><Supportfile /></ProtectedRoute>} />
                     <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><CurriculumManagement /></ProtectedRoute>} />
                     <Route path="/session-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "hod"]}><SessionManagement /></ProtectedRoute>} />
+                    <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "hod"]}><ActivityLogs /></ProtectedRoute>} />
                     <Route path="/unauthorized" element={<PageNotFound />} />
                     <Route path="*" element={<PageNotFound />} />
                 </Routes>

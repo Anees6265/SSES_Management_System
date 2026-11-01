@@ -43,6 +43,7 @@ const allPermissions = {
         { feature: 'Button_ManagePermissions', name: 'Manage User Permissions Action', category: '5. User Management & Security', description: 'Permission to customize permissions for individual users', access: ['read', 'update'] },
 
         // 6. System Administration
+        { feature: 'Page_ActivityLogs', name: 'Activity & Audit Logs', category: '6. System Administration', description: 'Monitor user actions, modifications, logins, and blocked security threats', access: ['read'] },
         { feature: 'Page_Settings', name: 'System Settings & Branding', category: '6. System Administration', description: 'Access to system settings and college profile configuration', access: ['read', 'update'] },
         { feature: 'Page_SessionManagement', name: 'Academic Session Management', category: '6. System Administration', description: 'Manage academic session years and periods', access: ['create', 'read', 'update', 'delete'] },
         { feature: 'Page_Support', name: 'Support & Help Desk', category: '6. System Administration', description: 'Access to support tickets and help desk', access: ['read'] }
@@ -80,6 +81,7 @@ const allPermissions = {
         { feature: 'Action_EditUser', description: 'Edit user details', access: ['update'] },
         { feature: 'Page_Settings', description: 'System settings', access: ['read', 'update'] },
         { feature: 'Page_SessionManagement', description: 'Session management', access: ['read', 'update'] },
+        { feature: 'Page_ActivityLogs', description: 'Activity and audit logs', access: ['read'] },
         { feature: 'Page_Support', description: 'Support help desk', access: ['read'] }
     ],
 
@@ -122,6 +124,7 @@ const allPermissions = {
         { feature: 'Page_CompanyDetails', description: 'Company details', access: ['read'] },
         { feature: 'Page_PlacedStudents', description: 'Placed students wall', access: ['read'] },
         { feature: 'Page_SessionManagement', description: 'Session management', access: ['read', 'update'] },
+        { feature: 'Page_ActivityLogs', description: 'Activity and audit logs', access: ['read'] },
         { feature: 'Page_Support', description: 'Support help desk', access: ['read'] },
         { feature: 'Page_UserManagement', description: 'User management', access: ['read'] },
         { feature: 'Tab_Users', description: 'Users tab', access: ['read'] },

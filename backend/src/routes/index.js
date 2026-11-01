@@ -25,8 +25,10 @@ const subDepartmentRoutes = require('./subDepartmentRoutes');
 const levelRoutes = require('./levelRoutes');
 const subLevelRoutes = require('./subLevelRoutes');
 const notificationRoutes = require('./notificationRoutes');
+const activityLogRoutes = require('./activityLogRoutes');
 
 // Mount routes
+router.use('/activity-logs', activityLogRoutes);
 router.use('/user', userRoutes);
 router.use('/users', userRoutes);
 router.use('/user/otp', otpRoutes);

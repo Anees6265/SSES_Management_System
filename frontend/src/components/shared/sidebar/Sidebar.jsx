@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { IoSettingsSharp } from "react-icons/io5";
 import { MdSupportAgent } from "react-icons/md";
 import { FaClipboardList , FaUserGroup} from "react-icons/fa6";
-import { MdWork, MdDashboard } from "react-icons/md";
+import { MdWork, MdDashboard, MdHistory } from "react-icons/md";
 import { HiChevronUp, HiChevronDown, HiChevronLeft, HiChevronRight } from "react-icons/hi";
 import UserProfile from "../user-profile/UserProfile";
 import { usePermissions } from "../../../hooks/usePermissions";
@@ -319,6 +319,7 @@ const Sidebar = ({ children }) => {
 
 
   const systemDirectLinks = [
+    { name: "Activity Logs", path: "/activity-logs", icon: <MdHistory />, permission: "Page_ActivityLogs" },
     { name: "Settings", path: "/settings", icon: <IoSettingsSharp />, permission: "Page_Settings" },
     { name: "Sessions", path: "/session-management", icon: <MdDashboard />, permission: "Page_SessionManagement" },
     { name: "Support", path: "/support", icon: <MdSupportAgent />, permission: "Page_Support" },
@@ -391,7 +392,7 @@ const Sidebar = ({ children }) => {
 
         <p className="text-xs text-gray-400 px-3 mt-4 mb-2">SYSTEM</p>
         {systemDirectLinks
-          .filter(item => showAll || hasPermission(item.permission, 'read'))
+          .filter(item => showAll || (item.path === "/activity-logs" && role === "hod") || hasPermission(item.permission, 'read'))
           .map((item, idx) => {
             const active = location.pathname === item.path ||
               location.pathname.startsWith(item.path + "/") ||

@@ -8,6 +8,30 @@ const { sendResetLinkEmail } = require("../../services/emailService");
 const { getPermissionsForRole, allPermissions } = require("../../config/permissions");
 const cloudinary = require("../../config/cloudinaryConfig");
 const mongoose = require("mongoose");
+const { logActivity } = require("../../services/activityLoggerService");
+
+// In-memory brute force tracker (cleared every 15 minutes)
+const failedAttemptsMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of failedAttemptsMap.entries()) {
+    if (now - val.lastTime > 15 * 60 * 1000) {
+      failedAttemptsMap.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+const recordLoginFailure = (key) => {
+  const existing = failedAttemptsMap.get(key) || { count: 0, lastTime: Date.now() };
+  existing.count += 1;
+  existing.lastTime = Date.now();
+  failedAttemptsMap.set(key, existing);
+  return existing.count;
+};
+
+const clearLoginFailure = (key) => {
+  failedAttemptsMap.delete(key);
+};
 
 const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "");
 
@@ -237,11 +261,52 @@ exports.login = async (req, res) => {
 
     email = email.toLowerCase();
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: "Invalid email or password" });
-    if (!user.isActive) return res.status(401).json({ message: "Account is inactive. Please contact administrator." });
+    if (!user) {
+      const fails = recordLoginFailure(email);
+      logActivity({
+        req,
+        action: fails >= 5 ? "SECURITY_ALERT" : "LOGIN",
+        module: "Auth",
+        description: fails >= 5 ? `Repeated login failure (${fails} attempts) for email: ${email}` : `Failed login attempt for non-existent email: ${email}`,
+        status: fails >= 5 ? "BLOCKED" : "FAILED",
+        severity: fails >= 5 ? "CRITICAL" : "WARNING",
+        isSecurityAlert: fails >= 5,
+        threatType: fails >= 5 ? "BRUTE_FORCE" : null,
+      });
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    if (!user.isActive) {
+      logActivity({
+        req,
+        user,
+        action: "LOGIN",
+        module: "Auth",
+        description: `Inactive user ${user.email} attempted login`,
+        status: "FAILED",
+        severity: "WARNING",
+      });
+      return res.status(401).json({ message: "Account is inactive. Please contact administrator." });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
+    if (!isMatch) {
+      const fails = recordLoginFailure(email);
+      logActivity({
+        req,
+        user: { name: user.name, email: user.email, role: user.role, department: user.department, departmentId: user.departmentId },
+        action: fails >= 5 ? "SECURITY_ALERT" : "LOGIN",
+        module: "Auth",
+        description: fails >= 5 ? `Repeated incorrect password attempts (${fails}) for user: ${user.email}` : `Incorrect password attempt for user: ${user.email}`,
+        status: fails >= 5 ? "BLOCKED" : "FAILED",
+        severity: fails >= 5 ? "CRITICAL" : "WARNING",
+        isSecurityAlert: fails >= 5,
+        threatType: fails >= 5 ? "BRUTE_FORCE" : null,
+      });
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    clearLoginFailure(email);
 
     // Self-healing: assign default permissions if missing, or merge new defaults
     const defaultPerms = getPermissionsForRole(user.role);
@@ -259,6 +324,16 @@ exports.login = async (req, res) => {
     const refreshToken = generateRefreshToken(user);
     user.refreshToken = refreshToken;
     await user.save();
+
+    logActivity({
+      req,
+      user,
+      action: "LOGIN",
+      module: "Auth",
+      description: `${(user.role || "").toUpperCase()} ${user.name} logged into the system`,
+      status: "SUCCESS",
+      severity: "INFO",
+    });
 
     res.status(200).json({
       message: "Login successful",
@@ -309,6 +384,16 @@ exports.logout = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    logActivity({
+      req,
+      user,
+      action: "LOGOUT",
+      module: "Auth",
+      description: `${(user.role || "").toUpperCase()} ${user.name} logged out`,
+      status: "SUCCESS",
+      severity: "INFO",
+    });
 
     user.refreshToken = null;
     await user.save();

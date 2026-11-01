@@ -93,6 +93,10 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// SSES Security Shield & Activity Watchdog Middleware
+const securityWatchdogMiddleware = require("./src/middlewares/securityWatchdogMiddleware");
+app.use(securityWatchdogMiddleware);
+
 
 // Import Routes
 const routes = require("./src/routes");

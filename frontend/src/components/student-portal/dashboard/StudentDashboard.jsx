@@ -5,7 +5,7 @@ import {
     MdTableChart, MdSchool, MdWork, MdStar,
     MdClose, MdBadge, MdBusiness, MdCalendarToday,
     MdAccountTree, MdVerified, MdArrowUpward, MdTrendingUp,
-    MdAssignment, MdStarBorder,
+    MdAssignment, MdStarBorder, MdPerson,
 } from "react-icons/md";
 import {
     useGetMyStudentProfileQuery,
@@ -112,14 +112,16 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                 <div className="hidden lg:block w-px self-stretch bg-gray-100" />
 
                 {/* Info grid */}
-                <div className="w-full lg:flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-x-4 sm:gap-y-3 bg-gray-50/80 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-gray-100 sm:border-none">
+                <div className="w-full lg:flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-x-4 sm:gap-y-3 bg-gray-50/80 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-gray-100 sm:border-none">
                     {[
+                        { icon: <MdPerson size={11} />, label: "Father's Name", value: raw.fatherName },
+                        { icon: <MdPerson size={11} />, label: "Mother's Name", value: raw.motherName },
                         { icon: <MdBadge size={11} />, label: "Course",       value: raw.course },
+                        { icon: <MdCalendarToday size={11} />, label: "Session", value: raw.sessionId?.name },
                         { icon: <MdEmail size={11} />, label: "Email",         value: raw.email },
                         { icon: <MdPhone size={11} />, label: "Mobile",        value: raw.studentMobile },
                         { icon: <MdBusiness size={11} />, label: "Department",  value: raw.departmentId?.name || raw.subDepartmentId?.departmentId?.name },
                         { icon: <MdAccountTree size={11} />, label: "Sub Dept", value: raw.subDepartmentId?.name },
-                        { icon: <MdCalendarToday size={11} />, label: "Session", value: raw.sessionId?.name },
                     ].map(({ icon, label, value }) => (
                         <div key={label} className="min-w-0">
                             <p className="text-[9.5px] sm:text-[10px] text-gray-400 flex items-center gap-1 font-medium truncate">

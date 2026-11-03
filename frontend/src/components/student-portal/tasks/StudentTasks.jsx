@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useGetMyStudentTasksQuery, useUpdateMyStudentTaskStatusMutation } from "../../../redux/api/studentApi";
 import { 
     MdStar, 
@@ -14,7 +14,12 @@ import {
     MdRefresh,
     MdPerson,
     MdOutlineCalendarToday,
-    MdOutlineTopic
+    MdOutlineTopic,
+    MdExpandMore,
+    MdCheck,
+    MdLock,
+    MdHistory,
+    MdSchool
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import EmptyState from "../../shared/empty-state/EmptyState";
@@ -26,13 +31,27 @@ const STATUS_COLS = [
 ];
 
 export default function StudentTasks() {
-    const { data: taskData, isLoading } = useGetMyStudentTasksQuery();
+    const [activeTab, setActiveTab] = useState("current"); // "current" | "previous"
+    const [selectedPrevSubLevelId, setSelectedPrevSubLevelId] = useState(null);
+
+    const queryParam = activeTab === "previous" && selectedPrevSubLevelId ? `subLevelId=${selectedPrevSubLevelId}` : "";
+    const { data: taskData, isLoading, isFetching } = useGetMyStudentTasksQuery(queryParam);
     const [updateTaskStatus] = useUpdateMyStudentTaskStatusMutation();
     const [search, setSearch] = useState("");
     const [activeSubject, setActiveSubject] = useState("All");
     const [dragOverCol, setDragOverCol] = useState(null);
     const [mobileTab, setMobileTab] = useState("all");
     const [selectedTask, setSelectedTask] = useState(null);
+
+    const previousLevels = taskData?.previousLevels || [];
+    const isReadOnly = Boolean(taskData?.isReadOnly || activeTab === "previous");
+
+    // Automatically select first previous level when switching to previous tab
+    useEffect(() => {
+        if (activeTab === "previous" && !selectedPrevSubLevelId && previousLevels.length > 0) {
+            setSelectedPrevSubLevelId(previousLevels[0].subLevelId);
+        }
+    }, [activeTab, selectedPrevSubLevelId, previousLevels]);
 
     const subjectGroups = taskData?.groupedBySubject || {};
     const allSubjects   = Object.keys(subjectGroups);
@@ -81,6 +100,10 @@ export default function StudentTasks() {
         : null;
 
     const handleStatusChange = async (taskId, newStatus) => {
+        if (isReadOnly) {
+            toast.info("Previous level tasks are view-only and cannot be modified.");
+            return;
+        }
         try {
             await updateTaskStatus({ taskId, status: newStatus }).unwrap();
             toast.success(`Task status updated to ${newStatus === "inProgress" ? "In Progress" : "Pending"}`);
@@ -93,11 +116,13 @@ export default function StudentTasks() {
     };
 
     const handleDragStart = (e, task) => {
+        if (isReadOnly) return;
         e.dataTransfer.setData("taskId", task._id);
         e.dataTransfer.setData("sourceStatus", task.status);
     };
 
     const handleDrop = async (e, targetStatus) => {
+        if (isReadOnly) return;
         const taskId = e.dataTransfer.getData("taskId");
         const sourceStatus = e.dataTransfer.getData("sourceStatus");
 
@@ -116,7 +141,7 @@ export default function StudentTasks() {
         await handleStatusChange(taskId, targetStatus);
     };
 
-    if (isLoading) return (
+    if (isLoading && !taskData) return (
         <div className="flex justify-center pt-20">
             <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -125,76 +150,217 @@ export default function StudentTasks() {
     return (
         <div className="space-y-4 sm:space-y-5">
 
-            {/* ── Header Card ── */}
-            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
-                <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
-                <div className="p-3.5 sm:p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-base sm:text-lg font-bold text-gray-900">My Tasks</h2>
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                                    {totalTasks}
-                                </span>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                {completedTasks} completed · {pendingTasks} pending
-                            </p>
-                        </div>
+            {/* ── Level Navigation Tabs (Current Level vs Previous Level) ── */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                    onClick={() => {
+                        setActiveTab("current");
+                        setActiveSubject("All");
+                        setSearch("");
+                    }}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
+                        activeTab === "current"
+                            ? "bg-orange-500 text-white shadow-xs"
+                            : "text-gray-600 bg-white border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
+                    }`}
+                >
+                    <MdAssignment size={16} />
+                    <span>Current Tasks ({taskData?.currentLevel?.name || "Level"}{taskData?.currentSubLevel?.name ? ` · SubLevel ${taskData.currentSubLevel.name}` : ""})</span>
+                </button>
 
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-60 md:w-64">
-                            <MdSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Search tasks..."
-                                className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
-                            />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch("")}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                    <MdClose size={14} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Stat Pills & Progress Bar */}
-                    <div className="mt-3.5 pt-3 border-t border-gray-100/80">
-                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-100">
-                                <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{taskPct}% Complete</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
-                                <MdCheckCircle size={13} className="text-emerald-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{completedTasks} Done</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
-                                <MdAccessTime size={13} className="text-amber-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{pendingTasks} Pending</span>
-                            </div>
-                            {avgMarks && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50/80 border border-yellow-100">
-                                    <MdStar size={13} className="text-yellow-500 shrink-0" />
-                                    <span className="text-[11px] sm:text-xs font-bold text-yellow-700 truncate">Avg {avgMarks}/5</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
-                            <div 
-                                className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" 
-                                style={{ width: `${taskPct}%` }} 
-                            />
-                        </div>
-                    </div>
-                </div>
+                <button
+                    onClick={() => {
+                        setActiveTab("previous");
+                        setActiveSubject("All");
+                        setSearch("");
+                        if (!selectedPrevSubLevelId && previousLevels.length > 0) {
+                            setSelectedPrevSubLevelId(previousLevels[0].subLevelId);
+                        }
+                    }}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 shrink-0 ${
+                        activeTab === "previous"
+                            ? "bg-orange-500 text-white shadow-xs"
+                            : "text-gray-600 bg-white border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
+                    }`}
+                >
+                    <MdHistory size={16} />
+                    <span>Previous Level Tasks ({previousLevels.length})</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                        activeTab === "previous" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+                    }`}>
+                        View Only
+                    </span>
+                </button>
             </div>
+
+            {/* ── Previous Levels View: Selector & Banner ── */}
+            {activeTab === "previous" && (
+                <>
+                    {previousLevels.length === 0 ? (
+                        <EmptyState
+                            icon={MdSchool}
+                            title="No Previous Levels Yet"
+                            subtitle={`You are currently studying in your initial level (${taskData?.currentLevel?.name || "Level 1"}${taskData?.currentSubLevel?.name ? ` · SubLevel ${taskData.currentSubLevel.name}` : ""}). Once you advance to future levels, all completed tasks from past levels will appear here for review.`}
+                            actionText="View Current Tasks"
+                            onAction={() => setActiveTab("current")}
+                        />
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Selector Bar */}
+                            <div className="bg-white border border-gray-100 rounded-2xl p-3 sm:p-4 shadow-xs">
+                                <p className="text-xs font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
+                                    <MdHistory size={16} className="text-orange-500" />
+                                    Select Completed Level to View Tasks:
+                                </p>
+                                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                                    {previousLevels.map((lvl) => {
+                                        const isSelected = String(selectedPrevSubLevelId) === String(lvl.subLevelId);
+                                        return (
+                                            <button
+                                                key={lvl.subLevelId}
+                                                onClick={() => {
+                                                    setSelectedPrevSubLevelId(lvl.subLevelId);
+                                                    setActiveSubject("All");
+                                                }}
+                                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                                                    isSelected
+                                                        ? "bg-gray-900 text-white shadow-xs ring-2 ring-gray-300"
+                                                        : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                <MdCheckCircle size={14} className={isSelected ? "text-emerald-400" : "text-emerald-600"} />
+                                                <span>{lvl.levelName} · SubLevel {lvl.subLevelName}</span>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                                                    isSelected ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-700"
+                                                }`}>
+                                                    {lvl.completedTasks !== undefined ? `${lvl.completedTasks}/${lvl.totalTasks} done` : `${lvl.totalTasks} tasks`}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* View-Only Banner */}
+                            <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                                        <MdLock size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-amber-950">
+                                            Previous Level Tasks (View Only)
+                                        </p>
+                                        <p className="text-[11px] text-amber-800/90 mt-0.5">
+                                            Viewing archived tasks from {taskData?.selectedLevel?.name || "Level"} · SubLevel {taskData?.selectedSubLevel?.name || ""}. These tasks are read-only for your review and learning reference.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setActiveTab("current");
+                                        setActiveSubject("All");
+                                    }}
+                                    className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100/60 transition whitespace-nowrap shrink-0 shadow-2xs"
+                                >
+                                    ← Back to Current Level
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ── Main Content Area (Header Card & Kanban/List) ── */}
+            {!(activeTab === "previous" && previousLevels.length === 0) && (
+                <>
+                    {/* ── Header Card ── */}
+                    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
+                        <div className={`h-1.5 w-full ${isReadOnly ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" : "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400"}`} />
+                        <div className="p-3.5 sm:p-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                                            {activeTab === "previous" ? "Previous Level Tasks" : "My Tasks"}
+                                        </h2>
+                                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
+                                            {totalTasks}
+                                        </span>
+                                        {activeTab === "previous" ? (
+                                            <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                                <MdLock size={12} />
+                                                {taskData?.selectedLevel?.name || "Level"}{taskData?.selectedSubLevel?.name ? ` · ${taskData.selectedSubLevel.name}` : ""} (View Only)
+                                            </span>
+                                        ) : (
+                                            (taskData?.currentLevel?.name || taskData?.currentSubLevel?.name) && (
+                                                <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80">
+                                                    {taskData.currentLevel?.name || "Level"}{taskData.currentSubLevel?.name ? ` · ${taskData.currentSubLevel.name}` : ""}
+                                                </span>
+                                            )
+                                        )}
+                                        {isFetching && (
+                                            <span className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        {completedTasks} completed · {pendingTasks} pending
+                                    </p>
+                                </div>
+
+                                {/* Search Input */}
+                                <div className="relative w-full sm:w-60 md:w-64">
+                                    <MdSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        placeholder="Search tasks..."
+                                        className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
+                                    />
+                                    {search && (
+                                        <button
+                                            onClick={() => setSearch("")}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <MdClose size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Stat Pills & Progress Bar */}
+                            <div className="mt-3.5 pt-3 border-t border-gray-100/80">
+                                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-100">
+                                        <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                                        <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{taskPct}% Complete</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
+                                        <MdCheckCircle size={13} className="text-emerald-500 shrink-0" />
+                                        <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{completedTasks} Done</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
+                                        <MdAccessTime size={13} className="text-amber-500 shrink-0" />
+                                        <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{pendingTasks} Pending</span>
+                                    </div>
+                                    {avgMarks && (
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50/80 border border-yellow-100">
+                                            <MdStar size={13} className="text-yellow-500 shrink-0" />
+                                            <span className="text-[11px] sm:text-xs font-bold text-yellow-700 truncate">Avg {avgMarks}/5</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
+                                    <div 
+                                        className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" 
+                                        style={{ width: `${taskPct}%` }} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
             {/* ── Subject Filter Bar (Touch-friendly horizontal scroll) ── */}
             {allSubjects.length > 0 && (
@@ -287,6 +453,7 @@ export default function StudentTasks() {
                                         <TaskCard
                                             key={task._id}
                                             task={task}
+                                            isReadOnly={isReadOnly}
                                             onStatusChange={handleStatusChange}
                                             onSelectTask={setSelectedTask}
                                         />
@@ -310,6 +477,7 @@ export default function StudentTasks() {
                                 <TaskCard
                                     key={task._id}
                                     task={task}
+                                    isReadOnly={isReadOnly}
                                     onStatusChange={handleStatusChange}
                                     onSelectTask={setSelectedTask}
                                 />
@@ -335,14 +503,19 @@ export default function StudentTasks() {
                 {STATUS_COLS.map(col => (
                     <div 
                         key={col.key}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.key); }}
+                        onDragOver={(e) => {
+                            if (isReadOnly) return;
+                            e.preventDefault();
+                            setDragOverCol(col.key);
+                        }}
                         onDragLeave={() => setDragOverCol(null)}
                         onDrop={async (e) => {
+                            if (isReadOnly) return;
                             setDragOverCol(null);
                             await handleDrop(e, col.key);
                         }}
                         className={`rounded-2xl border transition-all duration-200 ${
-                            dragOverCol === col.key 
+                            !isReadOnly && dragOverCol === col.key 
                                 ? "border-orange-400 bg-orange-50/50 shadow-md scale-[1.01]" 
                                 : `${col.border} ${col.colBg}`
                         } p-3.5`}
@@ -367,6 +540,7 @@ export default function StudentTasks() {
                                 <TaskCard 
                                     key={task._id} 
                                     task={task} 
+                                    isReadOnly={isReadOnly}
                                     onDragStart={(e) => handleDragStart(e, task)} 
                                     onStatusChange={handleStatusChange}
                                     onSelectTask={setSelectedTask}
@@ -381,9 +555,12 @@ export default function StudentTasks() {
             {selectedTask && (
                 <TaskDetailModal
                     task={selectedTask}
+                    isReadOnly={isReadOnly}
                     onClose={() => setSelectedTask(null)}
                     onStatusChange={handleStatusChange}
                 />
+            )}
+                </>
             )}
         </div>
     );
@@ -431,8 +608,107 @@ function formatDate(dateString) {
     }
 }
 
+const STUDENT_STATUS_OPTIONS = [
+    {
+        value: "pending",
+        label: "Pending",
+        dotColor: "bg-amber-400",
+        badgeStyle: "bg-amber-50/80 text-amber-800 border-amber-200/90 hover:bg-amber-100/70 hover:border-amber-300",
+    },
+    {
+        value: "inProgress",
+        label: "In Progress",
+        dotColor: "bg-blue-500",
+        badgeStyle: "bg-blue-50/80 text-blue-800 border-blue-200/90 hover:bg-blue-100/70 hover:border-blue-300",
+    },
+];
+
+function TaskStatusDropdown({ currentStatus, onStatusChange, compact = false }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const activeConfig = STUDENT_STATUS_OPTIONS.find(s => s.value === currentStatus) || STUDENT_STATUS_OPTIONS[0];
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen]);
+
+    return (
+        <div
+            ref={dropdownRef}
+            className="relative w-full"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+        >
+            {!compact && (
+                <label className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                    Status
+                </label>
+            )}
+            <button
+                type="button"
+                onClick={() => setIsOpen((prev) => !prev)}
+                className={`w-full flex items-center justify-between gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all duration-150 shadow-2xs hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-400/20 focus:border-orange-400 cursor-pointer select-none ${activeConfig.badgeStyle}`}
+            >
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full ${activeConfig.dotColor} shrink-0 ${activeConfig.value === "inProgress" ? "animate-pulse" : ""}`} />
+                    <span className="truncate">{activeConfig.label}</span>
+                </div>
+                <MdExpandMore
+                    size={16}
+                    className={`transition-transform duration-200 shrink-0 text-gray-500 ${isOpen ? "rotate-180" : ""}`}
+                />
+            </button>
+
+            {isOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-200/90 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1 text-[9px] font-extrabold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1 flex items-center justify-between">
+                        <span>Change Status</span>
+                    </div>
+                    {STUDENT_STATUS_OPTIONS.map((opt) => {
+                        const isSelected = opt.value === currentStatus;
+                        return (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                    if (opt.value !== currentStatus) {
+                                        onStatusChange(opt.value);
+                                    }
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold transition-colors duration-100 cursor-pointer ${
+                                    isSelected
+                                        ? "bg-orange-50 text-orange-700 font-bold"
+                                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${opt.dotColor} shrink-0`} />
+                                    <span>{opt.label}</span>
+                                </div>
+                                {isSelected && <MdCheck size={15} className="text-orange-500 shrink-0" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── Responsive Task Card ──
-function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
+function TaskCard({ task, onDragStart, onStatusChange, onSelectTask, isReadOnly = false }) {
     const max = task.maxMarks || 5;
 
     const statusConfig = {
@@ -510,35 +786,44 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                 {/* Row 3: Action & Details Button */}
                 <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100">
                     <div>
-                        {task.status === "pending" && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStatusChange(task._id, "inProgress");
-                                }}
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all border border-orange-200/60"
-                            >
-                                <span>Start Task</span>
-                                <MdArrowForward size={12} />
-                            </button>
-                        )}
-                        {task.status === "inProgress" && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStatusChange(task._id, "pending");
-                                }}
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 px-2 py-1 rounded-lg transition-all"
-                            >
-                                <MdRefresh size={12} />
-                                <span>Move to Pending</span>
-                            </button>
-                        )}
-                        {task.status === "completed" && (
-                            <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
-                                <MdCheckCircle size={12} />
-                                <span>Graded by Faculty</span>
+                        {isReadOnly ? (
+                            <span className="text-[10px] font-semibold text-gray-500 flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                <MdLock size={11} className="text-amber-600" />
+                                <span>Archived (View Only)</span>
                             </span>
+                        ) : (
+                            <>
+                                {task.status === "pending" && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onStatusChange(task._id, "inProgress");
+                                        }}
+                                        className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all border border-orange-200/60"
+                                    >
+                                        <span>Start Task</span>
+                                        <MdArrowForward size={12} />
+                                    </button>
+                                )}
+                                {task.status === "inProgress" && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onStatusChange(task._id, "pending");
+                                        }}
+                                        className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 px-2 py-1 rounded-lg transition-all"
+                                    >
+                                        <MdRefresh size={12} />
+                                        <span>Move to Pending</span>
+                                    </button>
+                                )}
+                                {task.status === "completed" && (
+                                    <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                                        <MdCheckCircle size={12} />
+                                        <span>Graded by Faculty</span>
+                                    </span>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -555,10 +840,10 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
             {/* ── Desktop Card View (hidden md:flex) ── */}
             {/* Full featured with drag-and-drop & metadata */}
             <div 
-                draggable={task.status !== "completed"}
-                onDragStart={onDragStart}
+                draggable={!isReadOnly && task.status !== "completed"}
+                onDragStart={!isReadOnly ? onDragStart : undefined}
                 className={`hidden md:flex bg-white rounded-xl border border-gray-200 p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex-col justify-between h-full min-h-[155px] ${cfg.borderClass} ${cfg.bgClass} ${
-                    task.status !== "completed" ? "cursor-grab active:cursor-grabbing" : ""
+                    !isReadOnly && task.status !== "completed" ? "cursor-grab active:cursor-grabbing" : ""
                 }`}
             >
                 <div>
@@ -582,7 +867,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                             >
                                 <MdInfoOutline size={14} />
                             </button>
-                            {task.status !== "completed" && (
+                            {!isReadOnly && task.status !== "completed" && (
                                 <MdDragIndicator className="text-gray-300 hover:text-gray-400 shrink-0" size={14} />
                             )}
                         </div>
@@ -603,22 +888,51 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                 </div>
 
                 {/* Status Dropdown/Badge */}
-                {task.status !== "completed" ? (
+                {isReadOnly ? (
                     <div className="mt-3">
-                        <label className="text-[9px] font-bold text-gray-400 block mb-1">Status</label>
-                        <select
-                            value={task.status}
-                            onChange={(e) => onStatusChange(task._id, e.target.value)}
-                            className="w-full text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:border-orange-500 focus:bg-white text-gray-700 transition cursor-pointer"
-                        >
-                            <option value="pending">Pending</option>
-                            <option value="inProgress">In Progress</option>
-                        </select>
+                        <label className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                            Status
+                        </label>
+                        <div className={`flex items-center justify-between px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                            task.status === "completed"
+                                ? "bg-emerald-50 border-emerald-200/80 text-emerald-700"
+                                : task.status === "inProgress"
+                                ? "bg-blue-50 border-blue-200/80 text-blue-700"
+                                : "bg-amber-50 border-amber-200/80 text-amber-700"
+                        }`}>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${
+                                    task.status === "completed" ? "bg-emerald-500" : task.status === "inProgress" ? "bg-blue-500" : "bg-amber-500"
+                                }`} />
+                                <span className="capitalize">{task.status === "inProgress" ? "In Progress" : task.status}</span>
+                            </div>
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-gray-500 bg-white/90 px-1.5 py-0.5 rounded border border-gray-200 flex items-center gap-0.5">
+                                <MdLock size={10} className="text-amber-600" />
+                                View Only
+                            </span>
+                        </div>
+                    </div>
+                ) : task.status !== "completed" ? (
+                    <div className="mt-3">
+                        <TaskStatusDropdown
+                            currentStatus={task.status}
+                            onStatusChange={(newStatus) => onStatusChange(task._id, newStatus)}
+                        />
                     </div>
                 ) : (
-                    <div className="mt-3 flex items-center gap-1 text-emerald-600">
-                        <MdCheckCircle size={14} />
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider">Completed</span>
+                    <div className="mt-3">
+                        <label className="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                            Status
+                        </label>
+                        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-700">
+                            <div className="flex items-center gap-1.5">
+                                <MdCheckCircle size={14} className="text-emerald-500 shrink-0" />
+                                <span className="text-xs font-bold">Completed</span>
+                            </div>
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-600 bg-white/80 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                Graded
+                            </span>
+                        </div>
                     </div>
                 )}
 
@@ -662,7 +976,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
 }
 
 // ── Task Details Modal ──
-function TaskDetailModal({ task, onClose, onStatusChange }) {
+function TaskDetailModal({ task, onClose, onStatusChange, isReadOnly = false }) {
     const max = task.maxMarks || 5;
 
     return (
@@ -679,7 +993,12 @@ function TaskDetailModal({ task, onClose, onStatusChange }) {
                                 {task.subjectName}
                             </span>
                         )}
-                        {task.status === "completed" ? (
+                        {isReadOnly ? (
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center gap-1 border border-amber-200">
+                                <MdLock size={11} className="text-amber-700" />
+                                View Only
+                            </span>
+                        ) : task.status === "completed" ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                                 Completed
                             </span>
@@ -779,7 +1098,12 @@ function TaskDetailModal({ task, onClose, onStatusChange }) {
 
                 {/* Modal Footer Actions */}
                 <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
-                    {task.status === "pending" ? (
+                    {isReadOnly ? (
+                        <div className="flex-1 text-center text-xs font-bold text-amber-900 bg-amber-100/80 py-2 rounded-xl flex items-center justify-center gap-1.5 border border-amber-200">
+                            <MdLock size={14} className="text-amber-700" />
+                            <span>Archived Level Task · View Only</span>
+                        </div>
+                    ) : task.status === "pending" ? (
                         <button
                             onClick={() => {
                                 onStatusChange(task._id, "inProgress");

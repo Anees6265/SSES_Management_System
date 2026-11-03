@@ -146,17 +146,30 @@ module.exports = app;
 
 // Start Server only if this is the main module (not when testing)
 if (require.main === module) {
-  try {
-    const dns = require('dns');
-    dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-  } catch (dnsErr) {
-    console.warn("DNS server setup warning:", dnsErr.message);
+  let dnsSwitched = false;
+  const tryDnsFallback = () => {
+    if (!dnsSwitched) {
+      dnsSwitched = true;
+      try {
+        const dns = require('dns');
+        dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+        console.log("Switched DNS resolver to Google/Cloudflare DNS fallback");
+      } catch (dnsErr) {
+        console.warn("DNS fallback error:", dnsErr.message);
+      }
+    }
+  };
+
+  if (process.env.USE_CUSTOM_DNS === "true") {
+    tryDnsFallback();
   }
   
   const mongoOptions = {
-    serverSelectionTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 15000,
     socketTimeoutMS: 45000,
-    connectTimeoutMS: 30000,
+    connectTimeoutMS: 15000,
+    maxPoolSize: 20,
+    minPoolSize: 2,
   };
 
   let isConnecting = false;
@@ -169,8 +182,15 @@ if (require.main === module) {
       try {
         await mongoose.connection.collection("syllabusversions").dropIndex("sessionId_1_levelId_1_subLevelId_1_version_1");
       } catch (_) {}
+      try {
+        const { seedInitialNotificationsIfNeeded } = require("./src/services/notificationService");
+        seedInitialNotificationsIfNeeded().catch(() => {});
+      } catch (_) {}
     } catch (err) {
       console.error("MongoDB Connection Error:", err.message || err);
+      if (err.message && (err.message.includes("querySrv") || err.message.includes("ENOTFOUND") || err.message.includes("ETIMEDOUT") || err.message.includes("queryTxt"))) {
+        tryDnsFallback();
+      }
       console.warn("⚠️  Retrying MongoDB connection in 5 seconds... (App will NOT crash)");
       setTimeout(connectWithRetry, 5000);
     } finally {

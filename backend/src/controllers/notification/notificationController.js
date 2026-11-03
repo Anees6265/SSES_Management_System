@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Notification = require("../../models/notification/Notification");
 const { seedInitialNotificationsIfNeeded } = require("../../services/notificationService");
 
@@ -72,8 +73,17 @@ exports.getNotifications = async (req, res) => {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
-    // Seed on first run if DB is empty
-    await seedInitialNotificationsIfNeeded();
+    // If MongoDB is not yet connected or reconnecting, return empty list immediately to avoid buffering timeout
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: [],
+      });
+    }
+
+    // Trigger non-blocking seeding in the background if collection is empty
+    seedInitialNotificationsIfNeeded().catch(() => {});
 
     const filter = buildUserFilter(req);
     const limit = Math.min(Number(req.query?.limit) || 50, 100);
@@ -101,8 +111,14 @@ exports.getNotifications = async (req, res) => {
       data: formatted,
     });
   } catch (error) {
-    console.error("getNotifications error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("getNotifications error:", error.message || error);
+    // If buffering timed out or error occurred, return safe empty array rather than breaking the UI
+    return res.status(200).json({
+      success: true,
+      count: 0,
+      data: [],
+      warning: "Notifications currently syncing",
+    });
   }
 };
 
@@ -112,6 +128,10 @@ exports.clearAllNotifications = async (req, res) => {
     const userId = String(req.user?.id || req.user?._id || "");
     if (!userId) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ success: false, message: "Database temporarily unavailable, please retry" });
     }
 
     const filter = buildUserFilter(req);
@@ -140,6 +160,10 @@ exports.dismissNotification = async (req, res) => {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ success: false, message: "Database temporarily unavailable, please retry" });
+    }
+
     const { id } = req.params;
     await Notification.findByIdAndUpdate(id, {
       $addToSet: { clearedBy: userId },
@@ -161,6 +185,10 @@ exports.markAsRead = async (req, res) => {
     const userId = String(req.user?.id || req.user?._id || "");
     if (!userId) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ success: false, message: "Database temporarily unavailable, please retry" });
     }
 
     const { id } = req.params;

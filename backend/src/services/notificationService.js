@@ -1,6 +1,10 @@
+const mongoose = require("mongoose");
 const Notification = require("../models/notification/Notification");
 const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
+
+let isNotificationsSeeded = false;
+let isSeeding = false;
 
 /**
  * Create a new notification in the database
@@ -20,6 +24,10 @@ const createNotification = async ({
 }) => {
   try {
     if (!title || !message) return null;
+    // Don't buffer notifications if DB is not currently connected
+    if (mongoose.connection.readyState !== 1) {
+      return null;
+    }
 
     const notif = await Notification.create({
       title: title.trim(),
@@ -49,9 +57,17 @@ const createNotification = async ({
  * Seed initial real notifications from recent student task activities if collection is empty
  */
 const seedInitialNotificationsIfNeeded = async () => {
+  if (isNotificationsSeeded || isSeeding) return;
+  // If MongoDB is not connected yet, skip to avoid buffering timeout
+  if (mongoose.connection.readyState !== 1) return;
+
+  isSeeding = true;
   try {
     const count = await Notification.countDocuments();
-    if (count > 0) return; // Already has notifications
+    if (count > 0) {
+      isNotificationsSeeded = true;
+      return; // Already has notifications
+    }
 
     // Look for recent student tasks to convert to notifications
     const recentTasks = await StudentTask.find({ isActive: true })
@@ -99,8 +115,12 @@ const seedInitialNotificationsIfNeeded = async () => {
         readBy: [],
       });
     }
+
+    isNotificationsSeeded = true;
   } catch (err) {
     console.error("seedInitialNotificationsIfNeeded error:", err.message);
+  } finally {
+    isSeeding = false;
   }
 };
 

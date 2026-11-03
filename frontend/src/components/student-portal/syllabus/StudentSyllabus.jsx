@@ -117,7 +117,7 @@ export default function StudentSyllabus() {
                         <p className="font-bold text-gray-900">
                             {student.fullName || (student.firstName ? `${student.firstName} ${student.lastName || ""}`.trim() : student.name || "Student")}
                         </p>
-                        <p>{student.course || ""} · {student.sessionName || ""}</p>
+                        <p>{student.course || ""} · {student.batchYear ? `Batch ${student.batchYear}` : (student.sessionName || "")}</p>
                     </div>
                 </div>
                 <div className="mt-2.5 pt-2 border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-600 font-medium">
@@ -147,8 +147,13 @@ export default function StudentSyllabus() {
                                         Version {currentLevel.syllabusVersion.version}
                                     </span>
                                 )}
+                                {student.batchYear && (
+                                    <span className="text-[10px] sm:text-[11px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-200/80">
+                                        Batch {student.batchYear}
+                                    </span>
+                                )}
                                 <span className="text-[11px] sm:text-xs font-semibold text-gray-400">
-                                    {student.sessionName || ""} · {student.course || "Curriculum"}
+                                    {student.sessionName && student.sessionName !== student.batchYear ? `${student.sessionName} · ` : ""}{student.course || "Curriculum"}
                                 </span>
                             </div>
 
@@ -335,7 +340,13 @@ export default function StudentSyllabus() {
                     )}
 
                     {/* Subjects Container */}
-                    {filteredCurrentSubjects.length === 0 ? (
+                    {(!currentLevel?.subjects || currentLevel.subjects.length === 0) ? (
+                        <EmptyState
+                            icon={MdMenuBook}
+                            title="No syllabus published for this level yet"
+                            subtitle={`Curriculum for ${currentLevel?.levelName || "current level"} ${currentLevel?.subLevelName ? `(${currentLevel.subLevelName})` : ""} under ${student.batchYear ? `Batch ${student.batchYear}` : "your batch"} has not been published yet. Please contact your department coordinator.`}
+                        />
+                    ) : filteredCurrentSubjects.length === 0 ? (
                         <EmptyState
                             icon={MdSearch}
                             title="No matching subjects or topics found"

@@ -73,12 +73,13 @@ exports.getActivityLogs = async (req, res) => {
     } = req.query;
 
     const query = {};
+    const baseStatsQuery = {};
 
     // 1. Department Scope Enforcement (Option B)
     if (isDeptScoped) {
       // Department staff can see their own department logs OR security alerts concerning their department
-      const userDeptId = req.user.departmentId;
-      const userDeptName = req.user.department;
+      const userDeptId = req.user?.departmentId;
+      const userDeptName = req.user?.department;
 
       const hodFilters = [];
       if (userDeptId && mongoose.Types.ObjectId.isValid(userDeptId)) {
@@ -90,10 +91,12 @@ exports.getActivityLogs = async (req, res) => {
 
       if (hodFilters.length > 0) {
         query.$or = hodFilters;
+        baseStatsQuery.$or = hodFilters;
       }
     } else if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
       // Admin filter by specific department
       query.departmentId = new mongoose.Types.ObjectId(departmentId);
+      baseStatsQuery.departmentId = new mongoose.Types.ObjectId(departmentId);
     }
 
     // 2. Specific User / Source Filter
@@ -167,8 +170,6 @@ exports.getActivityLogs = async (req, res) => {
     // Calculate Summary Stats for Dashboard Cards
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-
-    const baseStatsQuery = isHod && query.$or ? { $or: query.$or } : {};
 
     const [totalToday, loginsToday, modificationsToday, blockedThreatsToday, totalAlerts] = await Promise.all([
       ActivityLog.countDocuments({ ...baseStatsQuery, createdAt: { $gte: todayStart } }),

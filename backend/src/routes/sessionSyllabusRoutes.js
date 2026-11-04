@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const sessionSyllabusController = require("../controllers/department/sessionSyllabusController");
 
-const adminRoles = ["superadmin", "admin"];
+const adminRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 const auth = [verifyToken, checkRole(adminRoles)];
 
 // GET /api/session-syllabus — get all mappings

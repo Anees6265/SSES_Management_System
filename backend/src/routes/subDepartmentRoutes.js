@@ -4,7 +4,7 @@ const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const { validateSubDepartmentInput, validateObjectId } = require("../middlewares/subDepartmentValidation");
 const subDepartmentController = require("../controllers/department/subDepartmentController");
 
-const allowedRoles = ["superadmin", "admin"];
+const allowedRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 
 // SubDepartment CRUD Routes
 router.post(

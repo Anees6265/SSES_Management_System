@@ -162,11 +162,40 @@ const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
     );
 };
 
+const TASK_TYPES = [
+    { value: "assignment", label: "Assignment" },
+    { value: "project", label: "Project" },
+    { value: "practice", label: "Practice" },
+    { value: "reading", label: "Reading" },
+    { value: "assessment", label: "Assessment" },
+    { value: "other", label: "Other" },
+];
+
 const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
     const [title, setTitle] = useState(task?.taskTitle || task?.title || "");
     const [description, setDescription] = useState(task?.description || task?.raw?.description || "");
-    const [priority, setPriority] = useState(task?.priority || "medium");
+    const [type, setType] = useState(task?.type || task?.raw?.type || "assignment");
+    const [priority, setPriority] = useState(task?.priority || task?.raw?.priority || "medium");
     const [status, setStatus] = useState(task?.status || (task?.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
+    const [maxMarks, setMaxMarks] = useState(
+        task?.maxMarks !== undefined ? task.maxMarks : (task?.raw?.maxMarks !== undefined ? task.raw.maxMarks : 5)
+    );
+    const [timeDays, setTimeDays] = useState(
+        task?.timeDays !== undefined && task?.timeDays !== null ? task.timeDays : (task?.raw?.timeDays ?? "")
+    );
+    const [dueDate, setDueDate] = useState(() => {
+        const rawDate = task?.dueDate || task?.raw?.dueDate;
+        if (!rawDate) return "";
+        try {
+            return new Date(rawDate).toISOString().split("T")[0];
+        } catch {
+            return "";
+        }
+    });
+    const [measurablePoints, setMeasurablePoints] = useState(task?.measurablePoints || task?.raw?.measurablePoints || "");
+    const [mandatory, setMandatory] = useState(
+        task?.mandatory !== undefined ? Boolean(task.mandatory) : (task?.raw?.mandatory !== undefined ? Boolean(task.raw.mandatory) : true)
+    );
 
     const initialCourses = useMemo(() => {
         if (Array.isArray(task?.courses) && task.courses.length > 0) return task.courses;
@@ -184,8 +213,23 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
         if (task) {
             setTitle(task.taskTitle || task.title || "");
             setDescription(task.description || task.raw?.description || "");
-            setPriority(task.priority || "medium");
+            setType(task.type || task.raw?.type || "assignment");
+            setPriority(task.priority || task.raw?.priority || "medium");
             setStatus(task.status || (task.isActive !== undefined ? (task.isActive ? "active" : "inactive") : "active"));
+            setMaxMarks(task.maxMarks !== undefined ? task.maxMarks : (task.raw?.maxMarks !== undefined ? task.raw.maxMarks : 5));
+            setTimeDays(task.timeDays !== undefined && task.timeDays !== null ? task.timeDays : (task.raw?.timeDays ?? ""));
+            const rawDate = task.dueDate || task.raw?.dueDate;
+            if (rawDate) {
+                try {
+                    setDueDate(new Date(rawDate).toISOString().split("T")[0]);
+                } catch {
+                    setDueDate("");
+                }
+            } else {
+                setDueDate("");
+            }
+            setMeasurablePoints(task.measurablePoints || task.raw?.measurablePoints || "");
+            setMandatory(task.mandatory !== undefined ? Boolean(task.mandatory) : (task.raw?.mandatory !== undefined ? Boolean(task.raw.mandatory) : true));
             let parsed = ["All"];
             if (Array.isArray(task.courses) && task.courses.length > 0) parsed = task.courses;
             else if (task.raw?.courses && Array.isArray(task.raw.courses) && task.raw.courses.length > 0) parsed = task.raw.courses;
@@ -211,23 +255,29 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
             title: title.trim(),
             taskTitle: title.trim(),
             description: description.trim(),
+            type,
             priority,
             course: courseStr,
             courses: coursesList,
             status,
             isActive: status === "active",
+            maxMarks: maxMarks !== "" ? Number(maxMarks) : 5,
+            timeDays: timeDays !== "" && timeDays !== null ? String(timeDays).trim() : null,
+            dueDate: dueDate || null,
+            measurablePoints: measurablePoints.trim(),
+            mandatory: Boolean(mandatory),
         });
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3.5 sm:p-4 animate-in fade-in duration-150">
             <div className="fixed inset-0" onClick={onClose} />
-            <div className="relative bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] z-10">
+            <div className="relative bg-white w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] z-10">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
                     <div>
                         <h3 className="text-sm sm:text-base font-black text-slate-900">Edit Task</h3>
-                        <p className="text-xs text-slate-500">Update task title, description, priority, and status</p>
+                        <p className="text-xs text-slate-500">Update complete task specifications, criteria, timeline and assignments</p>
                     </div>
                     <button
                         type="button"
@@ -239,7 +289,7 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                 </div>
 
                 {/* Form Body */}
-                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto pb-10">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
                     <div>
                         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Task Title <span className="text-rose-500">*</span>
@@ -278,7 +328,20 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Type, Priority, Status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Task Type
+                            </label>
+                            <SelectDropdown
+                                value={type}
+                                onChange={(val) => setType(val)}
+                                options={TASK_TYPES}
+                                className="w-full"
+                                buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer capitalize"
+                            />
+                        </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                 Priority
@@ -310,6 +373,74 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                                 buttonClassName="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-orange-400 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between gap-1.5 shadow-2xs transition cursor-pointer"
                             />
                         </div>
+                    </div>
+
+                    {/* Max Marks, Duration (Days), Due Date */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Max Marks
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                value={maxMarks}
+                                onChange={(e) => setMaxMarks(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                                placeholder="e.g. 5"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Duration (Days)
+                            </label>
+                            <input
+                                type="text"
+                                value={timeDays}
+                                onChange={(e) => setTimeDays(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                                placeholder="e.g. 7 or 7 days"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Due Date
+                            </label>
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Mandatory Checkbox */}
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <input
+                            type="checkbox"
+                            id="mandatory-task-toggle"
+                            checked={mandatory}
+                            onChange={(e) => setMandatory(e.target.checked)}
+                            className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer"
+                        />
+                        <label htmlFor="mandatory-task-toggle" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                            Mandatory Task <span className="text-slate-400 font-normal ml-1">(Students must complete this task for sublevel progress)</span>
+                        </label>
+                    </div>
+
+                    {/* Evaluation Criteria / Measurable Points */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Evaluation Criteria / Measurable Points
+                        </label>
+                        <textarea
+                            value={measurablePoints}
+                            onChange={(e) => setMeasurablePoints(e.target.value)}
+                            rows={2}
+                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition resize-none"
+                            placeholder="e.g. 1. Code syntax check 2. Explains concepts 3. Submits on time"
+                        />
                     </div>
 
                     {/* Actions */}
@@ -349,6 +480,14 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
         })
         : "-";
 
+    const dueDateFormatted = task.dueDate || task.raw?.dueDate
+        ? new Date(task.dueDate || task.raw?.dueDate).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+        })
+        : null;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-3.5 sm:p-4 animate-in fade-in duration-150">
             <div
@@ -366,6 +505,9 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                             <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
                                 Course: {task.course || "All Courses"}
                             </span>
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200">
+                                {task.type || task.raw?.type || "assignment"}
+                            </span>
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium}`}>
                                 {task.priority}
                             </span>
@@ -376,6 +518,15 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                             }`}>
                                 {task.status}
                             </span>
+                            {task.mandatory !== false && task.raw?.mandatory !== false ? (
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200">
+                                    Mandatory
+                                </span>
+                            ) : (
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border bg-slate-50 text-slate-600 border-slate-200">
+                                    Optional
+                                </span>
+                            )}
                         </div>
                         <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug break-words">
                             {task.taskTitle}
@@ -419,6 +570,40 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                             </p>
                             <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
                                 {task.description || task.raw?.description}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Task Specifications (Max Marks, Duration, Due Date) */}
+                    <div className="grid grid-cols-3 gap-2.5">
+                        <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Max Marks</p>
+                            <p className="font-bold text-slate-800">
+                                {task.maxMarks !== undefined ? task.maxMarks : (task.raw?.maxMarks ?? 5)}
+                            </p>
+                        </div>
+                        <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Duration</p>
+                            <p className="font-bold text-slate-800">
+                                {task.timeDays || task.raw?.timeDays ? `${task.timeDays || task.raw?.timeDays}${String(task.timeDays || task.raw?.timeDays).toLowerCase().includes("day") ? "" : " Days"}` : "—"}
+                            </p>
+                        </div>
+                        <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Due Date</p>
+                            <p className="font-bold text-slate-800">
+                                {dueDateFormatted || "—"}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Evaluation Criteria / Measurable Points */}
+                    {(task.measurablePoints || task.raw?.measurablePoints) && (
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-3 space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Evaluation Criteria / Measurable Points
+                            </p>
+                            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                {task.measurablePoints || task.raw?.measurablePoints}
                             </p>
                         </div>
                     )}
@@ -598,6 +783,11 @@ const TaskManagement = () => {
                 status: task.isActive ? "active" : "inactive",
                 isActive: task.isActive !== undefined ? task.isActive : true,
                 type: task.type || "assignment",
+                maxMarks: task.maxMarks !== undefined ? task.maxMarks : 5,
+                timeDays: task.timeDays !== undefined ? task.timeDays : null,
+                dueDate: task.dueDate || null,
+                measurablePoints: task.measurablePoints || "",
+                mandatory: task.mandatory !== undefined ? task.mandatory : true,
                 createdAt: task.createdAt,
                 raw: task,
             };
@@ -731,9 +921,17 @@ const TaskManagement = () => {
                     ...prev,
                     taskTitle: updatedData.title || updatedData.taskTitle,
                     description: updatedData.description,
+                    type: updatedData.type,
                     priority: updatedData.priority,
                     status: updatedData.status,
                     isActive: updatedData.isActive,
+                    course: updatedData.course,
+                    courses: updatedData.courses,
+                    maxMarks: updatedData.maxMarks,
+                    timeDays: updatedData.timeDays,
+                    dueDate: updatedData.dueDate,
+                    measurablePoints: updatedData.measurablePoints,
+                    mandatory: updatedData.mandatory,
                 }));
             }
             refetch();

@@ -9,7 +9,7 @@ const {
 } = require("../middlewares/subLevelValidation");
 const subLevelController = require("../controllers/department/subLevelController");
 
-const allowedRoles = ["superadmin", "admin"];
+const allowedRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 
 // SubLevel CRUD Routes
 router.post(

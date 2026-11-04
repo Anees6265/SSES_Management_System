@@ -6,6 +6,7 @@ import {
   MdCloudUpload, MdCheckCircle, MdExpandMore, MdExpandLess, MdFileDownload, MdInfo,
   MdBook, MdTopic, MdSubject, MdDelete, MdSave, MdEdit, MdVisibility,
   MdAssignment, MdAdd, MdSearch, MdChevronRight, MdCalendarToday, MdAccessTime, MdPerson, MdClose,
+  MdDeleteOutline,
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -27,6 +28,9 @@ import {
   useAddSubjectToVersionMutation,
   useDeleteSubjectFromVersionMutation,
   useUpdateSubjectInVersionMutation,
+  useDeleteTopicFromVersionMutation,
+  useBulkDeleteTopicsFromVersionMutation,
+  useUpdateTopicInVersionMutation,
 } from "../../../../redux/api/authApi";
 import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
@@ -1082,6 +1086,17 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
   const { data, isLoading } = useGetSyllabusVersionWithHierarchyQuery(versionId, { skip: !versionId });
   const [viewMode, setViewMode] = useState("topics"); // "topics" | "detailed"
 
+  const [deleteTopic, { isLoading: isDeletingTopic }] = useDeleteTopicFromVersionMutation();
+  const [bulkDeleteTopics, { isLoading: isBulkDeletingTopics }] = useBulkDeleteTopicsFromVersionMutation();
+  const [updateTopic, { isLoading: isUpdatingTopic }] = useUpdateTopicInVersionMutation();
+
+  const [selectedTopicIds, setSelectedTopicIds] = useState([]);
+  const [editingTopic, setEditingTopic] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editSubTopics, setEditSubTopics] = useState([]);
+  const [newSubTopicName, setNewSubTopicName] = useState("");
+
   const rows = useMemo(() => {
     if (!versionId || !data?.data?.subjects) return [];
     if (String(data.data._id) !== String(versionId)) return [];
@@ -1090,12 +1105,29 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
       if (activeSubject && subject.name !== activeSubject) return;
       (subject.topics || []).forEach((topic) => {
         const topicIdStr = String(topic._id);
+        const subjectIdStr = String(subject._id);
         if (topic.subTopics && topic.subTopics.length > 0) {
           topic.subTopics.forEach((st) => {
-            result.push({ _id: String(st._id), subject: subject.name, topic: topic.name, subTopic: st.name, topicIdStr });
+            result.push({
+              _id: String(st._id),
+              subject: subject.name,
+              subjectId: subjectIdStr,
+              topic: topic.name,
+              topicDescription: topic.description || "",
+              subTopic: st.name,
+              topicIdStr
+            });
           });
         } else {
-          result.push({ _id: topicIdStr, subject: subject.name, topic: topic.name, subTopic: "—", topicIdStr });
+          result.push({
+            _id: topicIdStr,
+            subject: subject.name,
+            subjectId: subjectIdStr,
+            topic: topic.name,
+            topicDescription: topic.description || "",
+            subTopic: "—",
+            topicIdStr
+          });
         }
       });
     });
@@ -1119,7 +1151,9 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
       if (!groups[key]) {
         groups[key] = {
           topicIdStr: key,
+          subjectId: item.subjectId,
           topic: item.topic,
+          topicDescription: item.topicDescription || "",
           subject: item.subject,
           subTopics: []
         };
@@ -1131,7 +1165,144 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
     return Object.values(groups);
   }, [filtered]);
 
+  const handleDeleteTopic = async (row) => {
+    const ok = await confirmToast(
+      `Are you sure you want to delete the topic "${row.topic}"? This will delete the topic from syllabus and permanently remove all its associated tasks from both Task Management and Student Task Boards.`,
+      { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }
+    );
+    if (!ok) return;
+
+    try {
+      const res = await deleteTopic({
+        versionId,
+        subjectId: row.subjectId,
+        topicId: row.topicIdStr
+      }).unwrap();
+      toast.success(res?.message || `Topic "${row.topic}" and its tasks deleted successfully`);
+      setSelectedTopicIds((prev) => prev.filter((id) => id !== row.topicIdStr));
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete topic");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTopicIds.length === 0) return;
+    const count = selectedTopicIds.length;
+    const ok = await confirmToast(
+      `Are you sure you want to delete ${count} selected topic(s)? This will delete them from syllabus and permanently remove all their associated tasks from both Task Management and Student Task Boards.`,
+      { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }
+    );
+    if (!ok) return;
+
+    try {
+      const res = await bulkDeleteTopics({
+        versionId,
+        topicIds: selectedTopicIds
+      }).unwrap();
+      toast.success(res?.message || `${count} topic(s) and their tasks deleted successfully`);
+      setSelectedTopicIds([]);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete selected topics");
+    }
+  };
+
+  const handleStartEdit = (row) => {
+    let rawTopic = null;
+    if (data?.data?.subjects) {
+      for (const s of data.data.subjects) {
+        const t = (s.topics || []).find((top) => String(top._id) === String(row.topicIdStr));
+        if (t) {
+          rawTopic = t;
+          break;
+        }
+      }
+    }
+    const topicSubTopics = (rawTopic?.subTopics || []).map((st, idx) => ({
+      _id: st._id ? String(st._id) : undefined,
+      name: st.name || "",
+      description: st.description || "",
+      order: st.order || idx + 1,
+      isActive: st.isActive !== false,
+    }));
+
+    setEditingTopic({
+      topicId: row.topicIdStr,
+      subjectId: row.subjectId,
+      name: rawTopic?.name || row.topic,
+      description: rawTopic?.description || row.topicDescription || "",
+      order: rawTopic?.order || 1,
+      isActive: rawTopic?.isActive !== false,
+      subTopics: topicSubTopics,
+    });
+    setEditName(rawTopic?.name || row.topic || "");
+    setEditDesc(rawTopic?.description || row.topicDescription || "");
+    setEditSubTopics(topicSubTopics);
+    setNewSubTopicName("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) {
+      toast.error("Topic name cannot be empty");
+      return;
+    }
+    const validSubTopics = editSubTopics
+      .map((st, idx) => ({
+        ...st,
+        name: (st.name || "").trim(),
+        order: idx + 1,
+      }))
+      .filter((st) => st.name.length > 0);
+
+    try {
+      await updateTopic({
+        versionId,
+        subjectId: editingTopic.subjectId,
+        topicId: editingTopic.topicId,
+        name: editName.trim(),
+        description: editDesc.trim(),
+        subTopics: validSubTopics,
+      }).unwrap();
+      toast.success("Topic and subtopics updated successfully");
+      setEditingTopic(null);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update topic");
+    }
+  };
+
   const topicColumns = useMemo(() => [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          checked={groupedTopics.length > 0 && selectedTopicIds.length === groupedTopics.length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedTopicIds(groupedTopics.map((g) => g.topicIdStr));
+            } else {
+              setSelectedTopicIds([]);
+            }
+          }}
+          className="w-3.5 h-3.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+          title="Select All Topics"
+        />
+      ),
+      align: "center",
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedTopicIds.includes(row.topicIdStr)}
+          onChange={() => {
+            setSelectedTopicIds((prev) =>
+              prev.includes(row.topicIdStr)
+                ? prev.filter((id) => id !== row.topicIdStr)
+                : [...prev, row.topicIdStr]
+            );
+          }}
+          className="w-3.5 h-3.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+        />
+      ),
+    },
     {
       key: "sno",
       label: "S.NO",
@@ -1155,13 +1326,18 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
       key: "topic",
       label: "TOPIC NAME",
       render: (row) => (
-        <div className="flex items-center gap-2.5 py-1">
-          <span className="p-1.5 rounded-lg bg-orange-50 text-orange-500 border border-orange-100 flex-shrink-0">
-            <MdTopic size={15} />
-          </span>
-          <span className="font-bold text-sm text-slate-800">
-            {row.topic}
-          </span>
+        <div className="flex flex-col py-1">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-500 border border-orange-100 flex-shrink-0">
+              <MdTopic size={15} />
+            </span>
+            <span className="font-bold text-sm text-slate-800">
+              {row.topic}
+            </span>
+          </div>
+          {row.topicDescription && (
+            <p className="text-[11px] text-slate-400 pl-8 line-clamp-1">{row.topicDescription}</p>
+          )}
         </div>
       ),
     },
@@ -1202,7 +1378,33 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
         </span>
       ),
     },
-  ], []);
+    {
+      key: "actions",
+      label: "ACTIONS",
+      align: "center",
+      render: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => handleStartEdit(row)}
+            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer"
+            title="Edit Topic"
+          >
+            <MdEdit size={16} />
+          </button>
+          <button
+            type="button"
+            disabled={isDeletingTopic}
+            onClick={() => handleDeleteTopic(row)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+            title="Delete Topic & Its Tasks"
+          >
+            <MdDeleteOutline size={17} />
+          </button>
+        </div>
+      ),
+    },
+  ], [groupedTopics, selectedTopicIds, isDeletingTopic]);
 
   const detailedColumns = useMemo(() => [
     {
@@ -1246,7 +1448,33 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
         </div>
       ),
     },
-  ], []);
+    {
+      key: "actions",
+      label: "ACTIONS",
+      align: "center",
+      render: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => handleStartEdit(row)}
+            className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer"
+            title="Edit Topic"
+          >
+            <MdEdit size={16} />
+          </button>
+          <button
+            type="button"
+            disabled={isDeletingTopic}
+            onClick={() => handleDeleteTopic(row)}
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+            title="Delete Topic & Its Tasks"
+          >
+            <MdDeleteOutline size={17} />
+          </button>
+        </div>
+      ),
+    },
+  ], [isDeletingTopic]);
 
   const tableData = useMemo(() => {
     if (viewMode === "topics") {
@@ -1282,6 +1510,38 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
 
   return (
     <div className="p-4 space-y-3">
+      {/* Bulk Delete Bar */}
+      {selectedTopicIds.length > 0 && (
+        <div className="flex items-center justify-between bg-orange-50 border border-orange-200 px-4 py-2.5 rounded-xl text-xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <span className="font-black text-orange-900">
+              {selectedTopicIds.length} topic(s) selected
+            </span>
+            <span className="text-orange-700 text-[11px] hidden sm:inline">
+              (Deleting will remove these topics and their tasks from Task Management & Student Portal)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTopicIds([])}
+              className="px-3 py-1.5 text-slate-600 hover:bg-white rounded-lg transition font-bold cursor-pointer"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              disabled={isBulkDeletingTopics}
+              onClick={handleBulkDelete}
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <MdDeleteOutline size={16} />
+              <span>{isBulkDeletingTopics ? "Deleting..." : `Delete Selected (${selectedTopicIds.length})`}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* View Mode Toggle Bar */}
       <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
@@ -1321,6 +1581,165 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
         rowsPerPage={10}
         emptyMessage="No syllabus topics found"
       />
+
+      {/* Edit Topic Modal */}
+      {editingTopic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 animate-in fade-in max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-orange-50 text-orange-600 rounded-xl">
+                  <MdEdit size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-800">Edit Topic & Subtopics</h3>
+                  <p className="text-[11px] text-slate-400">Update topic details and manage all nested subtopics</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTopic(null)}
+                className="text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
+              >
+                <MdClose size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto pr-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Topic Name *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Enter topic name"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white font-medium text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Description (Optional)</label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Topic summary or description"
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white resize-none font-medium text-slate-800"
+                />
+              </div>
+
+              {/* Subtopics Management */}
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Subtopics ({editSubTopics.length})
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Edit names or remove subtopics
+                  </span>
+                </div>
+
+                {/* Subtopics List */}
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {editSubTopics.length === 0 ? (
+                    <div className="text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
+                      No subtopics under this topic yet.
+                    </div>
+                  ) : (
+                    editSubTopics.map((st, sIdx) => (
+                      <div key={st._id || `st-${sIdx}`} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <span className="text-[11px] font-mono font-bold text-slate-400 w-5 text-center shrink-0">
+                          {sIdx + 1}.
+                        </span>
+                        <input
+                          type="text"
+                          value={st.name}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditSubTopics((prev) =>
+                              prev.map((item, idx) => (idx === sIdx ? { ...item, name: val } : item))
+                            );
+                          }}
+                          placeholder={`Subtopic ${sIdx + 1} name`}
+                          className="flex-1 px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 font-medium text-slate-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditSubTopics((prev) => prev.filter((_, idx) => idx !== sIdx));
+                          }}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer shrink-0"
+                          title="Remove subtopic (will delete associated tasks on save)"
+                        >
+                          <MdDeleteOutline size={16} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Subtopic Input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newSubTopicName}
+                    onChange={(e) => setNewSubTopicName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (newSubTopicName.trim()) {
+                          setEditSubTopics((prev) => [
+                            ...prev,
+                            { name: newSubTopicName.trim(), description: "", order: prev.length + 1, isActive: true }
+                          ]);
+                          setNewSubTopicName("");
+                        }
+                      }
+                    }}
+                    placeholder="Type new subtopic name & press Enter or Add"
+                    className="flex-1 px-3 py-2 text-xs bg-white border border-dashed border-slate-300 rounded-xl focus:outline-none focus:border-orange-500 font-medium text-slate-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newSubTopicName.trim()) {
+                        setEditSubTopics((prev) => [
+                          ...prev,
+                          { name: newSubTopicName.trim(), description: "", order: prev.length + 1, isActive: true }
+                        ]);
+                        setNewSubTopicName("");
+                      }
+                    }}
+                    disabled={!newSubTopicName.trim()}
+                    className="px-3 py-2 text-xs font-bold bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 rounded-xl transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
+                  >
+                    <MdAdd size={16} />
+                    <span>Add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingTopic(null)}
+                className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingTopic}
+                onClick={handleSaveEdit}
+                className="px-4 py-2 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition cursor-pointer shadow-xs"
+              >
+                {isUpdatingTopic ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1738,7 +2157,7 @@ const TaskDetailModal = ({ task, onClose }) => {
             </span>
             {task.timeDays && (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                <MdAccessTime size={13} /> {task.timeDays} Day{task.timeDays > 1 ? "s" : ""}
+                <MdAccessTime size={13} /> {task.timeDays}{String(task.timeDays).toLowerCase().includes("day") ? "" : " Days"}
               </span>
             )}
             {task.dueDate && (
@@ -2212,7 +2631,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
         priority: form.priority || "medium",
         maxMarks: Number(form.maxMarks) >= 0 ? Number(form.maxMarks) : 5,
         title:    form.title.trim(),
-        timeDays: form.timeDays ? Number(form.timeDays) : null,
+        timeDays: form.timeDays ? String(form.timeDays).trim() : null,
       };
       await createTask(payload).unwrap();
       toast.success("Task created successfully!");
@@ -2436,7 +2855,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
             </div>
             <div>
               <label className={lc}>Duration (Days)</label>
-              <input type="number" min="1" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7" />
+              <input type="text" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7 or 7 days" />
             </div>
             <div>
               <label className={lc}>Max Marks</label>

@@ -147,8 +147,8 @@ const Layout = () => {
                     <Route path="/settings" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SettingFIle /></ProtectedRoute>} />
                     <Route path="/support" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><Supportfile /></ProtectedRoute>} />
                     <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><CurriculumManagement /></ProtectedRoute>} />
-                    <Route path="/session-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "hod"]}><SessionManagement /></ProtectedRoute>} />
-                    <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "hod"]}><ActivityLogs /></ProtectedRoute>} />
+                    <Route path="/session-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"]}><SessionManagement /></ProtectedRoute>} />
+                    <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"]}><ActivityLogs /></ProtectedRoute>} />
                     <Route path="/unauthorized" element={<PageNotFound />} />
                     <Route path="*" element={<PageNotFound />} />
                 </Routes>

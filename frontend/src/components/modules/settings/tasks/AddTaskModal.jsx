@@ -327,7 +327,7 @@ const AddTaskModal = ({
                 course: courseStr,
                 courses: coursesList,
                 maxMarks: Number(taskForm.maxMarks) >= 0 ? Number(taskForm.maxMarks) : 5,
-                timeDays: taskForm.timeDays ? Number(taskForm.timeDays) : null,
+                timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
                 dueDate: taskForm.dueDate || null,
                 measurablePoints: taskForm.measurablePoints.trim(),
                 levelId: selectedLevelId,
@@ -944,12 +944,11 @@ const AddTaskModal = ({
                             <div className="sm:col-span-2">
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Duration (Days)</label>
                                 <input
-                                    type="number"
-                                    min="1"
+                                    type="text"
                                     value={taskForm.timeDays}
                                     onChange={(e) => setTaskForm({ ...taskForm, timeDays: e.target.value })}
                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 transition shadow-2xs"
-                                    placeholder="e.g. 7"
+                                    placeholder="e.g. 7 or 7 days"
                                 />
                             </div>
                         </div>

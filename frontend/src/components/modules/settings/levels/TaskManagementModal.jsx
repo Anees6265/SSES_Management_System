@@ -226,7 +226,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
         domain: isLevel2B ? (taskForm.domain || "").trim() : "",
         course: courseStr,
         courses: coursesList,
-        timeDays: taskForm.timeDays ? Number(taskForm.timeDays) : null,
+        timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
         maxMarks: Number(taskForm.maxMarks) || 5
       };
 
@@ -804,12 +804,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         <label className={labelCls}>Duration</label>
                         <div className="relative">
                           <input
-                            type="number"
+                            type="text"
                             value={taskForm.timeDays}
                             onChange={(e) => setTaskForm(prev => ({ ...prev, timeDays: e.target.value }))}
                             className={`${inputCls} pr-12`}
-                            min="1"
-                            placeholder="e.g. 3"
+                            placeholder="e.g. 3 or 3 days"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
                             Days

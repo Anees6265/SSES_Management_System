@@ -2534,7 +2534,7 @@ exports.assignExtraTask = async (req, res) => {
       priority: priority || "medium",
       mandatory: false,
       maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
-      timeDays: timeDays ? Number(timeDays) : null,
+      timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
       measurablePoints: measurablePoints || "",
       dueDate: dueDate ? new Date(dueDate) : null,
       notes: notes || "",

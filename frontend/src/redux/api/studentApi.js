@@ -13,16 +13,32 @@ const decrypt = (enc) => {
   }
 };
 
+const rawStudentBaseQuery = fetchBaseQuery({
+  baseUrl: API_BASE_URL,
+  prepareHeaders: (headers) => {
+    const token = decrypt(localStorage.getItem("studentToken"));
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return headers;
+  },
+});
+
+const studentBaseQueryWithAuth = async (args, api, extraOptions) => {
+  const result = await rawStudentBaseQuery(args, api, extraOptions);
+  if (result?.error?.status === 401) {
+    console.warn("Student session expired (401). Logging out...");
+    localStorage.removeItem("studentToken");
+    localStorage.removeItem("studentRefreshToken");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    localStorage.removeItem("studentData");
+    window.location.href = "/login";
+  }
+  return result;
+};
+
 export const studentApi = createApi({
   reducerPath: "studentApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      const token = decrypt(localStorage.getItem("studentToken"));
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: studentBaseQueryWithAuth,
   tagTypes: ["StudentProfile", "StudentTasks", "StudentHistory", "StudentSnapshots", "StudentEvents"],
   endpoints: (builder) => ({
 

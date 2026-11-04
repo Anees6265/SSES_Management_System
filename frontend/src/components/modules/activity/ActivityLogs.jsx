@@ -69,7 +69,9 @@ export default function ActivityLogs() {
   const loggedInUser = JSON.parse(localStorage.getItem("user") || "{}");
   const isHod = (loggedInUser?.role || "").toLowerCase() === "hod";
 
-  const threatOnly = activeTab === "Security Threats (Alerts)";
+  // Blocked Threats option turned off for now (code commented as requested)
+  // const threatOnly = activeTab === "Security Threats (Alerts)";
+  const threatOnly = false;
 
   // Fetch unique users from activity logs and user directory for filter dropdown
   const { data: logUsersData } = useGetActivityLogUsersQuery();
@@ -106,7 +108,7 @@ export default function ActivityLogs() {
       { value: "ALL", label: "All Users / Sources" },
       ...availableUsers.map((u) => ({
         value: u.name,
-        label: `${u.name}${u.role ? ` (${u.role})` : ""}`,
+        label: u.name,
       })),
     ],
     [availableUsers]
@@ -254,10 +256,10 @@ export default function ActivityLogs() {
           dateRange === "today"
             ? "Today"
             : dateRange === "yesterday"
-            ? "Yesterday"
-            : dateRange === "7days"
-            ? "Last 7 Days"
-            : "Last 30 Days",
+              ? "Yesterday"
+              : dateRange === "7days"
+                ? "Last 7 Days"
+                : "Last 30 Days",
         onRemove: () => setDateRange(""),
       });
     }
@@ -322,7 +324,7 @@ export default function ActivityLogs() {
     <div className="w-full flex-1 flex flex-col bg-slate-50/60 min-h-screen">
       {/* ── TOP HEADER (With Standard Action Buttons) ── */}
       <Header
-        title="Activity & Audit Logs"
+        title="Activity Logs"
         subtitle={
           isHod
             ? `Department: ${loggedInUser?.department || "HOD Scope"}`
@@ -358,7 +360,9 @@ export default function ActivityLogs() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6 py-1 sm:py-0 gap-2 w-full">
         <div className="flex-1 min-w-0">
           <TabsCommon
-            tabs={["All Logs", "Security Threats (Alerts)"]}
+            // Blocked Threats option turned off for now (commented out as requested)
+            // tabs={["All Logs", "Security Threats (Alerts)"]}
+            tabs={["All Logs"]}
             activeTab={activeTab}
             onTabChange={(tab) => {
               setActiveTab(tab);
@@ -430,56 +434,34 @@ export default function ActivityLogs() {
             </div>
           </div>
 
-          {/* Card 4: Blocked Threats (Alert Card) */}
+          {/* Card 4: Blocked Threats (Alert Card) - Toggle option temporarily disabled */}
           <div
-            onClick={() => {
+            /* onClick={() => {
               setActiveTab(threatOnly ? "All Logs" : "Security Threats (Alerts)");
               setPage(1);
-            }}
-            className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs flex items-center justify-between ${
-              threatOnly
-                ? "bg-gradient-to-br from-rose-500 to-rose-600 text-white border-rose-600 ring-2 ring-rose-400 shadow-sm"
-                : stats.blockedThreatsToday > 0
-                ? "bg-rose-50/70 border-rose-200 text-rose-900 hover:bg-rose-100/60"
-                : "bg-white border-slate-200/90 text-slate-900 hover:border-rose-200 hover:shadow-xs"
-            }`}
-            title="Click to toggle Security Threats view"
+            }} */
+            className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-2xs flex items-center justify-between ${stats.blockedThreatsToday > 0
+                ? "bg-rose-50/70 border-rose-200 text-rose-900"
+                : "bg-white border-slate-200/90 text-slate-900"
+              }`}
           >
             <div>
               <div className="flex items-center gap-1.5">
-                <p
-                  className={`text-xs font-bold uppercase tracking-wider ${
-                    threatOnly ? "text-rose-100" : "text-rose-600"
-                  }`}
-                >
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-600">
                   Blocked Threats
                 </p>
-                {stats.blockedThreatsToday > 0 && !threatOnly && (
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block" />
+                {stats.blockedThreatsToday > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
                 )}
               </div>
-              <h3
-                className={`text-2xl sm:text-3xl font-black mt-1 ${
-                  threatOnly ? "text-white" : "text-rose-700"
-                }`}
-              >
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-rose-700">
                 {stats.blockedThreatsToday.toLocaleString()}
               </h3>
-              <p
-                className={`text-[11px] mt-0.5 font-medium ${
-                  threatOnly ? "text-rose-100" : "text-rose-600/80"
-                }`}
-              >
-                {threatOnly ? "Showing security attacks" : "Scanners & probes blocked"}
+              <p className="text-[11px] mt-0.5 font-medium text-rose-600/80">
+                Scanners & probes blocked
               </p>
             </div>
-            <div
-              className={`w-12 h-12 rounded-2xl border flex items-center justify-center shadow-2xs ${
-                threatOnly
-                  ? "bg-rose-600/80 border-rose-400 text-white"
-                  : "bg-rose-100 border-rose-200 text-rose-600"
-              }`}
-            >
+            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center shadow-2xs bg-rose-100 border-rose-200 text-rose-600">
               <ShieldAlert size={22} />
             </div>
           </div>
@@ -660,11 +642,10 @@ export default function ActivityLogs() {
                         <tr
                           key={log._id}
                           onClick={() => setSelectedLog(log)}
-                          className={`transition cursor-pointer ${
-                            isThreat
+                          className={`transition cursor-pointer ${isThreat
                               ? "bg-rose-50/40 hover:bg-rose-50/70"
                               : "hover:bg-orange-50/30"
-                          }`}
+                            }`}
                           title="Click to view full inspection"
                         >
                           {/* Date & Time */}
@@ -683,11 +664,10 @@ export default function ActivityLogs() {
                                     setPage(1);
                                   }
                                 }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0 border transition shadow-2xs ${
-                                  isThreat
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0 border transition shadow-2xs ${isThreat
                                     ? "bg-rose-100 text-rose-800 border-rose-200"
                                     : "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200 hover:scale-105"
-                                }`}
+                                  }`}
                                 title={log.userName ? `Click to filter logs for ${log.userName}` : undefined}
                               >
                                 {log.userName?.charAt(0)?.toUpperCase() || "S"}
@@ -709,11 +689,10 @@ export default function ActivityLogs() {
                                 </button>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span
-                                    className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                                      isThreat
+                                    className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${isThreat
                                         ? "bg-rose-100 text-rose-800 border-rose-200"
                                         : "bg-slate-100 text-slate-600 border-slate-200"
-                                    }`}
+                                      }`}
                                   >
                                     {log.role || "unknown"}
                                   </span>
@@ -730,9 +709,8 @@ export default function ActivityLogs() {
                           {/* Action Badge */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                                ACTION_BADGES[log.action] || "bg-slate-100 text-slate-700 border-slate-200"
-                              }`}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${ACTION_BADGES[log.action] || "bg-slate-100 text-slate-700 border-slate-200"
+                                }`}
                             >
                               {log.action === "SECURITY_ALERT" && (
                                 <ShieldAlert size={12} className="text-red-600" />
@@ -744,9 +722,8 @@ export default function ActivityLogs() {
                           {/* Module */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span
-                              className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
-                                MODULE_BADGES[log.module] || "bg-slate-100 text-slate-600 border-slate-200"
-                              }`}
+                              className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold border ${MODULE_BADGES[log.module] || "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}
                             >
                               {log.module}
                             </span>
@@ -782,13 +759,12 @@ export default function ActivityLogs() {
                           {/* Status */}
                           <td className="py-3 px-4 text-center whitespace-nowrap">
                             <span
-                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                                log.status === "SUCCESS"
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${log.status === "SUCCESS"
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   : log.status === "BLOCKED"
-                                  ? "bg-rose-100 text-rose-800 border-rose-300 font-bold"
-                                  : "bg-amber-50 text-amber-700 border-amber-200"
-                              }`}
+                                    ? "bg-rose-100 text-rose-800 border-rose-300 font-bold"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}
                             >
                               {log.status}
                             </span>
@@ -823,11 +799,10 @@ export default function ActivityLogs() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${
-                    selectedLog.isSecurityAlert
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${selectedLog.isSecurityAlert
                       ? "bg-rose-100 text-rose-600 border border-rose-200"
                       : "bg-orange-100 text-orange-600 border border-orange-200"
-                  }`}
+                    }`}
                 >
                   {selectedLog.isSecurityAlert ? <ShieldAlert size={20} /> : <Info size={20} />}
                 </div>

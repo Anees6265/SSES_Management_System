@@ -207,61 +207,20 @@ const baseQueryWithAutoRefresh = async (args, api, extraOptions) => {
     return result;
   }
 
-  // Student login/auth endpoints pe 401 aaye toh logout mat karo
-  const isStudentAuthEndpoint = typeof args.url === 'string' && args.url.includes('/student-auth/');
-  if (isStudentAuthEndpoint && result?.error?.status === 401) {
+  const isAuthLoginEndpoint = typeof args.url === 'string' && (
+    args.url.endsWith('/login') ||
+    args.url.endsWith('/signup') ||
+    args.url.includes('/otp') ||
+    args.url.includes('/forgot-password') ||
+    args.url.includes('/reset-password')
+  );
+
+  if (result?.error?.status === 401 && !isAuthLoginEndpoint) {
+    console.warn("Session expired (401). Logging out...");
+    api.dispatch(logout());
+    localStorage.clear();
+    window.location.href = "/login";
     return result;
-  }
-
-  if (result?.error?.status === 401) {
-    console.warn("Token expired. Attempting refresh...");
-
-    const encryptedRefreshToken = localStorage.getItem("refreshToken");
-    const refreshToken = decrypt(encryptedRefreshToken);
-
-    if (!refreshToken) {
-      console.error("No valid refresh token. Logging out...");
-      // Only logout if admin token exists — student session pe logout mat karo
-      if (localStorage.getItem("token")) {
-        api.dispatch(logout());
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
-      }
-      return result;
-    }
-
-    console.log("Attempting token refresh...");
-    const refreshResult = await rawBaseQuery(
-      {
-        url: '/user/refresh_token',
-        method: "POST",
-        body: { refreshToken },
-      },
-      api,
-      extraOptions
-    );
-
-    if (refreshResult?.data?.accessToken) {
-      const { accessToken } = refreshResult.data;
-      console.log("Token refreshed successfully");
-
-      // Store encrypted token
-      localStorage.setItem("token", encrypt(accessToken));
-      
-      const user = jwtDecode(accessToken);
-
-      // Update Redux state
-      api.dispatch(setCredentials({ token: accessToken, user }));
-
-      // Retry original query
-      result = await rawBaseQuery(args, api, extraOptions);
-    } else {
-      console.error("Refresh failed. Logging out...");
-      api.dispatch(logout());
-      localStorage.clear();
-      window.location.href = "/login";
-    }
   }
 
   return result;

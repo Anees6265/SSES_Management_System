@@ -49,7 +49,7 @@ const generateAccessToken = (user) =>
   jwt.sign(buildTokenPayload(user), process.env.JWT_SECRET, { expiresIn: "1h" });
 
 const generateRefreshToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
 // CREATE USER
 exports.createUser = async (req, res) => {

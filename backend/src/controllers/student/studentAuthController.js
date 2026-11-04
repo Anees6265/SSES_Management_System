@@ -71,13 +71,13 @@ exports.studentLogin = async (req, res) => {
     const token = jwt.sign(
       { id: student._id, prkey: student.prkey, role: "student" },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "1h" }
     );
 
     const refreshToken = jwt.sign(
       { id: student._id, role: "student" },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "1h" }
     );
 
     const isDefaultPassword = (password === "ssism@123");

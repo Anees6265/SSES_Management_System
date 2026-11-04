@@ -146,13 +146,13 @@ class FaceAuthController {
           permissions: matchedUser.permissions || [],
         },
         process.env.JWT_SECRET,
-        { expiresIn: '2h' }
+        { expiresIn: '1h' }
       );
 
       const refreshToken = jwt.sign(
         { id: matchedUser._id, role: matchedUser.role },
         process.env.JWT_SECRET,
-        { expiresIn: '4h' }
+        { expiresIn: '1h' }
       );
 
       // Update refresh token separately since we used lean query

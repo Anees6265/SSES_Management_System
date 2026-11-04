@@ -942,11 +942,25 @@ const MarkDroppedModal = ({ name, onConfirm, onCancel, loading, variant = "dropp
         reader.readAsDataURL(file);
     };
 
+    const handleRemoveFile = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setFileData(null);
+        setFileName("");
+        setFileType("");
+        setFileErr("");
+    };
+
     const handleSubmit = () => {
         if (isDummy && !reason.trim()) { toast.error("Reason is required"); return; }
         if (!isDummy && !remark.trim()) { toast.error("Reason is required"); return; }
-        if (!fileData) { toast.error("Application document is required"); return; }
-        onConfirm({ reason, remark, fileData, fileType, fileName });
+        onConfirm({
+            reason,
+            remark,
+            fileData: fileData || null,
+            fileType: fileType || null,
+            fileName: fileName || ""
+        });
     };
 
     return (
@@ -989,22 +1003,36 @@ const MarkDroppedModal = ({ name, onConfirm, onCancel, loading, variant = "dropp
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            Application Document <span className="text-red-400">*</span>
-                            <span className="text-gray-400 font-normal ml-1">(image/PDF max 5MB)</span>
-                        </label>
-                        <label className={`flex items-center gap-3 border-2 border-dashed rounded-xl p-3 cursor-pointer transition ${fileData ? "border-green-300 bg-green-50" : "border-gray-200 hover:border-gray-300 bg-gray-50"
-                            }`}>
-                            <MdFileUpload size={18} className={fileData ? "text-green-500" : "text-gray-400"} />
-                            <div className="flex-1 min-w-0">
-                                {fileData ? (
-                                    <p className="text-xs font-semibold text-green-700 truncate">{fileName}</p>
-                                ) : (
-                                    <p className="text-xs text-gray-500">Click to upload application</p>
-                                )}
-                            </div>
-                            <input type="file" accept="image/*,.pdf" onChange={handleFile} className="hidden" />
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-gray-600">
+                                Application Document <span className="text-gray-400 font-normal">(optional)</span>
+                            </label>
+                            <span className="text-[11px] text-gray-400 font-normal">Max 5MB (image/PDF)</span>
+                        </div>
+                        <div className="relative">
+                            <label className={`flex items-center gap-3 border-2 border-dashed rounded-xl p-3 cursor-pointer transition ${fileData ? "border-green-300 bg-green-50" : "border-gray-200 hover:border-gray-300 bg-gray-50"
+                                }`}>
+                                <MdFileUpload size={18} className={fileData ? "text-green-500" : "text-gray-400"} />
+                                <div className="flex-1 min-w-0 pr-6">
+                                    {fileData ? (
+                                        <p className="text-xs font-semibold text-green-700 truncate">{fileName}</p>
+                                    ) : (
+                                        <p className="text-xs text-gray-500">Click to upload application (optional)</p>
+                                    )}
+                                </div>
+                                <input type="file" accept="image/*,.pdf" onChange={handleFile} className="hidden" />
+                            </label>
+                            {fileData && (
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveFile}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                                    title="Remove document"
+                                >
+                                    <MdClose size={16} />
+                                </button>
+                            )}
+                        </div>
                         {fileErr && <p className="text-[11px] text-red-500 mt-1">{fileErr}</p>}
                     </div>
                 </div>

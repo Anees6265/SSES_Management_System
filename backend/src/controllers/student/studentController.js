@@ -2790,41 +2790,45 @@ exports.resolvePermission = async (req, res) => {
   }
 };
 
-// ✅ Mark Student as Dropped (with application document upload)
+// ✅ Mark Student as Dropped (with optional application document upload)
 exports.markDropped = async (req, res) => {
   try {
     const { remark, fileData, fileType } = req.body;
     if (!remark) return res.status(400).json({ message: "remark is required" });
-    if (!fileData || !fileType) return res.status(400).json({ message: "Application document is required" });
-    if (!["image", "pdf"].includes(fileType)) return res.status(400).json({ message: "fileType must be image or pdf" });
+
+    if (fileData && fileType && !["image", "pdf"].includes(fileType)) {
+      return res.status(400).json({ message: "fileType must be image or pdf" });
+    }
 
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
     if (student.status === "Dropped") return res.status(400).json({ message: "Student is already dropped" });
 
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    if (fileData && fileType) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
 
-    const uploadResponse = await cloudinary.uploader.upload(fileData, {
-      folder: "drop_applications",
-      resource_type: fileType === "pdf" ? "raw" : "image",
-      public_id: `drop_${req.params.id}_${Date.now()}`,
-    });
+      const uploadResponse = await cloudinary.uploader.upload(fileData, {
+        folder: "drop_applications",
+        resource_type: fileType === "pdf" ? "raw" : "image",
+        public_id: `drop_${req.params.id}_${Date.now()}`,
+      });
 
-    // Store document in student.documents with isExtra: false
-    student.documents.push({
-      title: `Drop Application`,
-      fileURL: uploadResponse.secure_url,
-      fileType,
-      remark,
-      isExtra: false,
-      uploadedBy: req.user?._id || null,
-      uploadedByName: req.user?.name || "",
-      uploadedAt: new Date(),
-    });
+      // Store document in student.documents with isExtra: false
+      student.documents.push({
+        title: `Drop Application`,
+        fileURL: uploadResponse.secure_url,
+        fileType,
+        remark,
+        isExtra: false,
+        uploadedBy: req.user?._id || null,
+        uploadedByName: req.user?.name || "",
+        uploadedAt: new Date(),
+      });
+    }
 
     student.status = "Dropped";
     await student.save();
@@ -2844,45 +2848,55 @@ exports.markDummy = async (req, res) => {
   try {
     const { reason, remark, fileData, fileType } = req.body;
     if (!reason) return res.status(400).json({ message: "reason is required" });
-    if (!fileData || !fileType) return res.status(400).json({ message: "Application document is required" });
-    if (!["image", "pdf"].includes(fileType)) return res.status(400).json({ message: "fileType must be image or pdf" });
+
+    if (fileData && fileType && !["image", "pdf"].includes(fileType)) {
+      return res.status(400).json({ message: "fileType must be image or pdf" });
+    }
 
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
     if (student.status === "Dummy") return res.status(400).json({ message: "Student is already marked as dummy" });
 
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    let applicationURL = "";
+    let applicationType = "";
 
-    const uploadResponse = await cloudinary.uploader.upload(fileData, {
-      folder: "dummy_applications",
-      resource_type: fileType === "pdf" ? "raw" : "image",
-      public_id: `dummy_${req.params.id}_${Date.now()}`,
-    });
+    if (fileData && fileType) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+      });
+
+      const uploadResponse = await cloudinary.uploader.upload(fileData, {
+        folder: "dummy_applications",
+        resource_type: fileType === "pdf" ? "raw" : "image",
+        public_id: `dummy_${req.params.id}_${Date.now()}`,
+      });
+
+      applicationURL = uploadResponse.secure_url;
+      applicationType = fileType;
+
+      student.documents.push({
+        title: "Dummy Student Application",
+        fileURL: uploadResponse.secure_url,
+        fileType,
+        remark: remark || reason,
+        isExtra: false,
+        uploadedBy: req.user?._id || null,
+        uploadedByName: req.user?.name || "",
+        uploadedAt: new Date(),
+      });
+    }
 
     student.dummyDetails = {
       reason,
       remark: remark || "",
-      applicationURL: uploadResponse.secure_url,
-      applicationType: fileType,
+      applicationURL,
+      applicationType,
       markedBy: req.user?._id || null,
       markedByName: req.user?.name || "",
       markedAt: new Date(),
     };
-
-    student.documents.push({
-      title: "Dummy Student Application",
-      fileURL: uploadResponse.secure_url,
-      fileType,
-      remark: remark || reason,
-      isExtra: false,
-      uploadedBy: req.user?._id || null,
-      uploadedByName: req.user?.name || "",
-      uploadedAt: new Date(),
-    });
 
     student.status = "Dummy";
     await student.save();

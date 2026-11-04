@@ -365,7 +365,7 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       dueDate: dueDate || null,
       mandatory: mandatory !== false,
       maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
-      timeDays: timeDays ? Number(timeDays) : null,
+      timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
       measurablePoints: measurablePoints || "",
       order: taskCount + 1,
       assignedByName: req.user?.name || "System",
@@ -1092,7 +1092,7 @@ exports.uploadCombined = async (req, res) => {
       const taskTitle    = getTaskTitle(row);
       const taskType     = (row.taskType || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
       const maxMarks     = Number(row.maxMarks || row["Max Marks"]) || 5;
-      const timeDays     = row.timeDays || row["Time Days"] ? Number(row.timeDays || row["Time Days"]) : null;
+      const timeDays     = (row.timeDays !== undefined && row.timeDays !== null) || (row["Time Days"] !== undefined && row["Time Days"] !== null) ? String(row.timeDays || row["Time Days"] || "").trim() : null;
       const measurablePoints = (row.measurablePoints || row["Measurable Points"] || "").trim();
 
       // Find subject in saved sv

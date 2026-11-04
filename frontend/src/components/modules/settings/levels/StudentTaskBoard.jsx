@@ -323,7 +323,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange }) => {
                     <span>
                         {task.dueDate
                             ? new Date(task.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-                            : task.timeDays ? `${task.timeDays} Days` : "No deadline"
+                            : task.timeDays ? `${task.timeDays}${String(task.timeDays).toLowerCase().includes("day") ? "" : " Days"}` : "No deadline"
                         }
                     </span>
                 </div>
@@ -398,7 +398,7 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                 maxMarks: Number(form.maxMarks),
                 subjectName: form.subjectName || undefined,
                 measurablePoints: form.measurablePoints || undefined,
-                timeDays: form.timeDays ? Number(form.timeDays) : undefined,
+                timeDays: form.timeDays ? String(form.timeDays).trim() : undefined,
                 dueDate: form.dueDate || undefined,
                 priority: form.priority,
             }).unwrap();
@@ -525,12 +525,11 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                         <div>
                             <label className={labelCls}>Time (Days)</label>
                             <input
-                                type="number"
-                                min={1}
+                                type="text"
                                 className={inputCls}
                                 value={form.timeDays}
                                 onChange={set("timeDays")}
-                                placeholder="e.g. 3"
+                                placeholder="e.g. 3 or 3 days"
                             />
                         </div>
                     </div>

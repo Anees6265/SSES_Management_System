@@ -2157,7 +2157,7 @@ const TaskDetailModal = ({ task, onClose }) => {
             </span>
             {task.timeDays && (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                <MdAccessTime size={13} /> {task.timeDays} Day{task.timeDays > 1 ? "s" : ""}
+                <MdAccessTime size={13} /> {task.timeDays}{String(task.timeDays).toLowerCase().includes("day") ? "" : " Days"}
               </span>
             )}
             {task.dueDate && (
@@ -2631,7 +2631,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
         priority: form.priority || "medium",
         maxMarks: Number(form.maxMarks) >= 0 ? Number(form.maxMarks) : 5,
         title:    form.title.trim(),
-        timeDays: form.timeDays ? Number(form.timeDays) : null,
+        timeDays: form.timeDays ? String(form.timeDays).trim() : null,
       };
       await createTask(payload).unwrap();
       toast.success("Task created successfully!");
@@ -2855,7 +2855,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
             </div>
             <div>
               <label className={lc}>Duration (Days)</label>
-              <input type="number" min="1" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7" />
+              <input type="text" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7 or 7 days" />
             </div>
             <div>
               <label className={lc}>Max Marks</label>

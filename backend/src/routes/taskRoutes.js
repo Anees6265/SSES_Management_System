@@ -177,7 +177,7 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       type: type || "assignment",
       priority: priority || "medium",
       maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
-      timeDays: timeDays ? Number(timeDays) : null,
+      timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
       measurablePoints: measurablePoints || "",
       dueDate: dueDate || null,
       isGeneralTask: true,
@@ -235,7 +235,7 @@ const handleUpdateTaskRoute = async (req, res) => {
       updateData.maxMarks = Number(req.body.maxMarks) >= 0 ? Number(req.body.maxMarks) : 5;
     }
     if (req.body.timeDays !== undefined) {
-      updateData.timeDays = req.body.timeDays !== "" && req.body.timeDays !== null ? Number(req.body.timeDays) : null;
+      updateData.timeDays = req.body.timeDays !== "" && req.body.timeDays !== null ? String(req.body.timeDays).trim() : null;
     }
     if (req.body.mandatory !== undefined) {
       updateData.mandatory = req.body.mandatory === true || req.body.mandatory === "true";

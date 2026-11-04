@@ -57,7 +57,7 @@ const taskSchema = new mongoose.Schema({
   mandatory: { type: Boolean, default: true },
   maxMarks: { type: Number, min: 0, default: 5 },
   order: { type: Number, default: 1 },
-  timeDays: { type: Number, default: null },
+  timeDays: { type: String, default: null },
   measurablePoints: { type: String, default: "" },
   dueDate: { type: Date, default: null },
   isGeneralTask: { type: Boolean, default: false }, // Flag for general tasks

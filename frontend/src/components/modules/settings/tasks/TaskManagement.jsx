@@ -262,7 +262,7 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
             status,
             isActive: status === "active",
             maxMarks: maxMarks !== "" ? Number(maxMarks) : 5,
-            timeDays: timeDays !== "" && timeDays !== null ? Number(timeDays) : null,
+            timeDays: timeDays !== "" && timeDays !== null ? String(timeDays).trim() : null,
             dueDate: dueDate || null,
             measurablePoints: measurablePoints.trim(),
             mandatory: Boolean(mandatory),
@@ -395,12 +395,11 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                                 Duration (Days)
                             </label>
                             <input
-                                type="number"
-                                min="1"
+                                type="text"
                                 value={timeDays}
                                 onChange={(e) => setTimeDays(e.target.value)}
                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
-                                placeholder="e.g. 7"
+                                placeholder="e.g. 7 or 7 days"
                             />
                         </div>
                         <div>
@@ -586,7 +585,7 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                         <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Duration</p>
                             <p className="font-bold text-slate-800">
-                                {task.timeDays || task.raw?.timeDays ? `${task.timeDays || task.raw?.timeDays} Days` : "—"}
+                                {task.timeDays || task.raw?.timeDays ? `${task.timeDays || task.raw?.timeDays}${String(task.timeDays || task.raw?.timeDays).toLowerCase().includes("day") ? "" : " Days"}` : "—"}
                             </p>
                         </div>
                         <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-2.5 space-y-0.5">

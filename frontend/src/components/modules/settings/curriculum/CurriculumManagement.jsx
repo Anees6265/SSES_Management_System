@@ -292,7 +292,10 @@ const CurriculumUploadDrawerContent = ({
 }) => {
   const fileRef = useRef(null);
   const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedDeptId, setSelectedDeptId] = useState(() => {
+    if (departments.length === 1) return getId(departments[0]);
+    return "";
+  });
   const [selectedSubDeptId, setSelectedSubDeptId] = useState("");
   const [selectedLevelId, setSelectedLevelId] = useState("");
   const [selectedSubLevelId, setSelectedSubLevelId] = useState("");
@@ -310,6 +313,12 @@ const CurriculumUploadDrawerContent = ({
   const [selectedCourses, setSelectedCourses] = useState(["All"]);
 
   const [uploadCombined] = useUploadCombinedSyllabusMutation();
+
+  useEffect(() => {
+    if (departments.length === 1 && !selectedDeptId) {
+      setSelectedDeptId(getId(departments[0]));
+    }
+  }, [departments, selectedDeptId]);
 
   const selectedSession = sessions.find((s) => s._id === selectedSessionId);
   const selectedDept = departments.find((d) => getId(d) === selectedDeptId);
@@ -346,10 +355,12 @@ const CurriculumUploadDrawerContent = ({
     { value: "", label: "-- Select Session --" },
     ...filteredSessions.map((s) => ({ value: s._id, label: `${formatSessionLabel(s)}${s.status ? ` (${s.status})` : ""}` })),
   ];
-  const deptOptions = [
-    { value: "", label: "-- Select Department --" },
-    ...departments.map((d) => ({ value: d._id, label: d.name })),
-  ];
+  const deptOptions = departments.length === 1
+    ? [{ value: getId(departments[0]), label: `${departments[0].name} (Your Dept)` }]
+    : [
+        { value: "", label: "-- Select Department --" },
+        ...departments.map((d) => ({ value: d._id, label: d.name })),
+      ];
   const subDeptOptions = [
     { value: "", label: "-- Select Sub-Department --" },
     ...subDepartments
@@ -606,9 +617,12 @@ const CurriculumUploadDrawerContent = ({
             </label>
             <SelectDropdown
               value={selectedDeptId}
-              onChange={handleDeptChange}
+              onChange={departments.length === 1 ? undefined : handleDeptChange}
               options={deptOptions}
-              buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-400"
+              disabled={departments.length === 1}
+              buttonClassName={`h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
+                departments.length === 1 ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400"
+              }`}
             />
           </div>
 
@@ -1474,28 +1488,33 @@ const ActionMenu = ({ row, onDelete, onView }) => {
 
 /* ─── Main Curriculum Management Page ─────────────────── */
 const CurriculumManagement = () => {
+  const user = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+
   const role = (
     localStorage.getItem("role") ||
-    (() => {
-      try {
-        return JSON.parse(localStorage.getItem("user") || "{}")?.role;
-      } catch {
-        return "";
-      }
-    })() ||
+    user?.role ||
     ""
   ).toLowerCase();
+
   const isFaculty = role === "faculty";
+  const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(role);
+  const userDept = user?.department || "";
 
   const defaultFilters = useMemo(() => ({
     searchTerm: "",
     filterYear: "",
     filterSession: "",
-    filterDept: "",
+    filterDept: isDeptScoped && userDept ? userDept : "",
     filterSub: "",
     filterLevel: "",
     filterStatus: "",
-  }), []);
+  }), [isDeptScoped, userDept]);
 
   const {
     filters,
@@ -1506,10 +1525,17 @@ const CurriculumManagement = () => {
   const searchTerm = filters.searchTerm || "";
   const filterYear = filters.filterYear || "";
   const filterSession = filters.filterSession || "";
-  const filterDept = filters.filterDept || "";
+  const filterDept = isDeptScoped && userDept ? userDept : (filters.filterDept || "");
   const filterSub = filters.filterSub || "";
   const filterLevel = filters.filterLevel || "";
   const filterStatus = filters.filterStatus || "";
+
+  // Guarantee department lock for department-scoped users
+  useEffect(() => {
+    if (isDeptScoped && userDept && filters.filterDept !== userDept) {
+      updateFilter("filterDept", userDept);
+    }
+  }, [isDeptScoped, userDept, filters.filterDept, updateFilter]);
 
   const setSearchTerm = (s) => updateFilter("searchTerm", s);
   const setFilterYear = (y) => updateFilter("filterYear", y);
@@ -1540,6 +1566,15 @@ const CurriculumManagement = () => {
   const subLevels = useMemo(() => subLevelsData?.data || [], [subLevelsData]);
   const tasks = useMemo(() => tasksData?.data || [], [tasksData]);
 
+  const scopedDepartments = useMemo(() => {
+    if (!isDeptScoped || !userDept) return departments;
+    return departments.filter(
+      (d) =>
+        (d.name && d.name.toLowerCase() === userDept.toLowerCase()) ||
+        (user?.departmentId && String(d._id) === String(user.departmentId))
+    );
+  }, [departments, isDeptScoped, userDept, user?.departmentId]);
+
   const taskCountByVersion = useMemo(() => {
     return tasks.reduce((acc, task) => {
       const versionId = getId(task.syllabusVersionId);
@@ -1550,7 +1585,19 @@ const CurriculumManagement = () => {
 
   const curriculumRows = useMemo(() => {
     const rawVersions = versionsData?.data || [];
-    const versions = [...rawVersions].sort((a, b) => {
+    const scopedVersions = isDeptScoped && userDept
+      ? rawVersions.filter((version) => {
+          const level = version.levelId || {};
+          const subDepartment = level.subDepartmentId || {};
+          const department = subDepartment.departmentId || {};
+          const dName = department.name || "";
+          const dId = department._id || department;
+          if (dName && dName.toLowerCase() === userDept.toLowerCase()) return true;
+          if (dId && user?.departmentId && String(dId) === String(user.departmentId)) return true;
+          return false;
+        })
+      : rawVersions;
+    const versions = [...scopedVersions].sort((a, b) => {
       const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
       const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
       if (timeB !== timeA) return timeB - timeA;
@@ -1583,7 +1630,7 @@ const CurriculumManagement = () => {
         raw: version,
       };
     });
-  }, [versionsData, taskCountByVersion]);
+  }, [versionsData, taskCountByVersion, isDeptScoped, userDept, user?.departmentId]);
 
   const filtered = useMemo(() => curriculumRows.filter((row) => {
     const q = searchTerm.trim().toLowerCase();
@@ -1610,6 +1657,9 @@ const CurriculumManagement = () => {
 
   const resetFilters = () => {
     resetAllFilters();
+    if (isDeptScoped && userDept) {
+      updateFilter("filterDept", userDept);
+    }
     setCurrentPage(1);
   };
 
@@ -1617,13 +1667,13 @@ const CurriculumManagement = () => {
     const chips = [];
     if (filterYear) chips.push({ key: "year", label: "Year", value: filterYear, displayValue: filterYear, onRemove: () => setFilterYear("") });
     if (filterSession) chips.push({ key: "session", label: "Session", value: filterSession, displayValue: filterSession, onRemove: () => setFilterSession("") });
-    if (filterDept) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
+    if (filterDept && !isDeptScoped) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
     if (filterSub) chips.push({ key: "sub", label: "Sub-Dept", value: filterSub, displayValue: filterSub, onRemove: () => setFilterSub("") });
     if (filterLevel) chips.push({ key: "level", label: "Level", value: filterLevel, displayValue: filterLevel, onRemove: () => setFilterLevel("") });
     if (filterStatus) chips.push({ key: "status", label: "Status", value: filterStatus, displayValue: filterStatus, onRemove: () => setFilterStatus("") });
     if (searchTerm) chips.push({ key: "search", label: "Search", value: searchTerm, displayValue: `"${searchTerm}"`, onRemove: () => setSearchTerm("") });
     return chips;
-  }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterStatus, searchTerm]);
+  }, [filterYear, filterSession, filterDept, filterSub, filterLevel, filterStatus, searchTerm, isDeptScoped]);
 
   const handleDelete = async (row) => {
     if (!row?.id) return;
@@ -1646,10 +1696,11 @@ const CurriculumManagement = () => {
   }, [sessions, curriculumRows]);
 
   const depts = useMemo(() => {
+    if (isDeptScoped && userDept) return [userDept];
     const fromApi = departments.map((d) => d.name).filter(Boolean);
     const fromRows = getOptionValues(curriculumRows, "department");
     return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
-  }, [departments, curriculumRows]);
+  }, [departments, curriculumRows, isDeptScoped, userDept]);
 
   const subs = useMemo(() => {
     let activeSubs = subDepartments;
@@ -1719,7 +1770,7 @@ const CurriculumManagement = () => {
               drawerContent={({ closeDrawer }) => (
                 <CurriculumUploadDrawerContent
                   sessions={sessions}
-                  departments={departments}
+                  departments={scopedDepartments}
                   subDepartments={subDepartments}
                   levels={levels}
                   subLevels={subLevels}
@@ -1816,10 +1867,22 @@ const CurriculumManagement = () => {
               buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
             />
             <SelectDropdown
-              value={filterDept}
-              onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
+              value={isDeptScoped && userDept ? userDept : filterDept}
+              onChange={(val) => {
+                if (!isDeptScoped) {
+                  setFilterDept(val);
+                  setCurrentPage(1);
+                }
+              }}
+              options={
+                isDeptScoped && userDept
+                  ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
+                  : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
+              }
+              disabled={isDeptScoped}
+              buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
+                isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
+              }`}
             />
             <SelectDropdown
               value={filterSub}
@@ -1873,10 +1936,22 @@ const CurriculumManagement = () => {
                 buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
               />
               <SelectDropdown
-                value={filterDept}
-                onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
-                options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                value={isDeptScoped && userDept ? userDept : filterDept}
+                onChange={(val) => {
+                  if (!isDeptScoped) {
+                    setFilterDept(val);
+                    setCurrentPage(1);
+                  }
+                }}
+                options={
+                  isDeptScoped && userDept
+                    ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
+                    : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
+                }
+                disabled={isDeptScoped}
+                buttonClassName={`h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
+                  isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : ""
+                }`}
               />
               <SelectDropdown
                 value={filterSub}

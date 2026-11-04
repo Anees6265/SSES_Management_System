@@ -6,6 +6,7 @@ const Task = require("../models/syllabus/Task");
 const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
 const { syncTasksToSubLevelStudents, updateStudentTaskStatus, syncTaskToStudents } = require("../services/taskAssignmentService");
+const { getDepartmentScopeForUser } = require("../utils/departmentHelper");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
 
@@ -88,27 +89,42 @@ router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), as
 
     if (priority) filter.priority = priority;
     if (type) filter.type = type;
+
+    const scope = await getDepartmentScopeForUser(req.user);
+    const andConditions = [];
+
+    if (scope?.isDeptScoped) {
+      andConditions.push({
+        $or: [
+          { levelId: { $in: scope.levelIds } },
+          { syllabusVersionId: { $in: scope.versionIds } }
+        ]
+      });
+    }
+
     if (course && course !== "All") {
       const escaped = course.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const courseFilter = [
-        { course: course },
-        { courses: course },
-        { course: { $regex: escaped, $options: "i" } }
-      ];
-      if (filter.$or) {
-        filter.$and = [{ $or: filter.$or }, { $or: courseFilter }];
-        delete filter.$or;
-      } else {
-        filter.$or = courseFilter;
-      }
+      andConditions.push({
+        $or: [
+          { course: course },
+          { courses: course },
+          { course: { $regex: escaped, $options: "i" } }
+        ]
+      });
     }
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { subjectName: { $regex: search, $options: "i" } },
-        { topicName: { $regex: search, $options: "i" } }
-      ];
+      andConditions.push({
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+          { subjectName: { $regex: search, $options: "i" } },
+          { topicName: { $regex: search, $options: "i" } }
+        ]
+      });
+    }
+
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     const tasks = await Task.find(filter)
@@ -116,10 +132,21 @@ router.get("/", verifyToken, checkRole([...writeRoles, "placement_officer"]), as
       .sort({ createdAt: -1, _id: -1 })
       .lean();
 
+    let serialized = tasks.map(serializeTask);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      serialized = serialized.filter((t) => {
+        const dId = t.context?.department?._id;
+        const dName = t.context?.department?.name;
+        if (dId && String(dId) === String(scope.departmentId)) return true;
+        if (dName && scope.departmentName && dName.toLowerCase() === scope.departmentName.toLowerCase()) return true;
+        return false;
+      });
+    }
+
     res.status(200).json({
       success: true,
-      count: tasks.length,
-      data: tasks.map(serializeTask)
+      count: serialized.length,
+      data: serialized
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -153,6 +180,13 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
         success: false, 
         message: "levelId, subLevelId and title are required" 
       });
+    }
+
+    const scope = await getDepartmentScopeForUser(req.user);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      if (!scope.levelIds.map(String).includes(String(levelId))) {
+        return res.status(403).json({ success: false, message: "Access denied. Cannot create task for another department." });
+      }
     }
 
     let normalizedCourses = ["All"];
@@ -203,6 +237,20 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
 const handleUpdateTaskRoute = async (req, res) => {
   try {
     const { taskId } = req.params;
+    const existingTask = await Task.findById(taskId);
+    if (!existingTask) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    const scope = await getDepartmentScopeForUser(req.user);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      const isLevelMatch = existingTask.levelId && scope.levelIds.map(String).includes(String(existingTask.levelId));
+      const isVersionMatch = existingTask.syllabusVersionId && scope.versionIds.map(String).includes(String(existingTask.syllabusVersionId));
+      if (!isLevelMatch && !isVersionMatch) {
+        return res.status(403).json({ success: false, message: "Access denied. Cannot modify tasks from another department." });
+      }
+    }
+
     const updateData = { ...req.body, updatedAt: new Date() };
 
     // Support both title and taskTitle from frontend
@@ -296,15 +344,25 @@ router.put("/:taskId", verifyToken, checkRole(writeRoles), handleUpdateTaskRoute
 // Delete task (soft delete)
 router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) => {
   try {
+    const existingTask = await Task.findById(req.params.taskId);
+    if (!existingTask) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    const scope = await getDepartmentScopeForUser(req.user);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      const isLevelMatch = existingTask.levelId && scope.levelIds.map(String).includes(String(existingTask.levelId));
+      const isVersionMatch = existingTask.syllabusVersionId && scope.versionIds.map(String).includes(String(existingTask.syllabusVersionId));
+      if (!isLevelMatch && !isVersionMatch) {
+        return res.status(403).json({ success: false, message: "Access denied. Cannot delete tasks from another department." });
+      }
+    }
+
     const task = await Task.findByIdAndUpdate(
       req.params.taskId,
       { isActive: false, deletedAt: new Date() },
       { new: true }
     );
-
-    if (!task) {
-      return res.status(404).json({ success: false, message: "Task not found" });
-    }
 
     // Match student tasks linked directly by taskId or by syllabus/title match
     const studentTaskCriteria = [

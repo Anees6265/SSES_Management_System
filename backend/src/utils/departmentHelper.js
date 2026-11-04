@@ -185,7 +185,69 @@ async function resolveStudentDepartmentHierarchy({
   };
 }
 
+/**
+ * Resolves department scope info for department-scoped users (hod, faculty, placement_officer, coordinator).
+ * Returns null if user is superadmin/admin or unscoped.
+ * Returns { isDeptScoped: true, departmentId, departmentName, subDeptIds, levelIds, versionIds }
+ */
+async function getDepartmentScopeForUser(reqUser) {
+  if (!reqUser) return null;
+  const userRole = String(reqUser.role || "").toLowerCase().trim();
+  const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(userRole);
+  if (!isDeptScoped) return null;
+
+  let deptId = reqUser.departmentId;
+  let deptName = reqUser.department;
+
+  // If deptId is missing from token, fetch fresh from DB
+  if (!deptId && (reqUser.id || reqUser._id)) {
+    const User = require("../models/user/user");
+    const dbUser = await User.findById(reqUser.id || reqUser._id).select("department departmentId").lean();
+    if (dbUser) {
+      deptId = dbUser.departmentId;
+      deptName = deptName || dbUser.department;
+    }
+  }
+
+  // If still no deptId, attempt lookup by department name
+  if (!deptId && deptName && deptName.toLowerCase() !== "general") {
+    const deptDoc = await Department.findOne({
+      name: new RegExp(`^${String(deptName).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+    }).select("_id name").lean();
+    if (deptDoc) {
+      deptId = deptDoc._id;
+      deptName = deptDoc.name;
+    }
+  }
+
+  if (!deptId) {
+    return {
+      isDeptScoped: true,
+      departmentId: null,
+      departmentName: deptName || "",
+      subDeptIds: [],
+      levelIds: [],
+      versionIds: []
+    };
+  }
+
+  const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
+  const subDeptIds = await SubDepartment.find({ departmentId: deptId }).distinct("_id");
+  const levelIds = await Level.find({ subDepartmentId: { $in: subDeptIds } }).distinct("_id");
+  const versionIds = await SyllabusVersion.find({ levelId: { $in: levelIds } }).distinct("_id");
+
+  return {
+    isDeptScoped: true,
+    departmentId: deptId,
+    departmentName: deptName || "",
+    subDeptIds,
+    levelIds,
+    versionIds
+  };
+}
+
 module.exports = {
   resolveStudentDepartmentHierarchy,
-  normalizeStr
+  normalizeStr,
+  getDepartmentScopeForUser
 };

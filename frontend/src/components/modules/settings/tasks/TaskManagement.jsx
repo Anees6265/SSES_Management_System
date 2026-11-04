@@ -682,31 +682,36 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
 };
 
 const TaskManagement = () => {
+    const user = useMemo(() => {
+        try {
+            return JSON.parse(localStorage.getItem("user") || "{}");
+        } catch {
+            return {};
+        }
+    }, []);
+
     const role = (
         localStorage.getItem("role") ||
-        (() => {
-            try {
-                return JSON.parse(localStorage.getItem("user") || "{}")?.role;
-            } catch {
-                return "";
-            }
-        })() ||
+        user?.role ||
         ""
     ).toLowerCase();
+
     const isFaculty = role === "faculty";
+    const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(role);
+    const userDept = user?.department || "";
 
     const defaultFilters = useMemo(() => ({
         searchTerm: "",
         filterYear: "",
         filterSession: "",
-        filterDept: "",
+        filterDept: isDeptScoped && userDept ? userDept : "",
         filterSub: "",
         filterLevel: "",
         filterSubLevel: "",
         filterPriority: "",
         filterStatus: "",
         filterCourse: "",
-    }), []);
+    }), [isDeptScoped, userDept]);
 
     const {
         filters,
@@ -717,13 +722,20 @@ const TaskManagement = () => {
     const searchTerm = filters.searchTerm || "";
     const filterYear = filters.filterYear || "";
     const filterSession = filters.filterSession || "";
-    const filterDept = filters.filterDept || "";
+    const filterDept = isDeptScoped && userDept ? userDept : (filters.filterDept || "");
     const filterSub = filters.filterSub || "";
     const filterLevel = filters.filterLevel || "";
     const filterSubLevel = filters.filterSubLevel || "";
     const filterPriority = filters.filterPriority || "";
     const filterStatus = filters.filterStatus || "";
     const filterCourse = filters.filterCourse || "";
+
+    // Guarantee department lock for department-scoped users
+    useEffect(() => {
+        if (isDeptScoped && userDept && filters.filterDept !== userDept) {
+            updateFilter("filterDept", userDept);
+        }
+    }, [isDeptScoped, userDept, filters.filterDept, updateFilter]);
 
     const setSearchTerm = (s) => updateFilter("searchTerm", s);
     const setFilterYear = (y) => updateFilter("filterYear", y);
@@ -760,9 +772,27 @@ const TaskManagement = () => {
     const levelsList = levelsData?.data || [];
     const subLevelsList = subLevelsData?.data || [];
 
+    const scopedDepartments = useMemo(() => {
+        if (!isDeptScoped || !userDept) return departments;
+        return departments.filter((d) =>
+            (d.name && d.name.toLowerCase() === userDept.toLowerCase()) ||
+            (user?.departmentId && String(d._id) === String(user.departmentId))
+        );
+    }, [departments, isDeptScoped, userDept, user?.departmentId]);
+
     const taskRows = useMemo(() => {
         const rawTasks = tasksResponse?.data || [];
-        const tasks = [...rawTasks].sort((a, b) => {
+        const scopedTasks = isDeptScoped && userDept
+            ? rawTasks.filter((task) => {
+                const context = task.context || {};
+                const dName = context.department?.name || task.department;
+                const dId = context.department?._id;
+                if (dName && dName.toLowerCase() === userDept.toLowerCase()) return true;
+                if (dId && user?.departmentId && String(dId) === String(user.departmentId)) return true;
+                return false;
+            })
+            : rawTasks;
+        const tasks = [...scopedTasks].sort((a, b) => {
             const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
             const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
             if (timeB !== timeA) return timeB - timeA;
@@ -814,10 +844,11 @@ const TaskManagement = () => {
     }, [taskRows, filterDept]);
 
     const depts = useMemo(() => {
+        if (isDeptScoped && userDept) return [userDept];
         const fromApi = departments.map((d) => d.name).filter(Boolean);
         const fromRows = getOptionValues(taskRows, "department").filter((v) => v !== "-");
         return [...new Set([...fromApi, ...fromRows])].sort((a, b) => a.localeCompare(b));
-    }, [departments, taskRows]);
+    }, [departments, taskRows, isDeptScoped, userDept]);
 
     const subDepts = useMemo(() => {
         let activeSubs = subDepartments;
@@ -886,6 +917,9 @@ const TaskManagement = () => {
 
     const resetFilters = () => {
         resetAllFilters();
+        if (isDeptScoped && userDept) {
+            updateFilter("filterDept", userDept);
+        }
         setCurrentPage(1);
     };
 
@@ -893,7 +927,7 @@ const TaskManagement = () => {
         const chips = [];
         if (filterYear) chips.push({ key: "year", label: "Year", value: filterYear, displayValue: filterYear, onRemove: () => setFilterYear("") });
         if (filterSession) chips.push({ key: "session", label: "Session", value: filterSession, displayValue: filterSession, onRemove: () => setFilterSession("") });
-        if (filterDept) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
+        if (filterDept && !isDeptScoped) chips.push({ key: "dept", label: "Department", value: filterDept, displayValue: filterDept, onRemove: () => setFilterDept("") });
         if (filterSub) chips.push({ key: "sub", label: "Sub-Dept", value: filterSub, displayValue: filterSub, onRemove: () => setFilterSub("") });
         if (filterLevel) chips.push({ key: "level", label: "Level", value: filterLevel, displayValue: filterLevel, onRemove: () => setFilterLevel("") });
         if (filterSubLevel) chips.push({ key: "subLevel", label: "Sub-Level", value: filterSubLevel, displayValue: filterSubLevel, onRemove: () => setFilterSubLevel("") });
@@ -1067,11 +1101,23 @@ const TaskManagement = () => {
                             buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                         />
                         <SelectDropdown
-                            value={filterDept}
-                            onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
+                            value={isDeptScoped && userDept ? userDept : filterDept}
+                            onChange={(val) => {
+                                if (!isDeptScoped) {
+                                    setFilterDept(val);
+                                    setCurrentPage(1);
+                                }
+                            }}
+                            options={
+                                isDeptScoped && userDept
+                                    ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
+                                    : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
+                            }
+                            disabled={isDeptScoped}
                             className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
+                            buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
+                                isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
+                            }`}
                         />
                         <SelectDropdown
                             value={filterSub}
@@ -1161,11 +1207,23 @@ const TaskManagement = () => {
                                 buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
                             />
                             <SelectDropdown
-                                value={filterDept}
-                                onChange={(val) => { setFilterDept(val); setCurrentPage(1); }}
-                                options={[{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]}
+                                value={isDeptScoped && userDept ? userDept : filterDept}
+                                onChange={(val) => {
+                                    if (!isDeptScoped) {
+                                        setFilterDept(val);
+                                        setCurrentPage(1);
+                                    }
+                                }}
+                                options={
+                                    isDeptScoped && userDept
+                                        ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
+                                        : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
+                                }
+                                disabled={isDeptScoped}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName={`h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
+                                    isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : ""
+                                }`}
                             />
                             <SelectDropdown
                                 value={filterSub}
@@ -1540,7 +1598,7 @@ const TaskManagement = () => {
                     onClose={() => setIsAddModalOpen(false)}
                     onSuccess={() => refetch()}
                     sessionsList={sessionsList}
-                    departments={departments}
+                    departments={scopedDepartments}
                     subDepartments={subDepartments}
                     levelsList={levelsList}
                     subLevelsList={subLevelsList}

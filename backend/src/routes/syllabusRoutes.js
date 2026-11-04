@@ -114,6 +114,14 @@ router.delete("/:id", verifyToken, checkRole(writeRoles), async (req, res) => {
     const sv = await SyllabusVersion.findById(req.params.id);
     if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
 
+    const { getDepartmentScopeForUser } = require("../utils/departmentHelper");
+    const scope = await getDepartmentScopeForUser(req.user);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      if (!scope.levelIds.map(String).includes(String(sv.levelId))) {
+        return res.status(403).json({ success: false, message: "Access denied. Cannot delete curriculum from another department." });
+      }
+    }
+
     sv.isActive = false;
     sv.status = "archived";
     await sv.save();

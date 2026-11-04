@@ -218,6 +218,20 @@ exports.getAllSyllabusVersions = async (req, res) => {
     if (levelId) filter.levelId = levelId;
     if (subLevelId) filter.subLevelId = subLevelId;
     if (status) filter.status = status;
+
+    const { getDepartmentScopeForUser } = require("../../utils/departmentHelper");
+    const scope = await getDepartmentScopeForUser(req.user);
+
+    if (scope?.isDeptScoped && scope.departmentId) {
+      if (filter.levelId) {
+        if (!scope.levelIds.map(String).includes(String(filter.levelId))) {
+          return res.status(200).json({ success: true, count: 0, data: [] });
+        }
+      } else {
+        filter.levelId = { $in: scope.levelIds };
+      }
+    }
+
     const versions = await SyllabusVersion.find(filter)
       .populate("sessionId", "name startDate endDate status")
       .populate({
@@ -231,7 +245,19 @@ exports.getAllSyllabusVersions = async (req, res) => {
       })
       .populate("subLevelId", "name order")
       .sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: versions.length, data: versions });
+
+    let finalVersions = versions;
+    if (scope?.isDeptScoped && scope.departmentId) {
+      finalVersions = finalVersions.filter((v) => {
+        const dId = v.levelId?.subDepartmentId?.departmentId?._id || v.levelId?.subDepartmentId?.departmentId;
+        const dName = v.levelId?.subDepartmentId?.departmentId?.name;
+        if (dId && String(dId) === String(scope.departmentId)) return true;
+        if (dName && scope.departmentName && dName.toLowerCase() === scope.departmentName.toLowerCase()) return true;
+        return false;
+      });
+    }
+
+    res.status(200).json({ success: true, count: finalVersions.length, data: finalVersions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -968,6 +994,14 @@ exports.uploadCombined = async (req, res) => {
       return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ success: false, message: "tasks array is required" });
+
+    const { getDepartmentScopeForUser } = require("../../utils/departmentHelper");
+    const scope = await getDepartmentScopeForUser(req.user);
+    if (scope?.isDeptScoped && scope.departmentId) {
+      if (!scope.levelIds.map(String).includes(String(levelId))) {
+        return res.status(403).json({ success: false, message: "Access denied. Cannot upload curriculum for another department." });
+      }
+    }
 
     let normalizedCourses = ["All"];
     if (Array.isArray(courses) && courses.length > 0) {

@@ -47,7 +47,10 @@ const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim())
 const checkIsLevel2B = (level, subLevel) => {
   const sName = String(subLevel?.name || "").trim().toUpperCase();
   const lName = String(level?.name || "").trim().toUpperCase();
-  return sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B");
+  return (
+    sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B") ||
+    sName === "2A" || sName.includes("2A") || lName === "2A" || lName.includes("2A")
+  );
 };
 
 const resolveDeptIdentifier = (departmentName, level, subLevel, subdepartment) => {
@@ -429,7 +432,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
                 Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
               </label>
               <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                Level 2B Specialization
+                Level 2A / 2B Specialization
               </span>
             </div>
             <SelectDropdown
@@ -813,7 +816,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
                 Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
               </label>
               <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                Level 2B Specialization
+                Level 2A / 2B Specialization
               </span>
             </div>
             <SelectDropdown
@@ -1934,7 +1937,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
                 Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
               </label>
               <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                Level 2B Specialization
+                Level 2A / 2B Specialization
               </span>
             </div>
             <SelectDropdown
@@ -2771,7 +2774,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
         {/* Optional Domain for Level 2B */}
         {isLevel2B && (
           <div>
-            <label className={lc}>Domain <span className="text-slate-400 normal-case font-normal">(optional - Level 2B)</span></label>
+            <label className={lc}>Domain <span className="text-slate-400 normal-case font-normal">(optional - Level 2A / 2B)</span></label>
             <select className={ic} value={selectedDomain} onChange={(e) => setSelectedDomain(e.target.value)}>
               <option value="">-- Select Domain (Optional) --</option>
               {departmentDomains.map((d) => (

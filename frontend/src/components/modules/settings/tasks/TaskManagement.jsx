@@ -505,6 +505,11 @@ const TaskDetailModal = ({ task, onClose, onDelete, onEdit }) => {
                             <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
                                 Course: {task.course || "All Courses"}
                             </span>
+                            {(task.domain || task.raw?.domain) && (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                                    Domain: {task.domain || task.raw?.domain}
+                                </span>
+                            )}
                             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200">
                                 {task.type || task.raw?.type || "assignment"}
                             </span>
@@ -779,6 +784,7 @@ const TaskManagement = () => {
                 topic: task.topicName || "",
                 course: task.course || "All",
                 courses: task.courses || (task.course ? task.course.split(",").map(c => c.trim()) : ["All"]),
+                domain: task.domain || context.domain || "",
                 priority: task.priority || "medium",
                 status: task.isActive ? "active" : "inactive",
                 isActive: task.isActive !== undefined ? task.isActive : true,

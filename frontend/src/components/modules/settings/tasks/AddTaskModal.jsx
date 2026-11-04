@@ -19,6 +19,7 @@ import {
     useGetSyllabusVersionWithHierarchyQuery,
 } from "../../../../redux/api/authApi";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 
 const getId = (item) => {
     if (!item) return "";
@@ -75,6 +76,7 @@ const AddTaskModal = ({
         subjectName: "",
         topicName: "",
         course: "All",
+        domain: "",
         type: "assignment",
         priority: "medium",
         maxMarks: 5,
@@ -291,6 +293,19 @@ const AddTaskModal = ({
     const selectedLevelName = levelsList.find((l) => l._id === selectedLevelId)?.name;
     const selectedSubLevelName = subLevelsList.find((sl) => sl._id === selectedSubLevelId)?.name;
 
+    const isLevel2Aor2B = useMemo(() => {
+        const sName = String(selectedSubLevelName || "").trim().toUpperCase();
+        const lName = String(selectedLevelName || "").trim().toUpperCase();
+        return (
+            sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B") ||
+            sName === "2A" || sName.includes("2A") || lName === "2A" || lName.includes("2A")
+        );
+    }, [selectedSubLevelName, selectedLevelName]);
+
+    const departmentDomains = useMemo(() => {
+        return getDomainsForDepartment(selectedDeptName || "");
+    }, [selectedDeptName]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -326,6 +341,7 @@ const AddTaskModal = ({
                 priority: taskForm.priority || "medium",
                 course: courseStr,
                 courses: coursesList,
+                domain: isLevel2Aor2B ? (taskForm.domain || "").trim() : "",
                 maxMarks: Number(taskForm.maxMarks) >= 0 ? Number(taskForm.maxMarks) : 5,
                 timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
                 dueDate: taskForm.dueDate || null,
@@ -601,6 +617,31 @@ const AddTaskModal = ({
                                     }`}
                                 />
                             </div>
+
+                            {/* Optional Domain for Level 2A / 2B */}
+                            {isLevel2Aor2B && (
+                                <div className="sm:col-span-2 space-y-1.5 pt-1">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-bold text-slate-700">
+                                            Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                                        </label>
+                                        <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
+                                            Level 2A / 2B Specialization
+                                        </span>
+                                    </div>
+                                    <SelectDropdown
+                                        value={taskForm.domain}
+                                        onChange={(val) => setTaskForm((prev) => ({ ...prev, domain: val }))}
+                                        options={[
+                                            { value: "", label: "-- Select Domain (Optional) --" },
+                                            ...departmentDomains.map((d) => ({ value: d, label: d }))
+                                        ]}
+                                        className="w-full"
+                                        menuClassName="w-full shadow-xl border border-slate-100"
+                                        buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 shadow-2xs transition cursor-pointer"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 

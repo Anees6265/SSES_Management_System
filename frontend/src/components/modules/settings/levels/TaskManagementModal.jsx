@@ -96,7 +96,10 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const isLevel2B = useMemo(() => {
     const sName = String(subLevel?.name || "").trim().toUpperCase();
     const lName = String(level?.name || "").trim().toUpperCase();
-    return sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B");
+    return (
+      sName === "2B" || sName.includes("2B") || lName === "2B" || lName.includes("2B") ||
+      sName === "2A" || sName.includes("2A") || lName === "2A" || lName.includes("2A")
+    );
   }, [level, subLevel]);
 
   const departmentDomains = useMemo(() => {
@@ -703,7 +706,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                             Domain <span className="text-slate-400 normal-case font-normal">(optional)</span>
                           </label>
                           <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                            Level 2B Specialization
+                            Level 2A / 2B Specialization
                           </span>
                         </div>
                         <SelectDropdown

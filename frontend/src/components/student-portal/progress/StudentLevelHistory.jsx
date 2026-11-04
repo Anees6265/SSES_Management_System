@@ -1,5 +1,5 @@
 import { useGetMyStudentLevelHistoryQuery, useGetMyStudentSnapshotsQuery } from "../../../redux/api/studentApi";
-import { MdTrendingUp, MdCheckCircle, MdStar, MdAccessTime } from "react-icons/md";
+import { MdTrendingUp, MdCheckCircle, MdStar, MdAccessTime, MdPerson, MdMenuBook } from "react-icons/md";
 import EmptyState from "../../shared/empty-state/EmptyState";
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -199,6 +199,108 @@ export default function StudentLevelHistory() {
                                                                     className={`h-1 rounded-full transition-all duration-500 ${isCurrent ? "bg-orange-400" : "bg-green-400"}`}
                                                                     style={{ width: `${pct}%` }}
                                                                 />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Promoted By & Passing Rating Banner for Completed Levels */}
+                                                    {isCompleted && (
+                                                        <div className="mt-3.5 pt-3 border-t border-gray-200/80 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                            {/* Promoted By Card */}
+                                                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-gray-100 shadow-2xs">
+                                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                                                    <MdPerson size={17} />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <span className="text-[9.5px] uppercase font-bold tracking-wider text-gray-400 block">
+                                                                        Promoted By
+                                                                    </span>
+                                                                    <p className="text-xs font-bold text-gray-800 truncate">
+                                                                        {item.promotedByName || item.promotedBy?.name || "Faculty Evaluator"}
+                                                                    </p>
+                                                                    {item.promotedByRole && (
+                                                                        <span className="text-[10px] text-gray-400 block">
+                                                                            {item.promotedByRole}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Passing Rating Card */}
+                                                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-gray-100 shadow-2xs">
+                                                                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                                                                    <MdStar size={18} />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <span className="text-[9.5px] uppercase font-bold tracking-wider text-gray-400 block">
+                                                                        Passing Rating
+                                                                    </span>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                                        <span className="text-xs font-bold text-gray-900">
+                                                                            {item.rating || item.averageMarks ? `${Number(item.rating || item.averageMarks).toFixed(1)} / 5.0` : "Passed"}
+                                                                        </span>
+                                                                        {item.performanceLevel && (
+                                                                            <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                                                                item.performanceLevel === "Outstanding" ? "bg-purple-100 text-purple-700 border border-purple-200" :
+                                                                                item.performanceLevel === "Excellent" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" :
+                                                                                item.performanceLevel === "Very Good" ? "bg-blue-100 text-blue-700 border border-blue-200" :
+                                                                                item.performanceLevel === "Good" ? "bg-teal-100 text-teal-700 border border-teal-200" :
+                                                                                "bg-amber-100 text-amber-700 border border-amber-200"
+                                                                            }`}>
+                                                                                {item.performanceLevel}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Subject-wise Rating Points */}
+                                                    {item.subjectRatings && item.subjectRatings.length > 0 && (
+                                                        <div className="mt-3.5 pt-3 border-t border-gray-200/80">
+                                                            <p className="text-[10px] uppercase font-bold tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
+                                                                <MdMenuBook size={13} className="text-orange-500" />
+                                                                Subject-wise Rating Points
+                                                            </p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                {item.subjectRatings.map((sub, sIdx) => {
+                                                                    const subRating = typeof sub.rating === "number" && sub.rating > 0
+                                                                        ? sub.rating
+                                                                        : (typeof sub.averageMarks === "number" && sub.averageMarks > 0 ? sub.averageMarks : 0);
+                                                                    return (
+                                                                        <div
+                                                                            key={sub.subjectId || sIdx}
+                                                                            className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-100 shadow-2xs hover:border-orange-200 transition-all"
+                                                                        >
+                                                                            <div className="min-w-0 pr-2">
+                                                                                <p className="text-xs font-bold text-gray-800 truncate">
+                                                                                    {sub.subjectName || "Subject"}
+                                                                                </p>
+                                                                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                                                                    {sub.completedTasks}/{sub.totalTasks} tasks done
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 font-extrabold text-xs">
+                                                                                    <MdStar size={13} className="text-amber-500" />
+                                                                                    {subRating > 0 ? `${subRating.toFixed(1)}/5` : "—"}
+                                                                                </span>
+                                                                                {sub.performanceLevel && (
+                                                                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                                                                        sub.performanceLevel === "Outstanding" ? "bg-purple-100 text-purple-700 border border-purple-200" :
+                                                                                        sub.performanceLevel === "Excellent" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" :
+                                                                                        sub.performanceLevel === "Very Good" ? "bg-blue-100 text-blue-700 border border-blue-200" :
+                                                                                        sub.performanceLevel === "Good" ? "bg-teal-100 text-teal-700 border border-teal-200" :
+                                                                                        "bg-amber-100 text-amber-700 border border-amber-200"
+                                                                                    }`}>
+                                                                                        {sub.performanceLevel}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     )}

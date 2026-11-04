@@ -340,9 +340,32 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       subjectMap[key].tasks.push(t);
     });
 
+    const subjectRatings = [];
     Object.values(subjectMap).forEach(({ subjectId, subjectName, tasks }) => {
       const sDone = tasks.filter((t) => t.status === "completed");
       const sMarks = sDone.filter((t) => typeof t.marks === "number");
+      const sAvg = sMarks.length > 0
+        ? Number((sMarks.reduce((s, t) => s + t.marks, 0) / sMarks.length).toFixed(1))
+        : 0;
+
+      let sPerf = "Good";
+      if (sAvg >= 4.5) sPerf = "Outstanding";
+      else if (sAvg >= 4.0) sPerf = "Excellent";
+      else if (sAvg >= 3.5) sPerf = "Very Good";
+      else if (sAvg >= 3.0) sPerf = "Good";
+      else if (sAvg >= 2.0) sPerf = "Average";
+      else if (sAvg > 0) sPerf = "Needs Improvement";
+
+      subjectRatings.push({
+        subjectId: subjectId || null,
+        subjectName: subjectName || "General",
+        rating: sAvg,
+        averageMarks: sAvg,
+        totalTasks: tasks.length,
+        completedTasks: sDone.length,
+        performanceLevel: sPerf
+      });
+
       snapshotsToSave.push({
         studentId,
         snapshotScope: "subject",
@@ -353,10 +376,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
         completedTasks: sDone.length,
         pendingTasks: tasks.filter((t) => t.status === "pending").length,
         inProgressTasks: tasks.filter((t) => t.status === "inProgress").length,
-        averageMarks:
-          sMarks.length > 0
-            ? Number((sMarks.reduce((s, t) => s + t.marks, 0) / sMarks.length).toFixed(2))
-            : 0,
+        averageMarks: sAvg,
         changedBy: actorId,
         changedByName: actorUser?.name || "",
         changedByRole: actorUser?.role || "",
@@ -368,6 +388,22 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
 
     try {
       const StudentLevelProgress = require("../models/student/StudentLevelProgress");
+      
+      const promoActorName = actorUser?.name && actorUser.name.toLowerCase() !== "system"
+        ? actorUser.name
+        : (actorUser?.firstName ? `${actorUser.firstName} ${actorUser.lastName || ""}`.trim() : (isAuto ? "System (Auto Promotion)" : "Faculty Evaluator"));
+      const promoActorRole = actorUser?.role || (isAuto ? "System" : "Faculty");
+
+      let perfLevel = "Good";
+      if (averageMarks >= 4.5) perfLevel = "Outstanding";
+      else if (averageMarks >= 4.0) perfLevel = "Excellent";
+      else if (averageMarks >= 3.5) perfLevel = "Very Good";
+      else if (averageMarks >= 3.0) perfLevel = "Good";
+      else if (averageMarks >= 2.0) perfLevel = "Average";
+      else if (averageMarks > 0) perfLevel = "Needs Improvement";
+
+      const passPct = prevTasks.length > 0 ? Math.round((completedTasks.length / prevTasks.length) * 100) : 100;
+
       await StudentLevelProgress.findOneAndUpdate(
         { studentId, subLevelId: prevSubLevelId },
         {
@@ -376,7 +412,16 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
             completedAt: new Date(),
             totalTasks: prevTasks.length,
             completedTasksCount: completedTasks.length,
-            completionPercentage: prevTasks.length > 0 ? Math.round((completedTasks.length / prevTasks.length) * 100) : 0
+            completionPercentage: passPct,
+            averageMarks: averageMarks,
+            rating: averageMarks,
+            performanceLevel: perfLevel,
+            passPercentage: passPct,
+            subjectRatings: subjectRatings,
+            promotedBy: actorId,
+            promotedByName: promoActorName,
+            promotedByRole: promoActorRole,
+            promotedAt: new Date()
           },
           $setOnInsert: {
             studentId,
@@ -560,17 +605,46 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       changedByRole: actorUser?.role || "",
       changedAt: new Date(),
     });
+
+    // Initialize StudentLevelProgress for the new sublevel
+    try {
+      const StudentLevelProgress = require("../models/student/StudentLevelProgress");
+      await StudentLevelProgress.findOneAndUpdate(
+        { studentId, subLevelId: nextSubLevel._id },
+        {
+          $set: {
+            status: "in_progress",
+            totalTasks: tasksAssigned,
+            completedTasksCount: 0,
+            completionPercentage: 0
+          },
+          $setOnInsert: {
+            studentId,
+            sessionId: targetSessionId,
+            levelId: targetLevelId,
+            subLevelId: nextSubLevel._id,
+            startedAt: new Date()
+          }
+        },
+        { upsert: true, new: true }
+      );
+    } catch (_) {}
   } catch (snapErr) {
     // Snapshot failure must never block promotion
   }
 
   // Step 8: Log promotion event
+  const eventActorName = actorUser?.name && actorUser.name.toLowerCase() !== "system"
+    ? actorUser.name
+    : (actorUser?.firstName ? `${actorUser.firstName} ${actorUser.lastName || ""}`.trim() : (isAuto ? "System (Auto Promotion)" : "Faculty Evaluator"));
+  const eventActorRole = actorUser?.role || (isAuto ? "System" : "Faculty");
+
   await StudentEventLog.create({
     studentId,
     type: "promotion",
     action: isAuto ? "auto_promoted" : "manual_promoted",
     title: `Promoted to ${promotedToNewLevel ? "new level" : "next sub-level"}`,
-    description: `Student moved from SubLevel ${prevSubLevelId} to ${nextSubLevel._id}`,
+    description: `Student promoted by ${eventActorName} from SubLevel ${prevSubLevelId} to ${nextSubLevel._id}`,
     meta: {
       prevLevelId,
       prevSubLevelId,
@@ -581,10 +655,14 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       promotedToNewLevel,
       tasksAssigned,
       isAuto,
+      promotedByName: eventActorName,
+      promotedByRole: eventActorRole,
+      rating: averageMarks,
+      averageMarks: averageMarks
     },
     createdBy: actorId,
-    createdByName: actorUser?.name || "",
-    createdByRole: actorUser?.role || "",
+    createdByName: eventActorName,
+    createdByRole: eventActorRole,
   });
 
   return {

@@ -415,9 +415,38 @@ export default function StudentDashboard() {
                                                         {isCurrent ? "Current" : "Done"}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                                                    {isCurrent ? "In Progress" : `Completed ${formatDate(item.completedAt)}`}
-                                                </p>
+                                                <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                                                    <span>{isCurrent ? "In Progress" : `Completed ${formatDate(item.completedAt)}`}</span>
+                                                    {isCompleted && (item.rating > 0 || item.averageMarks > 0) && (
+                                                        <span className="flex items-center gap-0.5 font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
+                                                            <MdStar size={11} className="text-amber-500" />
+                                                            {(item.rating || item.averageMarks).toFixed(1)}/5
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {isCompleted && (item.promotedByName || item.promotedBy?.name) && (
+                                                    <p className="text-[10px] text-gray-500 mt-1 truncate">
+                                                        <span className="text-gray-400">Promoted by:</span> <span className="font-semibold text-gray-700">{item.promotedByName || item.promotedBy?.name}</span>
+                                                    </p>
+                                                )}
+                                                {item.subjectRatings && item.subjectRatings.length > 0 && (
+                                                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5 pt-1.5 border-t border-gray-100">
+                                                        {item.subjectRatings.map((sub, sIdx) => {
+                                                            const subRating = typeof sub.rating === "number" && sub.rating > 0 
+                                                                ? sub.rating 
+                                                                : (typeof sub.averageMarks === "number" && sub.averageMarks > 0 ? sub.averageMarks : 0);
+                                                            return (
+                                                                <span key={sub.subjectId || sIdx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white border border-gray-200/70 text-[9.5px] font-semibold text-gray-700">
+                                                                    <span className="truncate max-w-[95px]">{sub.subjectName}:</span>
+                                                                    <span className="text-amber-600 font-bold flex items-center gap-0.5">
+                                                                        <MdStar size={10} className="text-amber-500" />
+                                                                        {subRating > 0 ? `${subRating.toFixed(1)}/5` : "—"}
+                                                                    </span>
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );

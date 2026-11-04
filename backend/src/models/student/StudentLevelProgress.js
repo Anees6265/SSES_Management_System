@@ -50,7 +50,32 @@ const studentLevelProgressSchema = new mongoose.Schema({
   // Performance metrics
   totalTasks: { type: Number, default: 0 },
   completedTasksCount: { type: Number, default: 0 },
-  completionPercentage: { type: Number, default: 0 }
+  completionPercentage: { type: Number, default: 0 },
+  averageMarks: { type: Number, default: 0 },
+  rating: { type: Number, default: 0 }, // Out of 5.0
+  performanceLevel: { type: String, default: "" }, // "Outstanding", "Excellent", "Very Good", "Good", "Average"
+  passPercentage: { type: Number, default: 0 },
+
+  // Subject-wise performance & rating points
+  subjectRatings: [{
+    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: "Subject", default: null },
+    subjectName: { type: String, default: "" },
+    rating: { type: Number, default: 0 },
+    averageMarks: { type: Number, default: 0 },
+    totalTasks: { type: Number, default: 0 },
+    completedTasks: { type: Number, default: 0 },
+    performanceLevel: { type: String, default: "" }
+  }],
+
+  // Promotion evaluation details
+  promotedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  },
+  promotedByName: { type: String, default: "" },
+  promotedByRole: { type: String, default: "" },
+  promotedAt: { type: Date, default: null }
 }, { timestamps: true });
 
 // Indexes for efficient queries

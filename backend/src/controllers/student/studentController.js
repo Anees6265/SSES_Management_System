@@ -3018,6 +3018,8 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
 exports.getStudentLevelHistory = async (req, res) => {
   try {
     const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
+    const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
+    const StudentEventLog = require("../../models/student/StudentEventLog");
     const StudentTask = require("../../models/syllabus/StudentTask");
     const SubLevel = require("../../models/department/SubLevel");
 
@@ -3025,7 +3027,8 @@ exports.getStudentLevelHistory = async (req, res) => {
       .populate("levelId", "name order")
       .populate("subLevelId", "name order")
       .populate("sessionId", "name")
-      .sort({ createdAt: 1 });
+      .populate("promotedBy", "name role")
+      .lean();
 
     // Also check if student has tasks in sublevels not recorded in StudentLevelProgress
     const recordedSubLevelIds = new Set(
@@ -3038,7 +3041,7 @@ exports.getStudentLevelHistory = async (req, res) => {
 
     for (const sId of taskSubLevelIds) {
       if (sId && !recordedSubLevelIds.has(sId.toString())) {
-        const subLevel = await SubLevel.findById(sId).populate("levelId", "name order");
+        const subLevel = await SubLevel.findById(sId).populate("levelId", "name order").lean();
         if (subLevel) {
           const totalTasks = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId });
           const completedTasksCount = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId, status: "completed" });
@@ -3054,6 +3057,122 @@ exports.getStudentLevelHistory = async (req, res) => {
             completedTasksCount,
             completionPercentage,
             createdAt: new Date(0)
+          });
+        }
+      }
+    }
+
+    // Pre-fetch snapshots & event logs for fallback/enrichment
+    const [snapshots, eventLogs] = await Promise.all([
+      StudentProgressSnapshot.find({ studentId: req.params.id, snapshotScope: { $in: ["overall", "promotion"] } })
+        .sort({ changedAt: -1 })
+        .lean(),
+      StudentEventLog.find({ studentId: req.params.id, type: "promotion" })
+        .populate("createdBy", "name role")
+        .sort({ createdAt: -1 })
+        .lean()
+    ]);
+
+    // Enrich each record with promotedBy, rating, and performanceLevel
+    for (const item of history) {
+      const sIdStr = (item.subLevelId?._id || item.subLevelId)?.toString();
+
+      // 1. Resolve promotedByName and promotedByRole if missing
+      if (!item.promotedByName && !item.promotedBy?.name) {
+        const snap = snapshots.find(s => s.subLevelId?.toString() === sIdStr && s.changedByName);
+        if (snap) {
+          item.promotedByName = snap.changedByName;
+          item.promotedByRole = snap.changedByRole || "Faculty";
+          item.promotedAt = item.promotedAt || snap.changedAt;
+        } else {
+          const log = eventLogs.find(l => 
+            l.meta?.prevSubLevelId?.toString() === sIdStr || 
+            l.meta?.newSubLevelId?.toString() === sIdStr
+          );
+          if (log) {
+            item.promotedByName = log.createdByName || log.createdBy?.name || log.meta?.promotedByName || "Faculty Evaluator";
+            item.promotedByRole = log.createdByRole || log.createdBy?.role || log.meta?.promotedByRole || "Faculty";
+            item.promotedAt = item.promotedAt || log.createdAt;
+          }
+        }
+      } else if (!item.promotedByName && item.promotedBy?.name) {
+        item.promotedByName = item.promotedBy.name;
+        item.promotedByRole = item.promotedBy.role || item.promotedByRole || "Faculty";
+      }
+
+      // 2. Resolve rating / averageMarks if missing
+      if (typeof item.rating !== "number" || item.rating === 0) {
+        const snap = snapshots.find(s => s.subLevelId?.toString() === sIdStr && typeof s.averageMarks === "number" && s.averageMarks > 0);
+        if (snap) {
+          item.rating = snap.averageMarks;
+          item.averageMarks = snap.averageMarks;
+        } else if (sIdStr) {
+          const tasksWithMarks = await StudentTask.find({
+            studentId: req.params.id,
+            subLevelId: sIdStr,
+            status: "completed",
+            marks: { $ne: null }
+          }).select("marks").lean();
+
+          if (tasksWithMarks.length > 0) {
+            const sum = tasksWithMarks.reduce((acc, t) => acc + (typeof t.marks === "number" ? t.marks : 0), 0);
+            const avg = Number((sum / tasksWithMarks.length).toFixed(1));
+            item.rating = avg;
+            item.averageMarks = avg;
+          }
+        }
+      }
+
+      // 3. Performance Level Remark
+      if (!item.performanceLevel && item.rating > 0) {
+        if (item.rating >= 4.5) item.performanceLevel = "Outstanding";
+        else if (item.rating >= 4.0) item.performanceLevel = "Excellent";
+        else if (item.rating >= 3.5) item.performanceLevel = "Very Good";
+        else if (item.rating >= 3.0) item.performanceLevel = "Good";
+        else if (item.rating >= 2.0) item.performanceLevel = "Average";
+        else item.performanceLevel = "Needs Improvement";
+      }
+
+      // 4. Resolve subject-wise rating points (subjectRatings)
+      if ((!item.subjectRatings || item.subjectRatings.length === 0) && sIdStr) {
+        const subTasks = await StudentTask.find({
+          studentId: req.params.id,
+          subLevelId: sIdStr,
+          isActive: { $ne: false }
+        }).select("subjectId subjectName status marks").lean();
+
+        if (subTasks.length > 0) {
+          const sMap = {};
+          subTasks.forEach(t => {
+            const key = (t.subjectName || "General").trim();
+            if (!sMap[key]) sMap[key] = { subjectId: t.subjectId, subjectName: key, tasks: [] };
+            sMap[key].tasks.push(t);
+          });
+
+          item.subjectRatings = Object.values(sMap).map(({ subjectId, subjectName, tasks }) => {
+            const sDone = tasks.filter(t => t.status === "completed");
+            const sMarks = sDone.filter(t => typeof t.marks === "number");
+            const sAvg = sMarks.length > 0
+              ? Number((sMarks.reduce((acc, t) => acc + t.marks, 0) / sMarks.length).toFixed(1))
+              : 0;
+
+            let sPerf = "";
+            if (sAvg >= 4.5) sPerf = "Outstanding";
+            else if (sAvg >= 4.0) sPerf = "Excellent";
+            else if (sAvg >= 3.5) sPerf = "Very Good";
+            else if (sAvg >= 3.0) sPerf = "Good";
+            else if (sAvg >= 2.0) sPerf = "Average";
+            else if (sAvg > 0) sPerf = "Needs Improvement";
+
+            return {
+              subjectId: subjectId || null,
+              subjectName,
+              rating: sAvg,
+              averageMarks: sAvg,
+              totalTasks: tasks.length,
+              completedTasks: sDone.length,
+              performanceLevel: sPerf
+            };
           });
         }
       }

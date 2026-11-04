@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { toast } from "react-toastify";
 import {
     ShieldCheck, Clock, CheckCircle2, AlertCircle, Calendar,
     Search, Plus, FileText, LayoutGrid, ListFilter,
     X, UploadCloud, Trash2,
-    Eye, Printer, ChevronRight,
-    Check, RefreshCw, Star
+    Eye, Printer, ChevronRight, ChevronDown,
+    Check, RefreshCw, Star, ArrowUpDown, CalendarDays, CalendarCheck, User
 } from "lucide-react";
 import {
     useGetMyPermissionsQuery,
@@ -273,7 +273,7 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
                                 {colCfg.fullLabel}
                             </span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5">Permission Details</h3>
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5">Leave Request Details</h3>
                     </div>
                     <button
                         onClick={onClose}
@@ -472,7 +472,395 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
     );
 };
 
-// ── Apply For Permission Modal ────────────────────────────────────────────────
+// ── Sort Dropdown Component (SSES Theme) ──────────────────────────────────────
+const SORT_OPTIONS = [
+    { value: "newest",   label: "Newest First" },
+    { value: "oldest",   label: "Oldest First" },
+    { value: "duration", label: "Longest Duration" },
+];
+
+function SortDropdown({ sortBy, onSortChange }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    const activeOption = SORT_OPTIONS.find(o => o.value === sortBy) || SORT_OPTIONS[0];
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen]);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(prev => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-orange-300 rounded-xl text-xs font-bold text-gray-700 shadow-2xs hover:bg-orange-50/40 transition-all cursor-pointer select-none"
+            >
+                <ArrowUpDown size={13} className="text-orange-500 shrink-0" />
+                <span className="truncate">{activeOption.label}</span>
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-orange-500" : ""}`} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1 border-b border-gray-100 mb-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sort Requests</span>
+                    </div>
+                    {SORT_OPTIONS.map((opt) => {
+                        const isSelected = opt.value === sortBy;
+                        return (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                    onSortChange(opt.value);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-left transition-colors cursor-pointer ${
+                                    isSelected 
+                                        ? "bg-orange-50 text-orange-600 font-bold" 
+                                        : "text-gray-700 hover:bg-gray-50"
+                                }`}
+                            >
+                                <span>{opt.label}</span>
+                                {isSelected && <Check size={14} className="text-orange-500 shrink-0" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Leave Categories for Dropdown ─────────────────────────────────────────────
+const LEAVE_CATEGORIES = [
+    { value: "medical", label: "Sick / Medical Leave", text: "Medical leave due to health issues and doctor consultation." },
+    { value: "family", label: "Family Function / Wedding", text: "Attending important family ceremony / wedding function." },
+    { value: "personal", label: "Urgent Personal Work", text: "Urgent domestic / personal commitment at hometown." },
+    { value: "academic", label: "Exam / Competition", text: "Participating in academic competition / competitive exam." },
+    { value: "placement", label: "Campus Drive / Interview", text: "Attending off-campus interview / recruitment round." },
+    { value: "emergency", label: "Emergency / Unforeseen", text: "Emergency leave due to unforeseen circumstances." },
+];
+
+function LeaveTypeDropdown({ onSelectPreset }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedLabel, setSelectedLabel] = useState("");
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") setIsOpen(false);
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("keydown", handleKeyDown);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isOpen]);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(prev => !prev)}
+                className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-left transition-all cursor-pointer ${
+                    isOpen
+                        ? "border-orange-500 bg-white ring-2 ring-orange-100 shadow-xs"
+                        : "border-gray-200 bg-gray-50/70 hover:bg-white hover:border-orange-300"
+                }`}
+            >
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                    <span className={`truncate font-semibold ${selectedLabel ? "text-gray-900" : "text-gray-500"}`}>
+                        {selectedLabel || "— Select Leave Type / Category (Optional) —"}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {selectedLabel && (
+                        <span
+                            role="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedLabel("");
+                            }}
+                            className="p-0.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
+                            title="Clear"
+                        >
+                            <X size={13} />
+                        </span>
+                    )}
+                    <ChevronDown
+                        size={15}
+                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-orange-500" : ""}`}
+                    />
+                </div>
+            </button>
+
+            {isOpen && (
+                <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100 max-h-56 overflow-y-auto">
+                    <div className="px-3 py-1 border-b border-gray-100 mb-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Leave Categories</span>
+                    </div>
+                    {LEAVE_CATEGORIES.map((cat) => {
+                        const isSelected = selectedLabel === cat.label;
+                        return (
+                            <button
+                                key={cat.value}
+                                type="button"
+                                onClick={() => {
+                                    setSelectedLabel(cat.label);
+                                    onSelectPreset(cat.text);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors cursor-pointer ${
+                                    isSelected
+                                        ? "bg-orange-50 text-orange-700 font-bold"
+                                        : "text-gray-700 hover:bg-gray-50"
+                                }`}
+                            >
+                                <div className="min-w-0 flex-1 pr-2">
+                                    <p className="font-semibold text-gray-900">{cat.label}</p>
+                                    <p className="text-[10px] text-gray-400 truncate mt-0.5">{cat.text}</p>
+                                </div>
+                                {isSelected && <Check size={14} className="text-orange-500 shrink-0 ml-2" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Themed Faculty Dropdown Component ─────────────────────────────────────────
+function FacultyDropdown({ faculties = [], value, onChange, isLoading }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const dropdownRef = useRef(null);
+
+    const selectedFaculty = faculties.find(f => f._id === value);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") setIsOpen(false);
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("keydown", handleKeyDown);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isOpen]);
+
+    const filteredFaculties = useMemo(() => {
+        if (!searchQuery.trim()) return faculties;
+        const q = searchQuery.toLowerCase();
+        return faculties.filter(f => 
+            f.name?.toLowerCase().includes(q) ||
+            f.role?.toLowerCase().includes(q) ||
+            f.position?.toLowerCase().includes(q) ||
+            f.email?.toLowerCase().includes(q)
+        );
+    }, [faculties, searchQuery]);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(prev => !prev)}
+                className={`w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-left transition-all cursor-pointer ${
+                    isOpen 
+                        ? "border-orange-500 bg-white ring-2 ring-orange-100 shadow-xs" 
+                        : "border-gray-200 bg-gray-50/70 hover:bg-white hover:border-orange-300"
+                }`}
+            >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {selectedFaculty ? (
+                        <>
+                            {selectedFaculty.profileImage ? (
+                                <img
+                                    src={selectedFaculty.profileImage}
+                                    alt={selectedFaculty.name}
+                                    className="w-7 h-7 rounded-full object-cover border border-orange-200 shrink-0"
+                                />
+                            ) : (
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white font-bold text-[10px] flex items-center justify-center shrink-0 shadow-2xs">
+                                    {(selectedFaculty.name || "F")[0].toUpperCase()}
+                                </div>
+                            )}
+                            <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-gray-900 truncate">
+                                    {selectedFaculty.name}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-orange-50 text-orange-700 border border-orange-100 shrink-0 uppercase tracking-wide">
+                                    {selectedFaculty.role || "FACULTY"}
+                                </span>
+                                {selectedFaculty.position && (
+                                    <span className="text-[11px] text-gray-400 truncate hidden sm:inline">
+                                        · {selectedFaculty.position}
+                                    </span>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 text-gray-400">
+                            <User size={16} className="text-gray-400 shrink-0" />
+                            <span className="text-xs sm:text-sm font-medium">
+                                {isLoading ? "Loading faculty list..." : "— Select Faculty Member —"}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {selectedFaculty && (
+                        <span
+                            role="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onChange("");
+                            }}
+                            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                            title="Clear selection"
+                        >
+                            <X size={13} />
+                        </span>
+                    )}
+                    <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-orange-500" : ""}`}
+                    />
+                </div>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isOpen && (
+                <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 max-h-60 flex flex-col">
+                    {/* Search inside Dropdown */}
+                    {faculties.length > 3 && (
+                        <div className="px-3 pb-2 border-b border-gray-100">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Search faculty by name or role..."
+                                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white transition-all placeholder:text-gray-400"
+                                    autoFocus
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="overflow-y-auto p-1.5 space-y-1 flex-1">
+                        {isLoading ? (
+                            <div className="p-4 text-center text-xs text-gray-400">Loading faculties...</div>
+                        ) : filteredFaculties.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-gray-400">
+                                {searchQuery ? "No matching faculty found" : "No faculty members available"}
+                            </div>
+                        ) : (
+                            filteredFaculties.map((fac) => {
+                                const isSelected = fac._id === value;
+                                return (
+                                    <button
+                                        key={fac._id}
+                                        type="button"
+                                        onClick={() => {
+                                            onChange(fac._id);
+                                            setIsOpen(false);
+                                            setSearchQuery("");
+                                        }}
+                                        className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+                                            isSelected
+                                                ? "bg-orange-50 text-orange-950 font-bold border-l-2 border-orange-500"
+                                                : "hover:bg-gray-50 text-gray-800"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                            {fac.profileImage ? (
+                                                <img
+                                                    src={fac.profileImage}
+                                                    alt={fac.name}
+                                                    className="w-7 h-7 rounded-full object-cover border border-orange-100 shrink-0"
+                                                />
+                                            ) : (
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                                                    isSelected ? "bg-orange-500 text-white" : "bg-orange-100 text-orange-700"
+                                                }`}>
+                                                    {(fac.name || "F")[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-xs sm:text-sm font-bold truncate">
+                                                        {fac.name}
+                                                    </span>
+                                                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
+                                                        isSelected ? "bg-orange-200 text-orange-800" : "bg-gray-100 text-gray-600"
+                                                    }`}>
+                                                        {fac.role || "FACULTY"}
+                                                    </span>
+                                                </div>
+                                                {fac.position && (
+                                                    <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                                                        {fac.position}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {isSelected && (
+                                            <Check size={15} className="text-orange-500 shrink-0" />
+                                        )}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Apply For Leave Modal (SSES Theme) ─────────────────────────────────────────
 const ApplyModal = ({ onClose }) => {
     const todayStr = new Date().toISOString().split("T")[0];
     const [form, setForm] = useState({
@@ -559,54 +947,72 @@ const ApplyModal = ({ onClose }) => {
                 ...form,
                 imageURL: imageURL || undefined
             }).unwrap();
-            toast.success("Permission request submitted successfully!");
+            toast.success("Leave request submitted successfully!");
             onClose();
         } catch (err) {
-            toast.error(err?.data?.message || "Failed to submit permission application.");
+            toast.error(err?.data?.message || "Failed to submit leave request.");
         }
     };
 
-    const inputClasses = "w-full border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 transition-all";
+    const inputClasses = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-orange-500 focus:bg-white bg-gray-50/70 focus:ring-2 focus:ring-orange-100 transition-all placeholder:text-gray-400";
     const labelClasses = "block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[92vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150 my-auto">
                 
+                {/* Top Orange Accent */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 shrink-0" />
+
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/70 shrink-0">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center shadow-xs">
-                            <Plus size={18} />
+                <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 bg-white shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-100 text-orange-600 flex items-center justify-center shadow-xs shrink-0">
+                            <CalendarDays size={20} />
                         </div>
                         <div>
-                            <h3 className="text-xs sm:text-sm font-bold text-gray-900">Apply for Permission</h3>
-                            <p className="text-[10px] sm:text-xs text-gray-400">Leave request for faculty endorsement</p>
+                            <h3 className="text-sm sm:text-base font-bold text-gray-900">Apply for Leave</h3>
+                            <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5">Submit your leave request for faculty endorsement & approval</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        className="w-8 h-8 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer"
                     >
-                        <X size={16} />
+                        <X size={18} />
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 space-y-4">
+                <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 sm:px-6 py-4 space-y-4">
                     
-                    {/* Reason Presets */}
+                    {/* Reason Section (Dropdown Preset + Textarea + Quick Pills) */}
                     <div>
-                        <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                            Quick Reason Presets <span className="text-gray-400 font-normal">(tap to fill)</span>
+                        <label className={labelClasses}>
+                            <span>Reason for Leave <span className="text-red-500">*</span></span>
+                            <span className="text-[10px] text-gray-400 font-normal">Choose category or type custom</span>
                         </label>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="space-y-2">
+                            <LeaveTypeDropdown
+                                onSelectPreset={(txt) => setForm(p => ({ ...p, reason: txt }))}
+                            />
+                            <textarea
+                                value={form.reason}
+                                onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
+                                rows={3}
+                                placeholder="Explain the reason for taking leave in detail..."
+                                className={`${inputClasses} resize-none`}
+                            />
+                        </div>
+
+                        {/* Quick Presets Pills */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
                             {REASON_PRESETS.map((preset, idx) => (
                                 <button
                                     key={idx}
                                     type="button"
                                     onClick={() => handlePresetClick(preset.text)}
-                                    className="px-2.5 py-1 text-[11px] font-semibold bg-gray-100 hover:bg-orange-50 hover:text-orange-600 border border-transparent hover:border-orange-200 rounded-lg text-gray-600 transition-all text-left"
+                                    className="px-2.5 py-1 text-[11px] font-semibold bg-gray-50 hover:bg-orange-50 hover:text-orange-600 border border-gray-200 hover:border-orange-200 rounded-lg text-gray-600 transition-all text-left cursor-pointer"
                                 >
                                     + {preset.label}
                                 </button>
@@ -614,28 +1020,14 @@ const ApplyModal = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Reason Textarea */}
-                    <div>
-                        <label className={labelClasses}>
-                            <span>Detailed Reason <span className="text-red-500">*</span></span>
-                        </label>
-                        <textarea
-                            value={form.reason}
-                            onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-                            rows={3}
-                            placeholder="Enter reason for leave / permission..."
-                            className={`${inputClasses} resize-none`}
-                        />
-                    </div>
-
                     {/* Date Pickers */}
                     <div>
                         <label className={labelClasses}>
-                            <span>Leave Period <span className="text-red-500">*</span></span>
+                            <span>Leave Period (Dates) <span className="text-red-500">*</span></span>
                         </label>
                         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                             <div>
-                                <span className="text-[10px] text-gray-400 block font-semibold mb-0.5">FROM DATE</span>
+                                <span className="text-[10px] text-gray-400 block font-bold mb-1">FROM DATE</span>
                                 <input
                                     type="date"
                                     value={form.fromDate}
@@ -644,7 +1036,7 @@ const ApplyModal = ({ onClose }) => {
                                 />
                             </div>
                             <div>
-                                <span className="text-[10px] text-gray-400 block font-semibold mb-0.5">TO DATE</span>
+                                <span className="text-[10px] text-gray-400 block font-bold mb-1">TO DATE</span>
                                 <input
                                     type="date"
                                     value={form.toDate}
@@ -655,19 +1047,24 @@ const ApplyModal = ({ onClose }) => {
                             </div>
                         </div>
 
-                        {/* Real-time Duration Pill */}
+                        {/* Real-time Duration Card */}
                         {form.fromDate && form.toDate && (
-                            <div className="mt-2">
+                            <div className="mt-2.5">
                                 {isDateInvalid ? (
-                                    <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1">
-                                        <AlertCircle size={12} />
-                                        To Date cannot be earlier than From Date.
-                                    </p>
+                                    <div className="flex items-center gap-1.5 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                                        <AlertCircle size={14} className="shrink-0" />
+                                        <span>To Date cannot be earlier than From Date.</span>
+                                    </div>
                                 ) : (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-200/60 text-orange-800 text-xs font-medium">
-                                        <Calendar size={13} className="text-orange-500 shrink-0" />
-                                        <span>
-                                            Duration: <strong className="font-bold">{leaveDays} {leaveDays === 1 ? "Day" : "Days"}</strong> ({formatDate(form.fromDate)} → {formatDate(form.toDate)})
+                                    <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50/70 border border-orange-200/80 text-orange-950 text-xs font-medium">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar size={15} className="text-orange-500 shrink-0" />
+                                            <span>
+                                                Duration: <strong className="font-bold text-orange-600">{leaveDays} {leaveDays === 1 ? "Day" : "Days"}</strong>
+                                            </span>
+                                        </div>
+                                        <span className="text-[11px] text-orange-700 font-semibold hidden sm:inline">
+                                            {formatDate(form.fromDate)} → {formatDate(form.toDate)}
                                         </span>
                                     </div>
                                 )}
@@ -675,40 +1072,32 @@ const ApplyModal = ({ onClose }) => {
                         )}
                     </div>
 
-                    {/* Faculty Assignment */}
+                    {/* Faculty Assignment Dropdown */}
                     <div>
                         <label className={labelClasses}>
-                            <span>Assign Faculty Member <span className="text-red-500">*</span></span>
+                            <span>Assign Reviewing Faculty <span className="text-red-500">*</span></span>
+                            <span className="text-[10px] text-gray-400 font-normal">Select for approval</span>
                         </label>
-                        <div className="relative">
-                            <select
-                                value={form.assignedFacultyId}
-                                onChange={e => setForm(p => ({ ...p, assignedFacultyId: e.target.value }))}
-                                className={`${inputClasses} appearance-none cursor-pointer pr-8 font-medium`}
-                            >
-                                <option value="">— Select Faculty —</option>
-                                {(facultiesRes?.data || []).map(fac => (
-                                    <option key={fac._id} value={fac._id}>
-                                        {fac.name} ({fac.role?.toUpperCase() || "FACULTY"}) {fac.position ? `· ${fac.position}` : ""}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                <ChevronRight size={14} className="rotate-90" />
-                            </div>
-                        </div>
+                        <FacultyDropdown
+                            faculties={facultiesRes?.data || []}
+                            value={form.assignedFacultyId}
+                            onChange={(id) => setForm(p => ({ ...p, assignedFacultyId: id }))}
+                            isLoading={facultiesLoading}
+                        />
                     </div>
 
                     {/* File Upload Dropzone */}
                     <div>
                         <label className={labelClasses}>
-                            <span>Supporting Document <span className="text-gray-400 font-normal">(Optional)</span></span>
+                            <span>Supporting Document <span className="text-gray-400 font-normal">(Optional slip, prescription, etc.)</span></span>
                         </label>
                         
                         {!file ? (
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl sm:rounded-2xl p-3.5 cursor-pointer hover:border-orange-400 hover:bg-orange-50/20 transition-all bg-gray-50/60">
-                                <UploadCloud size={20} className="text-gray-400 mb-1" />
-                                <span className="text-xs font-bold text-gray-700">
+                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-orange-400 hover:bg-orange-50/20 rounded-2xl p-4 cursor-pointer transition-all bg-gray-50/60 group">
+                                <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-400 group-hover:text-orange-500 group-hover:border-orange-200 flex items-center justify-center mb-1.5 transition-colors shadow-2xs">
+                                    <UploadCloud size={20} />
+                                </div>
+                                <span className="text-xs font-bold text-gray-700 group-hover:text-orange-600 transition-colors">
                                     Upload Document or Photo
                                 </span>
                                 <span className="text-[10px] text-gray-400 mt-0.5">
@@ -722,30 +1111,33 @@ const ApplyModal = ({ onClose }) => {
                                 />
                             </label>
                         ) : (
-                            <div className="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between gap-2.5">
-                                <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
                                     {filePreview ? (
                                         <img
                                             src={filePreview}
                                             alt="Preview"
-                                            className="w-8 h-8 rounded-lg object-cover border border-emerald-300"
+                                            className="w-9 h-9 rounded-xl object-cover border border-emerald-300 shadow-2xs shrink-0"
                                         />
                                     ) : (
-                                        <FileText size={18} className="text-emerald-600 shrink-0" />
+                                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                            <FileText size={18} />
+                                        </div>
                                     )}
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold text-emerald-950 truncate">{file.name}</p>
-                                        <p className="text-[10px] text-emerald-600">
-                                            {(file.size / 1024).toFixed(1)} KB
+                                        <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                                            {(file.size / 1024).toFixed(1)} KB · Ready to submit
                                         </p>
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={clearFile}
-                                    className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                    className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                    title="Remove document"
                                 >
-                                    <Trash2 size={15} />
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         )}
@@ -754,11 +1146,11 @@ const ApplyModal = ({ onClose }) => {
                 </form>
 
                 {/* Modal Footer */}
-                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 px-4 sm:px-6 py-3.5 bg-gray-50 border-t border-gray-100 shrink-0">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 px-5 sm:px-6 py-4 bg-gray-50/80 border-t border-gray-100 shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-full sm:flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors inline-flex items-center justify-center shrink-0 cursor-pointer"
+                        className="py-2.5 px-4 text-xs sm:text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
                     >
                         <span>Cancel</span>
                     </button>
@@ -766,21 +1158,21 @@ const ApplyModal = ({ onClose }) => {
                         type="button"
                         onClick={handleSubmit}
                         disabled={isLoading || isDateInvalid || facultiesLoading}
-                        className={`w-full sm:flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl inline-flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                        className={`py-2.5 px-5 text-xs sm:text-sm font-bold rounded-xl inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
                             isLoading || isDateInvalid
                                 ? "bg-orange-300 text-white cursor-not-allowed"
-                                : "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs"
+                                : "bg-orange-500 hover:bg-orange-600 active:scale-[0.99] text-white shadow-md shadow-orange-500/20"
                         }`}
                     >
                         {isLoading ? (
                             <>
-                                <RefreshCw size={13} className="animate-spin" />
+                                <RefreshCw size={14} className="animate-spin" />
                                 <span>Submitting...</span>
                             </>
                         ) : (
                             <>
-                                <CheckCircle2 size={14} />
-                                <span>Submit Request</span>
+                                <CheckCircle2 size={15} />
+                                <span>Submit Leave Request</span>
                             </>
                         )}
                     </button>
@@ -813,7 +1205,7 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
 
                 {/* Reason */}
                 <h4 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 mb-1.5 group-hover:text-orange-600 transition-colors">
-                    {item.reason || "Permission application"}
+                    {item.reason || "Leave Application"}
                 </h4>
 
                 {/* Dates */}
@@ -1081,7 +1473,7 @@ export default function StudentPermissions() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="text-base sm:text-lg font-bold text-gray-900">Permissions</h2>
+                                <h2 className="text-base sm:text-lg font-bold text-gray-900">Leave Requests</h2>
                                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
                                     {totalRequests}
                                 </span>
@@ -1098,7 +1490,7 @@ export default function StudentPermissions() {
                                 <input
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search permissions..."
+                                    placeholder="Search leave requests..."
                                     className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
                                 />
                                 {search && (
@@ -1113,10 +1505,10 @@ export default function StudentPermissions() {
 
                             <button
                                 onClick={() => setApplyOpen(true)}
-                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs"
+                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs cursor-pointer"
                             >
                                 <Plus size={16} />
-                                <span>Apply</span>
+                                <span>Apply Leave</span>
                             </button>
                         </div>
                     </div>
@@ -1167,54 +1559,57 @@ export default function StudentPermissions() {
                 />
             )}
 
-            {/* ── Mobile Status Tabs (md:hidden) — Exactly like StudentTasks ── */}
-            <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
-                <button
-                    onClick={() => setMobileTab("all")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>All</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 text-gray-700">
-                        {sortedPermissions.length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("pending")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "pending" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Pending</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800">
-                        {byStatus.pending.length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("approved")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "approved" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Approved</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
-                        {byStatus.approved.length}
-                    </span>
-                </button>
-                {byStatus.rejected.length > 0 && (
+            {/* ── Mobile Status Tabs & Sort (md:hidden) — Matches StudentTasks ── */}
+            <div className="md:hidden flex items-center justify-between gap-2">
+                <div className="bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold flex-1">
                     <button
-                        onClick={() => setMobileTab("rejected")}
+                        onClick={() => setMobileTab("all")}
                         className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                            mobileTab === "rejected" ? "bg-white text-rose-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
                         }`}
                     >
-                        <span>Rejected</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
-                            {byStatus.rejected.length}
+                        <span>All</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 text-gray-700">
+                            {sortedPermissions.length}
                         </span>
                     </button>
-                )}
+                    <button
+                        onClick={() => setMobileTab("pending")}
+                        className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                            mobileTab === "pending" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                        <span>Pending</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800">
+                            {byStatus.pending.length}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setMobileTab("approved")}
+                        className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                            mobileTab === "approved" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                        <span>Approved</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                            {byStatus.approved.length}
+                        </span>
+                    </button>
+                    {byStatus.rejected.length > 0 && (
+                        <button
+                            onClick={() => setMobileTab("rejected")}
+                            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                                mobileTab === "rejected" ? "bg-white text-rose-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            <span>Rejected</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
+                                {byStatus.rejected.length}
+                            </span>
+                        </button>
+                    )}
+                </div>
+                <SortDropdown sortBy={sortBy} onSortChange={setSortBy} />
             </div>
 
             {/* ── Mobile Permissions List (md:hidden) — Matches StudentTasks ── */}
@@ -1253,8 +1648,8 @@ export default function StudentPermissions() {
                             <EmptyState
                                 icon={ShieldCheck}
                                 title={`No ${mobileTab} requests found`}
-                                subtitle={mobileTab === "pending" ? "Submit a new permission or leave request." : `No ${mobileTab} permission requests to display.`}
-                                actionText={mobileTab === "pending" ? "Apply Now" : undefined}
+                                subtitle={mobileTab === "pending" ? "Submit a leave request for fast faculty approval." : `No ${mobileTab} leave requests to display.`}
+                                actionText={mobileTab === "pending" ? "Apply Leave" : undefined}
                                 onAction={mobileTab === "pending" ? () => setApplyOpen(true) : undefined}
                                 compact
                             />
@@ -1275,9 +1670,9 @@ export default function StudentPermissions() {
                 {sortedPermissions.length === 0 && (
                     <EmptyState
                         icon={ShieldCheck}
-                        title={search ? "No matching permissions found" : "No permission requests yet"}
+                        title={search ? "No matching leave requests found" : "No leave requests yet"}
                         subtitle={search ? "Try clearing your search query or reset filter." : "Submit a leave request for fast faculty approval."}
-                        actionText={!search ? "Apply for Permission" : undefined}
+                        actionText={!search ? "Apply Leave" : undefined}
                         onAction={!search ? () => setApplyOpen(true) : undefined}
                     />
                 )}
@@ -1329,15 +1724,7 @@ export default function StudentPermissions() {
 
                     {/* Sort & View Switcher */}
                     <div className="flex items-center gap-2">
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="text-xs font-semibold bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-gray-700 focus:outline-none focus:border-orange-400 cursor-pointer"
-                        >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                            <option value="duration">Longest Duration</option>
-                        </select>
+                        <SortDropdown sortBy={sortBy} onSortChange={setSortBy} />
 
                         <div className="flex items-center p-0.5 bg-gray-100 rounded-xl border border-gray-200">
                             <button
@@ -1366,9 +1753,9 @@ export default function StudentPermissions() {
                 {desktopFilteredPermissions.length === 0 ? (
                     <EmptyState
                         icon={ShieldCheck}
-                        title="No permission requests found"
-                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a new permission or leave request to get started."}
-                        actionText={!search ? "Apply for Permission" : undefined}
+                        title="No leave requests found"
+                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a leave request for faculty approval to get started."}
+                        actionText={!search ? "Apply Leave" : undefined}
                         onAction={!search ? () => setApplyOpen(true) : undefined}
                     />
                 ) : viewMode === "list" ? (

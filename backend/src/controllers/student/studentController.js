@@ -10,7 +10,7 @@ const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const Task = require("../../models/syllabus/Task");
 const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
-const { promoteToNextSubLevel } = require("../../services/studentService");
+const { promoteToNextSubLevel, demoteToPreviousSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
 const { calculateBatchYear, resolveCourseDuration } = require("../../utils/batchHelper");
 const { resolveStudentDepartmentHierarchy, normalizeStr } = require("../../utils/departmentHelper");
@@ -2319,6 +2319,25 @@ exports.promoteStudent = async (req, res) => {
       : error.message.includes("Only active") ? 400
       : 500);
     return res.status(status).json({ message: error.message });
+  }
+};
+
+exports.demoteStudent = async (req, res) => {
+  try {
+    const result = await demoteToPreviousSubLevel(req.params.id, req.user, { remark: req.body?.remark });
+    return res.status(200).json({
+      success: true,
+      message: result.demotedToPrevLevel
+        ? `Student demoted back to previous level (${result.newLevelName} - ${result.newSubLevelName})`
+        : `Student demoted back to previous sub-level (${result.newSubLevelName})`,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Demote student error:", error);
+    const status = error.statusCode
+      || (error.message?.includes("not found") ? 404
+      : 400);
+    return res.status(status).json({ success: false, message: error.message || "Failed to demote student" });
   }
 };
 

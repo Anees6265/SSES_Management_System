@@ -115,6 +115,7 @@ router.patch("/:id/technology", ...auth, studentController.updateTechnology);
 // Readiness & Promotion
 router.patch("/:id/readiness-status", ...auth, studentController.updateReadinessStatus);
 router.post("/:id/promote", ...auth, studentController.promoteStudent);
+router.post("/:id/demote", ...auth, studentController.demoteStudent);
 router.get("/:id/level-history", ...auth, studentController.getStudentLevelHistory);
 
 // Profile Image

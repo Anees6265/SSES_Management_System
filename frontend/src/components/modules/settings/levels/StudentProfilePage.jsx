@@ -4,7 +4,7 @@ import {
     MdEmail, MdPhone, MdCheckCircle, MdAccessTime,
     MdTableChart, MdSchool, MdWork,
     MdStar, MdMoreVert, MdClose, MdEdit,
-    MdArrowUpward, MdBadge, MdBusiness, MdCalendarToday,
+    MdArrowUpward, MdArrowDownward, MdBadge, MdBusiness, MdCalendarToday,
     MdAccountTree, MdVerified, MdWarning, MdArrowForward,
     MdFileUpload, MdFileDownload, MdHistory, MdFolderSpecial, MdOpenInNew,
     MdBarChart, MdLightbulb, MdSearch, MdNotificationsNone,
@@ -50,6 +50,7 @@ import {
     useGetLevelsBySubdepartmentQuery,
     useGetAllSubLevelsQuery,
     usePromoteNewStudentMutation,
+    useDemoteNewStudentMutation,
     useUpdateStudentByIdMutation,
     useUpdateStudentProfileImageMutation,
     useUpdatePlacementReadinessMutation,
@@ -1087,6 +1088,46 @@ const PromoteModal = ({ name, onConfirm, onCancel, loading }) => {
     );
 };
 
+// Demote Modal
+const DemoteModal = ({ name, onConfirm, onCancel, loading }) => {
+    const [remark, setRemark] = useState("");
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-sm overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-800">Demote Student</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">{name}</p>
+                    </div>
+                    <button onClick={onCancel} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"><MdClose size={18} /></button>
+                </div>
+                <div className="p-6">
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
+                        <MdWarning className="shrink-0 text-amber-600 mt-0.5" size={16} />
+                        <span>Student will be reverted to the previous sublevel. Current level tasks will be removed and previous level tasks will be restored.</span>
+                    </div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Remark <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea
+                        value={remark} onChange={e => setRemark(e.target.value)}
+                        rows={3} placeholder="Add a demotion remark..."
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-rose-400 resize-none"
+                    />
+                </div>
+                <div className="flex gap-2.5 sm:gap-3 px-6 pb-6">
+                    <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center">
+                        <span>Cancel</span>
+                    </button>
+                    <button onClick={() => onConfirm(remark)} disabled={loading}
+                        className="flex-1 py-2.5 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+                        {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MdArrowDownward size={15} />}
+                        Demote
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Dummy Student Details Modal
 const DummyDetailsModal = ({ raw, name, onCancel, onMarkActive }) => {
     const dummy = raw?.dummyDetails || {};
@@ -1500,6 +1541,7 @@ const StudentProfilePage = () => {
 
     const [moreOpen, setMoreOpen] = useState(false);
     const [promoteModal, setPromoteModal] = useState(false);
+    const [demoteModal, setDemoteModal] = useState(false);
     const [readyModal, setReadyModal] = useState(false);
     const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
     const [editModal, setEditModal] = useState(false);
@@ -1527,6 +1569,7 @@ const StudentProfilePage = () => {
 
 
     const [promoteStudent, { isLoading: promoting }] = usePromoteNewStudentMutation();
+    const [demoteStudent, { isLoading: demoting }] = useDemoteNewStudentMutation();
     const [updateStudent] = useUpdateStudentByIdMutation();
     const [updateStudentProfileImage] = useUpdateStudentProfileImageMutation();
     const [updatePlacementReadiness] = useUpdatePlacementReadinessMutation();
@@ -1999,6 +2042,17 @@ const StudentProfilePage = () => {
         }
     };
 
+    const handleDemote = async (remark) => {
+        try {
+            await demoteStudent({ id: raw._id, remark }).unwrap();
+            toast.success(`${name} demoted successfully!`);
+            setDemoteModal(false);
+            navigate(-1);
+        } catch (err) {
+            toast.error(err?.data?.message || "Demotion failed");
+        }
+    };
+
     useEffect(() => {
         setInlineFtpDomain(currentDomain || "");
     }, [currentDomain]);
@@ -2243,6 +2297,9 @@ const StudentProfilePage = () => {
         <>
             {promoteModal && (
                 <PromoteModal name={name} onConfirm={handlePromote} onCancel={() => setPromoteModal(false)} loading={promoting} />
+            )}
+            {demoteModal && (
+                <DemoteModal name={name} onConfirm={handleDemote} onCancel={() => setDemoteModal(false)} loading={demoting} />
             )}
             {ftpModalOpen && (
                 <MarkToFtpModal
@@ -2602,6 +2659,9 @@ const StudentProfilePage = () => {
                                             )}
                                             <button onClick={() => { setMoreOpen(false); setPromoteModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-emerald-600 flex items-center gap-2">
                                                 <MdArrowUpward size={14} /> Promote Student
+                                            </button>
+                                            <button onClick={() => { setMoreOpen(false); setDemoteModal(true); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-rose-600 flex items-center gap-2">
+                                                <MdArrowDownward size={14} /> Demote Student
                                             </button>
                                             <button 
                                                 onClick={() => { setMoreOpen(false); setFtpModalOpen(true); }}
@@ -2985,15 +3045,28 @@ const StudentProfilePage = () => {
                                     <h3 className="text-base sm:text-xl font-black text-slate-900 group-hover:text-orange-500 transition truncate">
                                         {currentLevelLabel} {daysInSubLevel ? `(${daysInSubLevel})` : ''}
                                     </h3>
-                                    <button
-                                        onClick={(e) => {
-                                             e.stopPropagation();
-                                             setPromoteModal(true);
-                                        }}
-                                        className="self-start sm:self-auto bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full transition"
-                                    >
-                                        +1 Up
-                                    </button>
+                                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                                        <button
+                                            onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 setDemoteModal(true);
+                                            }}
+                                            className="bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full transition"
+                                            title="Demote to previous level"
+                                        >
+                                            -1 Down
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 setPromoteModal(true);
+                                            }}
+                                            className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 rounded-full transition"
+                                            title="Promote to next level"
+                                        >
+                                            +1 Up
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-1.5 pt-1">
                                     <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${completionRate}%` }} />

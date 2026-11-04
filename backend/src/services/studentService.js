@@ -5,6 +5,6 @@
 // This file re-exports from promotionService so any existing code that
 // imports from studentService continues to work without changes.
 
-const { syncStudentReadiness, promoteToNextSubLevel } = require("./promotionService");
+const { syncStudentReadiness, promoteToNextSubLevel, demoteToPreviousSubLevel } = require("./promotionService");
 
-module.exports = { syncStudentReadiness, promoteToNextSubLevel };
+module.exports = { syncStudentReadiness, promoteToNextSubLevel, demoteToPreviousSubLevel };

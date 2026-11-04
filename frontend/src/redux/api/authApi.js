@@ -488,6 +488,22 @@ export const authApi = createApi({
       invalidatesTags: (result, error, id) => [{ type: 'Student', id }, 'Student'],
     }),
 
+    demoteNewStudent: builder.mutation({
+      query: (arg) => {
+        const id = typeof arg === 'object' && arg !== null ? arg.id : arg;
+        const remark = typeof arg === 'object' && arg !== null ? arg.remark : undefined;
+        return {
+          url: `/students/${id}/demote`,
+          method: 'POST',
+          body: { remark },
+        };
+      },
+      invalidatesTags: (result, error, arg) => {
+        const id = typeof arg === 'object' && arg !== null ? arg.id : arg;
+        return [{ type: 'Student', id }, 'Student'];
+      },
+    }),
+
     updateNewStudentReadiness: builder.mutation({
       query: ({ id, readinessStatus }) => ({
         url: `/students/${id}/readiness-status`,
@@ -2188,6 +2204,7 @@ export const {
   useGetNewStudentStatsQuery,
   useGetNewStudentTasksQuery,
   usePromoteNewStudentMutation,
+  useDemoteNewStudentMutation,
   useUpdateNewStudentReadinessMutation,
   useUpdatePlacementReadinessMutation,
   useAssignExtraTaskMutation,

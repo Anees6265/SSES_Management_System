@@ -597,4 +597,256 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   };
 };
 
-module.exports = { syncStudentReadiness, promoteToNextSubLevel };
+/**
+ * Demote student to previous sub-level / level.
+ * Used when a student was mistakenly promoted.
+ * Removes current level's tasks and syllabus, restores previous level's tasks and syllabus.
+ */
+const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {}) => {
+  const actorId = getActorId(actorUser);
+
+  const student = await Student.findById(studentId);
+  if (!student) throw toClientError("Student not found", 404);
+  if (student.status !== "Active") throw toClientError("Only active students can be demoted");
+
+  const currentLevel = await Level.findById(student.currentLevelId);
+  if (!currentLevel) throw toClientError("Current level not found", 404);
+  const currentSubLevel = await SubLevel.findById(student.currentSubLevelId);
+  if (!currentSubLevel) throw toClientError("Current sub-level not found", 404);
+
+  // Step 1: Look for previous SubLevel in the same Level (by order)
+  let targetLevel = currentLevel;
+  let prevSubLevel = await SubLevel.findOne({
+    levelId: currentLevel._id,
+    order: { $lt: currentSubLevel.order },
+    isActive: true,
+  }).sort({ order: -1 });
+
+  let demotedToPrevLevel = false;
+
+  // Step 2: No lower sublevel in current level -> look for previous Level in the same subdepartment
+  if (!prevSubLevel) {
+    const prevLevel = await Level.findOne({
+      subDepartmentId: student.subDepartmentId,
+      order: { $lt: currentLevel.order },
+      isActive: true,
+    }).sort({ order: -1 });
+
+    if (!prevLevel) {
+      throw toClientError(`Student is already at the lowest level (${currentSubLevel.name}). Cannot demote further.`, 400);
+    }
+
+    targetLevel = prevLevel;
+    demotedToPrevLevel = true;
+
+    // In previous level, find the highest (last) sublevel
+    prevSubLevel = await SubLevel.findOne({
+      levelId: prevLevel._id,
+      isActive: true,
+    }).sort({ order: -1 });
+
+    if (!prevSubLevel) {
+      throw toClientError("No active sub-level found in previous level", 404);
+    }
+  }
+
+  // Step 3: Find active SyllabusVersion for the target previous SubLevel
+  const targetSessionId = student.sessionId || (await Session.findOne({ isActive: true }).sort({ createdAt: -1 }))?._id;
+
+  const lastPromotionLog = await StudentEventLog.findOne({
+    studentId,
+    type: "promotion",
+    action: { $in: ["manual_promoted", "auto_promoted"] }
+  }).sort({ createdAt: -1 });
+
+  let targetSyllabus = null;
+  if (lastPromotionLog?.meta?.prevSyllabusVersionId && String(lastPromotionLog.meta.prevSubLevelId) === String(prevSubLevel._id)) {
+    targetSyllabus = await SyllabusVersion.findOne({
+      _id: lastPromotionLog.meta.prevSyllabusVersionId,
+      isActive: true
+    });
+  }
+
+  if (!targetSyllabus) {
+    targetSyllabus = await SyllabusVersion.findOne({
+      sessionId: targetSessionId,
+      levelId: targetLevel._id,
+      subLevelId: prevSubLevel._id,
+      status: "active",
+      isActive: true
+    }).sort({ createdAt: -1 });
+  }
+
+  if (!targetSyllabus) {
+    targetSyllabus = await SyllabusVersion.findOne({
+      levelId: targetLevel._id,
+      subLevelId: prevSubLevel._id,
+      isActive: true
+    }).sort({ createdAt: -1 });
+  }
+
+  if (!targetSyllabus) {
+    throw toClientError(`No active syllabus found for previous sub-level (${prevSubLevel.name})`, 404);
+  }
+
+  const fromLevelId = currentLevel._id;
+  const fromSubLevelId = currentSubLevel._id;
+  const fromSyllabusVersionId = student.syllabusVersionId;
+
+  // Step 4: Remove current (mistaken) level's tasks from the student's task board
+  await StudentTask.deleteMany({
+    studentId,
+    $or: [
+      { subLevelId: currentSubLevel._id },
+      ...(fromSyllabusVersionId ? [{ syllabusVersionId: fromSyllabusVersionId }] : [])
+    ]
+  });
+
+  // Step 5: Restore / Activate previous level's tasks
+  await StudentTask.updateMany(
+    {
+      studentId,
+      $or: [
+        { subLevelId: prevSubLevel._id },
+        { syllabusVersionId: targetSyllabus._id }
+      ]
+    },
+    { $set: { isActive: true } }
+  );
+
+  // Populate any missing tasks for the previous sublevel without overwriting existing tasks
+  try {
+    const { assignTasksToStudent } = require("./taskAssignmentService");
+    await assignTasksToStudent(student._id, targetSyllabus._id);
+  } catch (err) {
+    console.warn("Task assignment on demote warning:", err.message);
+  }
+
+  // Step 6: Atomically update student position
+  await withTransaction(async (session) => {
+    student.currentLevelId = targetLevel._id;
+    student.currentSubLevelId = prevSubLevel._id;
+    student.syllabusVersionId = targetSyllabus._id;
+    student.sessionId = targetSessionId;
+    await student.save({ session });
+  });
+
+  // Step 7: Reset StudentLevelProgress
+  try {
+    const StudentLevelProgress = require("../models/student/StudentLevelProgress");
+    await StudentLevelProgress.deleteOne({ studentId, subLevelId: currentSubLevel._id });
+
+    const existingPrevTasks = await StudentTask.find({
+      studentId,
+      subLevelId: prevSubLevel._id,
+      isActive: true
+    });
+    const completedCount = existingPrevTasks.filter(t => t.status === "completed").length;
+    await StudentLevelProgress.findOneAndUpdate(
+      { studentId, subLevelId: prevSubLevel._id },
+      {
+        $set: {
+          status: "in_progress",
+          completedAt: null,
+          totalTasks: existingPrevTasks.length,
+          completedTasksCount: completedCount,
+          completionPercentage: existingPrevTasks.length > 0 ? Math.round((completedCount / existingPrevTasks.length) * 100) : 0
+        }
+      }
+    );
+  } catch (lvlErr) {
+    // Non-blocking
+  }
+
+  // Step 8: Update Report Card
+  try {
+    const StudentReportCard = require("../models/student/studentReportCard");
+    const reportCard = await StudentReportCard.findOne({ studentRef: studentId });
+    if (reportCard) {
+      const levelProgressSec = reportCard.dynamicSections?.find(
+        (s) => s.sectionName === "Level Progress" || s.sectionType === "LevelProgressTable"
+      );
+      if (levelProgressSec && Array.isArray(levelProgressSec.items)) {
+        const currentSubName = (currentSubLevel.name || "").trim().toUpperCase();
+        const prevSubName = (prevSubLevel.name || "").trim().toUpperCase();
+
+        const existingPrevTasks = await StudentTask.find({
+          studentId,
+          subLevelId: prevSubLevel._id,
+          isActive: true
+        });
+        const completedCount = existingPrevTasks.filter(t => t.status === "completed").length;
+        const prevPercent = existingPrevTasks.length > 0 ? Math.round((completedCount / existingPrevTasks.length) * 100) : 0;
+
+        levelProgressSec.items.forEach(item => {
+          const itemName = (item.itemName || "").trim().toUpperCase();
+          if (itemName === currentSubName) {
+            item.value = "Upcoming";
+            item.score = 0;
+            item.remark = "—";
+          } else if (itemName === prevSubName) {
+            item.value = "Current";
+            item.score = prevPercent;
+          }
+        });
+        await StudentReportCard.updateOne(
+          { _id: reportCard._id },
+          { $set: { dynamicSections: reportCard.dynamicSections } }
+        );
+      }
+    }
+  } catch (rcErr) {
+    console.warn("Report card update failed on demotion:", rcErr.message);
+  }
+
+  // Step 9: Revert Ready for Drive if demoted before 2B
+  const prevSubNameUpper = (prevSubLevel.name || "").toUpperCase();
+  if (!prevSubNameUpper.includes("2B") && !prevSubNameUpper.includes("3") && !prevSubNameUpper.includes("4")) {
+    try {
+      await StudentPlacement.findOneAndUpdate(
+        { studentId, readinessStatus: "Ready for Drive" },
+        { $set: { readinessStatus: "Not Ready" } }
+      );
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  // Step 10: Log demotion event in StudentEventLog
+  try {
+    await StudentEventLog.create({
+      studentId,
+      type: "demotion",
+      action: "manual_demoted",
+      title: `Demoted to ${demotedToPrevLevel ? "previous level" : "previous sub-level"}`,
+      description: `Student demoted back from SubLevel ${currentSubLevel.name} (${currentLevel.name}) to ${prevSubLevel.name} (${targetLevel.name})${options.remark ? `. Remark: ${options.remark}` : ""}`,
+      meta: {
+        fromLevelId,
+        fromSubLevelId,
+        fromSyllabusVersionId,
+        toLevelId: targetLevel._id,
+        toSubLevelId: prevSubLevel._id,
+        toSyllabusVersionId: targetSyllabus._id,
+        demotedToPrevLevel,
+        remark: options.remark || "",
+      },
+      createdBy: actorId,
+      createdByName: actorUser?.name || "",
+      createdByRole: actorUser?.role || "",
+    });
+  } catch (logErr) {
+    console.warn("Demotion event log warning:", logErr.message);
+  }
+
+  return {
+    demotedToPrevLevel,
+    newLevelId: targetLevel._id,
+    newLevelName: targetLevel.name,
+    newSubLevelId: prevSubLevel._id,
+    newSubLevelName: prevSubLevel.name,
+    newSyllabusVersionId: targetSyllabus._id,
+    syllabusVersionTitle: targetSyllabus.title,
+  };
+};
+
+module.exports = { syncStudentReadiness, promoteToNextSubLevel, demoteToPreviousSubLevel };

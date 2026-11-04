@@ -32,7 +32,7 @@ import { usePersistentState } from '../../../hooks/usePersistentFilters';
 const UsersManagement = () => {
     const navigate = useNavigate();
     const currentUser = useSelector(selectCurrentUser);
-    const isHod = currentUser?.role === 'hod';
+    const isHod = ['hod', 'faculty', 'placement_officer', 'coordinator'].includes(currentUser?.role);
     const { hasPermission } = usePermissions();
     const createUserFormRef = useRef();
     const editUserFormRef = useRef();

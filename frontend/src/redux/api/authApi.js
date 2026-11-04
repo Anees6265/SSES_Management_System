@@ -1931,6 +1931,36 @@ export const authApi = createApi({
       invalidatesTags: ['SyllabusVersion', 'Task', 'Student'],
     }),
 
+    deleteTopicFromVersion: builder.mutation({
+      query: ({ versionId, subjectId, topicId }) => ({
+        url: subjectId
+          ? `/syllabus/versions/${versionId}/subjects/${subjectId}/topics/${topicId}`
+          : `/syllabus/versions/${versionId}/topics/${topicId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student', 'StudentTasks', 'StudentProfile'],
+    }),
+
+    bulkDeleteTopicsFromVersion: builder.mutation({
+      query: ({ versionId, topicIds, subjectId }) => ({
+        url: `/syllabus/versions/${versionId}/topics/bulk-delete`,
+        method: 'POST',
+        body: { topicIds, subjectId },
+      }),
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student', 'StudentTasks', 'StudentProfile'],
+    }),
+
+    updateTopicInVersion: builder.mutation({
+      query: ({ versionId, subjectId, topicId, ...data }) => ({
+        url: subjectId
+          ? `/syllabus/versions/${versionId}/subjects/${subjectId}/topics/${topicId}`
+          : `/syllabus/versions/${versionId}/topics/${topicId}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['SyllabusVersion', 'Task', 'Student', 'StudentTasks', 'StudentProfile'],
+    }),
+
     createTaskManual: builder.mutation({
       query: ({ syllabusVersionId, subjectId, topicId, subTopicId, ...taskData }) => {
         if (syllabusVersionId) {
@@ -2315,6 +2345,9 @@ export const {
   useAddSubjectToVersionMutation,
   useDeleteSubjectFromVersionMutation,
   useUpdateSubjectInVersionMutation,
+  useDeleteTopicFromVersionMutation,
+  useBulkDeleteTopicsFromVersionMutation,
+  useUpdateTopicInVersionMutation,
   // Smart Syllabus hooks
   useGetStudentSmartSyllabusQuery,
   useUpdateSyllabusSmartlyMutation,

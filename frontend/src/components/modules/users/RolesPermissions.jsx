@@ -20,7 +20,7 @@ import EmptyState from '../../shared/empty-state/EmptyState';
 const RolesPermissions = () => {
     const navigate = useNavigate();
     const currentUser = useSelector(selectCurrentUser);
-    const isHod = currentUser?.role === 'hod';
+    const isHod = ['hod', 'faculty', 'placement_officer', 'coordinator'].includes(currentUser?.role);
     const createRoleFormRef = useRef();
     const { data: usersData, isLoading: usersLoading, error: usersError } = useGetAllUsersQuery();
     const { data: rolesData, isLoading: rolesLoading, error: rolesError } = useGetAllRolesQuery();

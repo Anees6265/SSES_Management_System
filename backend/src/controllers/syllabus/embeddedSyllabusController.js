@@ -567,15 +567,322 @@ exports.updateTopicInSyllabusVersion = async (req, res) => {
   try {
     const sv = await SyllabusVersion.findById(req.params.id);
     if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
-    const subject = getSubjectOrNull(sv, req.params.subjectId);
-    const topic = getTopicOrNull(subject, req.params.topicId);
-    if (!topic) return res.status(404).json({ success: false, message: "Topic not found" });
-    for (const f of ["name", "description", "order", "isActive"]) {
-      if (req.body[f] !== undefined) topic[f] = req.body[f];
+    
+    let subject = getSubjectOrNull(sv, req.params.subjectId);
+    let topic = getTopicOrNull(subject, req.params.topicId);
+
+    if (!topic) {
+      // Find subject containing this topic if subjectId was not provided or didn't match
+      for (const s of (sv.subjects || [])) {
+        const found = s.topics?.id(req.params.topicId);
+        if (found) {
+          subject = s;
+          topic = found;
+          break;
+        }
+      }
     }
+    if (!topic) return res.status(404).json({ success: false, message: "Topic not found" });
+
+    const oldName = topic.name;
+    const StudentTask = require("../../models/syllabus/StudentTask");
+
+    if (req.body.name !== undefined) topic.name = req.body.name.trim();
+    if (req.body.description !== undefined) topic.description = req.body.description.trim();
+    if (req.body.order !== undefined) topic.order = Number(req.body.order) || topic.order;
+    if (req.body.isActive !== undefined) topic.isActive = Boolean(req.body.isActive);
+
+    // SubTopics Management
+    if (Array.isArray(req.body.subTopics)) {
+      const existingSubTopicMap = new Map();
+      (topic.subTopics || []).forEach((st) => {
+        existingSubTopicMap.set(String(st._id), st);
+      });
+
+      const incomingSubTopicIds = new Set();
+      const updatedSubTopics = [];
+
+      for (const [stIdx, incomingSt] of req.body.subTopics.entries()) {
+        const stName = typeof incomingSt === "string" ? incomingSt.trim() : (incomingSt?.name || "").trim();
+        if (!stName) continue;
+
+        const stId = incomingSt?._id ? String(incomingSt._id) : null;
+        if (stId && existingSubTopicMap.has(stId)) {
+          incomingSubTopicIds.add(stId);
+          const existing = existingSubTopicMap.get(stId);
+          const oldSubName = existing.name;
+          existing.name = stName;
+          if (incomingSt.description !== undefined) existing.description = incomingSt.description;
+          if (incomingSt.order !== undefined) existing.order = incomingSt.order;
+          else existing.order = stIdx + 1;
+          if (incomingSt.isActive !== undefined) existing.isActive = Boolean(incomingSt.isActive);
+          updatedSubTopics.push(existing);
+
+          // If subtopic name changed, sync tasks
+          if (oldSubName !== stName) {
+            await Task.updateMany(
+              { syllabusVersionId: sv._id, subTopicId: existing._id },
+              { $set: { subTopicName: stName } }
+            );
+            await StudentTask.updateMany(
+              { syllabusVersionId: sv._id, subTopicId: existing._id },
+              { $set: { subTopicName: stName } }
+            );
+          }
+        } else {
+          // New subtopic added
+          updatedSubTopics.push({
+            name: stName,
+            description: incomingSt.description || "",
+            order: incomingSt.order || stIdx + 1,
+            isActive: incomingSt.isActive !== false
+          });
+        }
+      }
+
+      // Check for removed subtopics
+      const removedSubTopicIds = [];
+      for (const [existingId, existingSt] of existingSubTopicMap.entries()) {
+        if (!incomingSubTopicIds.has(existingId)) {
+          removedSubTopicIds.push(existingSt._id);
+        }
+      }
+
+      if (removedSubTopicIds.length > 0) {
+        // Cascading deletion of tasks for removed subtopics
+        await Task.deleteMany({
+          syllabusVersionId: sv._id,
+          subTopicId: { $in: removedSubTopicIds }
+        });
+        await StudentTask.deleteMany({
+          syllabusVersionId: sv._id,
+          subTopicId: { $in: removedSubTopicIds }
+        });
+      }
+
+      topic.subTopics = updatedSubTopics;
+    }
+
     await sv.save();
-    res.status(200).json({ success: true, message: "Topic updated", data: topic });
+
+    // If topic name changed, synchronize associated tasks in Task and StudentTask
+    if (req.body.name && req.body.name.trim() !== oldName) {
+      const newName = req.body.name.trim();
+      await Task.updateMany(
+        { syllabusVersionId: sv._id, topicId: topic._id },
+        { $set: { topicName: newName } }
+      );
+      await StudentTask.updateMany(
+        { syllabusVersionId: sv._id, topicId: topic._id },
+        { $set: { topicName: newName } }
+      );
+    }
+
+    res.status(200).json({ success: true, message: "Topic updated successfully", data: topic });
   } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteTopicFromSyllabusVersion = async (req, res) => {
+  try {
+    const sv = await SyllabusVersion.findById(req.params.id);
+    if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
+
+    let subject = getSubjectOrNull(sv, req.params.subjectId);
+    let topic = getTopicOrNull(subject, req.params.topicId);
+
+    if (!topic) {
+      // Search all subjects in the syllabus version
+      for (const s of (sv.subjects || [])) {
+        const found = s.topics?.id(req.params.topicId);
+        if (found) {
+          subject = s;
+          topic = found;
+          break;
+        }
+      }
+    }
+
+    if (!topic) return res.status(404).json({ success: false, message: "Topic not found in curriculum" });
+
+    const topicId = topic._id;
+    const topicName = topic.name;
+    const subTopicIds = (topic.subTopics || []).map((st) => st._id).filter(Boolean);
+
+    // 1. Remove topic from subject in SyllabusVersion
+    subject.topics.pull({ _id: topicId });
+    await sv.save();
+
+    // 2. Find and permanently delete associated tasks in Task collection
+    const StudentTask = require("../../models/syllabus/StudentTask");
+
+    const taskQuery = {
+      $or: [
+        { syllabusVersionId: sv._id, topicId },
+        { syllabusVersionId: sv._id, topicName },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
+      ]
+    };
+    const matchingTasks = await Task.find(taskQuery).select("_id");
+    const taskIds = matchingTasks.map((t) => t._id);
+
+    const taskDeleteRes = await Task.deleteMany({
+      $or: [
+        { _id: { $in: taskIds } },
+        { syllabusVersionId: sv._id, topicId },
+        { syllabusVersionId: sv._id, topicName },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
+      ]
+    });
+
+    // 3. Permanently delete associated student tasks so they disappear from student task boards & portal
+    const studentTaskDeleteRes = await StudentTask.deleteMany({
+      $or: [
+        { taskId: { $in: taskIds } },
+        { syllabusVersionId: sv._id, topicId },
+        { syllabusVersionId: sv._id, topicName },
+        { topicId },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(subTopicIds.length > 0 ? [
+          { syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } },
+          { subTopicId: { $in: subTopicIds } }
+        ] : [])
+      ]
+    });
+
+    try {
+      const { logActivity } = require("../../services/activityLoggerService");
+      logActivity({
+        req,
+        action: "DELETE",
+        module: "Curriculum",
+        description: `Topic "${topicName}" and ${taskDeleteRes.deletedCount} associated tasks deleted from syllabus version ${sv.version}`,
+        status: "SUCCESS",
+        severity: "INFO",
+      });
+    } catch {}
+
+    res.status(200).json({
+      success: true,
+      message: `Topic "${topicName}" and its ${taskDeleteRes.deletedCount} tasks deleted successfully`,
+      data: {
+        topicId,
+        topicName,
+        deletedTasksCount: taskDeleteRes.deletedCount,
+        deletedStudentTasksCount: studentTaskDeleteRes.deletedCount
+      }
+    });
+  } catch (error) {
+    console.error("deleteTopicFromSyllabusVersion error:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.bulkDeleteTopicsFromSyllabusVersion = async (req, res) => {
+  try {
+    const { topicIds = [], subjectId } = req.body;
+    if (!Array.isArray(topicIds) || topicIds.length === 0) {
+      return res.status(400).json({ success: false, message: "topicIds array is required" });
+    }
+
+    const sv = await SyllabusVersion.findById(req.params.id);
+    if (!sv || !sv.isActive) return res.status(404).json({ success: false, message: "Syllabus version not found" });
+
+    const targetTopicIds = new Set(topicIds.map(String));
+    const deletedTopicIds = [];
+    const deletedTopicNames = [];
+    const subTopicIds = [];
+
+    // Find and pull all specified topics across subjects
+    for (const subject of (sv.subjects || [])) {
+      if (subjectId && String(subject._id) !== String(subjectId)) continue;
+      const topicsToPull = [];
+      for (const topic of (subject.topics || [])) {
+        if (targetTopicIds.has(String(topic._id))) {
+          deletedTopicIds.push(topic._id);
+          if (topic.name) deletedTopicNames.push(topic.name.trim());
+          (topic.subTopics || []).forEach((st) => {
+            if (st && st._id) subTopicIds.push(st._id);
+          });
+          topicsToPull.push(topic._id);
+        }
+      }
+      for (const tid of topicsToPull) {
+        subject.topics.pull({ _id: tid });
+      }
+    }
+
+    if (deletedTopicIds.length === 0) {
+      return res.status(404).json({ success: false, message: "None of the specified topics were found in this syllabus" });
+    }
+
+    await sv.save();
+
+    // Cascading deletion of tasks from Task and StudentTask
+    const StudentTask = require("../../models/syllabus/StudentTask");
+
+    const taskQuery = {
+      $or: [
+        { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
+        { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
+      ]
+    };
+    const matchingTasks = await Task.find(taskQuery).select("_id");
+    const taskIds = matchingTasks.map((t) => t._id);
+
+    const taskDeleteRes = await Task.deleteMany({
+      $or: [
+        { _id: { $in: taskIds } },
+        { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
+        { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
+      ]
+    });
+
+    const studentTaskDeleteRes = await StudentTask.deleteMany({
+      $or: [
+        { taskId: { $in: taskIds } },
+        { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
+        { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
+        { topicId: { $in: deletedTopicIds } },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(subTopicIds.length > 0 ? [
+          { syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } },
+          { subTopicId: { $in: subTopicIds } }
+        ] : [])
+      ]
+    });
+
+    try {
+      const { logActivity } = require("../../services/activityLoggerService");
+      logActivity({
+        req,
+        action: "DELETE",
+        module: "Curriculum",
+        description: `${deletedTopicIds.length} topic(s) and ${taskDeleteRes.deletedCount} associated tasks deleted from syllabus version ${sv.version}`,
+        status: "SUCCESS",
+        severity: "INFO",
+      });
+    } catch {}
+
+    res.status(200).json({
+      success: true,
+      message: `${deletedTopicIds.length} topic(s) and their ${taskDeleteRes.deletedCount} tasks deleted successfully`,
+      data: {
+        deletedTopicIds,
+        deletedTopicNames,
+        deletedTasksCount: taskDeleteRes.deletedCount,
+        deletedStudentTasksCount: studentTaskDeleteRes.deletedCount
+      }
+    });
+  } catch (error) {
+    console.error("bulkDeleteTopicsFromSyllabusVersion error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };

@@ -10,7 +10,7 @@ const router = express.Router();
 const superAdminOnly = [verifyToken, checkRole(["superadmin"])];
 const adminRoles = ["superadmin", "admin"];
 const adminOnly = [verifyToken, checkRole(adminRoles)];
-const userManagementRoles = ["superadmin", "admin", "hod"];
+const userManagementRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 const userManagementOnly = [verifyToken, checkRole(userManagementRoles)];
 
 // Rate Limiter for Login (Anti-Brute Force: Max 10 attempts per 15 min per IP)

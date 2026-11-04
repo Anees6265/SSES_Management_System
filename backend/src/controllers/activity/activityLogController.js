@@ -46,12 +46,12 @@ exports.getActivityLogs = async (req, res) => {
   try {
     const userRole = String(req.user?.role || "").toLowerCase().trim();
     const isSuperOrAdmin = ["superadmin", "admin"].includes(userRole);
-    const isHod = userRole === "hod";
+    const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(userRole);
 
-    if (!isSuperOrAdmin && !isHod) {
+    if (!isSuperOrAdmin && !isDeptScoped) {
       return res.status(403).json({
         success: false,
-        message: "Access Denied: Only Administrators and Department Heads can view activity logs.",
+        message: "Access Denied: Only Administrators and Department Staff can view activity logs.",
       });
     }
 
@@ -75,8 +75,8 @@ exports.getActivityLogs = async (req, res) => {
     const query = {};
 
     // 1. Department Scope Enforcement (Option B)
-    if (isHod) {
-      // HOD can see their own department logs OR security alerts concerning their department
+    if (isDeptScoped) {
+      // Department staff can see their own department logs OR security alerts concerning their department
       const userDeptId = req.user.departmentId;
       const userDeptName = req.user.department;
 
@@ -214,10 +214,10 @@ exports.getActivityLogs = async (req, res) => {
 exports.getActivityStats = async (req, res) => {
   try {
     const userRole = String(req.user?.role || "").toLowerCase().trim();
-    const isHod = userRole === "hod";
+    const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(userRole);
 
     const baseQuery = {};
-    if (isHod) {
+    if (isDeptScoped) {
       const userDeptId = req.user.departmentId;
       const userDeptName = req.user.department;
       const orClauses = [];
@@ -263,10 +263,10 @@ exports.getActivityStats = async (req, res) => {
 exports.getActivityLogUsers = async (req, res) => {
   try {
     const userRole = String(req.user?.role || "").toLowerCase().trim();
-    const isHod = userRole === "hod";
+    const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(userRole);
 
     const baseQuery = {};
-    if (isHod) {
+    if (isDeptScoped) {
       const userDeptId = req.user.departmentId;
       const userDeptName = req.user.department;
       const orClauses = [];

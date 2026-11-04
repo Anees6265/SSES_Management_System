@@ -9,7 +9,7 @@ const {
 } = require("../middlewares/levelValidation");
 const levelController = require("../controllers/department/levelController");
 
-const allowedRoles = ["superadmin", "admin"];
+const allowedRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 
 // Level CRUD Routes
 router.post(

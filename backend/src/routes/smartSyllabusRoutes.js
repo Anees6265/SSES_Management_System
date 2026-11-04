@@ -4,7 +4,7 @@ const { body } = require('express-validator');
 const smartSyllabusController = require('../controllers/syllabus/smartSyllabusController');
 const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 
-const academicStaffRoles = ["superadmin", "admin", "faculty", "hod"];
+const academicStaffRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
 
 const studentOrStaff = (req, res, next) => {
   const isStaff = academicStaffRoles.includes(req.user?.role);

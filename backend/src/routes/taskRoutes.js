@@ -7,7 +7,7 @@ const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
 const { syncTasksToSubLevelStudents, updateStudentTaskStatus, syncTaskToStudents } = require("../services/taskAssignmentService");
 
-const writeRoles = ["superadmin", "admin", "faculty", "hod"];
+const writeRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
 
 const populateTaskContext = [
   { path: "sessionId", select: "name startDate endDate status" },
@@ -231,6 +231,16 @@ const handleUpdateTaskRoute = async (req, res) => {
     delete updateData.status;
     delete updateData.taskId;
 
+    if (req.body.maxMarks !== undefined) {
+      updateData.maxMarks = Number(req.body.maxMarks) >= 0 ? Number(req.body.maxMarks) : 5;
+    }
+    if (req.body.timeDays !== undefined) {
+      updateData.timeDays = req.body.timeDays !== "" && req.body.timeDays !== null ? Number(req.body.timeDays) : null;
+    }
+    if (req.body.mandatory !== undefined) {
+      updateData.mandatory = req.body.mandatory === true || req.body.mandatory === "true";
+    }
+
     const task = await Task.findByIdAndUpdate(
       taskId,
       updateData,
@@ -241,7 +251,28 @@ const handleUpdateTaskRoute = async (req, res) => {
       return res.status(404).json({ success: false, message: "Task not found" });
     }
 
-    // Sync changes to students asynchronously in background (do NOT block HTTP response)
+    // Direct synchronous sync to all assigned student tasks
+    await StudentTask.updateMany(
+      { taskId: task._id },
+      {
+        $set: {
+          title: task.title,
+          description: task.description || "",
+          type: task.type || "assignment",
+          priority: task.priority || "medium",
+          mandatory: task.mandatory !== false,
+          maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5,
+          timeDays: task.timeDays || null,
+          dueDate: task.dueDate || null,
+          measurablePoints: task.measurablePoints || "",
+          isActive: task.isActive !== false,
+          course: task.course,
+          courses: task.courses
+        }
+      }
+    );
+
+    // Sync changes to any new students matching courses asynchronously in background
     setImmediate(() => {
       syncTaskToStudents(task).catch((err) => {
         console.error("Async syncTaskToStudents error:", err);

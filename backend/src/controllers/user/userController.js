@@ -308,15 +308,34 @@ exports.login = async (req, res) => {
 
     clearLoginFailure(email);
 
-    // Self-healing: assign default permissions if missing, or merge new defaults
+    // Self-healing: assign default permissions if missing, or merge and upgrade defaults
     const defaultPerms = getPermissionsForRole(user.role);
     if (!user.permissions || user.permissions.length === 0) {
       user.permissions = defaultPerms;
     } else {
-      const userFeatureKeys = new Set(user.permissions.map((p) => p.feature));
-      const missingPerms = defaultPerms.filter((p) => !userFeatureKeys.has(p.feature));
-      if (missingPerms.length > 0) {
-        user.permissions = [...user.permissions, ...missingPerms];
+      const userPermMap = new Map();
+      (user.permissions || []).forEach((p) => {
+        if (p && p.feature) userPermMap.set(p.feature, new Set(p.access || []));
+      });
+      let permsChanged = false;
+      for (const def of defaultPerms) {
+        if (!userPermMap.has(def.feature)) {
+          user.permissions.push(def);
+          permsChanged = true;
+        } else {
+          const existingAccessSet = userPermMap.get(def.feature);
+          const missingActions = (def.access || []).filter((a) => !existingAccessSet.has(a));
+          if (missingActions.length > 0) {
+            const targetPerm = user.permissions.find((p) => p.feature === def.feature);
+            if (targetPerm) {
+              targetPerm.access = Array.from(new Set([...(targetPerm.access || []), ...missingActions]));
+              permsChanged = true;
+            }
+          }
+        }
+      }
+      if (permsChanged) {
+        user.markModified("permissions");
       }
     }
 
@@ -859,12 +878,14 @@ exports.getCurrentUser = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     let filter = {};
+    const requesterRole = String(req.user?.role || "").toLowerCase().trim();
+    const isDeptStaff = ["hod", "faculty", "placement_officer", "coordinator"].includes(requesterRole);
 
-    if (req.user?.role === "hod") {
-      // Find HOD's department info from DB to guarantee freshest data
-      const hodUser = await User.findById(req.user.id || req.user._id).select("department departmentId");
-      const deptName = hodUser?.department || req.user.department;
-      const deptId = hodUser?.departmentId || req.user.departmentId;
+    if (isDeptStaff) {
+      // Find staff department info from DB to guarantee freshest data
+      const callerUser = await User.findById(req.user.id || req.user._id).select("department departmentId");
+      const deptName = callerUser?.department || req.user.department;
+      const deptId = callerUser?.departmentId || req.user.departmentId;
 
       const deptConditions = [];
       if (deptId) {
@@ -890,30 +911,31 @@ exports.getAllUsers = async (req, res) => {
 // GET ALL POSSIBLE PERMISSIONS
 exports.getAllPossiblePermissions = async (req, res) => {
   try {
-    const isHod = req.user?.role === "hod";
+    const requesterRole = String(req.user?.role || "").toLowerCase().trim();
+    const isDeptStaff = ["hod", "faculty", "placement_officer", "coordinator"].includes(requesterRole);
 
-    if (isHod) {
-      // Fetch HOD's own current permissions
-      const hodUser = await User.findById(req.user.id || req.user._id).select("permissions");
-      const hodPerms = hodUser?.permissions || [];
+    if (isDeptStaff) {
+      // Fetch caller's own current permissions
+      const callerUser = await User.findById(req.user.id || req.user._id).select("permissions");
+      const userPerms = callerUser?.permissions || [];
       const masterList = allPermissions.superadmin || [];
 
-      // Build master list strictly bounded by HOD's own features and access types
-      const hodBoundList = [];
+      // Build master list strictly bounded by caller's own features and access types
+      const deptBoundList = [];
 
-      for (const hodPerm of hodPerms) {
-        if (!hodPerm.access || !Array.isArray(hodPerm.access) || hodPerm.access.length === 0) continue;
-        const meta = masterList.find((m) => m.feature === hodPerm.feature);
+      for (const uPerm of userPerms) {
+        if (!uPerm.access || !Array.isArray(uPerm.access) || uPerm.access.length === 0) continue;
+        const meta = masterList.find((m) => m.feature === uPerm.feature);
         const allowedAccess = meta
-          ? hodPerm.access.filter((a) => meta.access.includes(a))
-          : hodPerm.access;
+          ? uPerm.access.filter((a) => meta.access.includes(a))
+          : uPerm.access;
 
         if (allowedAccess.length > 0) {
-          hodBoundList.push({
-            feature: hodPerm.feature,
-            name: meta?.name || hodPerm.feature.replace(/^(Page|Tab|Button|Action)_/, '').replace(/([A-Z])/g, ' $1').trim(),
+          deptBoundList.push({
+            feature: uPerm.feature,
+            name: meta?.name || uPerm.feature.replace(/^(Page|Tab|Button|Action)_/, '').replace(/([A-Z])/g, ' $1').trim(),
             category: meta?.category || "Other Features",
-            description: meta?.description || hodPerm.description || "",
+            description: meta?.description || uPerm.description || "",
             access: allowedAccess,
           });
         }
@@ -922,11 +944,11 @@ exports.getAllPossiblePermissions = async (req, res) => {
       return res.status(200).json({
         success: true,
         permissions: {
-          superadmin: hodBoundList,
-          hod: hodBoundList,
-          faculty: hodBoundList,
-          placement_officer: hodBoundList,
-          coordinator: hodBoundList,
+          superadmin: deptBoundList,
+          hod: deptBoundList,
+          faculty: deptBoundList,
+          placement_officer: deptBoundList,
+          coordinator: deptBoundList,
         },
       });
     }
@@ -948,16 +970,19 @@ exports.getUserPermissions = async (req, res) => {
     const targetUser = await User.findById(id).select("permissions role department departmentId");
     if (!targetUser) return res.status(404).json({ message: "User not found" });
 
-    // HOD Scoping Check
-    if (req.user?.role === "hod") {
-      const hodUser = await User.findById(req.user.id || req.user._id).select("department departmentId");
-      const hodDept = (hodUser?.department || req.user.department || "").toLowerCase().trim();
-      const hodDeptId = hodUser?.departmentId || req.user.departmentId;
+    const requesterRole = String(req.user?.role || "").toLowerCase().trim();
+    const isDeptStaff = ["hod", "faculty", "placement_officer", "coordinator"].includes(requesterRole);
+
+    // Department Scoping Check
+    if (isDeptStaff) {
+      const callerUser = await User.findById(req.user.id || req.user._id).select("department departmentId");
+      const callerDept = (callerUser?.department || req.user.department || "").toLowerCase().trim();
+      const callerDeptId = callerUser?.departmentId || req.user.departmentId;
 
       const targetDept = (targetUser.department || "").toLowerCase().trim();
       const isSameDept =
-        (hodDeptId && targetUser.departmentId && String(hodDeptId) === String(targetUser.departmentId)) ||
-        (hodDept && targetDept && hodDept === targetDept);
+        (callerDeptId && targetUser.departmentId && String(callerDeptId) === String(targetUser.departmentId)) ||
+        (callerDept && targetDept && callerDept === targetDept);
 
       if (!isSameDept || targetUser.role === "superadmin") {
         return res.status(403).json({
@@ -987,21 +1012,23 @@ exports.updateUserPermissions = async (req, res) => {
     if (!targetUser) return res.status(404).json({ success: false, message: "User not found" });
 
     let finalPermissions = permissions;
+    const requesterRole = String(req.user?.role || "").toLowerCase().trim();
+    const isDeptStaff = ["hod", "faculty", "placement_officer", "coordinator"].includes(requesterRole);
 
-    // HOD Privilege & Boundary Check
-    if (req.user?.role === "hod") {
-      const hodUser = await User.findById(req.user.id || req.user._id).select("department departmentId permissions");
-      if (!hodUser) {
-        return res.status(403).json({ success: false, message: "Unauthorized HOD account." });
+    // Department Staff Privilege & Boundary Check
+    if (isDeptStaff) {
+      const callerUser = await User.findById(req.user.id || req.user._id).select("department departmentId permissions");
+      if (!callerUser) {
+        return res.status(403).json({ success: false, message: "Unauthorized account." });
       }
 
-      const hodDept = (hodUser.department || req.user.department || "").toLowerCase().trim();
-      const hodDeptId = hodUser.departmentId || req.user.departmentId;
+      const callerDept = (callerUser.department || req.user.department || "").toLowerCase().trim();
+      const callerDeptId = callerUser.departmentId || req.user.departmentId;
 
       const targetDept = (targetUser.department || "").toLowerCase().trim();
       const isSameDept =
-        (hodDeptId && targetUser.departmentId && String(hodDeptId) === String(targetUser.departmentId)) ||
-        (hodDept && targetDept && hodDept === targetDept);
+        (callerDeptId && targetUser.departmentId && String(callerDeptId) === String(targetUser.departmentId)) ||
+        (callerDept && targetDept && callerDept === targetDept);
 
       if (!isSameDept || ["superadmin", "admin"].includes(targetUser.role)) {
         return res.status(403).json({
@@ -1010,27 +1037,27 @@ exports.updateUserPermissions = async (req, res) => {
         });
       }
 
-      // Map HOD's own permissions into a map of feature -> Set of allowed actions
-      const hodPermissionMap = new Map();
-      (hodUser.permissions || []).forEach((p) => {
+      // Map caller's own permissions into a map of feature -> Set of allowed actions
+      const callerPermissionMap = new Map();
+      (callerUser.permissions || []).forEach((p) => {
         if (p.feature && Array.isArray(p.access) && p.access.length > 0) {
-          hodPermissionMap.set(p.feature, new Set(p.access));
+          callerPermissionMap.set(p.feature, new Set(p.access));
         }
       });
 
       // Strict Ceiling Enforcement:
-      // Verify that no requested permission contains any feature or action that the HOD does not possess
+      // Verify that no requested permission contains any feature or action that the caller does not possess
       for (const pReq of (permissions || [])) {
         if (!pReq.feature || !Array.isArray(pReq.access) || pReq.access.length === 0) continue;
-        const hodAllowedActions = hodPermissionMap.get(pReq.feature);
-        if (!hodAllowedActions || hodAllowedActions.size === 0) {
+        const callerAllowedActions = callerPermissionMap.get(pReq.feature);
+        if (!callerAllowedActions || callerAllowedActions.size === 0) {
           return res.status(403).json({
             success: false,
             message: `Forbidden: You cannot grant access to "${pReq.feature}" as you do not possess permissions for this feature.`
           });
         }
         for (const action of pReq.access) {
-          if (!hodAllowedActions.has(action)) {
+          if (!callerAllowedActions.has(action)) {
             return res.status(403).json({
               success: false,
               message: `Forbidden: You cannot grant "${action}" access for "${pReq.feature}" as you do not possess this privilege.`
@@ -1039,17 +1066,17 @@ exports.updateUserPermissions = async (req, res) => {
         }
       }
 
-      // Preserve any permissions the target faculty has for features outside the HOD's authority
+      // Preserve any permissions the target user has for features outside the caller's authority
       const preservedPermissions = (targetUser.permissions || []).filter(
-        (p) => !hodPermissionMap.has(p.feature)
+        (p) => !callerPermissionMap.has(p.feature)
       );
 
       // Filter incoming permissions to valid scoped permissions
       const updatedScopedPermissions = [];
       for (const pReq of (permissions || [])) {
-        if (!pReq.feature || !hodPermissionMap.has(pReq.feature)) continue;
-        const hodAllowedActions = hodPermissionMap.get(pReq.feature);
-        const validAccess = (pReq.access || []).filter((a) => hodAllowedActions.has(a));
+        if (!pReq.feature || !callerPermissionMap.has(pReq.feature)) continue;
+        const callerAllowedActions = callerPermissionMap.get(pReq.feature);
+        const validAccess = (pReq.access || []).filter((a) => callerAllowedActions.has(a));
         if (validAccess.length > 0) {
           updatedScopedPermissions.push({
             feature: pReq.feature,

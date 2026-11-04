@@ -11,7 +11,7 @@ const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
 const { updateStudentTaskStatus } = require("../services/taskAssignmentService");
 
-const writeRoles = ["superadmin", "admin", "faculty", "hod"];
+const writeRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
 
 // ── Bulk Task Upload ──
 router.post("/bulk-upload-tasks", verifyToken, checkRole(writeRoles), taskMasterBulkController.bulkUploadTasks);
@@ -158,7 +158,15 @@ router.delete("/:id/subjects/:subjectId", verifyToken, checkRole(writeRoles), em
 // ── Topic CRUD ──
 router.post("/:id/subjects/:subjectId/topics", verifyToken, checkRole(writeRoles), embeddedSyllabusController.addTopicToSyllabusVersion);
 router.patch("/:id/subjects/:subjectId/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateTopicInSyllabusVersion);
+router.put("/:id/subjects/:subjectId/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateTopicInSyllabusVersion);
 router.patch("/:id/subjects/:subjectId/topics/:topicId/active", verifyToken, checkRole(writeRoles), embeddedSyllabusController.toggleTopicActive);
+router.delete("/:id/subjects/:subjectId/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.deleteTopicFromSyllabusVersion);
+
+// Convenience & bulk topic routes
+router.patch("/:id/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateTopicInSyllabusVersion);
+router.put("/:id/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.updateTopicInSyllabusVersion);
+router.delete("/:id/topics/:topicId", verifyToken, checkRole(writeRoles), embeddedSyllabusController.deleteTopicFromSyllabusVersion);
+router.post("/:id/topics/bulk-delete", verifyToken, checkRole(writeRoles), embeddedSyllabusController.bulkDeleteTopicsFromSyllabusVersion);
 
 // ── SubTopic CRUD ──
 router.post("/:id/subjects/:subjectId/topics/:topicId/subtopics", verifyToken, checkRole(writeRoles), embeddedSyllabusController.addSubTopicToSyllabusVersion);

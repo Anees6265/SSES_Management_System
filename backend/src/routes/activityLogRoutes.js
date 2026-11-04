@@ -3,7 +3,7 @@ const router = express.Router();
 const activityLogController = require("../controllers/activity/activityLogController");
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 
-const allowedRoles = ["superadmin", "admin", "hod"];
+const allowedRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 
 // All activity logs routes require authentication and superadmin/admin/hod role
 router.use(verifyToken, checkRole(allowedRoles));

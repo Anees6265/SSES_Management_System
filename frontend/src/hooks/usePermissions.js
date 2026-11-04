@@ -33,8 +33,8 @@ export const usePermissions = () => {
      * @returns {boolean} - True if the user has the permission, false otherwise.
      */
     const hasPermission = (feature, access = 'read') => {
-        // HOD default permissions fallback for User Management & Permissions
-        if (userRole === 'hod') {
+        // Department staff default permissions fallback for User Management & Permissions
+        if (['hod', 'faculty', 'placement_officer', 'coordinator'].includes(userRole)) {
             if (['Page_UserManagement', 'Tab_Users', 'Tab_RolesAndPermissions'].includes(feature) && access === 'read') {
                 return true;
             }

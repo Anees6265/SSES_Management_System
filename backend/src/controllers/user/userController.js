@@ -1,5 +1,6 @@
 require("dotenv").config();
 const User = require("../../models/user/user");
+const Student = require("../../models/student/Student");
 const Department = require("../../models/department/Department");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -822,32 +823,117 @@ exports.adminResetPassword = async (req, res) => {
 // GOOGLE AUTH CALLBACK
 exports.googleAuthCallback = async (req, res) => {
   try {
-    const { _json } = req.user;
-    const { sub, email, name } = _json;
+    const profile = req.user || {};
+    const _json = profile._json || {};
+    const email = _json.email || (profile.emails && profile.emails[0]?.value);
+    const sub = _json.sub || profile.id;
+    const name = _json.name || profile.displayName || (email ? email.split("@")[0] : "User");
+    const picture = _json.picture || (profile.photos && profile.photos[0]?.value) || "";
 
-    if (!email.endsWith("@ssism.org")) {
-      return res.redirect(`${process.env.GOOGLE_REDIRECT_URI}?error=unauthorized&message=Only institutional emails are allowed`);
+    if (!email) {
+      const fallback = process.env.GOOGLE_REDIRECT_URI || "http://localhost:5173/google-success";
+      return res.redirect(`${fallback}?error=missing_profile&message=${encodeURIComponent("Could not retrieve profile/email from Google.")}`);
     }
 
-    let user = await User.findOne({ email });
+    const cleanEmail = email.toLowerCase().trim();
 
+    // Determine redirect base from state or env
+    let redirectBase = "";
+    if (req.query.state) {
+      try {
+        const decodedState = JSON.parse(Buffer.from(req.query.state, "base64").toString("utf-8"));
+        if (decodedState?.origin) {
+          redirectBase = `${decodedState.origin}/google-success`;
+        }
+      } catch (e) {
+        // ignore state decode error
+      }
+    }
+
+    if (!redirectBase) {
+      redirectBase = process.env.GOOGLE_REDIRECT_URI;
+      if (!redirectBase || redirectBase.includes("your-backend-vercel-url")) {
+        redirectBase = "http://localhost:5173/google-success";
+      }
+    }
+
+    // 1. Check if user exists in User collection
+    let user = await User.findOne({ email: cleanEmail });
+
+    // 2. Check if student exists in Student collection
+    let student = null;
     if (!user) {
+      student = await Student.findOne({ email: cleanEmail });
+    }
+
+    const isInstitutional = cleanEmail.endsWith("@ssism.org");
+
+    // If neither exists in DB and not an institutional email, disallow unauthorized self-signup
+    if (!user && !student && !isInstitutional) {
+      return res.redirect(
+        `${redirectBase}?error=unauthorized&message=${encodeURIComponent(
+          "Your Google email is not registered in the system. Please use your institutional (@ssism.org) email or contact admin."
+        )}`
+      );
+    }
+
+    // A. Student Login
+    if (student) {
+      if (!student.googleId && sub) {
+        student.googleId = sub;
+        await student.save();
+      }
+      const token = jwt.sign(
+        { id: student._id, prkey: student.prkey, role: "student" },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+      const refreshToken = jwt.sign(
+        { id: student._id, role: "student" },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+      const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+      const redirectUrl = `${redirectBase}?token=${token}&refreshToken=${refreshToken}&userId=${student._id}&name=${encodeURIComponent(studentName)}&role=student&email=${encodeURIComponent(student.email)}&isStudent=true&profileImage=${encodeURIComponent(student.image || picture || "")}`;
+      return res.redirect(redirectUrl);
+    }
+
+    // B. Staff/Admin/Faculty Login or Self-Registration for @ssism.org
+    if (!user && isInstitutional) {
+      let deptName = "SSISM";
+      let deptId = null;
+      try {
+        const foundDept = await Department.findOne();
+        if (foundDept) {
+          deptId = foundDept._id;
+          deptName = foundDept.name || "SSISM";
+        }
+      } catch (dErr) {
+        // ignore
+      }
+
       const permissions = getPermissionsForRole("faculty");
       user = await User.create({
         googleId: sub,
-        email,
-        name,
+        email: cleanEmail,
+        name: name || cleanEmail.split("@")[0],
         role: "faculty",
         permissions,
         position: "Faculty",
-        department: "General",
+        department: deptName,
+        departmentId: deptId,
         mobileNo: "0000000000",
-        adharCard: `GOOGLE_${sub}`,
+        adharCard: `GOOGLE_${sub || Date.now()}`,
         password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10),
-        profileImage: _json.picture || "",
+        profileImage: picture || "",
       });
-    } else if (!user.googleId) {
+    } else if (user && !user.googleId && sub) {
       user.googleId = sub;
+      await user.save();
+    }
+
+    if (user && user.isActive === false) {
+      return res.redirect(`${redirectBase}?error=inactive&message=${encodeURIComponent("Your account is deactivated. Contact administrator.")}`);
     }
 
     const token = generateAccessToken(user);
@@ -855,11 +941,12 @@ exports.googleAuthCallback = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    const redirectUrl = `${process.env.GOOGLE_REDIRECT_URI}?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(user.name)}&role=${user.role}&email=${user.email}&positionRole=${user.position || "Faculty"}&profileImage=${encodeURIComponent(user.profileImage || "")}`;
+    const redirectUrl = `${redirectBase}?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(user.name)}&role=${user.role}&email=${encodeURIComponent(user.email)}&positionRole=${encodeURIComponent(user.position || "Faculty")}&department=${encodeURIComponent(user.department || "SSISM")}&profileImage=${encodeURIComponent(user.profileImage || "")}`;
     return res.redirect(redirectUrl);
   } catch (error) {
     console.error("Google Auth Callback Error:", error);
-    return res.redirect(`${process.env.GOOGLE_REDIRECT_URI}?error=server_error&message=Login failed`);
+    const fallbackBase = process.env.GOOGLE_REDIRECT_URI || "http://localhost:5173/google-success";
+    return res.redirect(`${fallbackBase}?error=server_error&message=${encodeURIComponent("Login failed due to server error: " + (error?.message || ""))}`);
   }
 };
 

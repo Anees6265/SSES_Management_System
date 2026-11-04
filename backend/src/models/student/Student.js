@@ -53,6 +53,7 @@ const studentSchema = new mongoose.Schema({
   registrationNo: { type: String, trim: true, default: "" },
   enrollmentNo: { type: String, trim: true, default: "" },
   image: { type: String, default: "" },
+  googleId: { type: String, default: "" },
 
   // 👤 Names
   firstName: { type: String, required: true, trim: true },

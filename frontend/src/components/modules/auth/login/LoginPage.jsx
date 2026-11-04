@@ -39,7 +39,16 @@ const LoginPage = () => {
 
   useEffect(() => {
     initClientIp();
-  }, []);
+    const token = localStorage.getItem("token");
+    const studentToken = localStorage.getItem("studentToken");
+    const role = localStorage.getItem("role");
+
+    if (studentToken && role === "student") {
+      navigate("/student-portal/dashboard", { replace: true });
+    } else if (token) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
 
   // Handle Admin / Faculty Login
   const handleAdminSubmit = async (e) => {
@@ -104,7 +113,8 @@ const LoginPage = () => {
   const handleGoogleLogin = () => {
     const apiBase = API_BASE_URL;
     const googleEndpoint = import.meta.env.VITE_LOGIN_WITH_GOOGLE || "/user/google";
-    window.location.href = `${apiBase}${googleEndpoint}`;
+    const origin = encodeURIComponent(window.location.origin);
+    window.location.href = `${apiBase}${googleEndpoint}?origin=${origin}`;
   };
 
   const handleOtpLogin = () => navigate("/otp-verification");

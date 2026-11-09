@@ -14,7 +14,7 @@ const studentProgressSnapshotSchema = new mongoose.Schema({
   sessionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Session",
-    required: true
+    default: null
   },
   sessionName: {
     type: String,
@@ -23,7 +23,7 @@ const studentProgressSnapshotSchema = new mongoose.Schema({
   levelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Level",
-    required: true
+    default: null
   },
   levelName: {
     type: String,
@@ -32,7 +32,7 @@ const studentProgressSnapshotSchema = new mongoose.Schema({
   subLevelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SubLevel",
-    required: true
+    default: null
   },
   subLevelName: {
     type: String,
@@ -41,7 +41,7 @@ const studentProgressSnapshotSchema = new mongoose.Schema({
   syllabusVersionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SyllabusVersion",
-    required: true
+    default: null
   },
   syllabusVersionTitle: {
     type: String,

@@ -2531,17 +2531,61 @@ exports.assignExtraTask = async (req, res) => {
     if (!student) return res.status(404).json({ success: false, message: "Student not found" });
     if (student.status !== "Active") return res.status(400).json({ success: false, message: "Only active students can receive extra tasks" });
 
+    // Auto-resolve syllabusVersionId if student does not have one
+    let resolvedSyllabusVersionId = student.syllabusVersionId || null;
+    if (!resolvedSyllabusVersionId && student.currentSubLevelId) {
+      try {
+        const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+        const activeSv = await SyllabusVersion.findOne({
+          subLevelId: student.currentSubLevelId,
+          status: "active",
+          isActive: true
+        }).select("_id");
+        if (activeSv) {
+          resolvedSyllabusVersionId = activeSv._id;
+          await Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: activeSv._id } });
+        }
+      } catch (svErr) {
+        // Continue gracefully if resolution fails
+      }
+    }
+
+    let subjectId = null;
+    let topicId = null;
+
+    if (resolvedSyllabusVersionId && subjectName) {
+      try {
+        const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+        const sv = await SyllabusVersion.findById(resolvedSyllabusVersionId).select("subjects");
+        if (sv && Array.isArray(sv.subjects)) {
+          const foundSubject = sv.subjects.find(
+            s => s.name?.trim().toLowerCase() === subjectName.trim().toLowerCase()
+          );
+          if (foundSubject) {
+            subjectId = foundSubject._id;
+            if (foundSubject.topics?.length > 0) {
+              topicId = foundSubject.topics[0]._id;
+            }
+          }
+        }
+      } catch (subErr) {
+        // Fallback to newly generated ObjectId
+      }
+    }
+
+    if (!subjectId) subjectId = new mongoose.Types.ObjectId();
+    if (!topicId) topicId = new mongoose.Types.ObjectId();
+
     const extraTaskId = new mongoose.Types.ObjectId();
     const extraTask = await StudentTask.create({
       studentId: student._id,
-      // syllabus fields are null for extra tasks
       sessionId: student.sessionId || null,
       levelId: student.currentLevelId || null,
       subLevelId: student.currentSubLevelId || null,
-      syllabusVersionId: student.syllabusVersionId || null,
+      syllabusVersionId: resolvedSyllabusVersionId,
       taskId: extraTaskId,
-      subjectId: new mongoose.Types.ObjectId(),
-      topicId: new mongoose.Types.ObjectId(),
+      subjectId,
+      topicId,
       subTopicId: null,
       subjectName: subjectName || "Extra",
       topicName: topicName || "Extra Task",

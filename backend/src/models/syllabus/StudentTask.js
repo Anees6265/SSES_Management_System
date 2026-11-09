@@ -150,12 +150,13 @@ const studentTaskSchema = new mongoose.Schema({
 
 
 studentTaskSchema.pre("validate", function validateTask(next) {
-  // For syllabus tasks, sessionId/levelId/subLevelId/syllabusVersionId are required
-  if (!this.isExtra && !this.isGeneralTask) {
-    if (!this.sessionId) return next(new Error("sessionId is required for syllabus tasks"));
-    if (!this.levelId) return next(new Error("levelId is required for syllabus tasks"));
-    if (!this.subLevelId) return next(new Error("subLevelId is required for syllabus tasks"));
-    if (!this.syllabusVersionId) return next(new Error("syllabusVersionId is required for syllabus tasks"));
+  // For syllabus tasks, sessionId/levelId/subLevelId/syllabusVersionId are required only when strictly part of a syllabus
+  if (!this.isExtra && !this.isGeneralTask && this.taskNodeType !== "general") {
+    if (this.syllabusVersionId) {
+      if (!this.sessionId) return next(new Error("sessionId is required for syllabus tasks"));
+      if (!this.levelId) return next(new Error("levelId is required for syllabus tasks"));
+      if (!this.subLevelId) return next(new Error("subLevelId is required for syllabus tasks"));
+    }
   }
 
   if (this.status === "completed" && (this.marks === null || this.marks === undefined)) {

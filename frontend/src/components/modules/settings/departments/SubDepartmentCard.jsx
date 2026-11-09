@@ -52,14 +52,28 @@ const SubDepartmentCard = ({
   faculties = [],
   levelCounts = [],
   subLevelCounts = [],
+  ftpCount = 0,
+  othersCount = 0,
   showSubLevels = false,
   onView,
   onEdit,
+  onSubLevelClick,
+  onLevelClick,
+  onFtpClick,
   variant = 'compact'
 }) => {
   const inactive = status === false;
   const navigate = useNavigate();
-  const activeLevelCounts = showSubLevels ? subLevelCounts : levelCounts;
+
+  // Filter out any ghost/accidental 'FTP' sublevel or level entries from normal list
+  const displaySubLevels = (subLevelCounts || []).filter(
+    (sl) => String(sl.subLevelName || "").trim().toUpperCase() !== "FTP"
+  );
+  const displayLevels = (levelCounts || []).filter(
+    (l) => String(l.levelName || "").trim().toUpperCase() !== "FTP"
+  );
+
+  const activeLevelCounts = showSubLevels ? displaySubLevels : displayLevels;
 
   if (variant === 'fullpage') {
     return (
@@ -150,10 +164,28 @@ const SubDepartmentCard = ({
                 {activeLevelCounts.map((lc) => {
                   const count = lc.studentCount || 0;
                   const percent = totalStudents > 0 ? Math.round((count / totalStudents) * 100) : 0;
+                  const itemName = lc.levelName || lc.subLevelName;
+                  const itemId = lc.levelId || lc.subLevelId;
+                  const isClickable = Boolean(showSubLevels ? onSubLevelClick : onLevelClick);
+
                   return (
-                    <div key={lc.levelId || lc.subLevelId} className="bg-slate-50/50 hover:bg-slate-50 p-4 rounded-2xl border border-slate-100 transition duration-150 flex flex-col gap-2.5">
+                    <div
+                      key={itemId}
+                      onClick={() => {
+                        if (showSubLevels && onSubLevelClick) onSubLevelClick(itemName, itemId);
+                        else if (!showSubLevels && onLevelClick) onLevelClick(itemName, itemId);
+                      }}
+                      className={`p-4 rounded-2xl border border-slate-100 transition duration-150 flex flex-col gap-2.5 ${
+                        isClickable
+                          ? "bg-slate-50/50 hover:bg-orange-50/50 hover:border-orange-200 cursor-pointer group"
+                          : "bg-slate-50/50 hover:bg-slate-50"
+                      }`}
+                      title={isClickable ? `Click to view ${itemName} students` : undefined}
+                    >
                       <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-gray-850 text-sm">{lc.levelName || lc.subLevelName}</span>
+                        <span className={`font-extrabold text-sm ${isClickable ? "group-hover:text-orange-600 transition-colors" : "text-gray-850"}`}>
+                          {itemName}
+                        </span>
                         <div className="flex items-center gap-1.5">
                           <span className="font-black text-orange-600 text-sm">{count}</span>
                           <span className="text-[10px] text-gray-450 font-semibold">students ({percent}%)</span>
@@ -169,6 +201,78 @@ const SubDepartmentCard = ({
                     </div>
                   );
                 })}
+
+                {/* Others Track Progress Card in FullPage */}
+                {othersCount > 0 && (
+                  <div
+                    onClick={() => onSubLevelClick ? onSubLevelClick("Others") : (onLevelClick && onLevelClick("Others"))}
+                    className={`p-4 rounded-2xl border transition duration-150 flex flex-col gap-2.5 ${
+                      (onSubLevelClick || onLevelClick)
+                        ? "bg-purple-50/40 hover:bg-purple-50/80 border-purple-200 cursor-pointer group"
+                        : "bg-purple-50/20 border-purple-100"
+                    }`}
+                    title={(onSubLevelClick || onLevelClick) ? "Click to view Others (UI/UX) students" : undefined}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-gray-900 text-sm group-hover:text-purple-600 transition-colors">
+                          Others
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 font-extrabold uppercase tracking-wide">
+                          UI/UX
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-purple-600 text-sm">{othersCount}</span>
+                        <span className="text-[10px] text-gray-450 font-semibold">
+                          students ({totalStudents > 0 ? Math.round((othersCount / totalStudents) * 100) : 0}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${totalStudents > 0 ? Math.round((othersCount / totalStudents) * 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* FTP Track Progress Card in FullPage */}
+                {ftpCount !== undefined && (
+                  <div
+                    onClick={() => onSubLevelClick ? onSubLevelClick("FTP Students") : (onFtpClick && onFtpClick())}
+                    className={`p-4 rounded-2xl border transition duration-150 flex flex-col gap-2.5 ${
+                      (onSubLevelClick || onFtpClick)
+                        ? "bg-orange-50/40 hover:bg-orange-50/80 border-orange-200 cursor-pointer group"
+                        : "bg-orange-50/20 border-orange-100"
+                    }`}
+                    title={(onSubLevelClick || onFtpClick) ? "Click to view FTP students" : undefined}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-gray-900 text-sm group-hover:text-orange-600 transition-colors">
+                          FTP Students
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-orange-100 text-orange-700 font-extrabold uppercase tracking-wide">
+                          Track
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-orange-600 text-sm">{ftpCount}</span>
+                        <span className="text-[10px] text-gray-450 font-semibold">
+                          students ({totalStudents > 0 ? Math.round((ftpCount / totalStudents) * 100) : 0}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-orange-500 to-amber-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${totalStudents > 0 ? Math.round((ftpCount / totalStudents) * 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="border border-dashed border-gray-250 rounded-2xl py-8 text-center text-gray-450 italic text-sm">
@@ -326,11 +430,18 @@ const SubDepartmentCard = ({
 
         {/* Student Levels - Structured Table */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-            {showSubLevels ? "Students Sub-Level Wise" : "Students Level Wise"}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+              {showSubLevels ? "Students Sub-Level Wise" : "Students Level Wise"}
+            </span>
+            {(showSubLevels ? onSubLevelClick : onLevelClick) && (
+              <span className="text-[9px] text-orange-500 font-semibold">
+                Click row to view
+              </span>
+            )}
+          </div>
           {showSubLevels ? (
-            subLevelCounts && subLevelCounts.length > 0 ? (
+            displaySubLevels && displaySubLevels.length > 0 ? (
               <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
                 <table className="w-full text-left text-[11px]">
                   <thead>
@@ -340,12 +451,87 @@ const SubDepartmentCard = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-gray-700">
-                    {subLevelCounts.map((slc) => (
-                      <tr key={slc.subLevelId} className="hover:bg-white/80 transition duration-150">
-                        <td className="px-3 py-1.5 font-medium">{slc.subLevelName}</td>
-                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">{slc.studentCount}</td>
+                    {displaySubLevels.map((slc) => (
+                      <tr
+                        key={slc.subLevelId}
+                        onClick={() => onSubLevelClick && onSubLevelClick(slc.subLevelName, slc.subLevelId)}
+                        className={`transition duration-150 ${
+                          onSubLevelClick
+                            ? "hover:bg-orange-50/80 cursor-pointer group active:bg-orange-100/70"
+                            : "hover:bg-white/80"
+                        }`}
+                        title={onSubLevelClick ? `Click to view ${slc.subLevelName} students` : undefined}
+                      >
+                        <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                          <span className="inline-flex items-center gap-1">
+                            {slc.subLevelName}
+                            {onSubLevelClick && (
+                              <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                                →
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">
+                          {slc.studentCount}
+                        </td>
                       </tr>
                     ))}
+
+                    {/* Others row */}
+                    {othersCount > 0 && (
+                      <tr
+                        onClick={() => onSubLevelClick && onSubLevelClick("Others")}
+                        className={`transition duration-150 ${
+                          onSubLevelClick
+                            ? "hover:bg-orange-50/90 cursor-pointer group bg-purple-50/20 active:bg-orange-100/70"
+                            : "hover:bg-white/80"
+                        }`}
+                        title={onSubLevelClick ? "Click to view Others (UI/UX) students" : undefined}
+                      >
+                        <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="font-bold text-gray-800 group-hover:text-orange-600">Others</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 font-extrabold uppercase tracking-wide">
+                              UI/UX
+                            </span>
+                            {onSubLevelClick && (
+                              <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                                →
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-black text-orange-600">
+                          {othersCount}
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* FTP row */}
+                    <tr
+                      onClick={() => onSubLevelClick ? onSubLevelClick("FTP Students") : (onFtpClick && onFtpClick())}
+                      className={`transition duration-150 ${
+                        (onSubLevelClick || onFtpClick)
+                          ? "hover:bg-orange-50/90 cursor-pointer group bg-orange-50/30 active:bg-orange-100/70"
+                          : "hover:bg-white/80"
+                      }`}
+                      title={onSubLevelClick || onFtpClick ? "Click to view FTP students" : undefined}
+                    >
+                      <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-bold text-gray-800 group-hover:text-orange-600">FTP</span>
+                          {(onSubLevelClick || onFtpClick) && (
+                            <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                              →
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-black text-orange-600">
+                        {ftpCount}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -353,7 +539,7 @@ const SubDepartmentCard = ({
               <span className="text-[10px] text-gray-400 italic font-bold">No active sub-levels</span>
             )
           ) : (
-            levelCounts && levelCounts.length > 0 ? (
+            displayLevels && displayLevels.length > 0 ? (
               <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
                 <table className="w-full text-left text-[11px]">
                   <thead>
@@ -363,12 +549,90 @@ const SubDepartmentCard = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-gray-700">
-                    {levelCounts.map((lc) => (
-                      <tr key={lc.levelId} className="hover:bg-white/80 transition duration-150">
-                        <td className="px-3 py-1.5 font-medium">{lc.levelName}</td>
-                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">{lc.studentCount}</td>
+                    {displayLevels.map((lc) => (
+                      <tr
+                        key={lc.levelId}
+                        onClick={() => onLevelClick && onLevelClick(lc.levelName, lc.levelId)}
+                        className={`transition duration-150 ${
+                          onLevelClick
+                            ? "hover:bg-orange-50/80 cursor-pointer group active:bg-orange-100/70"
+                            : "hover:bg-white/80"
+                        }`}
+                        title={onLevelClick ? `Click to view ${lc.levelName} students` : undefined}
+                      >
+                        <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                          <span className="inline-flex items-center gap-1">
+                            {lc.levelName}
+                            {onLevelClick && (
+                              <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                                →
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">
+                          {lc.studentCount}
+                        </td>
                       </tr>
                     ))}
+
+                    {/* Others row */}
+                    {othersCount > 0 && (
+                      <tr
+                        onClick={() => onLevelClick ? onLevelClick("Others") : (onSubLevelClick && onSubLevelClick("Others"))}
+                        className={`transition duration-150 ${
+                          (onLevelClick || onSubLevelClick)
+                            ? "hover:bg-orange-50/90 cursor-pointer group bg-purple-50/20 active:bg-orange-100/70"
+                            : "hover:bg-white/80"
+                        }`}
+                        title={(onLevelClick || onSubLevelClick) ? "Click to view Others (UI/UX) students" : undefined}
+                      >
+                        <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="font-bold text-gray-800 group-hover:text-orange-600">Others</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 font-extrabold uppercase tracking-wide">
+                              UI/UX
+                            </span>
+                            {(onLevelClick || onSubLevelClick) && (
+                              <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                                →
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-black text-orange-600">
+                          {othersCount}
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* FTP row */}
+                    <tr
+                      onClick={() => onLevelClick ? onLevelClick("FTP Students") : (onFtpClick && onFtpClick())}
+                      className={`transition duration-150 ${
+                        (onLevelClick || onFtpClick)
+                          ? "hover:bg-orange-50/90 cursor-pointer group bg-orange-50/30 active:bg-orange-100/70"
+                          : "hover:bg-white/80"
+                      }`}
+                      title={onLevelClick || onFtpClick ? "Click to view FTP students" : undefined}
+                    >
+                      <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-bold text-gray-800 group-hover:text-orange-600">FTP</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-orange-100 text-orange-700 font-extrabold uppercase tracking-wide">
+                            Track
+                          </span>
+                          {(onLevelClick || onFtpClick) && (
+                            <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
+                              →
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-black text-orange-600">
+                        {ftpCount}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>

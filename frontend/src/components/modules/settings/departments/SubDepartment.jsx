@@ -179,6 +179,8 @@ const SubDepartment = () => {
                                 allowedCourses={subdept.allowedCourses || []}
                                 faculties={subdept.faculties || []}
                                 levelCounts={subdept.levelCounts || []}
+                                ftpCount={subdept.ftpCount || 0}
+                                othersCount={subdept.othersCount || 0}
                                 onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
                                     state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
                                 })}

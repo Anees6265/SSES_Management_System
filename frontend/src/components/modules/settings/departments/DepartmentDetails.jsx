@@ -161,6 +161,8 @@ const DepartmentDetails = () => {
               allowedCourses={subdepartments[0].allowedCourses || []}
               faculties={subdepartments[0].faculties || []}
               levelCounts={subdepartments[0].levelCounts || []}
+              ftpCount={subdepartments[0].ftpCount || 0}
+              othersCount={subdepartments[0].othersCount || 0}
               onView={() => handleViewSubdept(subdepartments[0])}
               onEdit={handleEditSubdept(subdepartments[0])}
             />
@@ -191,6 +193,8 @@ const DepartmentDetails = () => {
                   allowedCourses={subdept.allowedCourses || []}
                   faculties={subdept.faculties || []}
                   levelCounts={subdept.levelCounts || []}
+                  ftpCount={subdept.ftpCount || 0}
+                  othersCount={subdept.othersCount || 0}
                   onView={() => handleViewSubdept(subdept)}
                   onEdit={handleEditSubdept(subdept)}
                 />

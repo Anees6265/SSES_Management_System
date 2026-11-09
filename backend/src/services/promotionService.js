@@ -216,8 +216,17 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     const currentLevel = await Level.findById(student.currentLevelId);
     if (!currentLevel) throw toClientError("Current level not found");
 
+    let targetSubDeptId = student.subDepartmentId;
+    if (student.isUIUX) {
+      const SubDepartment = require("../models/department/SubDepartment");
+      const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i });
+      if (uiuxSubDept) {
+        targetSubDeptId = uiuxSubDept._id;
+      }
+    }
+
     nextLevel = await Level.findOne({
-      subDepartmentId: student.subDepartmentId,
+      subDepartmentId: targetSubDeptId,
       order: { $gt: currentLevel.order },
       isActive: true,
     }).sort({ order: 1 });
@@ -626,8 +635,17 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
 
   // Step 2: No lower sublevel in current level -> look for previous Level in the same subdepartment
   if (!prevSubLevel) {
+    let targetSubDeptId = student.subDepartmentId;
+    if (student.isUIUX) {
+      const SubDepartment = require("../models/department/SubDepartment");
+      const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i });
+      if (uiuxSubDept) {
+        targetSubDeptId = uiuxSubDept._id;
+      }
+    }
+
     const prevLevel = await Level.findOne({
-      subDepartmentId: student.subDepartmentId,
+      subDepartmentId: targetSubDeptId,
       order: { $lt: currentLevel.order },
       isActive: true,
     }).sort({ order: -1 });

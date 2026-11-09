@@ -125,15 +125,16 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
             : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
         );
         
-        // Fetch levels for this sub-department
-        const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+        // Fetch levels for this sub-department (exclude any ghost/standalone 'FTP' level)
+        const allLevels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+        const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
             const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
             const count = await Student.countDocuments(
               isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
             );
             return {
               levelId: lvl._id,
@@ -144,19 +145,20 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
           })
         );
 
-        // Fetch sublevels for these levels
-        const subLevels = await SubLevel.find({
+        // Fetch sublevels for these levels (exclude any ghost/standalone 'FTP' sublevel)
+        const allSubLevels = await SubLevel.find({
           levelId: { $in: levels.map(l => l._id) },
           isActive: true
         }).sort({ order: 1 });
+        const subLevels = allSubLevels.filter(sl => String(sl.name).trim().toUpperCase() !== "FTP");
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
             const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
             const count = await Student.countDocuments(
               isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
             );
             return {
               subLevelId: slvl._id,
@@ -166,6 +168,23 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
             };
           })
         );
+
+        // Count FTP students for this sub-department
+        const ftpCount = await Student.countDocuments(
+          isUiUx
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], isFTP: true, ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, isFTP: true, ...activeStatusFilter }
+        );
+
+        // Count Others (UI/UX marked students belonging to this home department who are not FTP)
+        const othersCount = isUiUx
+          ? 0
+          : await Student.countDocuments({
+              subDepartmentId: subDepartment._id,
+              isUIUX: true,
+              isFTP: { $ne: true },
+              ...activeStatusFilter
+            });
 
         // Fetch faculties of the parent department
         const deptId = subDepartment.departmentId?._id || subDepartment.departmentId;
@@ -180,7 +199,9 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
           totalStudents,
           faculties,
           levelCounts,
-          subLevelCounts
+          subLevelCounts,
+          ftpCount,
+          othersCount
         };
       })
     );
@@ -237,15 +258,16 @@ exports.getAllSubDepartments = async (req, res) => {
             : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
         );
 
-        // Fetch levels for this sub-department
-        const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+        // Fetch levels for this sub-department (exclude any ghost/standalone 'FTP' level)
+        const allLevels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+        const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
             const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
             const count = await Student.countDocuments(
               isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
             );
             return {
               levelId: lvl._id,
@@ -256,19 +278,20 @@ exports.getAllSubDepartments = async (req, res) => {
           })
         );
 
-        // Fetch sublevels for these levels
-        const subLevels = await SubLevel.find({
+        // Fetch sublevels for these levels (exclude any ghost/standalone 'FTP' sublevel)
+        const allSubLevels = await SubLevel.find({
           levelId: { $in: levels.map(l => l._id) },
           isActive: true
         }).sort({ order: 1 });
+        const subLevels = allSubLevels.filter(sl => String(sl.name).trim().toUpperCase() !== "FTP");
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
             const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
             const count = await Student.countDocuments(
               isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
+                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
             );
             return {
               subLevelId: slvl._id,
@@ -278,6 +301,23 @@ exports.getAllSubDepartments = async (req, res) => {
             };
           })
         );
+
+        // Count FTP students for this sub-department
+        const ftpCount = await Student.countDocuments(
+          isUiUx
+            ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], isFTP: true, ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, isFTP: true, ...activeStatusFilter }
+        );
+
+        // Count Others (UI/UX marked students belonging to this home department who are not FTP)
+        const othersCount = isUiUx
+          ? 0
+          : await Student.countDocuments({
+              subDepartmentId: subDepartment._id,
+              isUIUX: true,
+              isFTP: { $ne: true },
+              ...activeStatusFilter
+            });
 
         // Fetch faculties of the parent department
         const deptId = subDepartment.departmentId?._id || subDepartment.departmentId;
@@ -292,7 +332,9 @@ exports.getAllSubDepartments = async (req, res) => {
           totalStudents,
           faculties,
           levelCounts,
-          subLevelCounts
+          subLevelCounts,
+          ftpCount,
+          othersCount
         };
       })
     );
@@ -359,15 +401,16 @@ exports.getSubDepartmentById = async (req, res) => {
         : { subDepartmentId: subDepartment._id, ...activeStatusFilter }
     );
 
-    // Fetch levels for this sub-department
-    const levels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+    // Fetch levels for this sub-department (exclude any ghost/standalone 'FTP' level)
+    const allLevels = await Level.find({ subDepartmentId: subDepartment._id, isActive: true }).sort({ order: 1 });
+    const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
     const levelCounts = await Promise.all(
       levels.map(async (lvl) => {
         const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
         const count = await Student.countDocuments(
           isUiUxLevel1
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], ...activeStatusFilter }
-            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, ...activeStatusFilter }
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
         );
         return {
           levelId: lvl._id,
@@ -378,19 +421,20 @@ exports.getSubDepartmentById = async (req, res) => {
       })
     );
 
-    // Fetch sublevels for these levels
-    const subLevels = await SubLevel.find({
+    // Fetch sublevels for these levels (exclude any ghost/standalone 'FTP' sublevel)
+    const allSubLevels = await SubLevel.find({
       levelId: { $in: levels.map(l => l._id) },
       isActive: true
     }).sort({ order: 1 });
+    const subLevels = allSubLevels.filter(sl => String(sl.name).trim().toUpperCase() !== "FTP");
 
     const subLevelCounts = await Promise.all(
       subLevels.map(async (slvl) => {
         const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
         const count = await Student.countDocuments(
           isUiUxSubLevel1A
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], ...activeStatusFilter }
-            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, ...activeStatusFilter }
+            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
+            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
         );
         return {
           subLevelId: slvl._id,
@@ -400,6 +444,23 @@ exports.getSubDepartmentById = async (req, res) => {
         };
       })
     );
+
+    // Count FTP students for this sub-department
+    const ftpCount = await Student.countDocuments(
+      isUiUx
+        ? { $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }], isFTP: true, ...activeStatusFilter }
+        : { subDepartmentId: subDepartment._id, isFTP: true, ...activeStatusFilter }
+    );
+
+    // Count Others (UI/UX marked students belonging to this home department who are not FTP)
+    const othersCount = isUiUx
+      ? 0
+      : await Student.countDocuments({
+          subDepartmentId: subDepartment._id,
+          isUIUX: true,
+          isFTP: { $ne: true },
+          ...activeStatusFilter
+        });
 
     // Fetch faculties of the parent department
     const deptId = subDepartment.departmentId?._id || subDepartment.departmentId;
@@ -416,7 +477,9 @@ exports.getSubDepartmentById = async (req, res) => {
         totalStudents,
         faculties,
         levelCounts,
-        subLevelCounts
+        subLevelCounts,
+        ftpCount,
+        othersCount
       }
     });
   } catch (error) {

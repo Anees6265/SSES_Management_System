@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   useGetNewStudentsQuery,
   useGetAllSessionsQuery,
@@ -44,10 +44,31 @@ const getStoredProgressFilters = (subDeptId) => {
 const StudentDetailTable = () => {
   const navigate = useNavigate();
   const { subDepartmentId } = useParams(); // present for admin, absent for faculty
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+
+  const queryTab = useMemo(() => {
+    const raw = searchParams.get("tab") || location.state?.activeTab;
+    if (!raw) return null;
+    const str = String(raw).trim();
+    if (str.toUpperCase() === "FTP" || str.toUpperCase() === "FTP STUDENTS") {
+      return "FTP Students";
+    }
+    return str;
+  }, [searchParams, location.state]);
 
   const [activeTab, setActiveTab] = useState(() => {
+    if (queryTab) return queryTab;
     return getStoredProgressFilters(subDepartmentId)?.activeTab || "All";
   });
+
+  useEffect(() => {
+    if (queryTab && queryTab !== activeTab) {
+      setActiveTab(queryTab);
+      setCurrentPage(1);
+      setMobilePage(1);
+    }
+  }, [queryTab]);
   const [selectedStatus, setSelectedStatus] = useState(() => {
     const f = getStoredProgressFilters(subDepartmentId);
     return Array.isArray(f?.selectedStatus) ? f.selectedStatus : [];
@@ -189,17 +210,17 @@ const StudentDetailTable = () => {
         // In UI/UX sub-department:
         // Marked UI/UX students should show in 1A level tab by default!
         if (activeTab === "1A") {
-          matchTab = Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A";
+          matchTab = (Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A") && !s.isFTP;
         } else {
-          matchTab = s.currentSubLevelId?.name === activeTab;
+          matchTab = s.currentSubLevelId?.name === activeTab && !s.isFTP;
         }
       } else {
         // In home department:
         // Marked UI/UX students appear only in "Others" tab, excluded from 1A/2A/etc.
         if (activeTab === "Others") {
-          matchTab = Boolean(s.isUIUX);
+          matchTab = Boolean(s.isUIUX) && !s.isFTP;
         } else {
-          matchTab = s.currentSubLevelId?.name === activeTab && !s.isUIUX;
+          matchTab = s.currentSubLevelId?.name === activeTab && !s.isUIUX && !s.isFTP;
         }
       }
 
@@ -613,22 +634,25 @@ const StudentDetailTable = () => {
             tabCount = students.filter((s) => Boolean(s.isFTP)).length;
           } else if (isUiUxPage) {
             if (tab === "1A") {
-              tabCount = students.filter((s) => Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A").length;
+              tabCount = students.filter((s) => (Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A") && !s.isFTP).length;
             } else {
-              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab).length;
+              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isFTP).length;
             }
           } else {
             if (tab === "Others") {
-              tabCount = students.filter((s) => Boolean(s.isUIUX)).length;
+              tabCount = students.filter((s) => Boolean(s.isUIUX) && !s.isFTP).length;
             } else {
-              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX).length;
+              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX && !s.isFTP).length;
             }
           }
 
           return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setSearchParams({ tab });
+              }}
               className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${activeTab === tab
                   ? "border-orange-500 text-orange-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"

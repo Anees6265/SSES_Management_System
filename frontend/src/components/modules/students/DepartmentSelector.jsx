@@ -44,8 +44,21 @@ const DepartmentSelector = () => {
                 faculties={dept.faculties || []}
                 levelCounts={dept.levelCounts || []}
                 subLevelCounts={dept.subLevelCounts || []}
+                ftpCount={dept.ftpCount || 0}
+                othersCount={dept.othersCount || 0}
                 showSubLevels={true}
                 onView={() => navigate(`/student-detail-table/${dept._id}`)}
+                onSubLevelClick={(subLevelName) => {
+                  const targetTab = (subLevelName === "FTP" || subLevelName === "FTP Students") ? "FTP Students" : subLevelName;
+                  navigate(`/student-detail-table/${dept._id}?tab=${encodeURIComponent(targetTab)}`, {
+                    state: { activeTab: targetTab }
+                  });
+                }}
+                onFtpClick={() => {
+                  navigate(`/student-detail-table/${dept._id}?tab=FTP%20Students`, {
+                    state: { activeTab: "FTP Students" }
+                  });
+                }}
               />
             ))}
           </div>

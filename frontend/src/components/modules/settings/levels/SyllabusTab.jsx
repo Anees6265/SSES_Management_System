@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
+import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker";
 import * as XLSX from "xlsx";
 import {
   MdCloudUpload, MdCheckCircle, MdExpandMore, MdExpandLess, MdFileDownload, MdInfo,
@@ -1778,6 +1779,8 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
   const [fileName,       setFileName]       = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
   const [selectedCourses, setSelectedCourses] = useState(["All"]);
+  const [assignTarget, setAssignTarget] = useState("all");
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [saving,         setSaving]         = useState(false);
   const [parsing,        setParsing]        = useState(false);
 
@@ -1786,7 +1789,14 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
   const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
 
-  const reset = () => { setRows([]); setFileName(""); setSelectedDomain(""); setSelectedCourses(["All"]); };
+  const reset = () => {
+    setRows([]);
+    setFileName("");
+    setSelectedDomain("");
+    setSelectedCourses(["All"]);
+    setAssignTarget("all");
+    setSelectedStudentIds([]);
+  };
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -1847,6 +1857,10 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
 
   const handleUpload = async () => {
     if (!rows.length) { toast.error("No data to upload"); return; }
+    if (assignTarget === "specific" && selectedStudentIds.length === 0) {
+      toast.error("Please select at least one student or choose 'All Students'");
+      return;
+    }
     setSaving(true);
     try {
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
@@ -1861,6 +1875,8 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
         syllabusVersionId,
         tasks: tasksWithDomain,
         domain: isLevel2B ? (selectedDomain || "") : "",
+        assignTo: assignTarget,
+        studentIds: assignTarget === "specific" ? selectedStudentIds : [],
       }).unwrap();
       toast.success(`${res.inserted} task(s) uploaded!`);
       if (res.errors?.length) {
@@ -1926,6 +1942,19 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
             label="Target Course(s)"
             hint="Assign uploaded tasks to all courses or select specific course(s) for this department."
             size="sm"
+          />
+        </div>
+
+        {/* Target Student Assignment (All or Specific) */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <StudentAssignPicker
+            subLevelId={subLevel?._id}
+            selectedCourses={selectedCourses}
+            assignTarget={assignTarget}
+            onAssignTargetChange={setAssignTarget}
+            selectedStudentIds={selectedStudentIds}
+            onSelectedStudentIdsChange={setSelectedStudentIds}
+            label="Assign Bulk Tasks To"
           />
         </div>
 
@@ -2563,6 +2592,8 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
   const [subTopicId, setSubTopicId] = useState("");
   const [selectedDomain, setSelectedDomain] = useState("");
   const [selectedCourses, setSelectedCourses] = useState(["All"]);
+  const [assignTarget, setAssignTarget] = useState("all");
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
 
@@ -2612,6 +2643,8 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
     setSubTopicId("");
     setSelectedDomain("");
     setSelectedCourses(["All"]);
+    setAssignTarget("all");
+    setSelectedStudentIds([]);
     setForm(EMPTY_FORM);
   };
   const canSubmit = taskTarget === "topic" || (taskTarget === "subtopic" && subTopicId);
@@ -2619,6 +2652,10 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) { toast.error("Task title is required"); return; }
+    if (assignTarget === "specific" && selectedStudentIds.length === 0) {
+      toast.error("Please select at least one student or choose 'All Students'");
+      return;
+    }
     setSaving(true);
     try {
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
@@ -2635,10 +2672,12 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
         maxMarks: Number(form.maxMarks) >= 0 ? Number(form.maxMarks) : 5,
         title:    form.title.trim(),
         timeDays: form.timeDays ? String(form.timeDays).trim() : null,
+        assignTo: assignTarget,
+        studentIds: assignTarget === "specific" ? selectedStudentIds : [],
       };
       await createTask(payload).unwrap();
       toast.success("Task created successfully!");
-      setForm(EMPTY_FORM); setSubTopicId(""); setTaskTarget(""); setSelectedDomain("");
+      setForm(EMPTY_FORM); setSubTopicId(""); setTaskTarget(""); setSelectedDomain(""); setAssignTarget("all"); setSelectedStudentIds([]);
       onSaved?.();
     } catch (err) {
       toast.error(err?.data?.message || "Failed to create task");
@@ -2768,6 +2807,19 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
             label="Target Course(s)"
             hint="Select which course(s) this task will be assigned to (e.g. BCA, BBA, B.Com, B.Tech), or 'All Courses'."
             size="sm"
+          />
+        </div>
+
+        {/* Target Student Assignment (All or Specific) */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <StudentAssignPicker
+            subLevelId={subLevelId}
+            selectedCourses={selectedCourses}
+            assignTarget={assignTarget}
+            onAssignTargetChange={setAssignTarget}
+            selectedStudentIds={selectedStudentIds}
+            onSelectedStudentIdsChange={setSelectedStudentIds}
+            label="Assign Task To"
           />
         </div>
 
@@ -3039,6 +3091,26 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
     );
   }
 
+  if (showTaskModal) {
+    return (
+      <div className="w-full">
+        <TaskManagementModal
+          isOpen={true}
+          onClose={() => setShowTaskModal(false)}
+          level={level}
+          subLevel={subLevel}
+          departmentName={deptIdentifier}
+          departmentId={departmentId}
+          subdepartment={subdepartment}
+          onSuccess={() => {
+            setShowTaskModal(false);
+            refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -3153,21 +3225,6 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
           <VersionTasksTable versionId={currentVersionId} searchTerm={searchTerm} activeSubjectId={activeSubjectId} activeSubjectName={activeSubjectName} />
         )}
       </div>
-
-      {/* Task Management Modal */}
-      <TaskManagementModal
-        isOpen={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-        level={level}
-        subLevel={subLevel}
-        departmentName={deptIdentifier}
-        departmentId={departmentId}
-        subdepartment={subdepartment}
-        onSuccess={() => {
-          setShowTaskModal(false);
-          refetch();
-        }}
-      />
     </>
   );
 };

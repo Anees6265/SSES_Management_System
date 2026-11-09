@@ -9,19 +9,15 @@ import {
   MdAssignment,
   MdBook,
   MdTopic,
-  MdSubject,
   MdSearch,
   MdCalendarToday,
-  MdAccessTime,
   MdCloudUpload,
   MdCheckCircle,
   MdChevronRight,
-  MdFileDownload,
   MdCheck,
   MdClose,
-  MdOutlineCategory,
-  MdLayers,
-  MdAccountTree
+  MdAccountTree,
+  MdArrowBack
 } from "react-icons/md";
 import {
   useGetSyllabusVersionsBySubLevelQuery,
@@ -32,9 +28,9 @@ import {
   useDeleteTaskMutation,
   useGetAllSessionsQuery
 } from "../../../../redux/api/authApi";
-import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
+import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker";
 import { TaskUploadDrawer } from "./SyllabusTab";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
@@ -87,6 +83,22 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     dueDate: ""
   });
   const [selectedCourses, setSelectedCourses] = useState(["All"]);
+  const [assignTarget, setAssignTarget] = useState("all");
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+
+  // Keyboard shortcut: Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        resetForm();
+        onClose?.();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const rawSessions = sessionsData?.data || [];
@@ -205,6 +217,8 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     setSelectedTopicId("");
     setSelectedSubTopicId("");
     setSelectedCourses(["All"]);
+    setAssignTarget("all");
+    setSelectedStudentIds([]);
     setEditingTask(null);
   };
 
@@ -220,6 +234,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
       return;
     }
 
+    if (assignTarget === "specific" && selectedStudentIds.length === 0) {
+      toast.error("Please select at least one student or choose 'All Students'");
+      return;
+    }
+
     try {
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
       const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
@@ -230,7 +249,9 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
         course: courseStr,
         courses: coursesList,
         timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
-        maxMarks: Number(taskForm.maxMarks) || 5
+        maxMarks: Number(taskForm.maxMarks) || 5,
+        assignTo: assignTarget,
+        studentIds: assignTarget === "specific" ? selectedStudentIds : [],
       };
 
       if (taskType === "syllabus") {
@@ -294,7 +315,14 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     } else {
       setTaskType("general");
     }
+
+    if (task.assignTo) {
+      setAssignTarget(task.assignTo);
+      setSelectedStudentIds(Array.isArray(task.specificStudentIds) ? task.specificStudentIds.map(String) : []);
+    }
+
     setActiveTab("add");
+    setAddMode("manual");
   };
 
   const handleDelete = async (taskId) => {
@@ -322,126 +350,179 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     );
   }, [allTasks, manageSearch]);
 
+  if (!isOpen) return null;
+
   return (
-    <OrangeButton
-      isOpen={isOpen}
-      onClose={() => { resetForm(); onClose?.(); }}
-      panelTitle={editingTask ? "Edit Task" : activeTab === "manage" ? "Manage Tasks" : "Task Management"}
-      panelSubtitle={subLevel?.name ? `${level?.name || "Level"} · Sub-Level ${subLevel.name}` : (level?.name || "Tasks")}
-      showFooter={false}
-      maxWidth="sm:max-w-2xl lg:max-w-3xl"
-      drawerContent={
-        <div className="space-y-5 pb-6">
-          {/* Segmented Tab Switcher */}
-          <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/70 flex gap-1.5 shadow-2xs">
+    <div className="w-full space-y-6 animate-in fade-in duration-150">
+      {/* ── Top Page Action Bar (Preserving App Layout, Sidebar & Navbar) ── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Left: Back button + Title & Badges */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => { resetForm(); onClose?.(); }}
+            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-all flex items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer shadow-2xs active:scale-[0.98]"
+            title="Back to Tasks"
+          >
+            <MdArrowBack size={18} />
+            <span>Back to Tasks</span>
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                {editingTask ? "Edit Task" : activeTab === "manage" ? "Manage Tasks" : "Task Management"}
+              </h2>
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200/60">
+                {subLevel?.name ? `Sub-Level ${subLevel.name}` : (level?.name || "Level")}
+              </span>
+              {deptIdentifier && (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  {deptIdentifier}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 truncate mt-0.5">
+              {subLevel?.name ? `${level?.name || "Level"} · Sub-Level ${subLevel.name}` : (level?.name || "Tasks")} — Academic scope, syllabus mapping, evaluation parameters, and student assignments
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Tab Switcher & Close button */}
+        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1 shadow-2xs">
             <button
               type="button"
               onClick={() => setActiveTab("add")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "add"
-                  ? "bg-white text-orange-600 shadow-xs border border-orange-100/80"
+                  ? "bg-white text-orange-600 shadow-2xs border border-orange-100 font-extrabold"
                   : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
               }`}
             >
-              <div className={`w-5 h-5 rounded-md flex items-center justify-center ${activeTab === "add" ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-                <MdAdd size={14} />
-              </div>
+              <MdAdd size={15} />
               <span>{editingTask ? "Edit Task" : "Add Task"}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("manage")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "manage"
-                  ? "bg-white text-orange-600 shadow-xs border border-orange-100/80"
+                  ? "bg-white text-orange-600 shadow-2xs border border-orange-100 font-extrabold"
                   : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
               }`}
             >
-              <div className={`w-5 h-5 rounded-md flex items-center justify-center ${activeTab === "manage" ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-                <MdAssignment size={14} />
-              </div>
+              <MdAssignment size={15} />
               <span>Manage Tasks</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${activeTab === "manage" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"}`}>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                activeTab === "manage" ? "bg-orange-100 text-orange-700" : "bg-slate-200 text-slate-600"
+              }`}>
                 {allTasks.length}
               </span>
             </button>
           </div>
 
-          {activeTab === "add" ? (
-            <div className="space-y-5">
-              {/* Add mode selector */}
-              {!editingTask && (
-                <div className="flex bg-slate-50 border border-slate-200/80 p-1 rounded-xl gap-1">
+          <button
+            type="button"
+            onClick={() => { resetForm(); onClose?.(); }}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            aria-label="Close"
+            title="Close"
+          >
+            <MdClose size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Main Content Area ── */}
+      <div className="w-full">
+        {activeTab === "add" ? (
+          <div className="space-y-6">
+            {/* Mode Switcher: Single Task Entry vs Bulk Excel Upload */}
+            {!editingTask && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                <div className="inline-flex bg-slate-100/90 border border-slate-200 p-1 rounded-xl gap-1 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setAddMode("manual")}
-                    className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`py-2 px-4 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
                       addMode === "manual"
-                        ? "bg-white text-orange-600 shadow-2xs border border-orange-200/60"
+                        ? "bg-white text-orange-600 shadow-2xs border border-orange-200/60 font-extrabold"
                         : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
                     }`}
                   >
-                    <MdEdit size={14} className={addMode === "manual" ? "text-orange-500" : "text-slate-400"} />
+                    <MdEdit size={15} className={addMode === "manual" ? "text-orange-500" : "text-slate-400"} />
                     <span>Single Task Entry</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setAddMode("bulk")}
-                    className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`py-2 px-4 text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
                       addMode === "bulk"
-                        ? "bg-white text-orange-600 shadow-2xs border border-orange-200/60"
+                        ? "bg-white text-orange-600 shadow-2xs border border-orange-200/60 font-extrabold"
                         : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
                     }`}
                   >
-                    <MdCloudUpload size={14} className={addMode === "bulk" ? "text-orange-500" : "text-slate-400"} />
+                    <MdCloudUpload size={15} className={addMode === "bulk" ? "text-orange-500" : "text-slate-400"} />
                     <span>Bulk Excel Upload</span>
                   </button>
                 </div>
-              )}
 
-              {addMode === "manual" || editingTask ? (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="text-xs text-slate-500">
+                  {addMode === "manual" ? (
+                    <span>Add individual task with detailed rubrics & targeted student assignments</span>
+                  ) : (
+                    <span>Upload multiple tasks at once via standardized Excel template</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {addMode === "manual" || editingTask ? (
+              /* ── Form with 2-Column Responsive Layout ── */
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* ── Left Column: Form Steps ── */}
+                <div className="lg:col-span-8 space-y-6">
                   {/* Step 1: Academic Scope & Target Course */}
-                  <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-orange-500 text-white text-xs font-black flex items-center justify-center shadow-2xs">
                           1
                         </span>
                         <div>
-                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">
+                          <h3 className="font-extrabold text-sm text-slate-900">
                             Academic Scope & Target Course
-                          </h4>
-                          <p className="text-[10px] text-slate-500">
-                            Session aur course chunein jinko ye task assign karna hai
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Target session aur target courses select karein jinko task assign karna hai
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md border border-orange-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">
                         Step 1
                       </span>
                     </div>
 
                     {/* Department, Level, Sublevel fixed path chips */}
-                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white rounded-xl border border-slate-200 text-xs shadow-2xs">
+                    <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 text-xs shadow-2xs">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
-                        <MdAccountTree className="text-orange-500" size={13} />
+                        <MdAccountTree className="text-orange-500" size={14} />
                         Target Location:
                       </span>
-                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-orange-50 text-orange-700 border border-orange-200/60">
+                      <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-white text-orange-700 border border-orange-200/80 shadow-2xs">
                         {deptIdentifier || "Department"}
                       </span>
                       <span className="text-slate-300 font-bold">›</span>
-                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-orange-50 text-orange-700 border border-orange-200/60">
+                      <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-white text-orange-700 border border-orange-200/80 shadow-2xs">
                         Level {level?.name}
                       </span>
                       <span className="text-slate-300 font-bold">›</span>
-                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                      <span className="px-2.5 py-1 rounded-lg font-bold text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                         Sub-Level {subLevel?.name}
                       </span>
                     </div>
 
-                    <div className="space-y-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       {/* Session */}
                       <div>
                         <label className={labelCls}>Academic Session</label>
@@ -463,38 +544,47 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         />
                       </div>
 
-                      {/* Course Selection (Session ke theek neeche) */}
-                      <div className="bg-white border border-slate-200/80 rounded-xl p-3 shadow-2xs">
+                      {/* Course Selection */}
+                      <div>
                         <CourseMultiSelect
                           department={deptIdentifier}
                           selectedCourses={selectedCourses}
                           onChange={setSelectedCourses}
                           label="Target Course(s)"
-                          hint="Assign to all courses or select specific course(s) for this department."
+                          hint="Assign to all courses or select specific course(s)."
                           size="sm"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Step 2: Task Source & Category */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                  {/* Step 2: Task Source & Mapping */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-orange-500 text-white text-xs font-black flex items-center justify-center shadow-2xs">
                           2
                         </span>
-                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">
-                          Task Source & Mapping
-                        </h4>
+                        <div>
+                          <h3 className="font-extrabold text-sm text-slate-900">
+                            Task Source & Hierarchy Mapping
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Choose whether this task aligns to the academic syllabus or is a general sub-level task
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Choose Type</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">
+                        Step 2
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                    {/* Mode Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Syllabus Task */}
                       <div
                         onClick={() => setTaskType("syllabus")}
-                        className={`relative p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
+                        className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
                           taskType === "syllabus"
                             ? "border-orange-500 bg-gradient-to-br from-orange-50/70 via-white to-amber-50/30 shadow-xs ring-2 ring-orange-500/20"
                             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
@@ -509,21 +599,21 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
-                            <p className="font-extrabold text-xs sm:text-sm text-slate-900">Syllabus Task</p>
+                            <p className="font-extrabold text-sm text-slate-900">Syllabus Task</p>
                             {taskType === "syllabus" && (
-                              <span className="w-4 h-4 rounded-full bg-orange-500 text-white flex items-center justify-center">
-                                <MdCheck size={12} />
+                              <span className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-2xs">
+                                <MdCheck size={14} />
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">Mapped to Subject, Topic & SubTopic from curriculum</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-snug">Mapped to Subject, Topic & SubTopic from curriculum</p>
                         </div>
                       </div>
 
                       {/* General Task */}
                       <div
                         onClick={() => setTaskType("general")}
-                        className={`relative p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
+                        className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
                           taskType === "general"
                             ? "border-blue-500 bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/30 shadow-xs ring-2 ring-blue-500/20"
                             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
@@ -538,149 +628,149 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
-                            <p className="font-extrabold text-xs sm:text-sm text-slate-900">General Task</p>
+                            <p className="font-extrabold text-sm text-slate-900">General Task</p>
                             {taskType === "general" && (
-                              <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                                <MdCheck size={12} />
+                              <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-2xs">
+                                <MdCheck size={14} />
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">Level-wide activity for all students in sublevel</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-snug">Level-wide activity for all students in sublevel</p>
                         </div>
                       </div>
                     </div>
+
+                    {/* Syllabus Hierarchy Selection */}
+                    {taskType === "syllabus" && (
+                      <div className="bg-gradient-to-br from-orange-50/40 via-white to-amber-50/20 border border-orange-100 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs mt-3">
+                        <div className="flex items-center justify-between pb-2.5 border-b border-orange-100/80">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+                              <MdBook size={15} />
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Curriculum Hierarchy Mapping</h4>
+                              <p className="text-[10px] text-slate-500">Select version, subject, and topic for this task</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100/70 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200/50">
+                            Required
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Version */}
+                          <div>
+                            <label className={labelCls}>Syllabus Version <span className="text-red-500">*</span></label>
+                            <SelectDropdown
+                              value={selectedVersionId}
+                              onChange={(val) => setSelectedVersionId(val)}
+                              options={[
+                                { value: "", label: "Select Version" },
+                                ...versions.map(v => ({
+                                  value: v._id,
+                                  label: `${v.title || v.version} (${v.status})`
+                                }))
+                              ]}
+                              placeholder="Select Version"
+                              buttonClassName={selectBtnCls}
+                            />
+                          </div>
+
+                          {/* Subject */}
+                          <div>
+                            <label className={labelCls}>Subject <span className="text-red-500">*</span></label>
+                            <SelectDropdown
+                              value={selectedSubjectId}
+                              onChange={(val) => {
+                                setSelectedSubjectId(val);
+                                setSelectedTopicId("");
+                                setSelectedSubTopicId("");
+                              }}
+                              options={[
+                                { value: "", label: "-- Select Subject --" },
+                                ...subjects.map(s => ({ value: s._id, label: s.name }))
+                              ]}
+                              disabled={!selectedVersionId}
+                              placeholder={!selectedVersionId ? "Select Version First" : "-- Select Subject --"}
+                              buttonClassName={selectBtnCls}
+                            />
+                          </div>
+
+                          {/* Topic */}
+                          <div>
+                            <label className={labelCls}>Topic <span className="text-red-500">*</span></label>
+                            <SelectDropdown
+                              value={selectedTopicId}
+                              onChange={(val) => {
+                                setSelectedTopicId(val);
+                                setSelectedSubTopicId("");
+                              }}
+                              options={[
+                                { value: "", label: "-- Select Topic --" },
+                                ...topics.map(t => ({ value: t._id, label: t.name }))
+                              ]}
+                              disabled={!selectedSubjectId}
+                              placeholder={!selectedSubjectId ? "Select Subject First" : "-- Select Topic --"}
+                              buttonClassName={selectBtnCls}
+                            />
+                          </div>
+                        </div>
+
+                        {/* SubTopic (Optional) */}
+                        {selectedTopicId && subTopics.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className={labelCls}>SubTopic (Optional)</label>
+                              <span className="text-[10px] text-slate-400">Leave blank for topic-level task</span>
+                            </div>
+                            <SelectDropdown
+                              value={selectedSubTopicId}
+                              onChange={(val) => setSelectedSubTopicId(val)}
+                              options={[
+                                { value: "", label: "No SubTopic (Topic Level Task)" },
+                                ...subTopics.map(st => ({ value: st._id, label: st.name }))
+                              ]}
+                              placeholder="No SubTopic (Topic Level Task)"
+                              buttonClassName={selectBtnCls}
+                            />
+                          </div>
+                        )}
+
+                        {/* Path Preview Breadcrumb */}
+                        {selectedTopicId && (
+                          <div className="p-3 bg-white border border-orange-100 rounded-xl flex items-center gap-2 text-xs flex-wrap shadow-2xs">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
+                              Target Path
+                            </span>
+                            <span className="font-bold text-slate-800">{subjects.find(s => s._id === selectedSubjectId)?.name}</span>
+                            <MdChevronRight size={14} className="text-orange-400" />
+                            <span className="font-bold text-slate-800">{topics.find(t => t._id === selectedTopicId)?.name}</span>
+                            {selectedSubTopicId && (
+                              <>
+                                <MdChevronRight size={14} className="text-orange-400" />
+                                <span className="font-semibold text-slate-600">{subTopics.find(st => st._id === selectedSubTopicId)?.name}</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Syllabus Hierarchy Selection */}
-                  {taskType === "syllabus" && (
-                    <div className="bg-gradient-to-br from-orange-50/40 via-white to-amber-50/20 border border-orange-100 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
-                      <div className="flex items-center justify-between pb-2.5 border-b border-orange-100/80">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
-                            <MdBook size={15} />
-                          </div>
-                          <div>
-                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Curriculum Hierarchy Mapping</h4>
-                            <p className="text-[10px] text-slate-400">Select where this task belongs in the syllabus</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100/70 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200/50">
-                          Required
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                        {/* Version */}
-                        <div>
-                          <label className={labelCls}>Syllabus Version <span className="text-red-500">*</span></label>
-                          <SelectDropdown
-                            value={selectedVersionId}
-                            onChange={(val) => setSelectedVersionId(val)}
-                            options={[
-                              { value: "", label: "Select Version" },
-                              ...versions.map(v => ({
-                                value: v._id,
-                                label: `${v.title || v.version} (${v.status})`
-                              }))
-                            ]}
-                            placeholder="Select Version"
-                            buttonClassName={selectBtnCls}
-                          />
-                        </div>
-
-                        {/* Subject */}
-                        <div>
-                          <label className={labelCls}>Subject <span className="text-red-500">*</span></label>
-                          <SelectDropdown
-                            value={selectedSubjectId}
-                            onChange={(val) => {
-                              setSelectedSubjectId(val);
-                              setSelectedTopicId("");
-                              setSelectedSubTopicId("");
-                            }}
-                            options={[
-                              { value: "", label: "-- Select Subject --" },
-                              ...subjects.map(s => ({ value: s._id, label: s.name }))
-                            ]}
-                            disabled={!selectedVersionId}
-                            placeholder={!selectedVersionId ? "Select Version First" : "-- Select Subject --"}
-                            buttonClassName={selectBtnCls}
-                          />
-                        </div>
-
-                        {/* Topic */}
-                        <div>
-                          <label className={labelCls}>Topic <span className="text-red-500">*</span></label>
-                          <SelectDropdown
-                            value={selectedTopicId}
-                            onChange={(val) => {
-                              setSelectedTopicId(val);
-                              setSelectedSubTopicId("");
-                            }}
-                            options={[
-                              { value: "", label: "-- Select Topic --" },
-                              ...topics.map(t => ({ value: t._id, label: t.name }))
-                            ]}
-                            disabled={!selectedSubjectId}
-                            placeholder={!selectedSubjectId ? "Select Subject First" : "-- Select Topic --"}
-                            buttonClassName={selectBtnCls}
-                          />
-                        </div>
-                      </div>
-
-                      {/* SubTopic (Optional) */}
-                      {selectedTopicId && subTopics.length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className={labelCls}>SubTopic (Optional)</label>
-                            <span className="text-[10px] text-slate-400">Leave blank for topic-level task</span>
-                          </div>
-                          <SelectDropdown
-                            value={selectedSubTopicId}
-                            onChange={(val) => setSelectedSubTopicId(val)}
-                            options={[
-                              { value: "", label: "No SubTopic (Topic Level Task)" },
-                              ...subTopics.map(st => ({ value: st._id, label: st.name }))
-                            ]}
-                            placeholder="No SubTopic (Topic Level Task)"
-                            buttonClassName={selectBtnCls}
-                          />
-                        </div>
-                      )}
-
-                      {/* Path Preview Breadcrumb */}
-                      {selectedTopicId && (
-                        <div className="p-3 bg-white border border-orange-100 rounded-xl flex items-center gap-2 text-xs flex-wrap shadow-2xs">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
-                            Target Path
-                          </span>
-                          <span className="font-bold text-slate-800">{subjects.find(s => s._id === selectedSubjectId)?.name}</span>
-                          <MdChevronRight size={14} className="text-orange-400" />
-                          <span className="font-bold text-slate-800">{topics.find(t => t._id === selectedTopicId)?.name}</span>
-                          {selectedSubTopicId && (
-                            <>
-                              <MdChevronRight size={14} className="text-orange-400" />
-                              <span className="font-semibold text-slate-600">{subTopics.find(st => st._id === selectedSubTopicId)?.name}</span>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Step 3: Task Details Card */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
-                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-2xs">
+                  {/* Step 3: Task Details & Evaluation */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-orange-500 text-white text-xs font-black flex items-center justify-center shadow-2xs">
                           3
                         </span>
                         <div>
-                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Task Information & Evaluation</h4>
-                          <p className="text-[10px] text-slate-400">Define title, type, priority, and completion criteria</p>
+                          <h3 className="font-extrabold text-sm text-slate-900">Task Information & Evaluation</h3>
+                          <p className="text-xs text-slate-500">Define title, priority, marks, duration, and measurable criteria</p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md border border-orange-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">
                         Step 3
                       </span>
                     </div>
@@ -698,7 +788,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                       />
                     </div>
 
-                    {/* Optional Domain for Level 2B */}
+                    {/* Optional Domain for Level 2A / 2B */}
                     {isLevel2B && (
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
@@ -729,7 +819,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                         value={taskForm.description}
                         onChange={(e) => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                         className={inputCls}
-                        rows={2}
+                        rows={3}
                         placeholder="Detailed instructions or guidelines for students..."
                       />
                     </div>
@@ -785,7 +875,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                     </div>
 
                     {/* Metrics Row: Max Marks, Duration, Due Date */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className={labelCls}>Max Marks</label>
                         <div className="relative">
@@ -848,123 +938,191 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                       </p>
                     </div>
                   </div>
-
-                  {/* Actions footer */}
-                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-3 border-t border-slate-200">
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] inline-flex items-center justify-center shrink-0"
-                    >
-                      <span>{editingTask ? "Cancel Edit" : "Reset Form"}</span>
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={creating || updating}
-                      className="w-full sm:flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] disabled:opacity-50 text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl transition shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2 shrink-0"
-                    >
-                      {creating || updating ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Saving Task...</span>
-                        </>
-                      ) : editingTask ? (
-                        <>
-                          <MdCheckCircle size={16} />
-                          <span>Update Task</span>
-                        </>
-                      ) : (
-                        <>
-                          <MdAdd size={16} />
-                          <span>Create Task</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                /* Bulk Upload Mode */
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-br from-orange-50/40 via-white to-amber-50/20 border border-orange-100 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
-                    <div className="flex items-center gap-2 pb-2.5 border-b border-orange-100/80">
-                      <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
-                        <MdCloudUpload size={16} />
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Select Syllabus Target for Bulk Upload</h4>
-                        <p className="text-[10px] text-slate-400">Tasks will be mapped to the selected academic curriculum</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className={labelCls}>Session</label>
-                        <SelectDropdown
-                          value={selectedSessionId}
-                          onChange={(val) => {
-                            setSelectedSessionId(val);
-                            setSelectedVersionId("");
-                            setSelectedSubjectId("");
-                            setSelectedTopicId("");
-                            setSelectedSubTopicId("");
-                          }}
-                          options={[
-                            { value: "", label: "All Sessions" },
-                            ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
-                          ]}
-                          placeholder="All Sessions"
-                          buttonClassName={selectBtnCls}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={labelCls}>Syllabus Version <span className="text-red-500">*</span></label>
-                        <SelectDropdown
-                          value={selectedVersionId}
-                          onChange={(val) => setSelectedVersionId(val)}
-                          options={[
-                            { value: "", label: "Select Version" },
-                            ...versions.map(v => ({
-                              value: v._id,
-                              label: `${v.title || v.version} (${v.status})`
-                            }))
-                          ]}
-                          placeholder="Select Version"
-                          buttonClassName={selectBtnCls}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedVersionId ? (
-                    <TaskUploadDrawer
-                      syllabusVersionId={selectedVersionId}
-                      subjectName={subLevel?.name || ""}
-                      version={versions.find(v => v._id === selectedVersionId)?.version || ""}
-                      level={level}
-                      subLevel={subLevel}
-                      departmentName={deptIdentifier}
-                      departmentId={departmentId}
-                      subdepartment={subdepartment}
-                      onSaved={() => {
-                        refetchTasks();
-                        onSuccess?.();
-                      }}
-                    />
-                  ) : (
-                    <div className="p-4 bg-amber-50 border border-amber-200/90 rounded-2xl text-xs text-amber-800 font-medium flex items-center gap-2.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                      <span>Please select an academic session and syllabus version above to unlock bulk Excel upload.</span>
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
-          ) : (
-            /* Manage Tasks Tab */
-            <div className="space-y-4">
-              {/* Search Bar */}
-              <div className="relative">
+
+                {/* ── Right Column: Target Students & Summary Actions ── */}
+                <div className="lg:col-span-4 space-y-6">
+                  {/* Target Student Assignment Card */}
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+                    <StudentAssignPicker
+                      subLevelId={subLevel?._id}
+                      selectedCourses={selectedCourses}
+                      assignTarget={assignTarget}
+                      onAssignTargetChange={setAssignTarget}
+                      selectedStudentIds={selectedStudentIds}
+                      onSelectedStudentIdsChange={setSelectedStudentIds}
+                      label="Assign Task To"
+                    />
+                  </div>
+
+                  {/* Summary & Submit Card (Sticky) */}
+                  <div className="sticky top-6 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                        Task Summary
+                      </h4>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        taskType === "syllabus"
+                          ? "bg-orange-100 text-orange-700 border border-orange-200/60"
+                          : "bg-blue-100 text-blue-700 border border-blue-200/60"
+                      }`}>
+                        {taskType === "syllabus" ? "Syllabus Aligned" : "General Task"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span>Target:</span>
+                        <span className="font-bold text-slate-800 truncate max-w-[170px]" title={`${deptIdentifier} • Sub-Level ${subLevel?.name}`}>
+                          {deptIdentifier} › {subLevel?.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span>Courses:</span>
+                        <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={selectedCourses.join(", ")}>
+                          {selectedCourses.includes("All") ? "All Courses" : selectedCourses.join(", ")}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span>Priority & Type:</span>
+                        <span className="font-semibold text-slate-800 capitalize">
+                          {taskForm.priority} • {taskForm.type}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span>Evaluation:</span>
+                        <span className="font-semibold text-slate-800">
+                          {taskForm.maxMarks || 0} Marks {taskForm.timeDays ? `• ${taskForm.timeDays}d` : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span>Students:</span>
+                        <span className={`font-bold ${assignTarget === "all" ? "text-slate-800" : "text-orange-600"}`}>
+                          {assignTarget === "all" ? "All Students" : `${selectedStudentIds.length} Selected`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                      <button
+                        type="submit"
+                        disabled={creating || updating}
+                        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] disabled:opacity-50 text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 px-4 rounded-xl transition shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {creating || updating ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Saving Task...</span>
+                          </>
+                        ) : editingTask ? (
+                          <>
+                            <MdCheckCircle size={18} />
+                            <span>Update Task</span>
+                          </>
+                        ) : (
+                          <>
+                            <MdAdd size={18} />
+                            <span>Create Task</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="w-full py-2 sm:py-2.5 px-4 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer text-center"
+                      >
+                        {editingTask ? "Cancel Edit" : "Reset Form"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              /* ── Bulk Upload Mode ── */
+              <div className="w-full space-y-6">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shadow-2xs">
+                      <MdCloudUpload size={18} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-900">Select Syllabus Target for Bulk Upload</h3>
+                      <p className="text-xs text-slate-500">Tasks will be imported and mapped to the selected academic curriculum</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Session</label>
+                      <SelectDropdown
+                        value={selectedSessionId}
+                        onChange={(val) => {
+                          setSelectedSessionId(val);
+                          setSelectedVersionId("");
+                          setSelectedSubjectId("");
+                          setSelectedTopicId("");
+                          setSelectedSubTopicId("");
+                        }}
+                        options={[
+                          { value: "", label: "All Sessions" },
+                          ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
+                        ]}
+                        placeholder="All Sessions"
+                        buttonClassName={selectBtnCls}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Syllabus Version <span className="text-red-500">*</span></label>
+                      <SelectDropdown
+                        value={selectedVersionId}
+                        onChange={(val) => setSelectedVersionId(val)}
+                        options={[
+                          { value: "", label: "Select Version" },
+                          ...versions.map(v => ({
+                            value: v._id,
+                            label: `${v.title || v.version} (${v.status})`
+                          }))
+                        ]}
+                        placeholder="Select Version"
+                        buttonClassName={selectBtnCls}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {selectedVersionId ? (
+                  <TaskUploadDrawer
+                    syllabusVersionId={selectedVersionId}
+                    subjectName={subLevel?.name || ""}
+                    version={versions.find(v => v._id === selectedVersionId)?.version || ""}
+                    level={level}
+                    subLevel={subLevel}
+                    departmentName={deptIdentifier}
+                    departmentId={departmentId}
+                    subdepartment={subdepartment}
+                    onSaved={() => {
+                      refetchTasks();
+                      onSuccess?.();
+                    }}
+                  />
+                ) : (
+                  <div className="p-5 bg-amber-50 border border-amber-200/90 rounded-2xl text-xs text-amber-800 font-medium flex items-center gap-3 shadow-2xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>Please select an academic session and syllabus version above to unlock bulk Excel upload.</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ── Manage Tasks Tab ── */
+          <div className="space-y-6">
+            {/* Top Toolbar: Search & Task Count */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-md">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <MdSearch size={18} />
                 </span>
@@ -972,7 +1130,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                   type="text"
                   value={manageSearch}
                   onChange={(e) => setManageSearch(e.target.value)}
-                  placeholder="Search tasks..."
+                  placeholder="Search tasks by title, subject, topic, type..."
                   className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-slate-400 shadow-2xs transition"
                 />
                 {manageSearch && (
@@ -986,119 +1144,152 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                 )}
               </div>
 
-              {filteredTasks.length === 0 ? (
-                <div className="text-center py-16 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-                    <MdAssignment size={24} />
-                  </div>
-                  <p className="text-sm font-bold text-slate-700">No tasks found</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {manageSearch ? "Try adjusting your search query" : "Create your first task using the Add Task tab"}
-                  </p>
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span>
+                  Showing <strong className="text-slate-800">{filteredTasks.length}</strong> of <strong className="text-slate-800">{allTasks.length}</strong> tasks
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { resetForm(); setActiveTab("add"); }}
+                  className="px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition shadow-2xs hover:shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <MdAdd size={16} />
+                  <span>New Task</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tasks List */}
+            {filteredTasks.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 shadow-2xs">
+                <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                  <MdAssignment size={28} />
                 </div>
-              ) : (
-                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-                  {filteredTasks.map((task, idx) => {
-                    const pKey = (task.priority || "medium").toLowerCase();
-                    const pColors = {
-                      high: "bg-rose-50 text-rose-700 border-rose-200",
-                      medium: "bg-amber-50 text-amber-700 border-amber-200",
-                      low: "bg-emerald-50 text-emerald-700 border-emerald-200",
-                    };
-                    const dotColors = {
-                      high: "bg-rose-500",
-                      medium: "bg-amber-500",
-                      low: "bg-emerald-500"
-                    };
-                    return (
-                      <div
-                        key={task._id}
-                        className="border border-slate-200/90 rounded-2xl p-4 hover:border-orange-300 hover:shadow-xs transition-all bg-white flex flex-col sm:flex-row items-start justify-between gap-4 shadow-2xs"
-                      >
-                        <div className="flex-1 min-w-0 space-y-2 w-full">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-black shrink-0 shadow-2xs">
-                                #{idx + 1}
-                              </span>
-                              <h4
-                                className="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2 break-words min-w-0 flex-1"
-                                title={task.title}
-                              >
-                                {task.title}
-                              </h4>
-                            </div>
+                <h3 className="text-base font-bold text-slate-800">No tasks found</h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  {manageSearch ? "Try adjusting your search query" : "Create your first task using the Add Task tab above"}
+                </p>
+                {!manageSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setActiveTab("add"); }}
+                    className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
+                  >
+                    + Add Task Now
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredTasks.map((task, idx) => {
+                  const pKey = (task.priority || "medium").toLowerCase();
+                  const pColors = {
+                    high: "bg-rose-50 text-rose-700 border-rose-200",
+                    medium: "bg-amber-50 text-amber-700 border-amber-200",
+                    low: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                  };
+                  const dotColors = {
+                    high: "bg-rose-500",
+                    medium: "bg-amber-500",
+                    low: "bg-emerald-500"
+                  };
+                  return (
+                    <div
+                      key={task._id}
+                      className="border border-slate-200/90 rounded-2xl p-4 sm:p-5 hover:border-orange-300 hover:shadow-xs transition-all bg-white flex flex-col justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-black shrink-0 shadow-2xs">
+                              #{idx + 1}
+                            </span>
+                            <h4
+                              className="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2 break-words"
+                              title={task.title}
+                            >
+                              {task.title}
+                            </h4>
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${pColors[pKey] || pColors.medium}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${dotColors[pKey] || dotColors.medium}`} />
-                              <span>{pKey}</span>
-                            </span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                              {task.type}
-                            </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(task)}
+                              className="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer border border-transparent hover:border-orange-200"
+                              title="Edit Task"
+                            >
+                              <MdEdit size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(task._id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer border border-transparent hover:border-red-200"
+                              title="Delete Task"
+                            >
+                              <MdDelete size={16} />
+                            </button>
                           </div>
+                        </div>
 
-                          {task.topicName && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-xl w-fit">
-                              <MdTopic size={13} className="text-orange-500 shrink-0" />
-                              <span className="font-semibold text-slate-700">{task.subjectName}</span>
-                              <MdChevronRight size={13} className="text-slate-300 shrink-0" />
-                              <span className="text-slate-600 font-medium">{task.topicName}</span>
-                              {task.subTopicName && (
-                                <>
-                                  <MdChevronRight size={13} className="text-slate-300 shrink-0" />
-                                  <span className="text-slate-400">{task.subTopicName}</span>
-                                </>
-                              )}
-                            </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${pColors[pKey] || pColors.medium}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${dotColors[pKey] || dotColors.medium}`} />
+                            <span>{pKey}</span>
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                            {task.type}
+                          </span>
+                          {task.assignTo === "specific" ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                              Targeted ({task.specificStudentIds?.length || 0} students)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              All Students
+                            </span>
                           )}
+                        </div>
 
-                          {task.description && (
-                            <p className="text-xs text-slate-500 line-clamp-2">{task.description}</p>
-                          )}
-
-                          <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1 flex-wrap">
-                            {task.maxMarks && <span>Max: <strong className="text-slate-700 font-bold">{task.maxMarks}</strong> marks</span>}
-                            {task.timeDays && <span>Time: <strong className="text-slate-700 font-bold">{task.timeDays}</strong>d</span>}
-                            {task.dueDate && (
-                              <span className="inline-flex items-center gap-1 text-slate-600 font-medium">
-                                <MdCalendarToday size={12} className="text-orange-500" />
-                                Due: {new Date(task.dueDate).toLocaleDateString()}
-                              </span>
+                        {task.topicName && (
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-xl w-fit">
+                            <MdTopic size={13} className="text-orange-500 shrink-0" />
+                            <span className="font-semibold text-slate-700">{task.subjectName}</span>
+                            <MdChevronRight size={13} className="text-slate-300 shrink-0" />
+                            <span className="text-slate-600 font-medium">{task.topicName}</span>
+                            {task.subTopicName && (
+                              <>
+                                <MdChevronRight size={13} className="text-slate-300 shrink-0" />
+                                <span className="text-slate-400">{task.subTopicName}</span>
+                              </>
                             )}
                           </div>
-                        </div>
+                        )}
 
-                        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(task)}
-                            className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition cursor-pointer border border-transparent hover:border-orange-200"
-                            title="Edit Task"
-                          >
-                            <MdEdit size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(task._id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer border border-transparent hover:border-red-200"
-                            title="Delete Task"
-                          >
-                            <MdDelete size={16} />
-                          </button>
-                        </div>
+                        {task.description && (
+                          <p className="text-xs text-slate-500 line-clamp-2">{task.description}</p>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      }
-    />
+
+                      <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-2 border-t border-slate-100 flex-wrap">
+                        {task.maxMarks && <span>Max: <strong className="text-slate-700 font-bold">{task.maxMarks}</strong> marks</span>}
+                        {task.timeDays && <span>Time: <strong className="text-slate-700 font-bold">{task.timeDays}</strong>d</span>}
+                        {task.dueDate && (
+                          <span className="inline-flex items-center gap-1 text-slate-600 font-medium">
+                            <MdCalendarToday size={12} className="text-orange-500" />
+                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

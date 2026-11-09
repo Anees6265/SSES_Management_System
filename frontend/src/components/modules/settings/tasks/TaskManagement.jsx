@@ -989,6 +989,47 @@ const TaskManagement = () => {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const paginatedData = filtered.slice(startIndex, startIndex + rowsPerPage);
 
+    if (isAddModalOpen) {
+        return (
+            <>
+                <Header
+                    title="Add New Task"
+                    showBack={true}
+                    onBack={() => setIsAddModalOpen(false)}
+                    breadcrumbs={[
+                        { label: "Academics" },
+                        { label: "Task Management", onClick: () => setIsAddModalOpen(false) },
+                        { label: "Add New Task" },
+                    ]}
+                />
+
+                <div className="p-3.5 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40">
+                    <AddTaskModal
+                        isOpen={isAddModalOpen}
+                        onClose={() => setIsAddModalOpen(false)}
+                        onSuccess={() => {
+                            setIsAddModalOpen(false);
+                            refetch();
+                        }}
+                        sessionsList={sessionsList}
+                        departments={scopedDepartments}
+                        subDepartments={subDepartments}
+                        levelsList={levelsList}
+                        subLevelsList={subLevelsList}
+                        initialFilters={{
+                            filterSession,
+                            filterDept,
+                            filterSub,
+                            filterLevel,
+                            filterSubLevel,
+                            filterPriority,
+                        }}
+                    />
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Header
@@ -1588,28 +1629,6 @@ const TaskManagement = () => {
                     onClose={() => setEditingTask(null)}
                     onSave={handleUpdateTask}
                     isSaving={isUpdatingTask}
-                />
-            )}
-
-            {/* Add Task Modal */}
-            {isAddModalOpen && (
-                <AddTaskModal
-                    isOpen={isAddModalOpen}
-                    onClose={() => setIsAddModalOpen(false)}
-                    onSuccess={() => refetch()}
-                    sessionsList={sessionsList}
-                    departments={scopedDepartments}
-                    subDepartments={subDepartments}
-                    levelsList={levelsList}
-                    subLevelsList={subLevelsList}
-                    initialFilters={{
-                        filterSession,
-                        filterDept,
-                        filterSub,
-                        filterLevel,
-                        filterSubLevel,
-                        filterPriority,
-                    }}
                 />
             )}
         </>

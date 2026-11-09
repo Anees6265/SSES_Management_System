@@ -172,7 +172,9 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       topicName,
       domain,
       course,
-      courses
+      courses,
+      assignTo,
+      studentIds
     } = req.body;
     
     if (!levelId || !subLevelId || !title) {
@@ -216,12 +218,14 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       dueDate: dueDate || null,
       isGeneralTask: true,
       taskNodeType: "general",
+      assignTo: assignTo === "specific" ? "specific" : "all",
+      specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
       assignedByName: req.user?.name || "System",
       isActive: true
     });
 
-    // Sync to all matching students in this sublevel / session
-    await syncTaskToStudents(task).catch((err) => console.error("syncTaskToStudents error:", err));
+    // Sync to matching students (or specific selected students)
+    await syncTaskToStudents(task, assignTo === "specific" ? studentIds : null).catch((err) => console.error("syncTaskToStudents error:", err));
 
     res.status(201).json({
       success: true,

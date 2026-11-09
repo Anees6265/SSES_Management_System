@@ -1,15 +1,15 @@
 const Task            = require("../../models/syllabus/Task");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
-const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents } = require("../../services/taskAssignmentService");
+const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents, assignTasksToStudent } = require("../../services/taskAssignmentService");
 
 const VALID_TYPES    = ["assignment", "project", "practice", "reading", "assessment", "other"];
 const VALID_PRIORITY = ["low", "medium", "high"];
 
 // POST /syllabus/versions/bulk-upload-tasks
-// Body: { syllabusVersionId, tasks: [{ topic, subTopic, taskTitle, taskType, priority, maxMarks, timeDays, measurablePoints }] }
+// Body: { syllabusVersionId, tasks: [{ topic, subTopic, taskTitle, taskType, priority, maxMarks, timeDays, measurablePoints }], assignTo, studentIds }
 exports.bulkUploadTasks = async (req, res) => {
   try {
-    const { syllabusVersionId, tasks, domain } = req.body;
+    const { syllabusVersionId, tasks, domain, assignTo, studentIds } = req.body;
 
     if (!syllabusVersionId)
       return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
@@ -123,6 +123,8 @@ exports.bulkUploadTasks = async (req, res) => {
         timeDays,
         measurablePoints,
         order:            taskCount + 1,
+        assignTo:         assignTo === "specific" ? "specific" : "all",
+        specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
         assignedByName:   req.user?.name || "System",
         isActive:         true,
       });
@@ -133,8 +135,16 @@ exports.bulkUploadTasks = async (req, res) => {
 
     const inserted = await Task.insertMany(taskDocs);
 
-    // Always sync to all active students in this subLevel
-    await syncTasksToSubLevelStudents(syllabusVersionId).catch(() => {});
+    if (assignTo === "specific" && Array.isArray(studentIds) && studentIds.length > 0) {
+      await Promise.allSettled(
+        studentIds.map((stId) =>
+          assignTasksToStudent(stId, syllabusVersionId, { allowSessionMismatch: true })
+        )
+      );
+    } else {
+      // Always sync to all active students in this subLevel
+      await syncTasksToSubLevelStudents(syllabusVersionId).catch(() => {});
+    }
 
     res.status(201).json({
       success:  true,

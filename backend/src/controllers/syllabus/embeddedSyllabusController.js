@@ -339,7 +339,7 @@ exports.archiveSyllabusVersion = async (req, res) => {
 
 exports.addTaskToSyllabusVersion = async (req, res) => {
   try {
-    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain, course, courses } = req.body;
+    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain, course, courses, assignTo, studentIds } = req.body;
     if (!ensureObjectId(subjectId) || !ensureObjectId(topicId) || !title) {
       return res.status(400).json({ success: false, message: "subjectId, topicId and title are required" });
     }
@@ -394,11 +394,13 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
       timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
       measurablePoints: measurablePoints || "",
       order: taskCount + 1,
+      assignTo: assignTo === "specific" ? "specific" : "all",
+      specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
       assignedByName: req.user?.name || "System",
       isActive: true
     });
 
-    const syncResults = await syncTaskToStudents(task);
+    const syncResults = await syncTaskToStudents(task, assignTo === "specific" ? studentIds : null);
 
     res.status(201).json({
       success: true,

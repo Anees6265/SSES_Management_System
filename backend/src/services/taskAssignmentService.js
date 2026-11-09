@@ -28,7 +28,9 @@ const buildTaskEntries = async (syllabusVersionId) => {
     mandatory: task.mandatory !== false,
     course: task.course || "All",
     courses: task.courses || (task.course ? [task.course] : ["All"]),
-    maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5
+    maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5,
+    assignTo: task.assignTo || "all",
+    specificStudentIds: task.specificStudentIds || []
   }));
 };
 
@@ -274,6 +276,14 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   const bulkOps = [];
 
   for (const entry of taskEntries) {
+    // Check if task is restricted to specific students
+    if (entry.assignTo === "specific" && Array.isArray(entry.specificStudentIds) && entry.specificStudentIds.length > 0) {
+      const studentIdStr = student._id.toString();
+      if (!entry.specificStudentIds.some((id) => (id.toString ? id.toString() : String(id)) === studentIdStr)) {
+        continue;
+      }
+    }
+
     // Course-wise task assignment check (e.g. BBA vs B.Com)
     if (!matchesCourse(student.course, entry.courses, entry.course)) {
       continue; // Skip task not matching student's course
@@ -935,7 +945,7 @@ const syncStudentLevelProgressStats = async (studentId) => {
  * Sync an individual task (general or syllabus) directly to active students in the target sublevel/session/level.
  * @param {Object|String} task - Task document or Task ID
  */
-const syncTaskToStudents = async (task) => {
+const syncTaskToStudents = async (task, targetStudentIds = null) => {
   const Task = require("../models/syllabus/Task");
   const Student = require("../models/student/Student");
   const StudentTask = require("../models/syllabus/StudentTask");
@@ -948,6 +958,15 @@ const syncTaskToStudents = async (task) => {
     currentSubLevelId: taskDoc.subLevelId,
     status: { $in: ["Active", "active"] }
   };
+
+  const specificIds = targetStudentIds || (taskDoc.assignTo === "specific" ? taskDoc.specificStudentIds : null);
+  if (Array.isArray(specificIds) && specificIds.length > 0) {
+    const validIds = specificIds.map(id => id.toString ? id.toString() : String(id));
+    studentQuery._id = { $in: validIds };
+  } else if (taskDoc.assignTo === "specific") {
+    return { success: true, count: 0, message: "No specific students specified for this task" };
+  }
+
   if (taskDoc.sessionId) {
     studentQuery.$or = [
       { sessionId: taskDoc.sessionId },

@@ -63,6 +63,15 @@ const taskSchema = new mongoose.Schema({
   isGeneralTask: { type: Boolean, default: false }, // Flag for general tasks
   course: { type: String, default: "All", trim: true },
   courses: { type: [String], default: ["All"] },
+  assignTo: {
+    type: String,
+    enum: ["all", "specific"],
+    default: "all"
+  },
+  specificStudentIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Student"
+  }],
   assignedByName: { type: String, default: "" },
   isActive: { type: Boolean, default: true },
   deletedAt: { type: Date, default: null }

@@ -47,7 +47,7 @@ const StudentRoute = ({ children }) => {
 };
 
 function App() {
-  const { showModal, handleContinue, handleLogout } = useSessionTimeout();
+  const { showModal, isExtending, handleContinue, handleLogout } = useSessionTimeout();
 
   return (
     <React.Suspense fallback={
@@ -107,6 +107,7 @@ function App() {
 
       <SessionTimeoutModal
         isOpen={showModal}
+        isExtending={isExtending}
         onContinue={handleContinue}
         onLogout={handleLogout}
       />

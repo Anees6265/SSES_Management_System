@@ -5,6 +5,7 @@ const Department = require("../../models/department/Department");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const CryptoJS = require("crypto-js");
 const { sendResetLinkEmail } = require("../../services/emailService");
 const { getPermissionsForRole, allPermissions } = require("../../config/permissions");
 const cloudinary = require("../../config/cloudinaryConfig");
@@ -378,21 +379,149 @@ exports.login = async (req, res) => {
 // REFRESH ACCESS TOKEN
 exports.refreshAccessToken = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    let { refreshToken } = req.body;
     if (!refreshToken) return res.status(401).json({ message: "Refresh token required" });
 
-    const user = await User.findOne({ refreshToken });
+    // Handle encrypted refreshToken from frontend if passed
+    let user = await User.findOne({ refreshToken });
+    if (!user) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(refreshToken, "ITEG@123");
+        const dec = bytes.toString(CryptoJS.enc.Utf8);
+        if (dec) {
+          user = await User.findOne({ refreshToken: dec });
+          if (user) refreshToken = dec;
+        }
+      } catch (_) {}
+    }
+
     if (!user) return res.status(403).json({ message: "Invalid refresh token" });
 
-    jwt.verify(refreshToken, process.env.JWT_SECRET, (err) => {
+    jwt.verify(refreshToken, process.env.JWT_SECRET, async (err) => {
       if (err) return res.status(403).json({ message: "Invalid or expired refresh token" });
 
       // Include full payload so frontend has permissions after refresh
       const newAccessToken = generateAccessToken(user);
-      res.status(200).json({ message: "Access token refreshed", accessToken: newAccessToken });
+      const newRefreshToken = generateRefreshToken(user);
+      user.refreshToken = newRefreshToken;
+      await user.save().catch(() => {});
+
+      res.status(200).json({
+        message: "Access token refreshed",
+        accessToken: newAccessToken,
+        token: newAccessToken,
+        refreshToken: newRefreshToken,
+        role: user.role
+      });
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// EXTEND SESSION (Called when user clicks "Continue Session" on the timeout modal)
+exports.extendSession = async (req, res) => {
+  try {
+    const authHeader = req.header("Authorization");
+    const rawBearer = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+    const bodyToken = req.body?.token;
+    let bodyRefreshToken = req.body?.refreshToken;
+
+    const tokenToInspect = rawBearer || bodyToken;
+    let userId = null;
+    let userRole = null;
+
+    if (tokenToInspect) {
+      try {
+        const decoded = jwt.verify(tokenToInspect, process.env.JWT_SECRET);
+        userId = decoded.id;
+        userRole = decoded.role;
+      } catch (verifyErr) {
+        // Allow up to 15 minutes grace period for expired tokens on session extension
+        try {
+          const decoded = jwt.decode(tokenToInspect);
+          if (decoded?.id) {
+            const now = Math.floor(Date.now() / 1000);
+            if (!decoded.exp || (now - decoded.exp) < 900) {
+              userId = decoded.id;
+              userRole = decoded.role;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Fallback: check by refreshToken if available
+    if (!userId && bodyRefreshToken) {
+      // Check if encrypted
+      let plainRefresh = bodyRefreshToken;
+      try {
+        const bytes = CryptoJS.AES.decrypt(bodyRefreshToken, "ITEG@123");
+        const dec = bytes.toString(CryptoJS.enc.Utf8);
+        if (dec) plainRefresh = dec;
+      } catch (_) {}
+
+      const userByRefresh = await User.findOne({ refreshToken: plainRefresh });
+      if (userByRefresh) {
+        userId = userByRefresh._id;
+        userRole = userByRefresh.role;
+      }
+    }
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Invalid or expired session. Please login again." });
+    }
+
+    // If student
+    if (userRole === "student") {
+      const student = await Student.findById(userId);
+      if (!student || student.status !== "Active") {
+        return res.status(403).json({ success: false, message: "Student account not active" });
+      }
+
+      const newToken = jwt.sign(
+        { id: student._id, prkey: student.prkey, role: "student" },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+      const newRefreshToken = jwt.sign(
+        { id: student._id, role: "student" },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Session extended successfully",
+        token: newToken,
+        accessToken: newToken,
+        refreshToken: newRefreshToken,
+        role: "student"
+      });
+    }
+
+    // For staff / admin / faculty
+    const user = await User.findById(userId);
+    if (!user || user.isActive === false) {
+      return res.status(403).json({ success: false, message: "Account not active" });
+    }
+
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Session extended successfully",
+      token: newAccessToken,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      role: user.role
+    });
+  } catch (err) {
+    console.error("Extend session error:", err);
+    return res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 };
 

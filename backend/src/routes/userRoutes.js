@@ -44,6 +44,8 @@ router.patch("/change-password", verifyToken, usercontroller.changeMyPassword);
 router.patch("/admin/reset-password/:id", ...adminOnly, usercontroller.adminResetPassword);
 
 router.post("/refresh_token", usercontroller.refreshAccessToken);
+router.post("/extend-session", usercontroller.extendSession);
+router.post("/extend_session", usercontroller.extendSession);
 
 // Forgot Password - send email
 router.post("/forgot_password", forgotPasswordLimiter, usercontroller.forgotPassword);

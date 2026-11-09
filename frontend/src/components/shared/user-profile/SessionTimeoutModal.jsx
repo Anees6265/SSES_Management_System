@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
 import OrangeButton from '../sidebar/OrangeButton';
 
-const SessionTimeoutModal = ({ isOpen, onContinue, onLogout }) => {
+const SessionTimeoutModal = ({ isOpen, onContinue, onLogout, isExtending }) => {
   return (
     <OrangeButton
       isOpen={isOpen}
       onClose={onLogout}
       panelTitle="Session Timeout Warning"
-      panelSubtitle="Your session will expire in 5 minutes"
+      panelSubtitle="Your session will expire in 2 minutes"
       leftBtnText="Logout"
-      rightBtnText="Continue Session"
+      rightBtnText={isExtending ? "Extending..." : "Continue Session"}
       onLeftClick={onLogout}
       onRightClick={onContinue}
       drawerContent={
@@ -20,7 +20,7 @@ const SessionTimeoutModal = ({ isOpen, onContinue, onLogout }) => {
             </svg>
           </div>
           <p className="text-gray-600 text-sm leading-relaxed">
-            Your session is about to expire due to inactivity. Would you like to stay logged in or logout?
+            Your session is about to expire. Click <strong>Continue Session</strong> to extend your session and keep working, or Logout to exit.
           </p>
         </div>
       }

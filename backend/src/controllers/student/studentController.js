@@ -3151,3 +3151,15 @@ exports.getStudentLevelHistory = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// ✅ Delete Individual Task from Student's Board (only affects this student)
+exports.deleteStudentTask = async (req, res) => {
+  try {
+    const { id, taskId } = req.params;
+    const { deleteStudentTaskService } = require("../../services/taskAssignmentService");
+    const result = await deleteStudentTaskService(id, taskId, req.user);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};

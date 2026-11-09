@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Student = require("../models/student/Student");
 const Session = require("../models/Session");
 const Level = require("../models/department/Level");
@@ -824,6 +825,76 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
   return studentTask;
 };
 
+/**
+ * Delete an individual task from a specific student's task board.
+ * IMPORTANT: This only removes the task for the target student (StudentTask document).
+ * Master Task (syllabus) and other students' tasks are NOT affected.
+ */
+const deleteStudentTaskService = async (studentId, taskId, actor = null) => {
+  if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(taskId)) {
+    throw new Error("Invalid student ID or task ID");
+  }
+
+  const student = await Student.findById(studentId).select("firstName lastName name prkey sessionId currentLevelId currentSubLevelId");
+  if (!student) {
+    throw new Error("Student not found");
+  }
+
+  // Find this student's specific task (by studentTaskId _id or taskId)
+  const studentTask = await StudentTask.findOne({
+    studentId,
+    $or: [{ _id: taskId }, { taskId }]
+  });
+
+  if (!studentTask) {
+    throw new Error("Task not found on this student's board");
+  }
+
+  const taskTitle = studentTask.title || "Task";
+  const studentDisplayName = `${student.firstName || student.name || "Student"} ${student.lastName || ""}`.trim();
+
+  // Delete ONLY this student's task document
+  await StudentTask.deleteOne({ _id: studentTask._id });
+
+  // Recalculate level progress stats for this student
+  await syncStudentLevelProgressStats(studentId).catch(() => {});
+
+  // Audit event log
+  try {
+    const actorId = actor?.id || actor?._id || null;
+    const actorName = actor?.name || "Staff";
+    const actorRole = actor?.role || "";
+
+    await StudentEventLog.create({
+      studentId,
+      type: "task",
+      action: "task_deleted_from_board",
+      title: "Task Deleted from Student Board",
+      description: `Task "${taskTitle}" was deleted from ${studentDisplayName}'s board by ${actorName}`,
+      meta: {
+        studentTaskId: studentTask._id,
+        taskId: studentTask.taskId,
+        taskTitle,
+        subjectName: studentTask.subjectName,
+        status: studentTask.status,
+        isExtra: Boolean(studentTask.isExtra)
+      },
+      createdBy: actorId,
+      createdByName: actorName,
+      createdByRole: actorRole,
+      createdAt: new Date()
+    });
+  } catch (logErr) {
+    console.warn("Failed to create task deletion event log:", logErr.message);
+  }
+
+  return {
+    success: true,
+    message: `Task "${taskTitle}" deleted for ${studentDisplayName}`,
+    deletedTaskId: studentTask._id
+  };
+};
+
 const syncSyllabusTasksToStudents = async (syllabusVersionId) => {
   const syllabusVersion = await SyllabusVersion.findById(syllabusVersionId).select("sessionId levelId subLevelId");
   if (!syllabusVersion) {
@@ -1112,6 +1183,7 @@ module.exports = {
   getStudentTaskSummary,
   createProgressSnapshot,
   updateStudentTaskStatus,
+  deleteStudentTaskService,
   syncSyllabusTasksToStudents,
   syncTasksToSubLevelStudents,
   syncTaskToStudents,

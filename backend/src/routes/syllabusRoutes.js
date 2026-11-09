@@ -9,7 +9,7 @@ const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
 const Task = require("../models/syllabus/Task");
 const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
-const { updateStudentTaskStatus } = require("../services/taskAssignmentService");
+const { updateStudentTaskStatus, deleteStudentTaskService } = require("../services/taskAssignmentService");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
 
@@ -101,6 +101,15 @@ router.patch("/students/:studentId/tasks/:taskId", verifyToken, checkRole(writeR
   try {
     const result = await updateStudentTaskStatus(req.params.studentId, req.params.taskId, { ...req.body, actor: req.user });
     res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+router.delete("/students/:studentId/tasks/:taskId", verifyToken, checkRole(writeRoles), async (req, res) => {
+  try {
+    const result = await deleteStudentTaskService(req.params.studentId, req.params.taskId, req.user);
+    res.json(result);
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }

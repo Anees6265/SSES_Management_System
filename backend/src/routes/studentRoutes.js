@@ -150,6 +150,7 @@ router.patch("/:id/mark-dummy", ...auth, studentController.markDummy);
 // Syllabus Tasks
 router.get("/:id/tasks", ...auth, studentController.getStudentTasks);
 router.get("/:id/tasks/sublevel/:subLevelId", ...auth, studentController.getStudentTasksBySubLevel);
+router.delete("/:id/tasks/:taskId", ...auth, studentController.deleteStudentTask);
 
 // Extra Tasks (outside syllabus, individual student only)
 router.post("/:id/extra-tasks", ...auth, studentController.assignExtraTask);

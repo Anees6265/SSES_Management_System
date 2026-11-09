@@ -4,7 +4,7 @@ import {
     MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
     MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified,
-    MdExpandMore, MdCheck, MdHistory, MdTopic, MdAssignment
+    MdExpandMore, MdCheck, MdHistory, MdTopic, MdAssignment, MdDeleteOutline, MdDelete
 } from "react-icons/md";
 import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
@@ -13,6 +13,7 @@ import {
     useGetNotificationsQuery,
     useGetNewStudentTasksQuery,
     useAssignExtraTaskMutation,
+    useDeleteStudentTaskMutation,
     useGetSyllabusVersionWithHierarchyQuery,
     useGetStudentLevelHistoryQuery
 } from "../../../../redux/api/authApi";
@@ -173,7 +174,7 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
 };
 
 // ── Task Card ─────────────────────────────────────────────────────────────────
-const TaskCard = ({ task, index, onDragStart, onStatusChange }) => {
+const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) => {
     const priority = task.priority || "medium";
     const isCompleted = task.status === "completed";
     const isInProgress = task.status === "inProgress";
@@ -192,7 +193,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange }) => {
             onDragStart={() => onDragStart(task)}
             className={`bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-grab active:cursor-grabbing select-none space-y-3 ${activeBorderClass}`}
         >
-            {/* Header: S.No + Priority Badge + Status Dropdown */}
+            {/* Header: S.No + Priority Badge + Status Dropdown + Delete Option */}
             <div className="flex items-center justify-between gap-2 pb-0.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                     <span
@@ -207,10 +208,23 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange }) => {
                     </span>
                 </div>
 
-                <StatusDropdown
-                    currentStatus={task.status || "pending"}
-                    onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
-                />
+                <div className="flex items-center gap-1 shrink-0">
+                    <StatusDropdown
+                        currentStatus={task.status || "pending"}
+                        onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
+                    />
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTask?.(task);
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-150 cursor-pointer"
+                        title="Delete task for this student"
+                    >
+                        <MdDeleteOutline size={15} />
+                    </button>
+                </div>
             </div>
 
             {/* Title */}
@@ -587,6 +601,9 @@ const StudentTaskBoard = () => {
     const [dragOver, setDragOver] = useState(null);
     const [saving, setSaving] = useState(false);
     const [showExtraModal, setShowExtraModal] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [deletingTask, setDeletingTask] = useState(false);
+    const [deleteStudentTaskMutation] = useDeleteStudentTaskMutation();
     const [activeMobileTab, setActiveMobileTab] = useState("all");
     const [showNotifications, setShowNotifications] = useState(false);
     const { data: boardNotifsData } = useGetNotificationsQuery(
@@ -840,6 +857,32 @@ const StudentTaskBoard = () => {
             setTasks(null);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const confirmDeleteTask = async (task) => {
+        if (!task || !studentId) return;
+        setDeletingTask(true);
+        try {
+            const targetTaskId = task._id || task.taskId;
+            await deleteStudentTaskMutation({
+                studentId,
+                taskId: targetTaskId
+            }).unwrap();
+
+            // Optimistically update local tasks state
+            setTasks(prev => {
+                const base = prev || allTasks;
+                return base.filter(t => t._id !== task._id);
+            });
+
+            toast.success("Task removed from student's board successfully!");
+            setTaskToDelete(null);
+            await refetch();
+        } catch (err) {
+            toast.error(err?.data?.message || err?.message || "Failed to delete task");
+        } finally {
+            setDeletingTask(false);
         }
     };
 
@@ -1406,6 +1449,7 @@ const StudentTaskBoard = () => {
                                                         task={task}
                                                         index={colIdx}
                                                         onDragStart={handleDragStart}
+                                                        onDeleteTask={(t) => setTaskToDelete(t)}
                                                         onStatusChange={(t, st, extra = {}) => {
                                                             if (st === "completed" && (t.marks === null || t.marks === undefined) && extra.marks === undefined) {
                                                                 toast.error("Please rate/mark the task before completing it!");
@@ -1434,6 +1478,93 @@ const StudentTaskBoard = () => {
                 title="Task Board Notifications"
                 subtitle={`${studentName} • Practical task alerts & level status`}
             />
+
+            {/* Delete Task Confirmation Modal */}
+            {taskToDelete && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150"
+                    onClick={() => !deletingTask && setTaskToDelete(null)}
+                >
+                    <div
+                        className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                <MdDeleteOutline size={22} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
+                                    Delete Task from Board?
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                    Kya aap is task ko <strong className="text-slate-800">{studentName}</strong> ke task board se delete karna chahte hain?
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Task Details Box */}
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs space-y-2">
+                            <div className="font-extrabold text-slate-800 leading-snug break-words">
+                                {taskToDelete.title}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 font-semibold">
+                                {taskToDelete.subjectName && (
+                                    <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200">
+                                        {taskToDelete.subjectName}
+                                    </span>
+                                )}
+                                {taskToDelete.status && (
+                                    <span className={`px-2 py-0.5 rounded-md uppercase font-bold text-[9px] tracking-wider ${
+                                        taskToDelete.status === "completed"
+                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                            : taskToDelete.status === "inProgress"
+                                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                            : "bg-slate-100 text-slate-700 border border-slate-200"
+                                    }`}>
+                                        {taskToDelete.status === "inProgress" ? "In Progress" : taskToDelete.status}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Student-only Deletion Notice */}
+                        <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-3 text-[11.5px] text-amber-900 leading-relaxed font-medium flex items-start gap-2.5">
+                            <span className="text-amber-600 text-sm mt-0.5 shrink-0">ℹ️</span>
+                            <span>
+                                <strong>Dhyan dein:</strong> Yeh task sirf <span className="font-bold underline">{studentName}</span> ke task board se delete hoga. Dusre students ke task board aur master curriculum par koi farq nahi padega.
+                            </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-2.5 pt-1">
+                            <button
+                                type="button"
+                                disabled={deletingTask}
+                                onClick={() => setTaskToDelete(null)}
+                                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={deletingTask}
+                                onClick={() => confirmDeleteTask(taskToDelete)}
+                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                {deletingTask ? (
+                                    "Deleting..."
+                                ) : (
+                                    <>
+                                        <MdDeleteOutline size={15} />
+                                        <span>Delete Task</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

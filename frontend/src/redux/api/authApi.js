@@ -442,6 +442,14 @@ export const authApi = createApi({
       providesTags: (result, error, { id }) => [{ type: 'Student', id }],
     }),
 
+    deleteStudentTask: builder.mutation({
+      query: ({ studentId, taskId }) => ({
+        url: `/students/${studentId}/tasks/${taskId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { studentId }) => [{ type: 'Student', id: studentId }, 'Student'],
+    }),
+
     promoteNewStudent: builder.mutation({
       query: (id) => ({ url: `/students/${id}/promote`, method: 'POST' }),
       invalidatesTags: (result, error, id) => [{ type: 'Student', id }, 'Student'],
@@ -2162,6 +2170,7 @@ export const {
   useGetNewStudentByIdQuery,
   useGetNewStudentStatsQuery,
   useGetNewStudentTasksQuery,
+  useDeleteStudentTaskMutation,
   usePromoteNewStudentMutation,
   useDemoteNewStudentMutation,
   useUpdateNewStudentReadinessMutation,

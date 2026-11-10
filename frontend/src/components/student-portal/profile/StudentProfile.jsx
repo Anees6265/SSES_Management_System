@@ -352,7 +352,7 @@ export default function StudentProfile() {
                             )}
 
                             <div 
-                                onClick={() => navigate("/student/permissions")}
+                                onClick={() => navigate("/student-portal/leave-request")}
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-800 cursor-pointer hover:bg-amber-100 transition"
                                 title="View Leave Requests"
                             >
@@ -521,8 +521,8 @@ export default function StudentProfile() {
                     </div>
                     <button
                         type="button"
-                        onClick={() => navigate("/student/permissions")}
-                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                        onClick={() => navigate("/student-portal/leave-request")}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                         <span>View / Apply Leave Requests</span>
                         <Calendar size={13} />
@@ -653,7 +653,7 @@ export default function StudentProfile() {
                             </div>
                             <div>
                                 <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Leave Requests Overview</h3>
-                                <p className="text-[11px] text-gray-400">Record of all permissions and leave applications</p>
+                                <p className="text-[11px] text-gray-400">Record of all leave requests and applications</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -662,10 +662,10 @@ export default function StudentProfile() {
                             </span>
                             <button
                                 type="button"
-                                onClick={() => navigate("/student/permissions")}
+                                onClick={() => navigate("/student-portal/leave-request")}
                                 className="px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
                             >
-                                <span>View Permissions</span>
+                                <span>View Leave Requests</span>
                                 <Calendar size={13} />
                             </button>
                         </div>

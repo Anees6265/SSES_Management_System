@@ -80,6 +80,8 @@ function App() {
             <Route path="syllabus" element={<StudentSyllabus />} />
             <Route path="tasks" element={<StudentTasks />} />
             <Route path="progress" element={<StudentLevelHistory />} />
+            <Route path="leave-request" element={<StudentPermissions />} />
+            <Route path="leave-requests" element={<StudentPermissions />} />
             <Route path="permissions" element={<StudentPermissions />} />
             <Route path="documents" element={<StudentDocuments />} />
             <Route path="placement" element={<StudentPlacement />} />

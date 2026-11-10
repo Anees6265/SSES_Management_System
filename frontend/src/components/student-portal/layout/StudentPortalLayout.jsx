@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
-  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen
+  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
@@ -11,16 +11,16 @@ import SecurityHelmet from "../../shared/SecurityHelmet";
 import NotificationBell from "../../shared/notifications/NotificationBell";
 
 const navItems = [
-  { to: "/student-portal/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/student-portal/syllabus",    icon: BookOpen,        label: "My Syllabus" },
-  { to: "/student-portal/tasks",        icon: ClipboardList,   label: "My Tasks" },
-  { to: "/student-portal/progress",     icon: TrendingUp,      label: "Level History" },
-  { to: "/student-portal/permissions",  icon: ShieldCheck,     label: "Permissions" },
-  { to: "/student-portal/documents",    icon: FolderOpen,      label: "Documents" },
-  { to: "/student-portal/placement",    icon: Award,           label: "Placement" },
-  { to: "/student-portal/report-card",  icon: FileText,        label: "Report Card" },
-  { to: "/student-portal/faculty",      icon: Users,           label: "My Faculty" },
-  { to: "/student-portal/profile",      icon: User,            label: "My Profile" },
+  { to: "/student-portal/dashboard",     icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/student-portal/syllabus",      icon: BookOpen,        label: "My Syllabus" },
+  { to: "/student-portal/tasks",         icon: ClipboardList,   label: "My Tasks" },
+  { to: "/student-portal/progress",      icon: TrendingUp,      label: "Level History" },
+  { to: "/student-portal/leave-request", icon: Calendar,        label: "Leave Request" },
+  { to: "/student-portal/documents",     icon: FolderOpen,      label: "Documents" },
+  { to: "/student-portal/placement",     icon: Award,           label: "Placement" },
+  { to: "/student-portal/report-card",   icon: FileText,        label: "Report Card" },
+  { to: "/student-portal/faculty",       icon: Users,           label: "My Faculty" },
+  { to: "/student-portal/profile",       icon: User,            label: "My Profile" },
 ];
 
 // ── Logout Confirmation Modal ────────────────────────────────────────────────

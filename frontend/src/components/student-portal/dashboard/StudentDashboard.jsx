@@ -485,7 +485,7 @@ export default function StudentDashboard() {
                         <EmptyState
                             icon={MdAccessTime}
                             title="No activity yet"
-                            subtitle="Task submissions, level updates, and permissions will show up here."
+                            subtitle="Task submissions, level updates, and leave requests will show up here."
                             compact
                         />
                     ) : (

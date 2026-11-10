@@ -16,6 +16,13 @@ import {
 import EmptyState from "../../shared/empty-state/EmptyState";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import { usePersistentState } from "../../../hooks/usePersistentFilters";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+
+const SORT_OPTIONS = [
+    { value: "newest", label: "Newest First" },
+    { value: "oldest", label: "Oldest First" },
+    { value: "duration", label: "Longest Duration" },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -273,7 +280,7 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
                                 {colCfg.fullLabel}
                             </span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5">Permission Details</h3>
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 mt-0.5">Leave Request Details</h3>
                     </div>
                     <button
                         onClick={onClose}
@@ -488,6 +495,14 @@ const ApplyModal = ({ onClose }) => {
     const [applyPermission, { isLoading }] = useApplyMyPermissionMutation();
     const { data: facultiesRes, isLoading: facultiesLoading } = useGetFacultiesQuery();
 
+    const facultyOptions = useMemo(() => [
+        { value: "", label: "— Select Faculty Member —" },
+        ...(facultiesRes?.data || []).map(fac => ({
+            value: fac._id,
+            label: `${fac.name} (${fac.role?.toUpperCase() || "FACULTY"})${fac.position ? ` · ${fac.position}` : ""}`
+        }))
+    ], [facultiesRes]);
+
     const leaveDays = calculateDays(form.fromDate, form.toDate);
     const isDateInvalid = form.fromDate && form.toDate && new Date(form.toDate) < new Date(form.fromDate);
 
@@ -559,10 +574,10 @@ const ApplyModal = ({ onClose }) => {
                 ...form,
                 imageURL: imageURL || undefined
             }).unwrap();
-            toast.success("Permission request submitted successfully!");
+            toast.success("Leave request submitted successfully!");
             onClose();
         } catch (err) {
-            toast.error(err?.data?.message || "Failed to submit permission application.");
+            toast.error(err?.data?.message || "Failed to submit leave request.");
         }
     };
 
@@ -580,7 +595,7 @@ const ApplyModal = ({ onClose }) => {
                             <Plus size={18} />
                         </div>
                         <div>
-                            <h3 className="text-xs sm:text-sm font-bold text-gray-900">Apply for Permission</h3>
+                            <h3 className="text-xs sm:text-sm font-bold text-gray-900">Apply for Leave Request</h3>
                             <p className="text-[10px] sm:text-xs text-gray-400">Leave request for faculty endorsement</p>
                         </div>
                     </div>
@@ -623,7 +638,7 @@ const ApplyModal = ({ onClose }) => {
                             value={form.reason}
                             onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
                             rows={3}
-                            placeholder="Enter reason for leave / permission..."
+                            placeholder="Enter reason for leave request..."
                             className={`${inputClasses} resize-none`}
                         />
                     </div>
@@ -680,23 +695,14 @@ const ApplyModal = ({ onClose }) => {
                         <label className={labelClasses}>
                             <span>Assign Faculty Member <span className="text-red-500">*</span></span>
                         </label>
-                        <div className="relative">
-                            <select
-                                value={form.assignedFacultyId}
-                                onChange={e => setForm(p => ({ ...p, assignedFacultyId: e.target.value }))}
-                                className={`${inputClasses} appearance-none cursor-pointer pr-8 font-medium`}
-                            >
-                                <option value="">— Select Faculty —</option>
-                                {(facultiesRes?.data || []).map(fac => (
-                                    <option key={fac._id} value={fac._id}>
-                                        {fac.name} ({fac.role?.toUpperCase() || "FACULTY"}) {fac.position ? `· ${fac.position}` : ""}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                <ChevronRight size={14} className="rotate-90" />
-                            </div>
-                        </div>
+                        <SelectDropdown
+                            value={form.assignedFacultyId}
+                            onChange={val => setForm(p => ({ ...p, assignedFacultyId: val }))}
+                            options={facultyOptions}
+                            placeholder="— Select Faculty Member —"
+                            buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
+                            menuClassName="w-full text-xs sm:text-sm max-h-52 shadow-xl"
+                        />
                     </div>
 
                     {/* File Upload Dropzone */}
@@ -813,7 +819,7 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
 
                 {/* Reason */}
                 <h4 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2 mb-1.5 group-hover:text-orange-600 transition-colors">
-                    {item.reason || "Permission application"}
+                    {item.reason || "Leave request"}
                 </h4>
 
                 {/* Dates */}
@@ -1081,7 +1087,7 @@ export default function StudentPermissions() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="text-base sm:text-lg font-bold text-gray-900">Permissions</h2>
+                                <h2 className="text-base sm:text-lg font-bold text-gray-900">Leave Requests</h2>
                                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
                                     {totalRequests}
                                 </span>
@@ -1098,7 +1104,7 @@ export default function StudentPermissions() {
                                 <input
                                     value={search}
                                     onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search permissions..."
+                                    placeholder="Search leave requests..."
                                     className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
                                 />
                                 {search && (
@@ -1113,10 +1119,10 @@ export default function StudentPermissions() {
 
                             <button
                                 onClick={() => setApplyOpen(true)}
-                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs"
+                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs cursor-pointer"
                             >
                                 <Plus size={16} />
-                                <span>Apply</span>
+                                <span>Apply Leave</span>
                             </button>
                         </div>
                     </div>
@@ -1251,9 +1257,9 @@ export default function StudentPermissions() {
                     <div className="space-y-2">
                         {byStatus[mobileTab].length === 0 ? (
                             <EmptyState
-                                icon={ShieldCheck}
+                                icon={Calendar}
                                 title={`No ${mobileTab} requests found`}
-                                subtitle={mobileTab === "pending" ? "Submit a new permission or leave request." : `No ${mobileTab} permission requests to display.`}
+                                subtitle={mobileTab === "pending" ? "Submit a new leave request." : `No ${mobileTab} leave requests to display.`}
                                 actionText={mobileTab === "pending" ? "Apply Now" : undefined}
                                 onAction={mobileTab === "pending" ? () => setApplyOpen(true) : undefined}
                                 compact
@@ -1274,10 +1280,10 @@ export default function StudentPermissions() {
                 {/* Overall Empty State on Mobile */}
                 {sortedPermissions.length === 0 && (
                     <EmptyState
-                        icon={ShieldCheck}
-                        title={search ? "No matching permissions found" : "No permission requests yet"}
+                        icon={Calendar}
+                        title={search ? "No matching leave requests found" : "No leave requests yet"}
                         subtitle={search ? "Try clearing your search query or reset filter." : "Submit a leave request for fast faculty approval."}
-                        actionText={!search ? "Apply for Permission" : undefined}
+                        actionText={!search ? "Apply for Leave" : undefined}
                         onAction={!search ? () => setApplyOpen(true) : undefined}
                     />
                 )}
@@ -1329,15 +1335,17 @@ export default function StudentPermissions() {
 
                     {/* Sort & View Switcher */}
                     <div className="flex items-center gap-2">
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="text-xs font-semibold bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-gray-700 focus:outline-none focus:border-orange-400 cursor-pointer"
-                        >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                            <option value="duration">Longest Duration</option>
-                        </select>
+                        <div className="w-36 sm:w-44">
+                            <SelectDropdown
+                                value={sortBy}
+                                onChange={val => setSortBy(val)}
+                                options={SORT_OPTIONS}
+                                placeholder="Sort by"
+                                align="right"
+                                buttonClassName="w-full flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-gray-700 font-semibold transition-all shadow-2xs focus:outline-none cursor-pointer"
+                                menuClassName="w-40 sm:w-44 text-xs shadow-xl"
+                            />
+                        </div>
 
                         <div className="flex items-center p-0.5 bg-gray-100 rounded-xl border border-gray-200">
                             <button
@@ -1365,10 +1373,10 @@ export default function StudentPermissions() {
                 {/* View Content: Kanban vs List */}
                 {desktopFilteredPermissions.length === 0 ? (
                     <EmptyState
-                        icon={ShieldCheck}
-                        title="No permission requests found"
-                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a new permission or leave request to get started."}
-                        actionText={!search ? "Apply for Permission" : undefined}
+                        icon={Calendar}
+                        title="No leave requests found"
+                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a new leave request to get started."}
+                        actionText={!search ? "Apply for Leave" : undefined}
                         onAction={!search ? () => setApplyOpen(true) : undefined}
                     />
                 ) : viewMode === "list" ? (

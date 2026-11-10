@@ -57,27 +57,71 @@ const OtpEnter = () => {
       const response = await verifyOtp({ email, otp: finalOtp }).unwrap();
       console.log("✅ OTP Response:", response);
 
-      const { token, user } = response;
+      const { token, refreshToken, user, student, isStudent } = response;
 
-      if (!token || !user) {
+      if (!token || (!user && !student)) {
         toast.error("Token or user data missing in response");
         return;
       }
 
-      // ✅ Encrypt token
+      // Clear any prior tokens to prevent role collisions
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("studentToken");
+      localStorage.removeItem("studentRefreshToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("studentData");
+      localStorage.removeItem("role");
+      localStorage.removeItem("positionRole");
+
       const encryptedToken = CryptoJS.AES.encrypt(token, secretKey).toString();
+      const encryptedRefreshToken = refreshToken
+        ? CryptoJS.AES.encrypt(refreshToken, secretKey).toString()
+        : "";
 
-      // ✅ Store everything consistently like login
-      localStorage.setItem("token", encryptedToken);
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("role", user.role);
-      localStorage.setItem("positionRole", user.positionRole);
+      const staffRoles = [
+        "superadmin",
+        "admin",
+        "faculty",
+        "hod",
+        "placement_officer",
+        "coordinator",
+        "cordinator",
+      ];
+      const userRole = (user?.role || (isStudent ? "student" : ""))
+        .toLowerCase()
+        .trim()
+        .replace(/[\s-]+/g, "_");
+      const isStaff = staffRoles.includes(userRole);
 
-      toast.success("Login successful!");
+      if (isStaff && !isStudent) {
+        localStorage.setItem("token", encryptedToken);
+        if (encryptedRefreshToken) {
+          localStorage.setItem("refreshToken", encryptedRefreshToken);
+        }
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("role", user.role);
+        localStorage.setItem("positionRole", user.positionRole || "admin");
 
-      setTimeout(() => {
-        navigate("/", { replace: true });
-      }, 1000);
+        toast.success("Login successful!");
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 800);
+      } else {
+        const studentObj = student || user;
+        localStorage.setItem("studentToken", encryptedToken);
+        if (encryptedRefreshToken) {
+          localStorage.setItem("studentRefreshToken", encryptedRefreshToken);
+        }
+        localStorage.setItem("studentData", JSON.stringify(studentObj));
+        localStorage.setItem("user", JSON.stringify(studentObj));
+        localStorage.setItem("role", "student");
+
+        toast.success(`Welcome, ${studentObj.firstName || studentObj.name || "Student"}!`);
+        setTimeout(() => {
+          navigate("/student-portal/dashboard", { replace: true });
+        }, 800);
+      }
     } catch (err) {
       console.error("❌ OTP Verification Error:", err);
       setStatus({ type: "error", message: "❌ OTP is invalid or expired." });

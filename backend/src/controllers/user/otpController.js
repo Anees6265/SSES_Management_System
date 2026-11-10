@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 require('dotenv').config();
 const { generateOTP, sendEmailOtp } = require('../../services/emailService');
 const User = require('../../models/user/user');
+const Student = require('../../models/student/Student');
 const mongoose = require('mongoose');
 
 // Create a schema for storing OTPs in the database
@@ -31,8 +32,12 @@ const sendOtpToEmail = async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        let user = await User.findOne({ email });
+        let student = null;
+        if (!user) {
+          student = await Student.findOne({ email });
+          if (!student) return res.status(404).json({ message: 'User not found' });
+        }
 
         const existingRecord = await OtpModel.findOne({ email });
         if (existingRecord && existingRecord.blockedUntil && existingRecord.blockedUntil > new Date()) {
@@ -93,10 +98,67 @@ const verifyEmailOtp = async (req, res) => {
           return res.status(400).json({ message: 'Invalid OTP' });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        let user = await User.findOne({ email });
+        let student = null;
+        if (!user) {
+          student = await Student.findOne({
+            email: { $regex: new RegExp(`^${String(email).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") }
+          })
+            .populate("subDepartmentId", "name")
+            .populate("sessionId", "name")
+            .populate("currentLevelId", "name order")
+            .populate("currentSubLevelId", "name order");
 
-            // generate JWT token
+          if (!student) return res.status(404).json({ message: 'User not found' });
+        }
+
+        await OtpModel.deleteOne({ email }); // Clear used OTP from DB
+
+        if (student) {
+          const token = jwt.sign(
+            { id: student._id, prkey: student.prkey, role: "student" },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+          );
+          const refreshToken = jwt.sign(
+            { id: student._id, role: "student" },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+          );
+
+          return res.status(200).json({
+            message: 'OTP verified successfully. Login success.',
+            token,
+            studentToken: token,
+            refreshToken,
+            studentRefreshToken: refreshToken,
+            isStudent: true,
+            role: "student",
+            student: {
+              id: student._id,
+              prkey: student.prkey,
+              firstName: student.firstName,
+              lastName: student.lastName,
+              email: student.email,
+              mobileNumber: student.mobileNumber,
+              department: student.subDepartmentId?.name || "Student",
+              course: student.subDepartmentId?.name || "",
+              session: student.sessionId?.name || "",
+              currentLevel: student.currentLevelId?.name || "",
+              currentSubLevel: student.currentSubLevelId?.name || "",
+              profileImage: student.image || "",
+            },
+            user: {
+              id: student._id,
+              name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+              email: student.email,
+              role: "student",
+              department: student.subDepartmentId?.name || "Student",
+            },
+          });
+        }
+
+        // generate JWT token for staff user
         const token = jwt.sign(
             { 
                 id: user._id, 
@@ -116,12 +178,12 @@ const verifyEmailOtp = async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        await OtpModel.deleteOne({ email }); // Clear used OTP from DB
-
         res.status(200).json({
             message: 'OTP verified successfully. Login success.',
             token,
             refreshToken,
+            isStudent: false,
+            role: user.role,
             user: {
                 id: user._id,
                 name: user.name,

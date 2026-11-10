@@ -261,9 +261,207 @@ exports.login = async (req, res) => {
 
     if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
-    email = email.toLowerCase();
-    const user = await User.findOne({ email });
-    if (!user) {
+    email = email.toLowerCase().trim();
+    let user = await User.findOne({ email });
+
+    // 1. If found in User collection
+    if (user) {
+      if (!user.isActive) {
+        logActivity({
+          req,
+          user,
+          action: "LOGIN",
+          module: "Auth",
+          description: `Inactive user ${user.email} attempted login`,
+          status: "FAILED",
+          severity: "WARNING",
+        });
+        return res.status(401).json({ message: "Account is inactive. Please contact administrator." });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        const fails = recordLoginFailure(email);
+        logActivity({
+          req,
+          user: { name: user.name, email: user.email, role: user.role, department: user.department, departmentId: user.departmentId },
+          action: fails >= 5 ? "SECURITY_ALERT" : "LOGIN",
+          module: "Auth",
+          description: fails >= 5 ? `Repeated incorrect password attempts (${fails}) for user: ${user.email}` : `Incorrect password attempt for user: ${user.email}`,
+          status: fails >= 5 ? "BLOCKED" : "FAILED",
+          severity: fails >= 5 ? "CRITICAL" : "WARNING",
+          isSecurityAlert: fails >= 5,
+          threatType: fails >= 5 ? "BRUTE_FORCE" : null,
+        });
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      clearLoginFailure(email);
+
+      const staffRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator", "cordinator"];
+      const normalizedRole = (user.role || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+      const isStaff = staffRoles.includes(normalizedRole);
+
+      if (isStaff) {
+        // Self-healing: assign default permissions if missing, or merge and upgrade defaults
+        const defaultPerms = getPermissionsForRole(user.role);
+        if (!user.permissions || user.permissions.length === 0) {
+          user.permissions = defaultPerms;
+        } else {
+          const userPermMap = new Map();
+          (user.permissions || []).forEach((p) => {
+            if (p && p.feature) userPermMap.set(p.feature, new Set(p.access || []));
+          });
+          let permsChanged = false;
+          for (const def of defaultPerms) {
+            if (!userPermMap.has(def.feature)) {
+              user.permissions.push(def);
+              permsChanged = true;
+            } else {
+              const existingAccessSet = userPermMap.get(def.feature);
+              const missingActions = (def.access || []).filter((a) => !existingAccessSet.has(a));
+              if (missingActions.length > 0) {
+                const targetPerm = user.permissions.find((p) => p.feature === def.feature);
+                if (targetPerm) {
+                  targetPerm.access = Array.from(new Set([...(targetPerm.access || []), ...missingActions]));
+                  permsChanged = true;
+                }
+              }
+            }
+          }
+          if (permsChanged) {
+            user.markModified("permissions");
+          }
+        }
+
+        const token = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        logActivity({
+          req,
+          user,
+          action: "LOGIN",
+          module: "Auth",
+          description: `${(user.role || "").toUpperCase()} ${user.name} logged into the system`,
+          status: "SUCCESS",
+          severity: "INFO",
+        });
+
+        return res.status(200).json({
+          message: "Login successful",
+          token,
+          refreshToken,
+          isStudent: false,
+          role: user.role,
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            position: user.position,
+            department: ["superadmin", "admin"].includes(user.role) ? "SSISM" : user.department,
+            departmentId: ["superadmin", "admin"].includes(user.role) ? null : user.departmentId,
+            profileImage: user.profileImage,
+          },
+        });
+      } else {
+        // Non-staff registered user -> route by default to student portal
+        const student = await Student.findOne({
+          email: { $regex: new RegExp(`^${escapeRegex(email)}$`, "i") }
+        })
+          .populate("subDepartmentId", "name")
+          .populate("sessionId", "name")
+          .populate("currentLevelId", "name order")
+          .populate("currentSubLevelId", "name order");
+
+        const studentId = student ? student._id : user._id;
+        const studentPrkey = student ? student.prkey : email;
+
+        const token = jwt.sign(
+          { id: studentId, prkey: studentPrkey, role: "student" },
+          process.env.JWT_SECRET,
+          { expiresIn: "1h" }
+        );
+        const refreshToken = jwt.sign(
+          { id: studentId, role: "student" },
+          process.env.JWT_SECRET,
+          { expiresIn: "1h" }
+        );
+
+        logActivity({
+          req,
+          user: {
+            id: studentId,
+            name: student ? `${student.firstName || ""} ${student.lastName || ""}`.trim() : user.name,
+            email: user.email,
+            role: "student",
+            department: student?.subDepartmentId?.name || "Student",
+          },
+          action: "LOGIN",
+          module: "Auth",
+          description: `User ${user.name} (${user.email}) logged into the student portal`,
+          status: "SUCCESS",
+          severity: "INFO",
+        });
+
+        return res.status(200).json({
+          message: "Login successful",
+          token,
+          studentToken: token,
+          refreshToken,
+          studentRefreshToken: refreshToken,
+          isStudent: true,
+          role: "student",
+          student: student ? {
+            id: student._id,
+            prkey: student.prkey,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            mobileNumber: student.mobileNumber,
+            department: student.subDepartmentId?.name || "Student",
+            course: student.subDepartmentId?.name || "",
+            session: student.sessionId?.name || "",
+            currentLevel: student.currentLevelId?.name || "",
+            currentSubLevel: student.currentSubLevelId?.name || "",
+            profileImage: student.image || "",
+          } : {
+            id: user._id,
+            prkey: email,
+            firstName: user.name,
+            lastName: "",
+            email: user.email,
+            mobileNumber: user.mobileNo || "",
+            department: "Student",
+            course: "",
+            session: "",
+            currentLevel: "",
+            currentSubLevel: "",
+            profileImage: user.profileImage || "",
+          },
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: "student",
+            department: "Student",
+          },
+        });
+      }
+    }
+
+    // 2. Not in User collection: check Student collection
+    const student = await Student.findOne({
+      email: { $regex: new RegExp(`^${escapeRegex(email)}$`, "i") }
+    })
+      .populate("subDepartmentId", "name")
+      .populate("sessionId", "name")
+      .populate("currentLevelId", "name order")
+      .populate("currentSubLevelId", "name order");
+
+    if (!student) {
       const fails = recordLoginFailure(email);
       logActivity({
         req,
@@ -278,28 +476,33 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    if (!user.isActive) {
-      logActivity({
-        req,
-        user,
-        action: "LOGIN",
-        module: "Auth",
-        description: `Inactive user ${user.email} attempted login`,
-        status: "FAILED",
-        severity: "WARNING",
-      });
-      return res.status(401).json({ message: "Account is inactive. Please contact administrator." });
+    if (student.status === "Dropped") {
+      return res.status(403).json({ message: "Your account has been deactivated. Contact admin." });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    let isMatch = false;
+    if (student.password) {
+      isMatch = await bcrypt.compare(password, student.password);
+    } else {
+      if (password === "ssism@123") {
+        isMatch = true;
+      }
+    }
+
     if (!isMatch) {
       const fails = recordLoginFailure(email);
       logActivity({
         req,
-        user: { name: user.name, email: user.email, role: user.role, department: user.department, departmentId: user.departmentId },
+        user: {
+          id: student._id,
+          name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+          email: student.email,
+          role: "student",
+          department: student.subDepartmentId?.name || "Student",
+        },
         action: fails >= 5 ? "SECURITY_ALERT" : "LOGIN",
         module: "Auth",
-        description: fails >= 5 ? `Repeated incorrect password attempts (${fails}) for user: ${user.email}` : `Incorrect password attempt for user: ${user.email}`,
+        description: fails >= 5 ? `Repeated incorrect password attempts (${fails}) for student: ${student.email}` : `Incorrect password attempt for student: ${student.email}`,
         status: fails >= 5 ? "BLOCKED" : "FAILED",
         severity: fails >= 5 ? "CRITICAL" : "WARNING",
         isSecurityAlert: fails >= 5,
@@ -310,65 +513,65 @@ exports.login = async (req, res) => {
 
     clearLoginFailure(email);
 
-    // Self-healing: assign default permissions if missing, or merge and upgrade defaults
-    const defaultPerms = getPermissionsForRole(user.role);
-    if (!user.permissions || user.permissions.length === 0) {
-      user.permissions = defaultPerms;
-    } else {
-      const userPermMap = new Map();
-      (user.permissions || []).forEach((p) => {
-        if (p && p.feature) userPermMap.set(p.feature, new Set(p.access || []));
-      });
-      let permsChanged = false;
-      for (const def of defaultPerms) {
-        if (!userPermMap.has(def.feature)) {
-          user.permissions.push(def);
-          permsChanged = true;
-        } else {
-          const existingAccessSet = userPermMap.get(def.feature);
-          const missingActions = (def.access || []).filter((a) => !existingAccessSet.has(a));
-          if (missingActions.length > 0) {
-            const targetPerm = user.permissions.find((p) => p.feature === def.feature);
-            if (targetPerm) {
-              targetPerm.access = Array.from(new Set([...(targetPerm.access || []), ...missingActions]));
-              permsChanged = true;
-            }
-          }
-        }
-      }
-      if (permsChanged) {
-        user.markModified("permissions");
-      }
-    }
+    const token = jwt.sign(
+      { id: student._id, prkey: student.prkey, role: "student" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-    const token = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-    user.refreshToken = refreshToken;
-    await user.save();
+    const refreshToken = jwt.sign(
+      { id: student._id, role: "student" },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
     logActivity({
       req,
-      user,
+      user: {
+        id: student._id,
+        name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+        email: student.email,
+        role: "student",
+        department: student.subDepartmentId?.name || "Student",
+        departmentId: student.subDepartmentId?._id || null,
+      },
       action: "LOGIN",
       module: "Auth",
-      description: `${(user.role || "").toUpperCase()} ${user.name} logged into the system`,
+      description: `Student ${student.firstName || ""} ${student.lastName || ""} (${student.email}) logged into the student portal`,
       status: "SUCCESS",
       severity: "INFO",
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Login successful",
       token,
+      studentToken: token,
       refreshToken,
+      studentRefreshToken: refreshToken,
+      isStudent: true,
+      role: "student",
+      isDefaultPassword: password === "ssism@123",
+      student: {
+        id: student._id,
+        prkey: student.prkey,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        email: student.email,
+        mobileNumber: student.mobileNumber,
+        department: student.subDepartmentId?.name || "Student",
+        course: student.subDepartmentId?.name || "",
+        session: student.sessionId?.name || "",
+        currentLevel: student.currentLevelId?.name || "",
+        currentSubLevel: student.currentSubLevelId?.name || "",
+        profileImage: student.image || "",
+        isDefaultPassword: password === "ssism@123",
+      },
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        position: user.position,
-        department: ["superadmin", "admin"].includes(user.role) ? "SSISM" : user.department,
-        departmentId: ["superadmin", "admin"].includes(user.role) ? null : user.departmentId,
-        profileImage: user.profileImage,
+        id: student._id,
+        name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email,
+        email: student.email,
+        role: "student",
+        department: student.subDepartmentId?.name || "Student",
       },
     });
   } catch (error) {

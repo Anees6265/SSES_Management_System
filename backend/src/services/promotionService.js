@@ -383,6 +383,10 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
           $set: {
             status: "completed",
             completedAt: new Date(),
+            promotedBy: actorId,
+            promotedByName: actorUser?.name || (isAuto ? "System (Auto Promotion)" : "Faculty Evaluator"),
+            promotedByRole: actorUser?.role || (isAuto ? "system" : "faculty"),
+            promotedAt: new Date(),
             totalTasks: prevTasks.length,
             completedTasksCount: completedTasks.length,
             completionPercentage: prevTasks.length > 0 ? Math.round((completedTasks.length / prevTasks.length) * 100) : 0
@@ -867,4 +871,418 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
   };
 };
 
-module.exports = { syncStudentReadiness, promoteToNextSubLevel, demoteToPreviousSubLevel };
+/**
+ * Get Enriched Student Level History
+ * Returns comprehensive journey for every level the student has been through or is currently in:
+ * 1. Kisne promote kiya (Promoter name, role, timestamp, auto/manual flag, notes)
+ * 2. Kya kya padh kar aaya (Curriculum & topics covered in that level)
+ * 3. Kis subject ke kitne task complete karke aaya (Subject-wise task stats, marks, and completion %)
+ */
+const getEnrichedStudentLevelHistory = async (studentId) => {
+  const StudentLevelProgress = require("../models/student/StudentLevelProgress");
+
+  const student = await Student.findById(studentId)
+    .populate("sessionId", "name")
+    .populate("currentLevelId", "name order")
+    .populate("currentSubLevelId", "name order levelId")
+    .populate("subDepartmentId", "name departmentId")
+    .lean();
+
+  if (!student) {
+    return [];
+  }
+
+  // 1. Fetch raw StudentLevelProgress records
+  let history = await StudentLevelProgress.find({ studentId })
+    .populate("levelId", "name order")
+    .populate("subLevelId", "name order levelId")
+    .populate("sessionId", "name")
+    .sort({ createdAt: 1 })
+    .lean();
+
+  // 2. Fetch all student tasks across all levels
+  const allTasks = await StudentTask.find({ studentId, isActive: true })
+    .populate("levelId", "name order")
+    .populate("subLevelId", "name order levelId")
+    .sort({ createdAt: 1 })
+    .lean();
+
+  // 3. Fetch all promotion & level change logs from StudentEventLog
+  const promotionLogs = await StudentEventLog.find({
+    studentId,
+    type: { $in: ["promotion", "demotion"] }
+  }).sort({ createdAt: -1 }).lean();
+
+  // 4. Fetch all progress snapshots
+  const snapshots = await StudentProgressSnapshot.find({
+    studentId
+  }).sort({ changedAt: -1 }).lean();
+
+  // Ensure currentSubLevel is in history
+  const recordedSubLevelIds = new Set(
+    history.map(h => (h.subLevelId?._id || h.subLevelId)?.toString()).filter(Boolean)
+  );
+
+  const curSubId = (student.currentSubLevelId?._id || student.currentSubLevelId)?.toString();
+  if (curSubId && !recordedSubLevelIds.has(curSubId)) {
+    const curLevel = student.currentLevelId || (student.currentSubLevelId?.levelId ? await Level.findById(student.currentSubLevelId.levelId).lean() : null);
+    history.push({
+      _id: `current_sublevel_${curSubId}`,
+      studentId,
+      subLevelId: student.currentSubLevelId,
+      levelId: curLevel,
+      sessionId: student.sessionId,
+      status: "in_progress",
+      startedAt: student.createdAt,
+      totalTasks: 0,
+      completedTasksCount: 0,
+      completionPercentage: 0
+    });
+    recordedSubLevelIds.add(curSubId);
+  }
+
+  // Also include any sublevels where tasks exist but no StudentLevelProgress entry was created
+  const taskSubLevelMap = new Map();
+  allTasks.forEach(t => {
+    const sId = (t.subLevelId?._id || t.subLevelId)?.toString();
+    if (sId && !taskSubLevelMap.has(sId)) {
+      taskSubLevelMap.set(sId, {
+        subLevel: t.subLevelId,
+        level: t.levelId
+      });
+    }
+  });
+
+  for (const [sId, { subLevel, level }] of taskSubLevelMap.entries()) {
+    if (!recordedSubLevelIds.has(sId)) {
+      const fetchedSubLevel = subLevel || await SubLevel.findById(sId).populate("levelId", "name order").lean();
+      const fetchedLevel = level || (fetchedSubLevel?.levelId ? await Level.findById(fetchedSubLevel.levelId).lean() : null);
+      history.push({
+        _id: `task_sublevel_${sId}`,
+        studentId,
+        subLevelId: fetchedSubLevel,
+        levelId: fetchedLevel,
+        sessionId: student.sessionId,
+        status: "completed",
+        startedAt: null,
+        completedAt: null,
+        totalTasks: 0,
+        completedTasksCount: 0,
+        completionPercentage: 0
+      });
+      recordedSubLevelIds.add(sId);
+    }
+  }
+
+  // Sort history hierarchically: level.order, then sublevel.order
+  history.sort((a, b) => {
+    const lvlOrderA = a.levelId?.order ?? 0;
+    const lvlOrderB = b.levelId?.order ?? 0;
+    if (lvlOrderA !== lvlOrderB) return lvlOrderA - lvlOrderB;
+    const subOrderA = a.subLevelId?.order ?? 0;
+    const subOrderB = b.subLevelId?.order ?? 0;
+    return subOrderA - subOrderB;
+  });
+
+  // Mark currently active sublevel
+  history.forEach(item => {
+    const sId = (item.subLevelId?._id || item.subLevelId)?.toString();
+    if (sId && curSubId && sId === curSubId) {
+      item.status = "in_progress";
+      item.isCurrent = true;
+    } else {
+      item.isCurrent = false;
+      if (item.status === "in_progress" && sId !== curSubId) {
+        item.status = "completed";
+      }
+    }
+  });
+
+  // 5. Enrich each level history entry
+  const enrichedHistory = await Promise.all(history.map(async (item, index) => {
+    const subLevelIdStr = (item.subLevelId?._id || item.subLevelId)?.toString();
+    const levelIdStr = (item.levelId?._id || item.levelId)?.toString();
+
+    // A. Tasks in this sublevel
+    const subTasks = allTasks.filter(t => (t.subLevelId?._id || t.subLevelId)?.toString() === subLevelIdStr);
+
+    // B. Snapshots in this sublevel
+    const subSnapshots = snapshots.filter(s => 
+      (s.subLevelId?._id || s.subLevelId)?.toString() === subLevelIdStr ||
+      (s.levelId?._id || s.levelId)?.toString() === levelIdStr
+    );
+
+    // C. Promotion info: "KISNE PROMOTE KIYA"
+    const exitPromotionLog = promotionLogs.find(l => 
+      l.meta?.prevSubLevelId?.toString() === subLevelIdStr ||
+      (l.action?.includes("promoted") && l.description?.includes(subLevelIdStr))
+    );
+
+    const entryPromotionLog = promotionLogs.find(l => 
+      l.meta?.newSubLevelId?.toString() === subLevelIdStr
+    );
+
+    const exitSnapshot = subSnapshots.find(s => s.snapshotScope === "overall" && s.changedByName);
+    const entrySnapshot = subSnapshots.find(s => s.snapshotScope === "promotion" && s.changedByName);
+
+    let promoterName = "";
+    let promoterRole = "";
+    let promotionDate = null;
+    let promotionTitle = "";
+    let promotionNote = "";
+    let promotionType = "manual";
+
+    if (item.isCurrent) {
+      if (entryPromotionLog) {
+        promoterName = entryPromotionLog.createdByName || "";
+        promoterRole = entryPromotionLog.createdByRole || "";
+        promotionDate = entryPromotionLog.createdAt;
+        promotionTitle = entryPromotionLog.title || `Promoted to ${item.subLevelId?.name || "current level"}`;
+        promotionNote = entryPromotionLog.description || "";
+        promotionType = entryPromotionLog.meta?.isAuto ? "auto" : "manual";
+      } else if (entrySnapshot) {
+        promoterName = entrySnapshot.changedByName || "";
+        promoterRole = entrySnapshot.changedByRole || "";
+        promotionDate = entrySnapshot.changedAt;
+        promotionTitle = `Promoted to ${item.subLevelId?.name || "current level"}`;
+      } else if (index === 0) {
+        promoterName = "Academic Department";
+        promoterRole = "Initial Enrollment";
+        promotionDate = student.createdAt;
+        promotionTitle = "Starting Level";
+        promotionType = "initial";
+      } else {
+        const prevItem = history[index - 1];
+        const prevSubId = (prevItem?.subLevelId?._id || prevItem?.subLevelId)?.toString();
+        const prevExitLog = promotionLogs.find(l => l.meta?.prevSubLevelId?.toString() === prevSubId);
+        if (prevExitLog) {
+          promoterName = prevExitLog.createdByName || "";
+          promoterRole = prevExitLog.createdByRole || "";
+          promotionDate = prevExitLog.createdAt;
+          promotionTitle = `Promoted to ${item.subLevelId?.name || "level"}`;
+          promotionType = prevExitLog.meta?.isAuto ? "auto" : "manual";
+        }
+      }
+    } else {
+      if (exitPromotionLog) {
+        promoterName = exitPromotionLog.createdByName || "";
+        promoterRole = exitPromotionLog.createdByRole || "";
+        promotionDate = exitPromotionLog.createdAt;
+        promotionTitle = exitPromotionLog.title || "Promoted to Next Level";
+        promotionNote = exitPromotionLog.description || "";
+        promotionType = exitPromotionLog.meta?.isAuto ? "auto" : "manual";
+      } else if (exitSnapshot) {
+        promoterName = exitSnapshot.changedByName || "";
+        promoterRole = exitSnapshot.changedByRole || "";
+        promotionDate = exitSnapshot.changedAt;
+        promotionTitle = "Evaluated & Promoted";
+      } else if (item.promotedByName) {
+        promoterName = item.promotedByName;
+        promoterRole = item.promotedByRole || "Faculty Evaluator";
+        promotionDate = item.completedAt || item.promotedAt;
+      } else {
+        const evaluatedTask = subTasks.find(t => t.status === "completed" && t.assignedByName);
+        if (evaluatedTask) {
+          promoterName = evaluatedTask.assignedByName;
+          promoterRole = evaluatedTask.assignedByRole || "Faculty Evaluator";
+          promotionDate = item.completedAt || evaluatedTask.completedAt;
+          promotionTitle = "Completed & Promoted";
+        } else if (index === 0) {
+          promoterName = "Academic Department";
+          promoterRole = "Faculty Coordinator";
+          promotionDate = item.completedAt || student.createdAt;
+          promotionTitle = "Level Completed";
+        }
+      }
+    }
+
+    if (!promoterName) {
+      promoterName = item.status === "completed" ? "Faculty Evaluator" : "Academic Department";
+      promoterRole = item.status === "completed" ? "Faculty Evaluator" : "Academic Coordinator";
+      promotionDate = item.completedAt || item.startedAt || student.createdAt;
+    }
+
+    if (promoterRole) {
+      const lower = promoterRole.toLowerCase();
+      if (lower === "superadmin") promoterRole = "Super Admin";
+      else if (lower === "admin") promoterRole = "Administrator";
+      else if (lower === "faculty") promoterRole = "Faculty Evaluator";
+      else if (lower === "system") promoterRole = "System Automation";
+    }
+
+    // D. Subject-wise tasks breakdown: "KIS SUBJECT KE KITNE TASK COMPLETE KARKE AAYA"
+    const subjectMap = new Map();
+
+    subTasks.forEach(task => {
+      const sName = (task.subjectName || "General").trim();
+      if (!subjectMap.has(sName)) {
+        subjectMap.set(sName, {
+          subjectId: task.subjectId || null,
+          subjectName: sName,
+          totalTasks: 0,
+          completedTasks: 0,
+          pendingTasks: 0,
+          inProgressTasks: 0,
+          marksSum: 0,
+          marksCount: 0,
+          topicsSet: new Set()
+        });
+      }
+      const sStat = subjectMap.get(sName);
+      sStat.totalTasks++;
+      if (task.status === "completed") {
+        sStat.completedTasks++;
+      } else if (task.status === "inProgress") {
+        sStat.inProgressTasks++;
+      } else {
+        sStat.pendingTasks++;
+      }
+
+      if (typeof task.marks === "number" && !isNaN(task.marks)) {
+        sStat.marksSum += task.marks;
+        sStat.marksCount++;
+      }
+      if (task.topicName && task.topicName.trim()) {
+        sStat.topicsSet.add(task.topicName.trim());
+      }
+      if (task.subTopicName && task.subTopicName.trim()) {
+        sStat.topicsSet.add(task.subTopicName.trim());
+      }
+    });
+
+    if (subjectMap.size === 0) {
+      const subjSnapshots = subSnapshots.filter(s => s.snapshotScope === "subject");
+      subjSnapshots.forEach(s => {
+        const sName = (s.subjectName || "General").trim();
+        if (!subjectMap.has(sName)) {
+          subjectMap.set(sName, {
+            subjectId: s.subjectId || null,
+            subjectName: sName,
+            totalTasks: s.totalTasks || 0,
+            completedTasks: s.completedTasks || 0,
+            pendingTasks: s.pendingTasks || 0,
+            inProgressTasks: s.inProgressTasks || 0,
+            marksSum: (s.averageMarks || 0) * (s.completedTasks || 0),
+            marksCount: s.completedTasks || 0,
+            topicsSet: new Set()
+          });
+        }
+      });
+    }
+
+    // E. Curriculum & Topics Studied: "KYA KYA PADH KAR AAYA"
+    try {
+      const syllabus = await SyllabusVersion.findOne({
+        levelId: item.levelId?._id || item.levelId,
+        subLevelId: item.subLevelId?._id || item.subLevelId
+      }).select("subjects").lean();
+
+      if (syllabus?.subjects) {
+        syllabus.subjects.forEach(subj => {
+          const sName = (subj.name || subj.title || "").trim();
+          if (sName) {
+            if (!subjectMap.has(sName) && subj.topics?.length) {
+              subjectMap.set(sName, {
+                subjectId: subj._id || null,
+                subjectName: sName,
+                totalTasks: 0,
+                completedTasks: 0,
+                pendingTasks: 0,
+                inProgressTasks: 0,
+                marksSum: 0,
+                marksCount: 0,
+                topicsSet: new Set()
+              });
+            }
+            if (subjectMap.has(sName)) {
+              (subj.topics || []).forEach(t => {
+                if (t.name) subjectMap.get(sName).topicsSet.add(t.name.trim());
+              });
+            }
+          }
+        });
+      }
+    } catch (_) {}
+
+    const subjectStats = Array.from(subjectMap.values()).map(s => {
+      const topicsList = Array.from(s.topicsSet);
+      return {
+        subjectId: s.subjectId,
+        subjectName: s.subjectName,
+        totalTasks: s.totalTasks,
+        completedTasks: s.completedTasks,
+        pendingTasks: s.pendingTasks,
+        inProgressTasks: s.inProgressTasks,
+        completionPercentage: s.totalTasks > 0 ? Math.round((s.completedTasks / s.totalTasks) * 100) : (item.status === "completed" ? 100 : 0),
+        averageMarks: s.marksCount > 0 ? Number((s.marksSum / s.marksCount).toFixed(1)) : null,
+        topics: topicsList,
+        topicsCount: topicsList.length
+      };
+    });
+
+    const allTopicsStudied = Array.from(new Set(
+      subjectStats.flatMap(s => s.topics)
+    ));
+
+    const totalTasks = subTasks.length > 0
+      ? subTasks.length
+      : subjectStats.reduce((acc, s) => acc + s.totalTasks, 0) || item.totalTasks || 0;
+
+    const completedTasksCount = subTasks.length > 0
+      ? subTasks.filter(t => t.status === "completed").length
+      : subjectStats.reduce((acc, s) => acc + s.completedTasks, 0) || item.completedTasksCount || 0;
+
+    const completionPercentage = totalTasks > 0
+      ? Math.round((completedTasksCount / totalTasks) * 100)
+      : (item.status === "completed" ? 100 : item.completionPercentage || 0);
+
+    const evaluatedTasks = subTasks.filter(t => typeof t.marks === "number");
+    const averageMarks = evaluatedTasks.length > 0
+      ? Number((evaluatedTasks.reduce((s, t) => s + t.marks, 0) / evaluatedTasks.length).toFixed(1))
+      : null;
+
+    return {
+      _id: item._id,
+      levelId: item.levelId,
+      subLevelId: item.subLevelId,
+      sessionId: item.sessionId,
+      status: item.status,
+      isCurrent: item.isCurrent,
+      startedAt: item.startedAt,
+      completedAt: item.completedAt || (item.status === "completed" ? promotionDate : null),
+      
+      // Promotion details ("kisne promote kiya")
+      promotion: {
+        promotedBy: promoterName,
+        promotedByRole: promoterRole,
+        promotedAt: promotionDate,
+        title: promotionTitle,
+        note: promotionNote,
+        action: promotionType,
+        isAuto: promotionType === "auto"
+      },
+
+      // Subject-wise tasks breakdown ("kis subject ke kitne task complete karke aaya")
+      subjectStats,
+
+      // Topics studied ("kya kya padh kar aaya")
+      topicsStudied: allTopicsStudied,
+      totalTopicsCount: allTopicsStudied.length,
+
+      // Overall metrics
+      totalTasks,
+      completedTasksCount,
+      completionPercentage,
+      averageMarks
+    };
+  }));
+
+  return enrichedHistory;
+};
+
+module.exports = { 
+  syncStudentReadiness, 
+  promoteToNextSubLevel, 
+  demoteToPreviousSubLevel,
+  getEnrichedStudentLevelHistory 
+};

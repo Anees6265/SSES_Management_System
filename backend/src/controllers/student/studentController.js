@@ -3091,61 +3091,11 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
   }
 };
 
-// ✅ Get Student Level History (Admin / Faculty)
+// ✅ Get Student Level History (Admin / Faculty - Enriched with Promoter, Topics & Subject Breakdown)
 exports.getStudentLevelHistory = async (req, res) => {
   try {
-    const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
-    const StudentTask = require("../../models/syllabus/StudentTask");
-    const SubLevel = require("../../models/department/SubLevel");
-
-    let history = await StudentLevelProgress.find({ studentId: req.params.id })
-      .populate("levelId", "name order")
-      .populate("subLevelId", "name order")
-      .populate("sessionId", "name")
-      .sort({ createdAt: 1 });
-
-    // Also check if student has tasks in sublevels not recorded in StudentLevelProgress
-    const recordedSubLevelIds = new Set(
-      history
-        .map(h => (h.subLevelId?._id || h.subLevelId)?.toString())
-        .filter(Boolean)
-    );
-
-    const taskSubLevelIds = await StudentTask.distinct("subLevelId", { studentId: req.params.id });
-
-    for (const sId of taskSubLevelIds) {
-      if (sId && !recordedSubLevelIds.has(sId.toString())) {
-        const subLevel = await SubLevel.findById(sId).populate("levelId", "name order");
-        if (subLevel) {
-          const totalTasks = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId });
-          const completedTasksCount = await StudentTask.countDocuments({ studentId: req.params.id, subLevelId: sId, status: "completed" });
-          const completionPercentage = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
-
-          history.push({
-            _id: `task_sublevel_${sId}`,
-            studentId: req.params.id,
-            subLevelId: subLevel,
-            levelId: subLevel.levelId,
-            status: completionPercentage === 100 ? "completed" : "in_progress",
-            totalTasks,
-            completedTasksCount,
-            completionPercentage,
-            createdAt: new Date(0)
-          });
-        }
-      }
-    }
-
-    // Sort history by level order, then sublevel order
-    history.sort((a, b) => {
-      const lvlOrderA = a.levelId?.order ?? 0;
-      const lvlOrderB = b.levelId?.order ?? 0;
-      if (lvlOrderA !== lvlOrderB) return lvlOrderA - lvlOrderB;
-      const subOrderA = a.subLevelId?.order ?? 0;
-      const subOrderB = b.subLevelId?.order ?? 0;
-      return subOrderA - subOrderB;
-    });
-
+    const { getEnrichedStudentLevelHistory } = require("../../services/promotionService");
+    const history = await getEnrichedStudentLevelHistory(req.params.id);
     return res.status(200).json({ count: history.length, data: history });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

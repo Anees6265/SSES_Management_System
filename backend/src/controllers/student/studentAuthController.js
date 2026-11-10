@@ -110,6 +110,9 @@ exports.studentLogin = async (req, res) => {
         prkey: student.prkey,
         firstName: student.firstName,
         lastName: student.lastName,
+        fatherName: student.fatherName || "",
+        motherName: student.motherName || "",
+        parentMobile: student.parentMobile || student.fatherContactNumber || "",
         email: student.email,
         studentMobile: student.studentMobile,
         image: student.image,
@@ -269,32 +272,390 @@ exports.changeMyPassword = async (req, res) => {
 // ✅ Get My Tasks (Student)
 exports.getMyTasks = async (req, res) => {
   try {
-    const student = await Student.findById(req.user.id).select("syllabusVersionId currentSubLevelId");
+    const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+    const StudentTask = require("../../models/syllabus/StudentTask");
+    const Level = require("../../models/department/Level");
+    const mongoose = require("mongoose");
+
+    const student = await Student.findById(req.user.id)
+      .populate("currentLevelId", "name order subDepartmentId")
+      .populate("currentSubLevelId", "name order levelId")
+      .populate("sessionId", "name");
+
     if (!student) return res.status(404).json({ message: "Student not found" });
 
+    // Ensure currentLevelId and currentSubLevelId stay in sync
+    if (student.currentSubLevelId?.levelId) {
+      const parentLevelId = student.currentSubLevelId.levelId._id || student.currentSubLevelId.levelId;
+      if (!student.currentLevelId || student.currentLevelId._id.toString() !== parentLevelId.toString()) {
+        const actualLevel = await Level.findById(parentLevelId).lean();
+        if (actualLevel) {
+          student.currentLevelId = actualLevel;
+        }
+      }
+    }
+
+    const currentSubLevelId = student.currentSubLevelId?._id || student.currentSubLevelId;
+    const currentLevelId = student.currentLevelId?._id || student.currentLevelId;
+    const currentSessionId = student.sessionId?._id || student.sessionId;
+    const studentCourse = (student.course || "").trim();
+
     const { status, subLevelId } = req.query;
+    const targetSubLevelId = subLevelId || currentSubLevelId;
+
+    // 1. Resolve Current Syllabus Version strictly matching the student's current sublevel/level
+    let currentSyllabusId = student.syllabusVersionId;
+
+    // Check if student.syllabusVersionId matches the current sublevel
+    if (currentSyllabusId) {
+      const sv = await SyllabusVersion.findById(currentSyllabusId).lean();
+      if (!sv || (currentSubLevelId && sv.subLevelId?.toString() !== currentSubLevelId.toString())) {
+        currentSyllabusId = null;
+      }
+    }
+
+    // Check if student already has active tasks for current sublevel pointing to a syllabusVersion
+    if (!currentSyllabusId && currentSubLevelId) {
+      const taskWithSv = await StudentTask.findOne({
+        studentId: student._id,
+        subLevelId: currentSubLevelId,
+        syllabusVersionId: { $ne: null },
+        isActive: { $ne: false },
+      }).select("syllabusVersionId").lean();
+
+      if (taskWithSv?.syllabusVersionId) {
+        const svFromTask = await SyllabusVersion.findById(taskWithSv.syllabusVersionId).lean();
+        if (svFromTask && svFromTask.subLevelId?.toString() === currentSubLevelId.toString()) {
+          currentSyllabusId = svFromTask._id;
+        }
+      }
+    }
+
+    // Search active SyllabusVersion by subLevelId with course priority
+    if (!currentSyllabusId && currentSubLevelId) {
+      const courseConditions = studentCourse && studentCourse !== "All"
+        ? [{ courses: studentCourse }, { courses: "All" }, { course: studentCourse }, { course: "All" }, { courses: { $size: 0 } }, { courses: { $exists: false } }]
+        : [];
+
+      let sv = null;
+      if (currentSessionId && courseConditions.length > 0) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+          $or: courseConditions,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv && currentSessionId) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv && currentSessionId) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv && courseConditions.length > 0) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          status: "active",
+          isActive: true,
+          $or: courseConditions,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!sv) {
+        sv = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (sv) {
+        currentSyllabusId = sv._id;
+      }
+    }
+
+    // Fallback: search by levelId if sublevel has no syllabus
+    if (!currentSyllabusId && currentLevelId) {
+      let sv = null;
+      if (currentSessionId) {
+        sv = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+      if (!sv) {
+        sv = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+      if (!sv) {
+        sv = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+      if (sv) {
+        currentSyllabusId = sv._id;
+      }
+    }
+
+    // Self-heal: update student's syllabusVersionId to the current active syllabus
+    if (currentSyllabusId && (!student.syllabusVersionId || student.syllabusVersionId.toString() !== currentSyllabusId.toString())) {
+      Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: currentSyllabusId } }).exec();
+    }
+
+    // 2. Auto-assign tasks if student has 0 tasks assigned for current level/sublevel
+    if (currentSyllabusId) {
+      const currentTasksCount = await StudentTask.countDocuments({
+        studentId: student._id,
+        isActive: { $ne: false },
+        $or: [
+          ...(targetSubLevelId ? [{ subLevelId: targetSubLevelId }] : []),
+          { syllabusVersionId: currentSyllabusId }
+        ]
+      });
+
+      if (currentTasksCount === 0) {
+        try {
+          const { assignTasksToStudent } = require("../../services/taskAssignmentService");
+          await assignTasksToStudent(student._id, currentSyllabusId, {
+            student,
+            allowSessionMismatch: true,
+            allowLevelMismatch: true
+          });
+        } catch (assignErr) {
+          console.error("Auto-assign tasks in getMyTasks error:", assignErr.message);
+        }
+      }
+    }
+
+    // 3. Build filter for fetching current level tasks
     const filter = {
-      studentId: req.user.id,
+      studentId: student._id,
       isActive: { $ne: false },
       isArchived: { $ne: true },
-      $or: [
-        { isGeneralTask: true },
-        { isExtra: true },
-        ...(student.currentSubLevelId ? [{ subLevelId: student.currentSubLevelId }] : []),
-        ...(student.syllabusVersionId ? [{ syllabusVersionId: student.syllabusVersionId }] : [])
-      ]
     };
-    if (status) filter.status = status;
-    if (subLevelId) filter.subLevelId = subLevelId;
 
-    const tasks = await StudentTask.find(filter).sort({ assignedAt: -1, createdAt: -1 });
+    if (status) filter.status = status;
+
+    if (subLevelId) {
+      filter.subLevelId = subLevelId;
+    } else {
+      const currentOrConditions = [
+        { isGeneralTask: true },
+        { isExtra: true }
+      ];
+
+      if (targetSubLevelId) {
+        currentOrConditions.push({ subLevelId: targetSubLevelId });
+      }
+      if (currentSyllabusId) {
+        currentOrConditions.push({ syllabusVersionId: currentSyllabusId });
+      }
+      if (student.syllabusVersionId) {
+        currentOrConditions.push({ syllabusVersionId: student.syllabusVersionId });
+      }
+      if (currentLevelId) {
+        currentOrConditions.push({ levelId: currentLevelId, subLevelId: null });
+        currentOrConditions.push({ levelId: currentLevelId, subLevelId: { $exists: false } });
+        if (targetSubLevelId) {
+          currentOrConditions.push({ levelId: currentLevelId, subLevelId: targetSubLevelId });
+        }
+      }
+
+      filter.$or = currentOrConditions;
+    }
+
+    let tasks = await StudentTask.find(filter).sort({ assignedAt: -1, createdAt: -1 });
+
+    // Fallback: If 0 tasks found and no specific subLevelId query was given, check by currentLevelId
+    if (tasks.length === 0 && !subLevelId && currentLevelId) {
+      const levelTasks = await StudentTask.find({
+        studentId: student._id,
+        levelId: currentLevelId,
+        isActive: { $ne: false },
+        isArchived: { $ne: true },
+        ...(status ? { status } : {})
+      }).sort({ assignedAt: -1, createdAt: -1 });
+
+      if (levelTasks.length > 0) {
+        tasks = levelTasks;
+      }
+    }
+
+    // Final Fallback: If still 0 and student has any active tasks, return them
+    if (tasks.length === 0 && !subLevelId) {
+      const allActiveTasks = await StudentTask.find({
+        studentId: student._id,
+        isActive: { $ne: false },
+        isArchived: { $ne: true },
+        ...(status ? { status } : {})
+      }).sort({ assignedAt: -1, createdAt: -1 });
+
+      if (allActiveTasks.length > 0) {
+        tasks = allActiveTasks;
+      }
+    }
 
     const grouped = {};
     tasks.forEach(t => {
-      const key = t.subjectName || "Other";
+      const key = (t.subjectName || "Other").trim() || "Other";
       if (!grouped[key]) grouped[key] = { tasks: [] };
       grouped[key].tasks.push(t);
     });
+
+    // 4. Resolve Previous Levels and their tasks (for read-only history view)
+    let previousLevels = [];
+    try {
+      const SubLevel = require("../../models/department/SubLevel");
+      const targetSubDeptId = student.subDepartmentId?._id || student.subDepartmentId || student.currentLevelId?.subDepartmentId;
+
+      const allDeptLevels = await Level.find({
+        ...(targetSubDeptId ? { subDepartmentId: targetSubDeptId } : {}),
+        isActive: true
+      }).sort({ order: 1 }).lean();
+
+      const allDeptSubLevels = await SubLevel.find({
+        levelId: { $in: allDeptLevels.map(l => l._id) },
+        isActive: true
+      }).sort({ order: 1 }).lean();
+
+      const sortedSubLevels = allDeptSubLevels.map(sl => {
+        const parentLvl = allDeptLevels.find(l => l._id.toString() === sl.levelId.toString());
+        return {
+          _id: sl._id,
+          name: sl.name,
+          order: sl.order,
+          levelId: sl.levelId,
+          levelName: parentLvl?.name || "",
+          levelOrder: parentLvl?.order || 1
+        };
+      }).sort((a, b) => {
+        if (a.levelOrder !== b.levelOrder) return a.levelOrder - b.levelOrder;
+        return a.order - b.order;
+      });
+
+      const curSubIdStr = currentSubLevelId?.toString();
+      const curLvlOrder = student.currentLevelId?.order || 1;
+      const curSubOrder = student.currentSubLevelId?.order || 1;
+
+      // Identify previous sublevels
+      const prevSubLevels = sortedSubLevels.filter(sl => {
+        if (sl._id.toString() === curSubIdStr) return false;
+        return sl.levelOrder < curLvlOrder || (sl.levelOrder === curLvlOrder && sl.order < curSubOrder);
+      });
+
+      const currentTaskIds = new Set(tasks.map(t => t._id.toString()));
+
+      // Fetch all past tasks of this student that are not in current tasks
+      const allPastTasks = await StudentTask.find({
+        studentId: student._id,
+        _id: { $nin: Array.from(currentTaskIds) },
+        isActive: { $ne: false },
+        isArchived: { $ne: true }
+      }).sort({ assignedAt: -1, createdAt: -1 }).lean();
+
+      const accountedPastTaskIds = new Set();
+
+      for (const prevSL of prevSubLevels) {
+        const pTasks = allPastTasks.filter(t => {
+          if (accountedPastTaskIds.has(t._id.toString())) return false;
+          if (t.subLevelId && t.subLevelId.toString() === prevSL._id.toString()) return true;
+          if (!t.subLevelId && t.levelId && t.levelId.toString() === prevSL.levelId.toString()) return true;
+          return false;
+        });
+
+        pTasks.forEach(t => accountedPastTaskIds.add(t._id.toString()));
+
+        const pGrouped = {};
+        pTasks.forEach(t => {
+          const key = (t.subjectName || "Other").trim() || "Other";
+          if (!pGrouped[key]) pGrouped[key] = { tasks: [] };
+          pGrouped[key].tasks.push(t);
+        });
+
+        previousLevels.push({
+          levelId: prevSL.levelId,
+          levelName: prevSL.levelName,
+          subLevelId: prevSL._id,
+          subLevelName: prevSL.name,
+          levelOrder: prevSL.levelOrder,
+          subLevelOrder: prevSL.order,
+          totalTasks: pTasks.length,
+          completedTasks: pTasks.filter(t => t.status === "completed").length,
+          pendingTasks: pTasks.filter(t => t.status === "pending").length,
+          inProgressTasks: pTasks.filter(t => t.status === "inProgress").length,
+          groupedBySubject: pGrouped,
+          tasks: pTasks,
+        });
+      }
+
+      // Check for any remaining past tasks not mapped to prevSubLevels
+      const leftoverPastTasks = allPastTasks.filter(t => !accountedPastTaskIds.has(t._id.toString()));
+      if (leftoverPastTasks.length > 0) {
+        const byLvl = {};
+        leftoverPastTasks.forEach(t => {
+          const lKey = t.levelId ? t.levelId.toString() : "other";
+          if (!byLvl[lKey]) byLvl[lKey] = [];
+          byLvl[lKey].push(t);
+        });
+
+        for (const [lvlKey, lTasks] of Object.entries(byLvl)) {
+          const lvlDoc = allDeptLevels.find(l => l._id.toString() === lvlKey);
+          const pGrouped = {};
+          lTasks.forEach(t => {
+            const key = (t.subjectName || "Other").trim() || "Other";
+            if (!pGrouped[key]) pGrouped[key] = { tasks: [] };
+            pGrouped[key].tasks.push(t);
+          });
+
+          previousLevels.push({
+            levelId: lvlKey !== "other" ? lvlKey : null,
+            levelName: lvlDoc?.name || "Previous Level",
+            subLevelId: null,
+            subLevelName: "Archived Tasks",
+            levelOrder: lvlDoc?.order || 0,
+            subLevelOrder: 0,
+            totalTasks: lTasks.length,
+            completedTasks: lTasks.filter(t => t.status === "completed").length,
+            pendingTasks: lTasks.filter(t => t.status === "pending").length,
+            inProgressTasks: lTasks.filter(t => t.status === "inProgress").length,
+            groupedBySubject: pGrouped,
+            tasks: lTasks,
+          });
+        }
+      }
+    } catch (prevErr) {
+      console.error("Error gathering previous level tasks in getMyTasks:", prevErr.message);
+    }
 
     return res.status(200).json({
       totalTasks:     tasks.length,
@@ -302,22 +663,31 @@ exports.getMyTasks = async (req, res) => {
       pendingTasks:   tasks.filter(t => t.status === "pending").length,
       inProgressTasks:tasks.filter(t => t.status === "inProgress").length,
       groupedBySubject: grouped,
+      tasks:          tasks,
+      previousLevels: previousLevels,
+      currentLevel: {
+        levelId: currentLevelId,
+        levelName: student.currentLevelId?.name || "Current Level",
+        subLevelId: currentSubLevelId,
+        subLevelName: student.currentSubLevelId?.name || "",
+        totalTasks: tasks.length,
+        completedTasks: tasks.filter(t => t.status === "completed").length,
+        pendingTasks: tasks.filter(t => t.status === "pending").length,
+        inProgressTasks: tasks.filter(t => t.status === "inProgress").length,
+        groupedBySubject: grouped,
+        tasks: tasks,
+      }
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// ✅ Get My Level History (Student)
+// ✅ Get My Level History (Student with Promoter info, Topics studied & Subject-wise task breakdown)
 exports.getMyLevelHistory = async (req, res) => {
   try {
-    const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
-    const history = await StudentLevelProgress.find({ studentId: req.user.id })
-      .populate("levelId", "name order")
-      .populate("subLevelId", "name order")
-      .populate("sessionId", "name")
-      .sort({ createdAt: 1 });
-
+    const { getEnrichedStudentLevelHistory } = require("../../services/promotionService");
+    const history = await getEnrichedStudentLevelHistory(req.user.id);
     return res.status(200).json({ count: history.length, data: history });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -330,6 +700,7 @@ exports.getMySyllabus = async (req, res) => {
     const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
     const Level = require("../../models/department/Level");
     const SubLevel = require("../../models/department/SubLevel");
+    const StudentTask = require("../../models/syllabus/StudentTask");
 
     const student = await Student.findById(req.user.id)
       .populate("sessionId", "name startDate endDate")
@@ -341,43 +712,178 @@ exports.getMySyllabus = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    // Ensure currentLevelId and currentSubLevelId stay in sync
+    if (student.currentSubLevelId?.levelId) {
+      const parentLevelId = student.currentSubLevelId.levelId._id || student.currentSubLevelId.levelId;
+      if (!student.currentLevelId || student.currentLevelId._id.toString() !== parentLevelId.toString()) {
+        const actualLevel = await Level.findById(parentLevelId).lean();
+        if (actualLevel) {
+          student.currentLevelId = actualLevel;
+        }
+      }
+    }
+
     const currentSubLevelId = student.currentSubLevelId?._id || student.currentSubLevelId;
+    const currentLevelId = student.currentLevelId?._id || student.currentLevelId;
     const currentSessionId = student.sessionId?._id || student.sessionId;
+    const studentCourse = (student.course || "").trim();
 
-    // 1. Fetch Current Syllabus Version
+    // 1. Fetch Current Syllabus Version strictly matching the student's current sublevel/level
     let currentSyllabus = null;
+
+    // A. Check student.syllabusVersionId ONLY if it matches the student's current sublevel
     if (student.syllabusVersionId) {
-      currentSyllabus = await SyllabusVersion.findById(student.syllabusVersionId).lean();
-    }
-    if (!currentSyllabus && currentSubLevelId) {
-      currentSyllabus = await SyllabusVersion.findOne({
-        subLevelId: currentSubLevelId,
-        sessionId: currentSessionId,
-        isActive: true,
-      }).sort({ versionNumber: -1 }).lean();
+      const sv = await SyllabusVersion.findById(student.syllabusVersionId).lean();
+      if (sv && currentSubLevelId && sv.subLevelId?.toString() === currentSubLevelId.toString()) {
+        currentSyllabus = sv;
+      }
     }
 
-    // Format Current Level Subjects -> Topics -> SubTopics (pure syllabus, NO tasks)
-    const currentSubjects = (currentSyllabus?.subjects || []).map((subject, sIdx) => ({
-      _id: subject._id,
-      name: subject.name,
-      code: subject.code || "",
-      description: subject.description || "",
-      order: subject.order || sIdx + 1,
-      reportCategory: subject.reportCategory || "",
-      topics: (subject.topics || []).map((topic, tIdx) => ({
-        _id: topic._id,
-        name: topic.name,
-        description: topic.description || "",
-        order: topic.order || tIdx + 1,
-        subTopics: (topic.subTopics || []).map((st, stIdx) => ({
-          _id: st._id,
-          name: st.name,
-          description: st.description || "",
-          order: st.order || stIdx + 1,
-        }))
-      }))
-    }));
+    // B. Check if student has active tasks assigned for this current sublevel that specify a syllabusVersionId
+    if (!currentSyllabus && currentSubLevelId) {
+      const taskWithSv = await StudentTask.findOne({
+        studentId: student._id,
+        subLevelId: currentSubLevelId,
+        syllabusVersionId: { $ne: null },
+        isActive: { $ne: false },
+      }).select("syllabusVersionId").lean();
+
+      if (taskWithSv?.syllabusVersionId) {
+        const svFromTask = await SyllabusVersion.findById(taskWithSv.syllabusVersionId).lean();
+        if (svFromTask && svFromTask.subLevelId?.toString() === currentSubLevelId.toString()) {
+          currentSyllabus = svFromTask;
+        }
+      }
+    }
+
+    // C. Search SyllabusVersion for currentSubLevelId with course & session priority
+    if (!currentSyllabus && currentSubLevelId) {
+      const courseConditions = studentCourse && studentCourse !== "All"
+        ? [{ courses: studentCourse }, { courses: "All" }, { course: studentCourse }, { course: "All" }, { courses: { $size: 0 } }, { courses: { $exists: false } }]
+        : [];
+
+      // 1) Match subLevelId + sessionId + course + active status
+      if (currentSessionId && courseConditions.length > 0) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+          $or: courseConditions,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 2) Match subLevelId + sessionId + active status
+      if (!currentSyllabus && currentSessionId) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 3) Match subLevelId + sessionId + isActive true
+      if (!currentSyllabus && currentSessionId) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          sessionId: currentSessionId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 4) Match subLevelId + course + active status (across sessions)
+      if (!currentSyllabus && courseConditions.length > 0) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          status: "active",
+          isActive: true,
+          $or: courseConditions,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 5) Match subLevelId + status: "active" + isActive: true
+      if (!currentSyllabus) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 6) Match subLevelId + isActive: true
+      if (!currentSyllabus) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      // 7) Any latest syllabus for subLevelId
+      if (!currentSyllabus) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          subLevelId: currentSubLevelId,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+    }
+
+    // D. Fallback: Search by levelId if sublevel has no specific syllabus
+    if (!currentSyllabus && currentLevelId) {
+      if (currentSessionId) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+          sessionId: currentSessionId,
+          status: "active",
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!currentSyllabus) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+          isActive: true,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!currentSyllabus) {
+        currentSyllabus = await SyllabusVersion.findOne({
+          levelId: currentLevelId,
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+    }
+
+    // Self-heal: update student's syllabusVersionId to the verified current version
+    if (currentSyllabus && (!student.syllabusVersionId || student.syllabusVersionId.toString() !== currentSyllabus._id.toString())) {
+      Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: currentSyllabus._id } }).exec();
+    }
+
+    // Format Current Level Subjects -> Topics -> SubTopics (filtering active items)
+    const currentSubjects = (currentSyllabus?.subjects || [])
+      .filter((subject) => subject && subject.isActive !== false)
+      .map((subject, sIdx) => ({
+        _id: subject._id,
+        name: subject.name,
+        code: subject.code || "",
+        description: subject.description || "",
+        order: subject.order || sIdx + 1,
+        reportCategory: subject.reportCategory || "",
+        topics: (subject.topics || [])
+          .filter((topic) => topic && topic.isActive !== false)
+          .map((topic, tIdx) => ({
+            _id: topic._id,
+            name: topic.name,
+            description: topic.description || "",
+            order: topic.order || tIdx + 1,
+            subTopics: (topic.subTopics || [])
+              .filter((st) => st && st.isActive !== false)
+              .map((st, stIdx) => ({
+                _id: st._id,
+                name: st.name,
+                description: st.description || "",
+                order: st.order || stIdx + 1,
+              }))
+          }))
+      }));
 
     const totalCurrentTopics = currentSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
     const totalCurrentSubTopics = currentSubjects.reduce(
@@ -386,10 +892,10 @@ exports.getMySyllabus = async (req, res) => {
     );
 
     const currentLevelData = {
-      levelId: student.currentLevelId?._id,
+      levelId: student.currentLevelId?._id || currentLevelId,
       levelName: student.currentLevelId?.name || "Current Level",
       levelOrder: student.currentLevelId?.order || 1,
-      subLevelId: student.currentSubLevelId?._id,
+      subLevelId: student.currentSubLevelId?._id || currentSubLevelId,
       subLevelName: student.currentSubLevelId?.name || "",
       subLevelOrder: student.currentSubLevelId?.order || 1,
       syllabusVersion: currentSyllabus ? {
@@ -407,8 +913,10 @@ exports.getMySyllabus = async (req, res) => {
     };
 
     // 2. Hierarchy and Previous Levels
+    const targetSubDeptId = student.subDepartmentId?._id || student.subDepartmentId || student.currentLevelId?.subDepartmentId;
+
     const allDeptLevels = await Level.find({
-      subDepartmentId: student.subDepartmentId?._id || student.subDepartmentId,
+      ...(targetSubDeptId ? { subDepartmentId: targetSubDeptId } : {}),
       isActive: true
     }).sort({ order: 1 }).lean();
 
@@ -447,37 +955,66 @@ exports.getMySyllabus = async (req, res) => {
       // Find syllabus version for this past sublevel
       let pastSyllabus = await SyllabusVersion.findOne({
         subLevelId: prevSL._id,
-        sessionId: currentSessionId,
+        ...(currentSessionId ? { sessionId: currentSessionId } : {}),
+        status: "active",
         isActive: true
-      }).sort({ versionNumber: -1 }).lean();
+      }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+
+      if (!pastSyllabus && currentSessionId) {
+        pastSyllabus = await SyllabusVersion.findOne({
+          subLevelId: prevSL._id,
+          sessionId: currentSessionId,
+          isActive: true
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      if (!pastSyllabus) {
+        pastSyllabus = await SyllabusVersion.findOne({
+          subLevelId: prevSL._id,
+          status: "active",
+          isActive: true
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
 
       if (!pastSyllabus) {
         pastSyllabus = await SyllabusVersion.findOne({
           subLevelId: prevSL._id,
           isActive: true
-        }).sort({ versionNumber: -1 }).lean();
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
       }
 
-      const pastSubjects = (pastSyllabus?.subjects || []).map((subject, sIdx) => ({
-        _id: subject._id,
-        name: subject.name,
-        code: subject.code || "",
-        description: subject.description || "",
-        order: subject.order || sIdx + 1,
-        reportCategory: subject.reportCategory || "",
-        topics: (subject.topics || []).map((topic, tIdx) => ({
-          _id: topic._id,
-          name: topic.name,
-          description: topic.description || "",
-          order: topic.order || tIdx + 1,
-          subTopics: (topic.subTopics || []).map((st, stIdx) => ({
-            _id: st._id,
-            name: st.name,
-            description: st.description || "",
-            order: st.order || stIdx + 1,
-          }))
-        }))
-      }));
+      if (!pastSyllabus) {
+        pastSyllabus = await SyllabusVersion.findOne({
+          subLevelId: prevSL._id
+        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
+      }
+
+      const pastSubjects = (pastSyllabus?.subjects || [])
+        .filter((subject) => subject && subject.isActive !== false)
+        .map((subject, sIdx) => ({
+          _id: subject._id,
+          name: subject.name,
+          code: subject.code || "",
+          description: subject.description || "",
+          order: subject.order || sIdx + 1,
+          reportCategory: subject.reportCategory || "",
+          topics: (subject.topics || [])
+            .filter((topic) => topic && topic.isActive !== false)
+            .map((topic, tIdx) => ({
+              _id: topic._id,
+              name: topic.name,
+              description: topic.description || "",
+              order: topic.order || tIdx + 1,
+              subTopics: (topic.subTopics || [])
+                .filter((st) => st && st.isActive !== false)
+                .map((st, stIdx) => ({
+                  _id: st._id,
+                  name: st.name,
+                  description: st.description || "",
+                  order: st.order || stIdx + 1,
+                }))
+            }))
+        }));
 
       const totalTopics = pastSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
       const totalSubTopics = pastSubjects.reduce(
@@ -815,6 +1352,16 @@ exports.updateMyTaskStatus = async (req, res) => {
 
     if (task.status === "completed") {
       return res.status(400).json({ message: "Completed tasks cannot be modified by students" });
+    }
+
+    // Previous level tasks are strictly read-only
+    const studentForTask = await Student.findById(req.user.id).select("currentLevelId currentSubLevelId");
+    if (studentForTask) {
+      const isPastSubLevel = task.subLevelId && studentForTask.currentSubLevelId && task.subLevelId.toString() !== studentForTask.currentSubLevelId.toString();
+      const isPastLevel = task.levelId && studentForTask.currentLevelId && task.levelId.toString() !== studentForTask.currentLevelId.toString();
+      if (isPastSubLevel || isPastLevel) {
+        return res.status(403).json({ message: "Previous level tasks are locked in read-only mode and cannot be modified." });
+      }
     }
 
     task.status = status;

@@ -52,8 +52,13 @@ export default function StudentSyllabus() {
         if (!currentLevel?.subjects) return [];
         let list = currentLevel.subjects;
 
-        if (selectedSubjectFilter !== "All") {
-            list = list.filter((s) => s.name === selectedSubjectFilter);
+        // Auto-reset stale filter if it doesn't exist in current level
+        const effectiveFilter = selectedSubjectFilter !== "All" && list.some(s => s.name === selectedSubjectFilter)
+            ? selectedSubjectFilter
+            : "All";
+
+        if (effectiveFilter !== "All") {
+            list = list.filter((s) => s.name === effectiveFilter);
         }
 
         if (searchQuery.trim()) {
@@ -335,7 +340,13 @@ export default function StudentSyllabus() {
                     )}
 
                     {/* Subjects Container */}
-                    {filteredCurrentSubjects.length === 0 ? (
+                    {(!currentLevel?.subjects || currentLevel.subjects.length === 0) ? (
+                        <EmptyState
+                            icon={MdMenuBook}
+                            title={`No syllabus published for ${currentLevel?.levelName || "Current Level"} yet`}
+                            subtitle={`The curriculum for ${currentLevel?.levelName || "this level"}${currentLevel?.subLevelName ? ` (SubLevel ${currentLevel.subLevelName})` : ""} has not been published yet or is being updated by the department.`}
+                        />
+                    ) : filteredCurrentSubjects.length === 0 ? (
                         <EmptyState
                             icon={MdSearch}
                             title="No matching subjects or topics found"

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useGetMyStudentTasksQuery, useUpdateMyStudentTaskStatusMutation } from "../../../redux/api/studentApi";
 import { 
     MdStar, 
@@ -14,10 +14,20 @@ import {
     MdRefresh,
     MdPerson,
     MdOutlineCalendarToday,
-    MdOutlineTopic
+    MdOutlineTopic,
+    MdHistory,
+    MdLock,
+    MdLayers,
+    MdExpandMore
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+
+const TASK_STATUS_OPTIONS = [
+    { value: "pending", label: "Pending" },
+    { value: "inProgress", label: "In Progress" },
+];
 
 const STATUS_COLS = [
     { key: "pending",    label: "Pending",     dot: "bg-amber-400",  colBg: "bg-amber-50/30",  border: "border-amber-200/80", badge: "bg-amber-100 text-amber-700",   emptyIcon: "text-amber-200" },
@@ -28,25 +38,63 @@ const STATUS_COLS = [
 export default function StudentTasks() {
     const { data: taskData, isLoading } = useGetMyStudentTasksQuery();
     const [updateTaskStatus] = useUpdateMyStudentTaskStatusMutation();
+    const [selectedLevelTab, setSelectedLevelTab] = useState("current"); // "current" | "previous"
+    const [selectedPrevIndex, setSelectedPrevIndex] = useState(0);
     const [search, setSearch] = useState("");
     const [activeSubject, setActiveSubject] = useState("All");
     const [dragOverCol, setDragOverCol] = useState(null);
     const [mobileTab, setMobileTab] = useState("all");
     const [selectedTask, setSelectedTask] = useState(null);
 
-    const subjectGroups = taskData?.groupedBySubject || {};
-    const allSubjects   = Object.keys(subjectGroups);
-    const allTasks      = Object.values(subjectGroups).flatMap(g => g.tasks || []);
+    const isPreviousMode = selectedLevelTab === "previous";
+    const previousLevels = taskData?.previousLevels || [];
+    const activePrevLevel = previousLevels[selectedPrevIndex] || previousLevels[0] || null;
 
-    // Sort allTasks strictly by assignedAt/createdAt descending (latest first)
+    const totalPreviousTasksCount = useMemo(() => {
+        return previousLevels.reduce((sum, pl) => sum + (pl.totalTasks || pl.tasks?.length || 0), 0);
+    }, [previousLevels]);
+
+    // Active tasks to display based on level tab
+    const activeLevelTasks = useMemo(() => {
+        if (isPreviousMode) {
+            return activePrevLevel?.tasks || [];
+        }
+        if (taskData?.tasks && Array.isArray(taskData.tasks) && taskData.tasks.length > 0) {
+            return taskData.tasks;
+        }
+        const subjectGroups = taskData?.groupedBySubject || {};
+        return Object.values(subjectGroups).flatMap(g => g.tasks || []);
+    }, [isPreviousMode, activePrevLevel, taskData]);
+
+    const activeSubjectGroups = useMemo(() => {
+        if (isPreviousMode) {
+            return activePrevLevel?.groupedBySubject || {};
+        }
+        return taskData?.groupedBySubject || {};
+    }, [isPreviousMode, activePrevLevel, taskData]);
+
+    const allSubjects = useMemo(() => {
+        const fromGroups = Object.keys(activeSubjectGroups);
+        if (fromGroups.length > 0) return fromGroups;
+        const unique = [...new Set((activeLevelTasks || []).map(t => (t.subjectName || "Other").trim()))];
+        return unique.filter(Boolean);
+    }, [activeSubjectGroups, activeLevelTasks]);
+
+    useEffect(() => {
+        if (activeSubject !== "All" && allSubjects.length > 0 && !allSubjects.includes(activeSubject)) {
+            setActiveSubject("All");
+        }
+    }, [allSubjects, activeSubject]);
+
+    // Sort active tasks strictly by assignedAt/createdAt descending (latest first)
     const sortedTasks = useMemo(() => {
-        return [...allTasks].sort((a, b) => {
+        return [...activeLevelTasks].sort((a, b) => {
             const timeA = new Date(a.assignedAt || a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
             const timeB = new Date(b.assignedAt || b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
             if (timeB !== timeA) return timeB - timeA;
             return (b._id || "").toString().localeCompare((a._id || "").toString());
         });
-    }, [allTasks]);
+    }, [activeLevelTasks]);
 
     // Assign sequential serial numbers (1 is latest overall task)
     const tasksWithSno = useMemo(() => {
@@ -60,7 +108,8 @@ export default function StudentTasks() {
         const matchSearch  = t.title?.toLowerCase().includes(search.toLowerCase()) ||
                              t.subjectName?.toLowerCase().includes(search.toLowerCase()) ||
                              t.topicName?.toLowerCase().includes(search.toLowerCase());
-        const matchSubject = activeSubject === "All" || t.subjectName === activeSubject;
+        const taskSubj = (t.subjectName || "").trim().toLowerCase();
+        const matchSubject = activeSubject === "All" || taskSubj === activeSubject.trim().toLowerCase();
         return matchSearch && matchSubject;
     });
 
@@ -70,17 +119,27 @@ export default function StudentTasks() {
         completed:  filtered.filter(t => t.status === "completed"),
     };
 
-    const totalTasks     = taskData?.totalTasks     || 0;
-    const completedTasks = taskData?.completedTasks || 0;
-    const pendingTasks   = taskData?.pendingTasks   || 0;
+    const totalTasks     = isPreviousMode 
+        ? (activePrevLevel?.totalTasks || activeLevelTasks.length) 
+        : (taskData?.totalTasks || activeLevelTasks.length);
+    const completedTasks = isPreviousMode 
+        ? (activePrevLevel?.completedTasks || activeLevelTasks.filter(t => t.status === "completed").length) 
+        : (taskData?.completedTasks || 0);
+    const pendingTasks   = isPreviousMode 
+        ? (activePrevLevel?.pendingTasks || activeLevelTasks.filter(t => t.status === "pending").length) 
+        : (taskData?.pendingTasks || 0);
     const taskPct        = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    const evaluated = allTasks.filter(t => typeof t.marks === "number");
+    const evaluated = activeLevelTasks.filter(t => typeof t.marks === "number");
     const avgMarks  = evaluated.length > 0
         ? (evaluated.reduce((s, t) => s + t.marks, 0) / evaluated.length).toFixed(1)
         : null;
 
     const handleStatusChange = async (taskId, newStatus) => {
+        if (isPreviousMode) {
+            toast.info("Previous level tasks are locked in read-only mode.");
+            return;
+        }
         try {
             await updateTaskStatus({ taskId, status: newStatus }).unwrap();
             toast.success(`Task status updated to ${newStatus === "inProgress" ? "In Progress" : "Pending"}`);
@@ -93,11 +152,16 @@ export default function StudentTasks() {
     };
 
     const handleDragStart = (e, task) => {
+        if (isPreviousMode) return;
         e.dataTransfer.setData("taskId", task._id);
         e.dataTransfer.setData("sourceStatus", task.status);
     };
 
     const handleDrop = async (e, targetStatus) => {
+        if (isPreviousMode) {
+            toast.info("Previous level tasks cannot be modified.");
+            return;
+        }
         const taskId = e.dataTransfer.getData("taskId");
         const sourceStatus = e.dataTransfer.getData("sourceStatus");
 
@@ -125,257 +189,394 @@ export default function StudentTasks() {
     return (
         <div className="space-y-4 sm:space-y-5">
 
-            {/* ── Header Card ── */}
-            <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
-                <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
-                <div className="p-3.5 sm:p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-base sm:text-lg font-bold text-gray-900">My Tasks</h2>
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                                    {totalTasks}
-                                </span>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                {completedTasks} completed · {pendingTasks} pending
-                            </p>
-                        </div>
+            {/* ── Level Scope Tabs (Current Level vs Previous Levels) ── */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex p-1 bg-gray-100/90 rounded-2xl border border-gray-200/60 shadow-2xs">
+                    <button
+                        onClick={() => {
+                            setSelectedLevelTab("current");
+                            setActiveSubject("All");
+                            setSearch("");
+                        }}
+                        className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                            !isPreviousMode
+                                ? "bg-white text-gray-900 shadow-xs border border-gray-100"
+                                : "text-gray-500 hover:text-gray-800"
+                        }`}
+                    >
+                        <span className="w-2 h-2 rounded-full bg-orange-500" />
+                        <span>Current Level</span>
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
+                            {taskData?.totalTasks || 0}
+                        </span>
+                    </button>
 
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-60 md:w-64">
-                            <MdSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Search tasks..."
-                                className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
-                            />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch("")}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                    <MdClose size={14} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Stat Pills & Progress Bar */}
-                    <div className="mt-3.5 pt-3 border-t border-gray-100/80">
-                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-100">
-                                <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{taskPct}% Complete</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
-                                <MdCheckCircle size={13} className="text-emerald-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{completedTasks} Done</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
-                                <MdAccessTime size={13} className="text-amber-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{pendingTasks} Pending</span>
-                            </div>
-                            {avgMarks && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50/80 border border-yellow-100">
-                                    <MdStar size={13} className="text-yellow-500 shrink-0" />
-                                    <span className="text-[11px] sm:text-xs font-bold text-yellow-700 truncate">Avg {avgMarks}/5</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
-                            <div 
-                                className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" 
-                                style={{ width: `${taskPct}%` }} 
-                            />
-                        </div>
-                    </div>
+                    <button
+                        onClick={() => {
+                            setSelectedLevelTab("previous");
+                            setActiveSubject("All");
+                            setSearch("");
+                        }}
+                        className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                            isPreviousMode
+                                ? "bg-white text-gray-900 shadow-xs border border-gray-100"
+                                : "text-gray-500 hover:text-gray-800"
+                        }`}
+                    >
+                        <MdHistory size={15} className={isPreviousMode ? "text-indigo-600" : "text-gray-400"} />
+                        <span>Previous Levels</span>
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                            totalPreviousTasksCount > 0 
+                                ? "bg-indigo-50 text-indigo-600 border border-indigo-100" 
+                                : "bg-gray-200 text-gray-500"
+                        }`}>
+                            {totalPreviousTasksCount}
+                        </span>
+                    </button>
                 </div>
+
+                {/* Read-only pill indicator when in previous mode */}
+                {isPreviousMode && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold">
+                        <MdLock size={13} className="text-amber-600" />
+                        <span>Previous Level (View Only)</span>
+                    </div>
+                )}
             </div>
 
-            {/* ── Subject Filter Bar (Touch-friendly horizontal scroll) ── */}
-            {allSubjects.length > 0 && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x -mx-1 px-1">
-                    {["All", ...allSubjects].map(subj => {
-                        const isActive = activeSubject === subj;
-                        return (
-                            <button
-                                key={subj}
-                                onClick={() => setActiveSubject(subj)}
-                                className={`text-xs font-semibold px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all duration-150 shrink-0 ${
-                                    isActive
-                                        ? "bg-orange-500 text-white border-orange-500 shadow-xs"
-                                        : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600"
-                                }`}
-                            >
-                                {subj}
-                            </button>
-                        );
-                    })}
+            {/* ── Previous Levels Selector (When in previous mode & multiple levels exist) ── */}
+            {isPreviousMode && previousLevels.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none touch-pan-x -mx-1 px-1">
+                    {previousLevels.map((pl, idx) => (
+                        <button
+                            key={pl.subLevelId || pl.levelId || idx}
+                            onClick={() => {
+                                setSelectedPrevIndex(idx);
+                                setActiveSubject("All");
+                            }}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all duration-150 shrink-0 flex items-center gap-1.5 ${
+                                selectedPrevIndex === idx
+                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                    : "bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            }`}
+                        >
+                            <MdLayers size={13} className={selectedPrevIndex === idx ? "text-white" : "text-gray-400"} />
+                            <span>{pl.levelName} – {pl.subLevelName}</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                selectedPrevIndex === idx ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                            }`}>
+                                {pl.totalTasks}
+                            </span>
+                        </button>
+                    ))}
                 </div>
             )}
 
-            {/* ── Mobile Status Tabs (md:hidden) ── */}
-            <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
-                <button
-                    onClick={() => setMobileTab("all")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>All</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 text-gray-700">
-                        {filtered.length}
+            {/* ── Read-only Info Banner for Previous Levels ── */}
+            {isPreviousMode && previousLevels.length > 0 && (
+                <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                            <MdLock size={16} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-indigo-900">
+                                {activePrevLevel ? `${activePrevLevel.levelName} – ${activePrevLevel.subLevelName}` : "Previous Level"} Tasks (View Only)
+                            </p>
+                            <p className="text-[11px] text-indigo-600/80 mt-0.5">
+                                You are viewing tasks and faculty evaluations from your previous level. Task status is locked.
+                            </p>
+                        </div>
+                    </div>
+                    <span className="hidden sm:inline-flex text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white text-indigo-700 border border-indigo-200 shrink-0">
+                        Read Only
                     </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("pending")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "pending" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Pending</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800">
-                        {byStatus.pending.length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("inProgress")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "inProgress" ? "bg-white text-blue-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>In Prog</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
-                        {byStatus.inProgress.length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("completed")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "completed" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Done</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
-                        {byStatus.completed.length}
-                    </span>
-                </button>
-            </div>
+                </div>
+            )}
 
-            {/* ── Mobile Tasks List (md:hidden) ── */}
-            <div className="md:hidden space-y-3">
-                {mobileTab === "all" ? (
-                    // Grouped view for "All" tab on mobile
-                    STATUS_COLS.map(col => {
-                        const tasks = byStatus[col.key];
-                        if (tasks.length === 0) return null;
-                        return (
-                            <div key={col.key} className="space-y-2">
-                                <div className="flex items-center gap-2 px-1">
-                                    <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">{col.label}</h3>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
-                                        {tasks.length}
-                                    </span>
+            {/* ── Empty State for Previous Levels when none exist ── */}
+            {isPreviousMode && previousLevels.length === 0 ? (
+                <EmptyState
+                    icon={MdHistory}
+                    title="No previous level tasks"
+                    subtitle="You are currently at your starting level, or there are no historical tasks recorded for previous levels."
+                    actionText="Back to Current Level Tasks"
+                    onAction={() => setSelectedLevelTab("current")}
+                />
+            ) : (
+                <>
+                    {/* ── Header Card ── */}
+                    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
+                        <div className={`h-1.5 w-full ${isPreviousMode ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-400" : "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400"}`} />
+                        <div className="p-3.5 sm:p-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                                            {isPreviousMode 
+                                                ? `${activePrevLevel?.levelName || "Previous Level"} Tasks`
+                                                : "My Tasks"
+                                            }
+                                        </h2>
+                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                                            isPreviousMode
+                                                ? "bg-indigo-50 text-indigo-600 border-indigo-100"
+                                                : "bg-orange-50 text-orange-600 border-orange-100"
+                                        }`}>
+                                            {totalTasks}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        {completedTasks} completed · {pendingTasks} pending
+                                    </p>
                                 </div>
-                                <div className="space-y-2">
-                                    {tasks.map(task => (
+
+                                {/* Search Input */}
+                                <div className="relative w-full sm:w-60 md:w-64">
+                                    <MdSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        placeholder="Search tasks..."
+                                        className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
+                                    />
+                                    {search && (
+                                        <button
+                                            onClick={() => setSearch("")}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <MdClose size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Stat Pills & Progress Bar */}
+                            <div className="mt-3.5 pt-3 border-t border-gray-100/80">
+                                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
+                                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${
+                                        isPreviousMode ? "bg-indigo-50/80 border-indigo-100 text-indigo-700" : "bg-orange-50/80 border-orange-100 text-orange-700"
+                                    }`}>
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${isPreviousMode ? "bg-indigo-500" : "bg-orange-500"}`} />
+                                        <span className="text-[11px] sm:text-xs font-bold truncate">{taskPct}% Complete</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
+                                        <MdCheckCircle size={13} className="text-emerald-500 shrink-0" />
+                                        <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{completedTasks} Done</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
+                                        <MdAccessTime size={13} className="text-amber-500 shrink-0" />
+                                        <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{pendingTasks} Pending</span>
+                                    </div>
+                                    {avgMarks && (
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50/80 border border-yellow-100">
+                                            <MdStar size={13} className="text-yellow-500 shrink-0" />
+                                            <span className="text-[11px] sm:text-xs font-bold text-yellow-700 truncate">Avg {avgMarks}/5</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
+                                    <div 
+                                        className={`h-1.5 rounded-full transition-all duration-500 ${
+                                            isPreviousMode ? "bg-gradient-to-r from-indigo-400 to-indigo-500" : "bg-gradient-to-r from-orange-400 to-orange-500"
+                                        }`} 
+                                        style={{ width: `${taskPct}%` }} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Subject Filter Bar (Touch-friendly horizontal scroll) ── */}
+                    {allSubjects.length > 0 && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x -mx-1 px-1">
+                            {["All", ...allSubjects].map(subj => {
+                                const isActive = activeSubject === subj;
+                                return (
+                                    <button
+                                        key={subj}
+                                        onClick={() => setActiveSubject(subj)}
+                                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl border whitespace-nowrap transition-all duration-150 shrink-0 ${
+                                            isActive
+                                                ? isPreviousMode ? "bg-indigo-600 text-white border-indigo-600 shadow-xs" : "bg-orange-500 text-white border-orange-500 shadow-xs"
+                                                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600"
+                                        }`}
+                                    >
+                                        {subj}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* ── Mobile Status Tabs (md:hidden) ── */}
+                    <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
+                        <button
+                            onClick={() => setMobileTab("all")}
+                            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                                mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            <span>All</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 text-gray-700">
+                                {filtered.length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setMobileTab("pending")}
+                            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                                mobileTab === "pending" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            <span>Pending</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800">
+                                {byStatus.pending.length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setMobileTab("inProgress")}
+                            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                                mobileTab === "inProgress" ? "bg-white text-blue-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            <span>In Prog</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
+                                {byStatus.inProgress.length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setMobileTab("completed")}
+                            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                                mobileTab === "completed" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            <span>Done</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                                {byStatus.completed.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* ── Mobile Tasks List (md:hidden) ── */}
+                    <div className="md:hidden space-y-3">
+                        {mobileTab === "all" ? (
+                            STATUS_COLS.map(col => {
+                                const tasks = byStatus[col.key];
+                                if (tasks.length === 0) return null;
+                                return (
+                                    <div key={col.key} className="space-y-2">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">{col.label}</h3>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
+                                                {tasks.length}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {tasks.map(task => (
+                                                <TaskCard
+                                                    key={task._id}
+                                                    task={task}
+                                                    onStatusChange={handleStatusChange}
+                                                    onSelectTask={setSelectedTask}
+                                                    isReadOnly={isPreviousMode}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="space-y-2">
+                                {byStatus[mobileTab].length === 0 ? (
+                                    <EmptyState
+                                        icon={MdAssignment}
+                                        title={`No ${mobileTab === "inProgress" ? "in-progress" : mobileTab} tasks found`}
+                                        subtitle="Tasks assigned in this status will appear here."
+                                        compact
+                                    />
+                                ) : (
+                                    byStatus[mobileTab].map(task => (
                                         <TaskCard
                                             key={task._id}
                                             task={task}
                                             onStatusChange={handleStatusChange}
                                             onSelectTask={setSelectedTask}
+                                            isReadOnly={isPreviousMode}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* Overall Empty State on Mobile */}
+                        {filtered.length === 0 && (
+                            <EmptyState
+                                icon={MdAssignment}
+                                title="No matching tasks found"
+                                subtitle={search ? "Try searching for another topic or clear the search query." : (isPreviousMode ? "No tasks found for this previous level." : "No tasks assigned for your current level yet.")}
+                                actionText={search ? "Clear Search" : undefined}
+                                onAction={search ? () => setSearch("") : undefined}
+                            />
+                        )}
+                    </div>
+
+                    {/* ── Desktop Kanban Columns (hidden md:grid) ── */}
+                    <div className="hidden md:grid md:grid-cols-3 gap-4">
+                        {STATUS_COLS.map(col => (
+                            <div 
+                                key={col.key}
+                                onDragOver={(e) => {
+                                    if (isPreviousMode) return;
+                                    e.preventDefault();
+                                    setDragOverCol(col.key);
+                                }}
+                                onDragLeave={() => setDragOverCol(null)}
+                                onDrop={async (e) => {
+                                    setDragOverCol(null);
+                                    if (isPreviousMode) return;
+                                    await handleDrop(e, col.key);
+                                }}
+                                className={`rounded-2xl border transition-all duration-200 ${
+                                    dragOverCol === col.key 
+                                        ? "border-orange-400 bg-orange-50/50 shadow-md scale-[1.01]" 
+                                        : `${col.border} ${col.colBg}`
+                                } p-3.5`}
+                            >
+                                {/* Column Header */}
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                                    <h3 className="text-sm font-bold text-gray-700">{col.label}</h3>
+                                    <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
+                                        {byStatus[col.key].length}
+                                    </span>
+                                </div>
+
+                                {/* Column Task Cards */}
+                                <div className="space-y-2.5 min-h-[350px]">
+                                    {byStatus[col.key].length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200/80 rounded-xl py-10 bg-white/60">
+                                            <MdAssignment size={24} className={col.emptyIcon} />
+                                            <p className="text-xs text-gray-400 mt-2 font-medium">No {col.label.toLowerCase()} tasks</p>
+                                        </div>
+                                    ) : byStatus[col.key].map(task => (
+                                        <TaskCard 
+                                            key={task._id} 
+                                            task={task} 
+                                            onDragStart={(e) => handleDragStart(e, task)} 
+                                            onStatusChange={handleStatusChange}
+                                            onSelectTask={setSelectedTask}
+                                            isReadOnly={isPreviousMode}
                                         />
                                     ))}
                                 </div>
                             </div>
-                        );
-                    })
-                ) : (
-                    // Single status tab view on mobile
-                    <div className="space-y-2">
-                        {byStatus[mobileTab].length === 0 ? (
-                            <EmptyState
-                                icon={MdAssignment}
-                                title={`No ${mobileTab === "inProgress" ? "in-progress" : mobileTab} tasks found`}
-                                subtitle="Tasks assigned to you in this status will appear here."
-                                compact
-                            />
-                        ) : (
-                            byStatus[mobileTab].map(task => (
-                                <TaskCard
-                                    key={task._id}
-                                    task={task}
-                                    onStatusChange={handleStatusChange}
-                                    onSelectTask={setSelectedTask}
-                                />
-                            ))
-                        )}
+                        ))}
                     </div>
-                )}
-
-                {/* Overall Empty State on Mobile */}
-                {filtered.length === 0 && (
-                    <EmptyState
-                        icon={MdAssignment}
-                        title="No matching tasks found"
-                        subtitle={search ? "Try searching for another topic or clear the search query." : "No tasks assigned for your current level yet."}
-                        actionText={search ? "Clear Search" : undefined}
-                        onAction={search ? () => setSearch("") : undefined}
-                    />
-                )}
-            </div>
-
-            {/* ── Desktop Kanban Columns (hidden md:grid) ── */}
-            <div className="hidden md:grid md:grid-cols-3 gap-4">
-                {STATUS_COLS.map(col => (
-                    <div 
-                        key={col.key}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.key); }}
-                        onDragLeave={() => setDragOverCol(null)}
-                        onDrop={async (e) => {
-                            setDragOverCol(null);
-                            await handleDrop(e, col.key);
-                        }}
-                        className={`rounded-2xl border transition-all duration-200 ${
-                            dragOverCol === col.key 
-                                ? "border-orange-400 bg-orange-50/50 shadow-md scale-[1.01]" 
-                                : `${col.border} ${col.colBg}`
-                        } p-3.5`}
-                    >
-                        {/* Column Header */}
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                            <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                            <h3 className="text-sm font-bold text-gray-700">{col.label}</h3>
-                            <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
-                                {byStatus[col.key].length}
-                            </span>
-                        </div>
-
-                        {/* Column Task Cards */}
-                        <div className="space-y-2.5 min-h-[350px]">
-                            {byStatus[col.key].length === 0 ? (
-                                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200/80 rounded-xl py-10 bg-white/60">
-                                    <MdAssignment size={24} className={col.emptyIcon} />
-                                    <p className="text-xs text-gray-400 mt-2 font-medium">No {col.label.toLowerCase()} tasks</p>
-                                </div>
-                            ) : byStatus[col.key].map(task => (
-                                <TaskCard 
-                                    key={task._id} 
-                                    task={task} 
-                                    onDragStart={(e) => handleDragStart(e, task)} 
-                                    onStatusChange={handleStatusChange}
-                                    onSelectTask={setSelectedTask}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
+                </>
+            )}
 
             {/* ── Task Details Modal ── */}
             {selectedTask && (
@@ -383,6 +584,7 @@ export default function StudentTasks() {
                     task={selectedTask}
                     onClose={() => setSelectedTask(null)}
                     onStatusChange={handleStatusChange}
+                    isReadOnly={isPreviousMode}
                 />
             )}
         </div>
@@ -432,7 +634,7 @@ function formatDate(dateString) {
 }
 
 // ── Responsive Task Card ──
-function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
+function TaskCard({ task, onDragStart, onStatusChange, onSelectTask, isReadOnly = false }) {
     const max = task.maxMarks || 5;
 
     const statusConfig = {
@@ -466,7 +668,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
             {/* ── Mobile Card View (md:hidden) ── */}
             {/* Minimal, uncluttered, touch-optimized */}
             <div 
-                className={`md:hidden bg-white rounded-xl border border-gray-200/80 p-3 shadow-2xs hover:shadow-xs transition-all ${cfg.borderClass}`}
+                className={`md:hidden bg-white rounded-xl border border-gray-200/80 p-3 shadow-2xs hover:shadow-xs transition-all relative focus-within:z-30 ${cfg.borderClass}`}
             >
                 {/* Row 1: Subject Tag & Status / Score */}
                 <div className="flex items-center justify-between gap-2">
@@ -510,31 +712,23 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                 {/* Row 3: Action & Details Button */}
                 <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100">
                     <div>
-                        {task.status === "pending" && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStatusChange(task._id, "inProgress");
-                                }}
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all border border-orange-200/60"
-                            >
-                                <span>Start Task</span>
-                                <MdArrowForward size={12} />
-                            </button>
-                        )}
-                        {task.status === "inProgress" && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStatusChange(task._id, "pending");
-                                }}
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 px-2 py-1 rounded-lg transition-all"
-                            >
-                                <MdRefresh size={12} />
-                                <span>Move to Pending</span>
-                            </button>
-                        )}
-                        {task.status === "completed" && (
+                        {isReadOnly ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200/50">
+                                <MdLock size={11} className="text-gray-400" />
+                                <span>Read Only</span>
+                            </span>
+                        ) : task.status !== "completed" ? (
+                            <div className="w-36">
+                                <SelectDropdown
+                                    value={task.status}
+                                    onChange={(val) => onStatusChange(task._id, val)}
+                                    options={TASK_STATUS_OPTIONS}
+                                    placeholder="Status"
+                                    buttonClassName="w-full flex items-center justify-between gap-1.5 px-2.5 py-1 text-xs border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-gray-800 font-semibold transition-all shadow-2xs focus:outline-none cursor-pointer"
+                                    menuClassName="w-36 text-xs"
+                                />
+                            </div>
+                        ) : (
                             <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
                                 <MdCheckCircle size={12} />
                                 <span>Graded by Faculty</span>
@@ -555,10 +749,10 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
             {/* ── Desktop Card View (hidden md:flex) ── */}
             {/* Full featured with drag-and-drop & metadata */}
             <div 
-                draggable={task.status !== "completed"}
-                onDragStart={onDragStart}
-                className={`hidden md:flex bg-white rounded-xl border border-gray-200 p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex-col justify-between h-full min-h-[155px] ${cfg.borderClass} ${cfg.bgClass} ${
-                    task.status !== "completed" ? "cursor-grab active:cursor-grabbing" : ""
+                draggable={!isReadOnly && task.status !== "completed"}
+                onDragStart={isReadOnly ? undefined : onDragStart}
+                className={`hidden md:flex bg-white rounded-xl border border-gray-200 p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex-col justify-between h-full min-h-[155px] relative focus-within:z-30 hover:z-20 ${cfg.borderClass} ${cfg.bgClass} ${
+                    !isReadOnly && task.status !== "completed" ? "cursor-grab active:cursor-grabbing" : ""
                 }`}
             >
                 <div>
@@ -582,7 +776,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                             >
                                 <MdInfoOutline size={14} />
                             </button>
-                            {task.status !== "completed" && (
+                            {!isReadOnly && task.status !== "completed" && (
                                 <MdDragIndicator className="text-gray-300 hover:text-gray-400 shrink-0" size={14} />
                             )}
                         </div>
@@ -602,23 +796,63 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
                     )}
                 </div>
 
-                {/* Status Dropdown/Badge */}
-                {task.status !== "completed" ? (
+                {/* Status Dropdown/Read-Only Badge */}
+                {isReadOnly ? (
                     <div className="mt-3">
-                        <label className="text-[9px] font-bold text-gray-400 block mb-1">Status</label>
-                        <select
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Status</span>
+                            <span className="text-[9px] font-semibold text-gray-400 flex items-center gap-0.5">
+                                <MdLock size={9} /> Read Only
+                            </span>
+                        </div>
+                        <div className={`flex items-center justify-between w-full px-3 py-1.5 rounded-xl border text-xs font-bold shadow-2xs ${
+                            task.status === "completed"
+                                ? "bg-emerald-50/80 border-emerald-200/90 text-emerald-700 ring-1 ring-emerald-100/50"
+                                : task.status === "inProgress"
+                                ? "bg-blue-50/80 border-blue-200/90 text-blue-700 ring-1 ring-blue-100/50"
+                                : "bg-amber-50/80 border-amber-200/90 text-amber-700 ring-1 ring-amber-100/50"
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                                    task.status === "completed" ? "bg-emerald-500" : task.status === "inProgress" ? "bg-blue-500" : "bg-amber-500"
+                                }`} />
+                                <span className="font-extrabold text-[11px] tracking-tight">
+                                    {task.status === "inProgress" ? "In Progress" : task.status === "completed" ? "Completed" : "Pending"}
+                                </span>
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-400 bg-white/80 border border-gray-200/60 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                <MdLock size={9} /> Locked
+                            </span>
+                        </div>
+                    </div>
+                ) : task.status !== "completed" ? (
+                    <div className="mt-3" onMouseDown={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Status</span>
+                            <span className="text-[9px] font-medium text-gray-400">Click to change</span>
+                        </div>
+                        <SelectDropdown
                             value={task.status}
-                            onChange={(e) => onStatusChange(task._id, e.target.value)}
-                            className="w-full text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:border-orange-500 focus:bg-white text-gray-700 transition cursor-pointer"
-                        >
-                            <option value="pending">Pending</option>
-                            <option value="inProgress">In Progress</option>
-                        </select>
+                            onChange={(val) => onStatusChange(task._id, val)}
+                            options={TASK_STATUS_OPTIONS}
+                            placeholder="Select Status"
+                            buttonClassName="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-gray-800 font-semibold transition-all shadow-2xs focus:outline-none cursor-pointer"
+                            menuClassName="w-full text-xs"
+                        />
                     </div>
                 ) : (
-                    <div className="mt-3 flex items-center gap-1 text-emerald-600">
-                        <MdCheckCircle size={14} />
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider">Completed</span>
+                    <div className="mt-3">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Status</span>
+                            <span className="text-[9px] font-semibold text-emerald-600">Locked</span>
+                        </div>
+                        <div className="flex items-center justify-between w-full px-3 py-1.5 rounded-xl border bg-emerald-50/80 border-emerald-200/90 text-emerald-800 text-xs font-bold ring-1 ring-emerald-100/50 shadow-2xs">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                <span className="font-extrabold text-[11px] tracking-tight">Completed</span>
+                            </div>
+                            <MdCheckCircle size={15} className="text-emerald-600 shrink-0" />
+                        </div>
                     </div>
                 )}
 
@@ -662,7 +896,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask }) {
 }
 
 // ── Task Details Modal ──
-function TaskDetailModal({ task, onClose, onStatusChange }) {
+function TaskDetailModal({ task, onClose, onStatusChange, isReadOnly = false }) {
     const max = task.maxMarks || 5;
 
     return (
@@ -779,7 +1013,12 @@ function TaskDetailModal({ task, onClose, onStatusChange }) {
 
                 {/* Modal Footer Actions */}
                 <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
-                    {task.status === "pending" ? (
+                    {isReadOnly ? (
+                        <div className="flex-1 text-center text-xs font-semibold text-gray-500 bg-gray-100/90 py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 border border-gray-200/50">
+                            <MdLock size={14} className="text-gray-400" />
+                            <span>Previous Level Task · View Only</span>
+                        </div>
+                    ) : task.status === "pending" ? (
                         <button
                             onClick={() => {
                                 onStatusChange(task._id, "inProgress");

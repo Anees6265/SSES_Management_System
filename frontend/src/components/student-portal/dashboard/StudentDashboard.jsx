@@ -5,7 +5,7 @@ import {
     MdTableChart, MdSchool, MdWork, MdStar,
     MdClose, MdBadge, MdBusiness, MdCalendarToday,
     MdAccountTree, MdVerified, MdArrowUpward, MdTrendingUp,
-    MdAssignment, MdStarBorder,
+    MdAssignment, MdStarBorder, MdPerson, MdFamilyRestroom,
 } from "react-icons/md";
 import {
     useGetMyStudentProfileQuery,
@@ -100,6 +100,28 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                             <MdVerified size={15} className="text-blue-500 flex-shrink-0" />
                             {raw.isFTP && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">FTP</span>}
                         </div>
+
+                        {/* Parents Name Highlights */}
+                        {(raw.fatherName || raw.motherName) && (
+                            <p className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-1.5 flex-wrap font-medium">
+                                <span className="text-gray-400 font-semibold flex items-center gap-1">
+                                    <MdFamilyRestroom size={13} className="text-orange-500 shrink-0" />
+                                    Parents:
+                                </span>
+                                {raw.fatherName && (
+                                    <span>
+                                        Father: <strong className="text-gray-800 font-semibold">{raw.fatherName}</strong>
+                                    </span>
+                                )}
+                                {raw.fatherName && raw.motherName && <span className="text-gray-300">·</span>}
+                                {raw.motherName && (
+                                    <span>
+                                        Mother: <strong className="text-gray-800 font-semibold">{raw.motherName}</strong>
+                                    </span>
+                                )}
+                            </p>
+                        )}
+
                         <p className="text-xs text-gray-500 mt-0.5 truncate">{raw.course || "—"} {raw.sessionId?.name ? `· ${raw.sessionId.name}` : ""}</p>
                         <div className="mt-1 flex items-center gap-2 flex-wrap">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${readinessBadge(readinessStatus)}`}>
@@ -112,13 +134,15 @@ const HeroCard = ({ raw, name, initials, readinessStatus, overallPct, daysInSubL
                 <div className="hidden lg:block w-px self-stretch bg-gray-100" />
 
                 {/* Info grid */}
-                <div className="w-full lg:flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-x-4 sm:gap-y-3 bg-gray-50/80 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-gray-100 sm:border-none">
+                <div className="w-full lg:flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-x-4 sm:gap-y-3 bg-gray-50/80 sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none border border-gray-100 sm:border-none">
                     {[
-                        { icon: <MdBadge size={11} />, label: "Course",       value: raw.course },
-                        { icon: <MdEmail size={11} />, label: "Email",         value: raw.email },
-                        { icon: <MdPhone size={11} />, label: "Mobile",        value: raw.studentMobile },
-                        { icon: <MdBusiness size={11} />, label: "Department",  value: raw.departmentId?.name || raw.subDepartmentId?.departmentId?.name },
-                        { icon: <MdAccountTree size={11} />, label: "Sub Dept", value: raw.subDepartmentId?.name },
+                        { icon: <MdPerson size={11} />, label: "Father Name",   value: raw.fatherName },
+                        { icon: <MdPerson size={11} />, label: "Mother Name",   value: raw.motherName },
+                        { icon: <MdBadge size={11} />, label: "Course",         value: raw.course },
+                        { icon: <MdEmail size={11} />, label: "Email",          value: raw.email },
+                        { icon: <MdPhone size={11} />, label: "Student Mobile", value: raw.studentMobile },
+                        { icon: <MdPhone size={11} />, label: "Parent Mobile",  value: raw.parentMobile || raw.fatherContactNumber },
+                        { icon: <MdBusiness size={11} />, label: "Department",   value: raw.departmentId?.name || raw.subDepartmentId?.departmentId?.name },
                         { icon: <MdCalendarToday size={11} />, label: "Session", value: raw.sessionId?.name },
                     ].map(({ icon, label, value }) => (
                         <div key={label} className="min-w-0">
@@ -201,7 +225,17 @@ export default function StudentDashboard() {
         </div>
     );
 
-    const raw      = profileData?.data || {};
+    const storedStudent = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("studentData") || "{}");
+        } catch {
+            return {};
+        }
+    })();
+    const raw = {
+        ...storedStudent,
+        ...(profileData?.data || {}),
+    };
     const name     = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
     const readinessStatus = raw.placement?.readinessStatus || "Not Ready";
@@ -413,9 +447,19 @@ export default function StudentDashboard() {
                                                         {isCurrent ? "Current" : "Done"}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                                                    {isCurrent ? "In Progress" : `Completed ${formatDate(item.completedAt)}`}
-                                                </p>
+                                                <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1 gap-1">
+                                                    <span className="truncate">
+                                                        {item.promotion?.promotedBy 
+                                                            ? `${isCurrent ? "Enrolled by" : "Promoted by"} ${item.promotion.promotedBy}`
+                                                            : (isCurrent ? "In Progress" : `Completed ${formatDate(item.completedAt)}`)
+                                                        }
+                                                    </span>
+                                                    {item.totalTasks > 0 && (
+                                                        <span className="font-semibold text-gray-500 shrink-0 ml-1">
+                                                            {item.completedTasksCount}/{item.totalTasks} Tasks
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );

@@ -28,6 +28,17 @@ const studentLevelProgressSchema = new mongoose.Schema({
   },
   startedAt: { type: Date },
   completedAt: { type: Date },
+
+  // Promotion metadata
+  promotedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  },
+  promotedByName: { type: String, default: "" },
+  promotedByRole: { type: String, default: "" },
+  promotedAt: { type: Date, default: null },
+  promotionNote: { type: String, default: "" },
   
   // Syllabus version snapshot when level was started/completed
   syllabusVersionSnapshot: {

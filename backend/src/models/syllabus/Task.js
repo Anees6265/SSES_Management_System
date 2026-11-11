@@ -55,7 +55,7 @@ const taskSchema = new mongoose.Schema({
     default: "medium"
   },
   mandatory: { type: Boolean, default: true },
-  maxMarks: { type: Number, min: 0, default: 5 },
+  maxMarks: { type: Number, min: 0, max: 5, default: 5 },
   order: { type: Number, default: 1 },
   timeDays: { type: String, default: null },
   measurablePoints: { type: String, default: "" },

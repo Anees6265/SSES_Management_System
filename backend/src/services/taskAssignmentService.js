@@ -29,7 +29,7 @@ const buildTaskEntries = async (syllabusVersionId) => {
     mandatory: task.mandatory !== false,
     course: task.course || "All",
     courses: task.courses || (task.course ? [task.course] : ["All"]),
-    maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5,
+    maxMarks: typeof task.maxMarks === "number" ? Math.min(5, Math.max(1, task.maxMarks)) : 5,
     assignTo: task.assignTo || "all",
     specificStudentIds: task.specificStudentIds || []
   }));
@@ -214,7 +214,7 @@ const buildStudentTaskPayload = (student, syllabusVersion, entry, assignmentMeta
   description: entry.description,
   type: entry.type,
   mandatory: entry.mandatory,
-  maxMarks: entry.maxMarks,
+  maxMarks: typeof entry.maxMarks === "number" ? Math.min(5, Math.max(1, entry.maxMarks)) : 5,
   isActive: true,
   assignedType: assignmentMeta.assignedType || "auto",
   assignedBy: assignmentMeta.assignedBy || null,
@@ -688,8 +688,11 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
     throw new Error("Marks are required when task status is completed");
   }
 
-  if (nextMarks !== null && nextMarks !== undefined && nextMarks > studentTask.maxMarks) {
-    throw new Error("Marks cannot exceed maxMarks");
+  if (nextMarks !== null && nextMarks !== undefined) {
+    const effectiveMax = Math.min(5, studentTask.maxMarks || 5);
+    if (nextMarks > effectiveMax) {
+      throw new Error(`Marks cannot exceed maximum marks (${effectiveMax})`);
+    }
   }
 
   if (payload.status) {
@@ -1133,7 +1136,7 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
       type: taskDoc.type || "assignment",
       priority: taskDoc.priority || "medium",
       mandatory: taskDoc.mandatory !== false,
-      maxMarks: typeof taskDoc.maxMarks === "number" ? taskDoc.maxMarks : 5,
+      maxMarks: typeof taskDoc.maxMarks === "number" ? Math.min(5, Math.max(1, taskDoc.maxMarks)) : 5,
       timeDays: taskDoc.timeDays || null,
       dueDate: taskDoc.dueDate || null,
       measurablePoints: taskDoc.measurablePoints || "",

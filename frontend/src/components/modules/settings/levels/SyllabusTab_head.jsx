@@ -506,8 +506,8 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
         topic:       String(r["Topic"]       || r["topic"]       || "").trim(),
         taskTitle:   String(r["TaskTitle"]   || r["Task Title"]  || r["taskTitle"] || r["Task"] || r["task"] || r["Tasks"] || r["TASK"] || r["title"] || r["Title"] || "").trim(),
         taskType:    String(r["TaskType"]    || r["Task Type"]   || r["taskType"]  || "assessment").trim(),
-        maxMarks:    r["MaxMarks"]   || r["Max Marks"]  || r["maxMarks"]  || 100,
-        cutoff:      r["Cutoff"]     || r["cutoff"]     || 40,
+        maxMarks:    Math.min(5, Math.max(1, Number(r["MaxMarks"] || r["Max Marks"] || r["maxMarks"] || 5))),
+        cutoff:      r["Cutoff"]     || r["cutoff"]     || 3,
         priority:    String(r["Priority"]    || r["priority"]    || "medium").trim(),
         mandatory:   String(r["Mandatory"]   || r["mandatory"]   || "true").trim(),
         description: String(r["Description"] || r["description"] || "").trim(),
@@ -693,7 +693,7 @@ export const VersionTasksTable = ({ versionId }) => {
 /* ─── Manual Task Creation Form ────────────────────────── */
 const TASK_TYPES    = ["writtenExam", "interview", "project", "presentation", "learning", "assessment"];
 const TASK_PRIORITY = ["low", "medium", "high"];
-const EMPTY_FORM    = { title: "", measurablePoints: "", timeDays: "", type: "assessment", priority: "medium", maxMarks: 100, cutoff: 40, dueDate: "" };
+const EMPTY_FORM    = { title: "", measurablePoints: "", timeDays: "", type: "assessment", priority: "medium", maxMarks: 5, cutoff: 3, dueDate: "" };
 
 export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-task-form", showSubmitButton = true }) => {
   const subLevelId = subLevel?._id;
@@ -746,7 +746,7 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
         ...(taskTarget === "subtopic" && subTopicId ? { subTopicId } : {}),
         ...form,
         title:    form.title.trim(),
-        maxMarks: Number(form.maxMarks),
+        maxMarks: Math.min(5, Math.max(1, Number(form.maxMarks) || 5)),
         cutoff:   Number(form.cutoff),
         timeDays: form.timeDays ? Number(form.timeDays) : null,
       };
@@ -860,8 +860,19 @@ export const ManualTaskForm = ({ subLevel, versionId, onSaved, formId = "manual-
               </select>
             </div>
             <div>
-              <label className={lc}>Max Marks</label>
-              <input type="number" className={ic} value={form.maxMarks} onChange={(e) => setForm((p) => ({ ...p, maxMarks: e.target.value }))} />
+              <label className={lc}>Max Marks (Max 5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                className={ic}
+                value={form.maxMarks}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((p) => ({ ...p, maxMarks: v === "" ? "" : Math.min(5, Math.max(1, Number(v))) }));
+                }}
+                placeholder="5"
+              />
             </div>
             <div>
               <label className={lc}>Cutoff</label>

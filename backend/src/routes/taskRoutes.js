@@ -212,7 +212,7 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       description: description || "",
       type: type || "assignment",
       priority: priority || "medium",
-      maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
+      maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : (Number(maxMarks) > 0 ? Math.min(5, Number(maxMarks)) : 5),
       timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
       measurablePoints: measurablePoints || "",
       dueDate: dueDate || null,
@@ -284,7 +284,7 @@ const handleUpdateTaskRoute = async (req, res) => {
     delete updateData.taskId;
 
     if (req.body.maxMarks !== undefined) {
-      updateData.maxMarks = Number(req.body.maxMarks) >= 0 ? Number(req.body.maxMarks) : 5;
+      updateData.maxMarks = Number(req.body.maxMarks) >= 0 ? Math.min(5, Math.max(1, Number(req.body.maxMarks))) : 5;
     }
     if (req.body.timeDays !== undefined) {
       updateData.timeDays = req.body.timeDays !== "" && req.body.timeDays !== null ? String(req.body.timeDays).trim() : null;
@@ -313,7 +313,7 @@ const handleUpdateTaskRoute = async (req, res) => {
           type: task.type || "assignment",
           priority: task.priority || "medium",
           mandatory: task.mandatory !== false,
-          maxMarks: typeof task.maxMarks === "number" ? task.maxMarks : 5,
+          maxMarks: typeof task.maxMarks === "number" ? Math.min(5, Math.max(1, task.maxMarks)) : 5,
           timeDays: task.timeDays || null,
           dueDate: task.dueDate || null,
           measurablePoints: task.measurablePoints || "",
@@ -790,7 +790,7 @@ router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), as
       subjectName: subjectName || "General",
       topicName: topicName || "Assessment",
       taskNodeType: "topic",
-      maxMarks: typeof maxMarks === "number" ? maxMarks : 5,
+      maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : (Number(maxMarks) > 0 ? Math.min(5, Number(maxMarks)) : 5),
       dueDate: dueDate || null,
       priority: priority || "medium",
       isExtra: true,

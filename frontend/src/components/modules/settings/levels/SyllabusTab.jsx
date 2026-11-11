@@ -1834,7 +1834,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
         taskTitle:         String(r["Task Title"]       || r["taskTitle"]        || r["TaskTitle"]  || r["Task"] || r["task"] || r["Tasks"] || r["TASK"] || r["title"] || r["Title"] || "").trim(),
         taskType:          String(r["taskType"]         || r["TaskType"]         || r["Task Type"]  || r["TASK TYPE"] || "assessment").trim(),
         priority:          String(r["priority"]         || r["Priority"]         || r["PRIORITY"] || "medium").trim(),
-        maxMarks:          Number(r["maxMarks"]         || r["MaxMarks"]         || r["Max Marks"]  || r["MAX MARKS"] || 5),
+        maxMarks:          Math.min(5, Math.max(1, Number(r["maxMarks"] || r["MaxMarks"] || r["Max Marks"] || r["MAX MARKS"] || 5))),
         timeDays:          r["Time Days"] || r["timeDays"] || r["TimeDays"] || r["Time"] || r["TIME DAYS"] || null,
         measurablePoints:  String(r["Measurable Point"] || r["measurablePoints"] || r["MeasurablePoints"] || r["Measurable Points"] || r["MEASURABLE POINTS"] || "").trim(),
       })).filter((r) => r.topic && r.taskTitle);
@@ -2669,7 +2669,7 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
         course:   courseStr,
         courses:  coursesList,
         priority: form.priority || "medium",
-        maxMarks: Number(form.maxMarks) >= 0 ? Number(form.maxMarks) : 5,
+        maxMarks: Math.min(5, Math.max(1, Number(form.maxMarks) || 5)),
         title:    form.title.trim(),
         timeDays: form.timeDays ? String(form.timeDays).trim() : null,
         assignTo: assignTarget,
@@ -2913,8 +2913,23 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
               <input type="text" className={ic} value={form.timeDays} onChange={(e) => setForm((p) => ({ ...p, timeDays: e.target.value }))} placeholder="e.g. 7 or 7 days" />
             </div>
             <div>
-              <label className={lc}>Max Marks</label>
-              <input type="number" min="0" className={ic} value={form.maxMarks} onChange={(e) => setForm((p) => ({ ...p, maxMarks: e.target.value }))} placeholder="e.g. 5" />
+              <label className={lc}>Max Marks (Max 5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                className={ic}
+                value={form.maxMarks}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setForm((p) => ({ ...p, maxMarks: "" }));
+                    return;
+                  }
+                  setForm((p) => ({ ...p, maxMarks: Math.min(5, Math.max(1, Number(val))) }));
+                }}
+                placeholder="5"
+              />
             </div>
           </div>
 

@@ -276,7 +276,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) =>
                 <div className="flex items-center gap-1">
                     {isInProgress ? (
                         <div className="flex items-center gap-0.5" title="Give rating in progress">
-                            {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                            {Array.from({ length: Math.min(5, task.maxMarks || 5) }, (_, i) => i + 1).map(star => {
                                 const isSelected = star <= (task.marks || 0);
                                 return (
                                     <button
@@ -287,7 +287,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) =>
                                             onStatusChange(task, task.status, { marks: star });
                                         }}
                                         className="p-0.5 transition hover:scale-125 cursor-pointer"
-                                        title={`Give rating: ${star}/${task.maxMarks || 5}`}
+                                        title={`Give rating: ${star}/${Math.min(5, task.maxMarks || 5)}`}
                                     >
                                         {isSelected ? (
                                             <MdStar size={15} className="text-orange-400" />
@@ -300,7 +300,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) =>
                         </div>
                     ) : isCompleted ? (
                         <div className="flex items-center gap-0.5" title="Completed rating">
-                            {Array.from({ length: task.maxMarks || 5 }, (_, i) => i + 1).map(star => {
+                            {Array.from({ length: Math.min(5, task.maxMarks || 5) }, (_, i) => i + 1).map(star => {
                                 const isSelected = star <= (task.marks || 0);
                                 return (
                                     <span key={star} className="p-0.5 cursor-default">
@@ -325,7 +325,7 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) =>
                                 : "bg-amber-50 text-amber-800 border border-amber-200"
                             : "bg-slate-100 text-slate-500"
                         }`}>
-                        Marks: {task.marks !== null && task.marks !== undefined ? task.marks : 0}/{task.maxMarks || 5}
+                        Marks: {task.marks !== null && task.marks !== undefined ? task.marks : 0}/{Math.min(5, task.maxMarks || 5)}
                     </span>
                 </div>
             </div>
@@ -412,7 +412,7 @@ const ExtraTaskModal = ({ student, selectedSubLevelId, selectedLevelInfo, onClos
                 title: form.title,
                 description: form.description || undefined,
                 type: form.type,
-                maxMarks: Number(form.maxMarks),
+                maxMarks: Math.min(5, Math.max(1, Number(form.maxMarks) || 5)),
                 subjectName: form.subjectName || undefined,
                 measurablePoints: form.measurablePoints || undefined,
                 timeDays: form.timeDays ? String(form.timeDays).trim() : undefined,
@@ -534,15 +534,22 @@ const ExtraTaskModal = ({ student, selectedSubLevelId, selectedLevelInfo, onClos
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         <div>
-                            <label className={labelCls}>Max Marks</label>
+                            <label className={labelCls}>Max Marks (Max 5)</label>
                             <input
                                 type="number"
                                 min={1}
-                                max={100}
+                                max={5}
                                 className={inputCls}
                                 value={form.maxMarks}
-                                onChange={set("maxMarks")}
-                                placeholder="e.g. 5"
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                        setForm(p => ({ ...p, maxMarks: "" }));
+                                        return;
+                                    }
+                                    setForm(p => ({ ...p, maxMarks: Math.min(5, Math.max(1, Number(val))) }));
+                                }}
+                                placeholder="5"
                             />
                         </div>
                         <div>

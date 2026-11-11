@@ -249,7 +249,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
         course: courseStr,
         courses: coursesList,
         timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
-        maxMarks: Number(taskForm.maxMarks) || 5,
+        maxMarks: Math.min(5, Math.max(1, Number(taskForm.maxMarks) || 5)),
         assignTo: assignTarget,
         studentIds: assignTarget === "specific" ? selectedStudentIds : [],
       };
@@ -877,14 +877,23 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                     {/* Metrics Row: Max Marks, Duration, Due Date */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className={labelCls}>Max Marks</label>
+                        <label className={labelCls}>Max Marks (Max 5)</label>
                         <div className="relative">
                           <input
                             type="number"
                             value={taskForm.maxMarks}
-                            onChange={(e) => setTaskForm(prev => ({ ...prev, maxMarks: e.target.value }))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") {
+                                setTaskForm(prev => ({ ...prev, maxMarks: "" }));
+                                return;
+                              }
+                              const num = Number(val);
+                              setTaskForm(prev => ({ ...prev, maxMarks: Math.min(5, Math.max(1, num)) }));
+                            }}
                             className={`${inputCls} pr-14`}
                             min="1"
+                            max="5"
                             placeholder="5"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">

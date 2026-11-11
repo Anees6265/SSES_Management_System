@@ -30,7 +30,7 @@ const studentTaskHistorySchema = new mongoose.Schema({
     required: true
   },
   marks: { type: Number, default: null },
-  maxMarks: { type: Number, default: 5 },
+  maxMarks: { type: Number, min: 0, max: 5, default: 5 },
   notes: { type: String, default: "" },
   changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   changedByName: { type: String, default: "" },

@@ -261,7 +261,7 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
             courses: coursesList,
             status,
             isActive: status === "active",
-            maxMarks: maxMarks !== "" ? Number(maxMarks) : 5,
+            maxMarks: maxMarks !== "" ? Math.min(5, Math.max(1, Number(maxMarks))) : 5,
             timeDays: timeDays !== "" && timeDays !== null ? String(timeDays).trim() : null,
             dueDate: dueDate || null,
             measurablePoints: measurablePoints.trim(),
@@ -379,15 +379,23 @@ const EditTaskModal = ({ task, onClose, onSave, isSaving }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Max Marks
+                                Max Marks (Max 5)
                             </label>
                             <input
                                 type="number"
-                                min="0"
+                                min="1"
+                                max="5"
                                 value={maxMarks}
-                                onChange={(e) => setMaxMarks(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                        setMaxMarks("");
+                                        return;
+                                    }
+                                    setMaxMarks(Math.min(5, Math.max(1, Number(val))));
+                                }}
                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
-                                placeholder="e.g. 5"
+                                placeholder="5"
                             />
                         </div>
                         <div>

@@ -64,7 +64,7 @@ const studentTaskSchema = new mongoose.Schema({
     default: "medium"
   },
   mandatory: { type: Boolean, default: true },
-  maxMarks: { type: Number, min: 0, default: 5 },
+  maxMarks: { type: Number, min: 0, max: 5, default: 5 },
   timeDays: { type: String, default: null },
   measurablePoints: { type: String, default: "" },
   dueDate: { type: Date, default: null },

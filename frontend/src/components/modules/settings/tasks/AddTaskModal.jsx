@@ -356,7 +356,7 @@ const AddTaskModal = ({
                 course: courseStr,
                 courses: coursesList,
                 domain: isLevel2Aor2B ? (taskForm.domain || "").trim() : "",
-                maxMarks: Number(taskForm.maxMarks) >= 0 ? Number(taskForm.maxMarks) : 5,
+                maxMarks: Math.min(5, Math.max(1, Number(taskForm.maxMarks) || 5)),
                 timeDays: taskForm.timeDays ? String(taskForm.timeDays).trim() : null,
                 dueDate: taskForm.dueDate || null,
                 measurablePoints: taskForm.measurablePoints.trim(),
@@ -931,12 +931,21 @@ const AddTaskModal = ({
                                     </div>
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label className={labelCls}>Max Marks</label>
+                                    <label className={labelCls}>Max Marks (Max 5)</label>
                                     <input
                                         type="number"
-                                        min="0"
+                                        min="1"
+                                        max="5"
                                         value={taskForm.maxMarks}
-                                        onChange={(e) => setTaskForm({ ...taskForm, maxMarks: e.target.value })}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === "") {
+                                                setTaskForm({ ...taskForm, maxMarks: "" });
+                                                return;
+                                            }
+                                            const num = Number(val);
+                                            setTaskForm({ ...taskForm, maxMarks: Math.min(5, Math.max(1, num)) });
+                                        }}
                                         className={inputCls}
                                         placeholder="5"
                                     />

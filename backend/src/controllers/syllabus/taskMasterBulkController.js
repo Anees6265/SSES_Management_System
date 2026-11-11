@@ -32,7 +32,7 @@ exports.bulkUploadTasks = async (req, res) => {
       const taskTitle       = (row.taskTitle         || row["Task Title"] || row.TaskTitle || row.Task || row.task || row.Tasks || row.TASK || row.title || row.Title || "").trim();
       const taskType        = (row.taskType          || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
       const priority        = (row.priority          || row.Priority || "medium").trim().toLowerCase();
-      const maxMarks        = Number(row.maxMarks)   || Number(row["Max Marks"]) || 5;
+      const maxMarks        = Math.min(5, Math.max(1, Number(row.maxMarks) || Number(row["Max Marks"]) || 5));
       const timeDays        = (row.timeDays !== undefined && row.timeDays !== null) || (row["Time Days"] !== undefined && row["Time Days"] !== null) ? String(row.timeDays || row["Time Days"] || "").trim() : null;
       const measurablePoints = (row.measurablePoints || row["Measurable Points"] || "").trim();
 

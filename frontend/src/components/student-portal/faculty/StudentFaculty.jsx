@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
-  Search, Mail, Phone, Users, ShieldCheck,
-  Building, GraduationCap, X, Crown, Briefcase, Award
+  Mail, Phone, Users, ShieldCheck,
+  Building, GraduationCap, Crown, Briefcase, Award
 } from "lucide-react";
 import { useGetFacultiesQuery } from "../../../redux/api/studentApi";
 import EmptyState from "../../shared/empty-state/EmptyState";
@@ -104,7 +104,6 @@ const getAvatarGradient = (name = "") => {
 
 export default function StudentFaculty() {
   const { data: facultiesRes, isLoading } = useGetFacultiesQuery();
-  const [searchQuery, setSearchQuery] = usePersistentState("student_faculty_search", "");
   const [activeTab, setActiveTab] = usePersistentState("student_faculty_tab", "all");
 
   const faculties = facultiesRes?.data || [];
@@ -127,43 +126,16 @@ export default function StudentFaculty() {
         onRemove: () => setActiveTab("all"),
       });
     }
-    if (searchQuery.trim()) {
-      chips.push({
-        key: "search",
-        label: "Search",
-        value: searchQuery,
-        displayValue: `"${searchQuery}"`,
-        onRemove: () => setSearchQuery(""),
-      });
-    }
     return chips;
-  }, [activeTab, searchQuery, setActiveTab, setSearchQuery]);
+  }, [activeTab, setActiveTab]);
 
-  // Filter faculties by search & tab
+  // Filter faculties by tab
   const filteredFaculties = useMemo(() => {
     return faculties.filter((fac) => {
       const cat = getFacultyCategory(fac);
-      const name = (fac.name || "").toLowerCase();
-      const pos = (fac.position || "").toLowerCase();
-      const email = (fac.email || "").toLowerCase();
-      const mobile = (fac.mobileNo || "").toLowerCase();
-      const deptName = (fac.departmentId?.name || "").toLowerCase();
-      const query = searchQuery.toLowerCase().trim();
-
-      const matchesSearch =
-        !query ||
-        name.includes(query) ||
-        pos.includes(query) ||
-        email.includes(query) ||
-        mobile.includes(query) ||
-        deptName.includes(query) ||
-        cat.label.toLowerCase().includes(query) ||
-        cat.badgeLabel.toLowerCase().includes(query);
-
-      const matchesTab = activeTab === "all" || cat.key === activeTab;
-      return matchesSearch && matchesTab;
+      return activeTab === "all" || cat.key === activeTab;
     });
-  }, [faculties, searchQuery, activeTab]);
+  }, [faculties, activeTab]);
 
   if (isLoading) {
     return (
@@ -181,8 +153,8 @@ export default function StudentFaculty() {
         <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
         <div className="p-3.5 sm:p-5">
           
-          {/* Top Row: Title + Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          {/* Top Row: Title */}
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">My Faculty & Mentors</h2>
@@ -193,26 +165,6 @@ export default function StudentFaculty() {
               <p className="text-xs text-gray-400 mt-0.5">
                 College leadership, department faculties, coordinators and placement officers
               </p>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64 md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search by name, role, dept..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
           </div>
 
@@ -365,10 +317,7 @@ export default function StudentFaculty() {
       {activeFacultyChips.length > 0 && (
         <ActiveFilterChips
           chips={activeFacultyChips}
-          onClearAll={() => {
-            setActiveTab("all");
-            setSearchQuery("");
-          }}
+          onClearAll={() => setActiveTab("all")}
         />
       )}
 
@@ -377,11 +326,9 @@ export default function StudentFaculty() {
         <EmptyState
           icon={Users}
           title="No Faculty or Staff Found"
-          subtitle={searchQuery
-            ? "No faculty members match your search criteria. Try checking spelling or resetting."
-            : "No faculty members or leaders found under this filter."}
-          actionText={searchQuery ? "Clear Search" : undefined}
-          onAction={searchQuery ? () => setSearchQuery("") : undefined}
+          subtitle="No faculty members or leaders found under this filter."
+          actionText={activeTab !== "all" ? "Show All Faculty" : undefined}
+          onAction={activeTab !== "all" ? () => setActiveTab("all") : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">

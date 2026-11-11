@@ -3,7 +3,8 @@ import { toast } from "react-toastify";
 import {
     Folder, FileText, UploadCloud, Search, X, Plus,
     ExternalLink, Eye, Trash2, CheckCircle2, ShieldCheck,
-    Clock, RefreshCw, File, AlertCircle, Sparkles, Award
+    Clock, RefreshCw, File, AlertCircle, Sparkles, Award,
+    Download
 } from "lucide-react";
 import {
     useGetMyStudentProfileQuery,
@@ -44,165 +45,276 @@ const DOC_PRESETS = [
     "Project Report"
 ];
 
-// ── Quick Preview Modal ───────────────────────────────────────────────────────
-const DocPreviewModal = ({ doc, onClose }) => {
-    if (!doc) return null;
-    const isImage = doc.fileType === "image" || /\.(png|jpe?g|webp|gif)$/i.test(doc.fileURL || "");
+/**
+ * Preview document directly in a new browser tab without triggering download.
+ * Fetches the document as a typed Blob to bypass Cloudinary's Content-Disposition: attachment header,
+ * with fallbacks to Google Docs Viewer.
+ */
+const previewDocumentInNewTab = async (doc) => {
+    if (!doc?.fileURL) {
+        toast.error("Document URL not found");
+        return;
+    }
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150 my-auto flex flex-col max-h-[90vh]">
-                
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/70 shrink-0">
-                    <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 uppercase">
-                                {doc.fileType || "file"}
-                            </span>
-                            <span className="text-[11px] text-gray-400">
-                                {formatDate(doc.uploadedAt)}
-                            </span>
-                        </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate mt-0.5">
-                            {doc.title || "Document Preview"}
-                        </h3>
+    const fileUrl = doc.fileURL;
+    const title = doc.title || "Document";
+    const isImage = doc.fileType === "image" || /\.(png|jpe?g|webp|gif|svg)$/i.test(fileUrl);
+    const isPdf = doc.fileType === "pdf" || /\.pdf$/i.test(fileUrl);
+
+    // Pre-open new tab to avoid browser popup blockers
+    const newTab = window.open("about:blank", "_blank");
+    if (newTab) {
+        try {
+            newTab.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${title} - Preview</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        * { box-sizing: border-box; }
+                        body {
+                            margin: 0;
+                            height: 100vh;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background-color: #0f172a;
+                            color: #f8fafc;
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        }
+                        .loader-box { text-align: center; padding: 24px; }
+                        .spinner {
+                            width: 38px;
+                            height: 38px;
+                            border: 3.5px solid rgba(255,255,255,0.15);
+                            border-top-color: #f97316;
+                            border-radius: 50%;
+                            animation: spin 0.8s linear infinite;
+                            margin: 0 auto 14px;
+                        }
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                        p { margin: 0; font-size: 13.5px; font-weight: 600; color: #cbd5e1; }
+                    </style>
+                </head>
+                <body>
+                    <div class="loader-box">
+                        <div class="spinner"></div>
+                        <p>Opening ${title}...</p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
+                </body>
+                </html>
+            `);
+        } catch {
+            // Document write can be restricted in sandboxed tabs
+        }
+    }
 
-                {/* Body Preview */}
-                <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-gray-100/50 flex flex-col items-center justify-center min-h-[260px]">
-                    {isImage ? (
-                        <div className="rounded-xl overflow-hidden shadow-sm max-w-full max-h-[60vh] bg-white border border-gray-200">
-                            <img
-                                src={doc.fileURL}
-                                alt={doc.title}
-                                className="w-full h-full object-contain max-h-[60vh]"
-                            />
-                        </div>
-                    ) : (
-                        <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 shadow-xs max-w-sm w-full">
-                            <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-3">
-                                <FileText size={28} />
-                            </div>
-                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-                                {doc.title}
-                            </h4>
-                            <p className="text-[11px] text-gray-400 mt-1">
-                                PDF Document · Click below to view in full resolution
-                            </p>
-                            <a
-                                href={doc.fileURL}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-all shadow-xs"
-                            >
-                                <ExternalLink size={14} />
-                                Open PDF in New Tab
-                            </a>
-                        </div>
-                    )}
+    try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const blob = await response.blob();
 
-                    {doc.remark && (
-                        <div className="w-full max-w-md mt-4 p-3 rounded-xl bg-white border border-gray-200 text-xs text-gray-600">
-                            <span className="font-bold text-gray-400 text-[10px] uppercase block mb-0.5">Note:</span>
-                            {doc.remark}
-                        </div>
-                    )}
-                </div>
+        let mimeType = "application/pdf";
+        if (isImage) {
+            mimeType = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+        } else if (isPdf) {
+            mimeType = "application/pdf";
+        } else {
+            mimeType = blob.type || "application/pdf";
+        }
 
-                {/* Footer */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-gray-50 border-t border-gray-100 shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
-                    >
-                        Close
-                    </button>
-                    <a
-                        href={doc.fileURL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-4 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
-                    >
-                        <ExternalLink size={13} />
-                        Open External
-                    </a>
-                </div>
-            </div>
-        </div>
-    );
+        const fileBlob = new Blob([blob], { type: mimeType });
+        const blobUrl = URL.createObjectURL(fileBlob);
+
+        if (newTab && !newTab.closed) {
+            newTab.location.href = blobUrl;
+        } else {
+            window.open(blobUrl, "_blank");
+        }
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+    } catch (error) {
+        console.warn("Direct blob preview failed, falling back:", error);
+
+        let fallbackUrl = fileUrl;
+        if (fallbackUrl.includes("/upload/") && !fallbackUrl.includes("/fl_inline/")) {
+            fallbackUrl = fallbackUrl.replace("/upload/", "/upload/fl_inline/");
+        }
+
+        // For Cloudinary raw upload URLs or PDFs that force attachment, Google Docs Viewer renders inline
+        if (fallbackUrl.includes("/raw/upload/") || isPdf) {
+            fallbackUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fallbackUrl)}&embedded=false`;
+        }
+
+        if (newTab && !newTab.closed) {
+            newTab.location.href = fallbackUrl;
+        } else {
+            window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+        }
+    }
+};
+
+/**
+ * Dedicated download function with clean naming and fallback.
+ */
+const downloadDocumentFile = async (doc) => {
+    if (!doc?.fileURL) {
+        toast.error("Document URL not found");
+        return;
+    }
+
+    const fileUrl = doc.fileURL;
+    const title = doc.title || "Document";
+    const isPdf = doc.fileType === "pdf" || /\.pdf$/i.test(fileUrl);
+    const isImage = doc.fileType === "image" || /\.(png|jpe?g|webp|gif)$/i.test(fileUrl);
+
+    try {
+        toast.info("Downloading document...", { autoClose: 2000 });
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+
+        // Clean file name
+        let cleanTitle = (title || "Document")
+            .trim()
+            .replace(/[^a-zA-Z0-9_\s-]/g, "")
+            .replace(/\s+/g, "_");
+
+        let ext = "";
+        if (isPdf && !cleanTitle.toLowerCase().endsWith(".pdf")) {
+            ext = ".pdf";
+        } else if (isImage && !/\.(png|jpe?g|webp|gif)$/i.test(cleanTitle)) {
+            ext = blob.type?.includes("png") ? ".png" : ".jpg";
+        }
+
+        a.download = `${cleanTitle}${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        toast.success("Download complete");
+    } catch (err) {
+        console.warn("Direct blob download failed, falling back to anchor:", err);
+
+        // Fallback for download: Add fl_attachment if Cloudinary
+        let dlUrl = fileUrl;
+        if (dlUrl.includes("/upload/") && !dlUrl.includes("/fl_attachment")) {
+            dlUrl = dlUrl.replace("/upload/", "/upload/fl_attachment/");
+        }
+
+        const a = document.createElement("a");
+        a.href = dlUrl;
+        a.download = title || "Document";
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 };
 
 // ── Doc Card Component ────────────────────────────────────────────────────────
-const DocCard = ({ doc, onPreview }) => {
+const DocCard = ({ doc, onPreview, onDownload }) => {
     const isPdf = doc.fileType === "pdf" || /\.pdf$/i.test(doc.fileURL || "");
+    const isVerified = !doc.isExtra;
 
     return (
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200/80 p-3.5 sm:p-4 shadow-xs hover:shadow-sm hover:border-orange-200 transition-all duration-200 flex flex-col justify-between group">
+        <div className="bg-white rounded-2xl border border-gray-150 p-4 shadow-2xs hover:shadow-md hover:border-orange-300 transition-all duration-200 flex flex-col justify-between group relative overflow-hidden">
+            {/* Top decorative accent on hover */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+
             <div>
-                {/* Header: File Icon + Type Badge */}
-                <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        isPdf ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500"
-                    }`}>
-                        <FileText size={18} />
-                    </div>
+                {/* Header: File Icon + Badges */}
+                <div className="flex items-start justify-between gap-2.5">
+                    <button
+                        type="button"
+                        onClick={() => onPreview(doc)}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs cursor-pointer ${
+                            isPdf ? "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100" : "bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100"
+                        }`}
+                        title="Click to preview in new tab"
+                    >
+                        <FileText size={20} />
+                    </button>
 
-                    <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full uppercase ${
-                                isPdf ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
-                            }`}>
-                                {doc.fileType || "file"}
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {isVerified ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <ShieldCheck size={11} className="text-emerald-600" />
+                                Verified
                             </span>
-                            <span className="text-[10px] text-gray-400">
-                                {formatDate(doc.uploadedAt)}
+                        ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                <Sparkles size={10} className="text-amber-500" />
+                                Upload
                             </span>
-                        </div>
-
-                        <h4 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug truncate group-hover:text-orange-600 transition-colors">
-                            {doc.title || "Document"}
-                        </h4>
-
-                        {doc.remark && (
-                            <p className="text-[11px] text-gray-500 mt-1 line-clamp-1">
-                                {doc.remark}
-                            </p>
                         )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            isPdf ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                        }`}>
+                            {doc.fileType || (isPdf ? "PDF" : "FILE")}
+                        </span>
                     </div>
+                </div>
+
+                {/* Title & Metadata */}
+                <div className="mt-3">
+                    <h4
+                        onClick={() => onPreview(doc)}
+                        className="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug truncate group-hover:text-orange-600 transition-colors cursor-pointer"
+                        title={doc.title}
+                    >
+                        {doc.title || "Document"}
+                    </h4>
+
+                    <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Clock size={12} className="text-gray-400 shrink-0" />
+                        <span>{formatDate(doc.uploadedAt || doc.createdAt)}</span>
+                        {doc.uploadedByName && (
+                            <span className="truncate">· by {doc.uploadedByName}</span>
+                        )}
+                    </p>
+
+                    {doc.remark && (
+                        <p className="text-[11px] text-gray-600 mt-2 p-2 rounded-xl bg-gray-50 border border-gray-100 line-clamp-2 italic">
+                            {doc.remark}
+                        </p>
+                    )}
                 </div>
             </div>
 
             {/* Actions Bottom Bar */}
-            <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-gray-100">
-                <span className="text-[10px] text-gray-400">
-                    {doc.uploadedByName ? `Uploaded by ${doc.uploadedByName}` : "Official Record"}
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 gap-2">
+                <span className="text-[10px] font-semibold text-gray-400 truncate max-w-[80px] sm:max-w-[100px]">
+                    {isVerified ? "Verified Record" : "Student Upload"}
                 </span>
-                
-                <div className="flex items-center gap-1.5">
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Preview Button (Direct New Tab) */}
                     <button
+                        type="button"
                         onClick={() => onPreview(doc)}
-                        className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-600 text-gray-700 text-[11px] font-bold transition-colors flex items-center gap-1"
+                        className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 border border-orange-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                        title="Open preview in new tab"
                     >
-                        <Eye size={12} />
-                        Preview
+                        <Eye size={13} />
+                        <span>Preview</span>
                     </button>
-                    <a
-                        href={doc.fileURL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-orange-600 text-[11px] font-bold transition-colors flex items-center gap-1"
-                        title="Open external link"
+
+                    {/* Dedicated Download Button */}
+                    <button
+                        type="button"
+                        onClick={() => onDownload(doc)}
+                        className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 hover:text-gray-900 text-gray-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                        title="Download file"
                     >
-                        <ExternalLink size={12} />
-                    </a>
+                        <Download size={13} />
+                        <span>Download</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -452,39 +564,71 @@ const UploadModal = ({ onClose, onSuccess }) => {
 export default function StudentDocuments() {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [previewDoc, setPreviewDoc] = useState(null);
-    const [mobileTab, setMobileTab] = useState("all"); // "all" | "core" | "extra"
+    const [filterType, setFilterType] = useState("all"); // "all" | "pdf" | "image" | "verified" | "extra"
 
     const { data: profileData, isLoading: profileLoading } = useGetMyStudentProfileQuery();
     const { data: extraData, isLoading: extraLoading, refetch } = useGetMyExtraDocumentsQuery();
 
-    const allDocs = profileData?.data?.documents || [];
-    const coreDocs = allDocs.filter(d => !d.isExtra);
-    const extraDocs = extraData?.data || allDocs.filter(d => d.isExtra);
-    const total = coreDocs.length + extraDocs.length;
+    const profileDocs = profileData?.data?.documents || [];
+    const extraDocs = extraData?.data || [];
 
-    // Search filter
-    const filteredCore = useMemo(() => {
-        if (!search) return coreDocs;
-        const q = search.toLowerCase();
-        return coreDocs.filter(d =>
-            d.title?.toLowerCase().includes(q) ||
-            d.remark?.toLowerCase().includes(q) ||
-            d.fileType?.toLowerCase().includes(q)
-        );
-    }, [coreDocs, search]);
+    // Unified deduplicated documents list sorted by newest first
+    const allDocs = useMemo(() => {
+        const list = [];
+        const seen = new Set();
 
-    const filteredExtra = useMemo(() => {
-        if (!search) return extraDocs;
-        const q = search.toLowerCase();
-        return extraDocs.filter(d =>
-            d.title?.toLowerCase().includes(q) ||
-            d.remark?.toLowerCase().includes(q) ||
-            d.fileType?.toLowerCase().includes(q)
-        );
-    }, [extraDocs, search]);
+        (profileDocs || []).forEach(doc => {
+            const key = String(doc._id || doc.id || doc.fileURL);
+            if (!seen.has(key)) {
+                seen.add(key);
+                list.push({ ...doc, isExtra: doc.isExtra ?? false });
+            }
+        });
 
-    const totalFiltered = filteredCore.length + filteredExtra.length;
+        (extraDocs || []).forEach(doc => {
+            const key = String(doc._id || doc.id || doc.fileURL);
+            if (!seen.has(key)) {
+                seen.add(key);
+                list.push({ ...doc, isExtra: true });
+            }
+        });
+
+        return list.sort((a, b) => new Date(b.uploadedAt || b.createdAt || 0) - new Date(a.uploadedAt || a.createdAt || 0));
+    }, [profileDocs, extraDocs]);
+
+    const total = allDocs.length;
+    const verifiedCount = useMemo(() => allDocs.filter(d => !d.isExtra).length, [allDocs]);
+    const extraCount = useMemo(() => allDocs.filter(d => d.isExtra).length, [allDocs]);
+    const pdfCount = useMemo(() => allDocs.filter(d => d.fileType === "pdf" || /\.pdf$/i.test(d.fileURL || "")).length, [allDocs]);
+    const imgCount = useMemo(() => allDocs.filter(d => d.fileType === "image" || /\.(png|jpe?g|webp|gif)$/i.test(d.fileURL || "")).length, [allDocs]);
+
+    // Search and filter logic
+    const filteredDocs = useMemo(() => {
+        let list = allDocs;
+
+        if (filterType === "pdf") {
+            list = list.filter(d => d.fileType === "pdf" || /\.pdf$/i.test(d.fileURL || ""));
+        } else if (filterType === "image") {
+            list = list.filter(d => d.fileType === "image" || /\.(png|jpe?g|webp|gif)$/i.test(d.fileURL || ""));
+        } else if (filterType === "verified") {
+            list = list.filter(d => !d.isExtra);
+        } else if (filterType === "extra") {
+            list = list.filter(d => d.isExtra);
+        }
+
+        if (search.trim()) {
+            const q = search.trim().toLowerCase();
+            list = list.filter(d =>
+                d.title?.toLowerCase().includes(q) ||
+                d.remark?.toLowerCase().includes(q) ||
+                d.fileType?.toLowerCase().includes(q) ||
+                d.uploadedByName?.toLowerCase().includes(q)
+            );
+        }
+
+        return list;
+    }, [allDocs, filterType, search]);
+
     const isLoading = profileLoading || extraLoading;
 
     if (isLoading) {
@@ -494,6 +638,14 @@ export default function StudentDocuments() {
             </div>
         );
     }
+
+    const filterTabs = [
+        { key: "all", label: "All", count: total },
+        { key: "pdf", label: "PDFs", count: pdfCount },
+        { key: "image", label: "Images", count: imgCount },
+        { key: "verified", label: "Verified Records", count: verifiedCount },
+        { key: "extra", label: "Uploads", count: extraCount },
+    ];
 
     return (
         <div className="space-y-4 sm:space-y-5">
@@ -506,14 +658,7 @@ export default function StudentDocuments() {
                 />
             )}
 
-            {previewDoc && (
-                <DocPreviewModal
-                    doc={previewDoc}
-                    onClose={() => setPreviewDoc(null)}
-                />
-            )}
-
-            {/* ── Header Card (Matching StudentTasks & StudentPermissions) ── */}
+            {/* ── Top Hero Stats Card ── */}
             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
                 <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
                 <div className="p-3.5 sm:p-5">
@@ -528,7 +673,7 @@ export default function StudentDocuments() {
                                 </span>
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
-                                {coreDocs.length} core records · {extraDocs.length} certificates & uploads
+                                {verifiedCount} official verified records · {extraCount} certificates & uploads
                             </p>
                         </div>
 
@@ -554,7 +699,7 @@ export default function StudentDocuments() {
 
                             <button
                                 onClick={() => setUploadOpen(true)}
-                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs"
+                                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs active:scale-95 cursor-pointer"
                             >
                                 <Plus size={16} />
                                 <span>Upload</span>
@@ -562,24 +707,24 @@ export default function StudentDocuments() {
                         </div>
                     </div>
 
-                    {/* Stat Pills & Progress Bar (Identical to StudentTasks / Permissions) */}
+                    {/* Stat Pills & Progress Bar */}
                     <div className="mt-3.5 pt-3 border-t border-gray-100/80">
                         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
                             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-100">
                                 <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
                                 <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{total} Total Files</span>
                             </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
+                                <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+                                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{verifiedCount} Verified</span>
+                            </div>
                             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50/80 border border-blue-100">
                                 <FileText size={13} className="text-blue-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-blue-700 truncate">{coreDocs.length} Core Docs</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
-                                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{extraDocs.length} Extra Uploads</span>
+                                <span className="text-[11px] sm:text-xs font-bold text-blue-700 truncate">{pdfCount} PDFs</span>
                             </div>
                             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50/80 border border-purple-100">
-                                <ShieldCheck size={13} className="text-purple-500 shrink-0" />
-                                <span className="text-[11px] sm:text-xs font-bold text-purple-700 truncate">Verified Safe</span>
+                                <Sparkles size={13} className="text-purple-500 shrink-0" />
+                                <span className="text-[11px] sm:text-xs font-bold text-purple-700 truncate">{extraCount} Student Uploads</span>
                             </div>
                         </div>
 
@@ -595,233 +740,87 @@ export default function StudentDocuments() {
                 </div>
             </div>
 
-            {/* ── Mobile Status Tabs (md:hidden) — Matches StudentTasks / Permissions ── */}
-            <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
-                <button
-                    onClick={() => setMobileTab("all")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>All</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 text-gray-700">
-                        {totalFiltered}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("core")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "core" ? "bg-white text-blue-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Core</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
-                        {filteredCore.length}
-                    </span>
-                </button>
-                <button
-                    onClick={() => setMobileTab("extra")}
-                    className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-                        mobileTab === "extra" ? "bg-white text-orange-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                    <span>Extra</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-orange-100 text-orange-800">
-                        {filteredExtra.length}
-                    </span>
-                </button>
-            </div>
-
-            {/* ── Mobile Documents List (md:hidden) ── */}
-            <div className="md:hidden space-y-3">
-                {mobileTab === "all" ? (
-                    <>
-                        {/* Core Documents Section */}
-                        {filteredCore.length > 0 && (
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2 px-1">
-                                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Core Documents</h3>
-                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-100 text-blue-700">
-                                        {filteredCore.length}
-                                    </span>
-                                </div>
-                                <div className="space-y-2">
-                                    {filteredCore.map((doc, i) => (
-                                        <DocCard
-                                            key={doc._id || i}
-                                            doc={doc}
-                                            onPreview={setPreviewDoc}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Extra Documents Section */}
-                        {filteredExtra.length > 0 && (
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2 px-1">
-                                    <span className="w-2 h-2 rounded-full bg-orange-500" />
-                                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Extra Uploads & Certs</h3>
-                                    <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-orange-100 text-orange-700">
-                                        {filteredExtra.length}
-                                    </span>
-                                </div>
-                                <div className="space-y-2">
-                                    {filteredExtra.map((doc, i) => (
-                                        <DocCard
-                                            key={doc._id || i}
-                                            doc={doc}
-                                            onPreview={setPreviewDoc}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </>
-                ) : mobileTab === "core" ? (
-                    <div className="space-y-2">
-                        {filteredCore.length === 0 ? (
-                            <EmptyState
-                                icon={FileText}
-                                title="No core documents found"
-                                subtitle="Contact college administration for admission documents."
-                                compact
-                            />
-                        ) : (
-                            filteredCore.map((doc, i) => (
-                                <DocCard
-                                    key={doc._id || i}
-                                    doc={doc}
-                                    onPreview={setPreviewDoc}
-                                />
-                            ))
-                        )}
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {filteredExtra.length === 0 ? (
-                            <EmptyState
-                                icon={Folder}
-                                title="No extra documents yet"
-                                subtitle="Upload your resume, course certificates or awards."
-                                actionText="+ Upload Now"
-                                onAction={() => setUploadOpen(true)}
-                                compact
-                            />
-                        ) : (
-                            filteredExtra.map((doc, i) => (
-                                <DocCard
-                                    key={doc._id || i}
-                                    doc={doc}
-                                    onPreview={setPreviewDoc}
-                                />
-                            ))
-                        )}
-                    </div>
-                )}
-
-                {/* Overall Empty State on Mobile */}
-                {totalFiltered === 0 && (
-                    <EmptyState
-                        icon={FileText}
-                        title={search ? "No matching documents found" : "No documents available"}
-                        subtitle={search ? "Try adjusting your search query or reset filter." : "Upload your certificates or resume to get started."}
-                        actionText={!search ? "Upload Document" : undefined}
-                        onAction={!search ? () => setUploadOpen(true) : undefined}
-                    />
-                )}
-            </div>
-
-            {/* ── Desktop Two-Column View (hidden md:grid md:grid-cols-2 gap-5) ── */}
-            <div className="hidden md:grid md:grid-cols-2 gap-5 items-stretch">
-
-                {/* Left Column: Core Documents */}
-                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col h-full min-h-[320px]">
-                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-blue-50/20 shrink-0">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                            <div>
-                                <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Core Documents</h3>
-                                <p className="text-[11px] text-gray-400">Official college records, admission & identity</p>
-                            </div>
+            {/* ── Single Unified Card: All Documents ── */}
+            <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col">
+                
+                {/* Card Header & Filter Bar */}
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-orange-50/30 via-white to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200/70 flex items-center justify-center text-orange-600 shrink-0 shadow-2xs">
+                            <Folder size={20} />
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            {filteredCore.length}
-                        </span>
-                    </div>
-
-                    <div className={`p-4 flex-1 flex flex-col ${filteredCore.length === 0 ? "justify-center" : ""}`}>
-                        {filteredCore.length === 0 ? (
-                            <EmptyState
-                                icon={FileText}
-                                title="No core documents found"
-                                subtitle="Contact college admin for verified records."
-                                compact
-                            />
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredCore.map((doc, i) => (
-                                    <DocCard
-                                        key={doc._id || i}
-                                        doc={doc}
-                                        onPreview={setPreviewDoc}
-                                    />
-                                ))}
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm sm:text-base font-black text-gray-900 tracking-tight">All Documents</h3>
+                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">
+                                    {filteredDocs.length}
+                                </span>
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Column: Extra Documents */}
-                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col h-full min-h-[320px]">
-                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-orange-50/20 shrink-0">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                            <div>
-                                <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Extra Documents</h3>
-                                <p className="text-[11px] text-gray-400">Resume, workshop certificates & achievements</p>
-                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Official verified records, marksheets, certificates & student uploads
+                            </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                                {filteredExtra.length}
-                            </span>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                        {filterTabs.map((tab) => (
                             <button
-                                onClick={() => setUploadOpen(true)}
-                                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 cursor-pointer"
+                                key={tab.key}
+                                onClick={() => setFilterType(tab.key)}
+                                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                                    filterType === tab.key
+                                        ? "bg-orange-500 text-white shadow-xs"
+                                        : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+                                }`}
                             >
-                                + Upload
+                                <span>{tab.label}</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                                    filterType === tab.key
+                                        ? "bg-white/20 text-white"
+                                        : "bg-white text-gray-700"
+                                }`}>
+                                    {tab.count}
+                                </span>
                             </button>
-                        </div>
-                    </div>
-
-                    <div className={`p-4 flex-1 flex flex-col ${filteredExtra.length === 0 ? "justify-center" : ""}`}>
-                        {filteredExtra.length === 0 ? (
-                            <EmptyState
-                                icon={Folder}
-                                title="No extra documents uploaded"
-                                subtitle="Upload your resume, workshop certificates and achievements."
-                                actionText="Upload Now"
-                                onAction={() => setUploadOpen(true)}
-                                compact
-                            />
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredExtra.map((doc, i) => (
-                                    <DocCard
-                                        key={doc._id || i}
-                                        doc={doc}
-                                        onPreview={setPreviewDoc}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        ))}
                     </div>
                 </div>
 
+                {/* Card Body: Unified Documents Grid */}
+                <div className="p-4 sm:p-6 flex-1">
+                    {filteredDocs.length === 0 ? (
+                        <EmptyState
+                            icon={Folder}
+                            title={search || filterType !== "all" ? "No matching documents found" : "No documents available"}
+                            subtitle={
+                                search || filterType !== "all"
+                                    ? "Try clearing your search query or selecting another filter."
+                                    : "Upload your resume, certificates or internship proof to get started."
+                            }
+                            actionText={search || filterType !== "all" ? "Reset Filter" : "+ Upload Document"}
+                            onAction={
+                                search || filterType !== "all"
+                                    ? () => { setSearch(""); setFilterType("all"); }
+                                    : () => setUploadOpen(true)
+                            }
+                        />
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+                            {filteredDocs.map((doc, i) => (
+                                <DocCard
+                                    key={doc._id || doc.id || i}
+                                    doc={doc}
+                                    onPreview={previewDocumentInNewTab}
+                                    onDownload={downloadDocumentFile}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </div>
+
         </div>
     );
 }

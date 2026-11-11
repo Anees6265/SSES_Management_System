@@ -287,7 +287,7 @@ const LoginPage = () => {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                placeholder="Institutional Email (e.g. name@ssism.org)"
+                placeholder="name@ssism.org"
                 required
                 autoComplete="email"
                 className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"

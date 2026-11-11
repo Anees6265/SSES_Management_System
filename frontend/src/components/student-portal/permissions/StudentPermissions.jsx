@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import {
     ShieldCheck, Clock, CheckCircle2, AlertCircle, Calendar,
-    Search, Plus, FileText, LayoutGrid, ListFilter,
+    Plus, FileText, LayoutGrid, ListFilter,
     X, UploadCloud, Trash2,
     Eye, Printer, ChevronRight,
     Check, RefreshCw, Star
@@ -955,7 +955,6 @@ export default function StudentPermissions() {
     const [applyOpen, setApplyOpen] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState(null);
     const [selectedGatePass, setSelectedGatePass] = useState(null);
-    const [search, setSearch] = usePersistentState("student_permissions_search", "");
     const [mobileTab, setMobileTab] = usePersistentState("student_permissions_mobile_tab", "all");
     const [desktopFilter, setDesktopFilter] = usePersistentState("student_permissions_filter", "all");
     const [viewMode, setViewMode] = useState("kanban"); // "kanban" | "list"
@@ -976,17 +975,8 @@ export default function StudentPermissions() {
                 },
             });
         }
-        if (search.trim()) {
-            chips.push({
-                key: "search",
-                label: "Search",
-                value: search,
-                displayValue: `"${search}"`,
-                onRemove: () => setSearch(""),
-            });
-        }
         return chips;
-    }, [desktopFilter, mobileTab, search, setDesktopFilter, setMobileTab, setSearch]);
+    }, [desktopFilter, mobileTab, setDesktopFilter, setMobileTab]);
 
     const { data: permissionsRes, isLoading } = useGetMyPermissionsQuery();
     const { data: studentRes } = useGetMyStudentProfileQuery();
@@ -1005,19 +995,9 @@ export default function StudentPermissions() {
         .filter(p => p.status === "approved")
         .reduce((sum, p) => sum + calculateDays(p.fromDate, p.toDate), 0);
 
-    // Filtered by search & sort
+    // Sorted permissions
     const sortedPermissions = useMemo(() => {
-        let list = permissions.filter(p => {
-            if (!search) return true;
-            const q = search.toLowerCase();
-            return (
-                p.reason?.toLowerCase().includes(q) ||
-                p.assignedFacultyId?.name?.toLowerCase().includes(q) ||
-                formatDate(p.fromDate).toLowerCase().includes(q) ||
-                formatDate(p.toDate).toLowerCase().includes(q)
-            );
-        });
-
+        const list = [...permissions];
         list.sort((a, b) => {
             if (sortBy === "oldest") return new Date(a.uploadDate || 0) - new Date(b.uploadDate || 0);
             if (sortBy === "duration") return calculateDays(b.fromDate, b.toDate) - calculateDays(a.fromDate, a.toDate);
@@ -1025,7 +1005,7 @@ export default function StudentPermissions() {
         });
 
         return list;
-    }, [permissions, search, sortBy]);
+    }, [permissions, sortBy]);
 
     // Split by status for mobile & kanban
     const byStatus = useMemo(() => ({
@@ -1097,29 +1077,11 @@ export default function StudentPermissions() {
                             </p>
                         </div>
 
-                        {/* Search & Apply Button */}
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <div className="relative flex-1 sm:w-60 md:w-64">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    placeholder="Search leave requests..."
-                                    className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
-                                />
-                                {search && (
-                                    <button
-                                        onClick={() => setSearch("")}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
-                            </div>
-
+                        {/* Apply Button */}
+                        <div className="flex items-center gap-2 justify-end">
                             <button
                                 onClick={() => setApplyOpen(true)}
-                                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs cursor-pointer"
+                                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-xl transition-all duration-200 whitespace-nowrap shadow-xs cursor-pointer active:scale-98"
                             >
                                 <Plus size={16} />
                                 <span>Apply Leave</span>
@@ -1168,7 +1130,6 @@ export default function StudentPermissions() {
                     onClearAll={() => {
                         setDesktopFilter("all");
                         setMobileTab("all");
-                        setSearch("");
                     }}
                 />
             )}
@@ -1281,10 +1242,10 @@ export default function StudentPermissions() {
                 {sortedPermissions.length === 0 && (
                     <EmptyState
                         icon={Calendar}
-                        title={search ? "No matching leave requests found" : "No leave requests yet"}
-                        subtitle={search ? "Try clearing your search query or reset filter." : "Submit a leave request for fast faculty approval."}
-                        actionText={!search ? "Apply for Leave" : undefined}
-                        onAction={!search ? () => setApplyOpen(true) : undefined}
+                        title="No leave requests yet"
+                        subtitle="Submit a leave request for fast faculty approval."
+                        actionText="Apply for Leave"
+                        onAction={() => setApplyOpen(true)}
                     />
                 )}
             </div>
@@ -1375,9 +1336,9 @@ export default function StudentPermissions() {
                     <EmptyState
                         icon={Calendar}
                         title="No leave requests found"
-                        subtitle={search ? "Try resetting your search query or filter options." : "Submit a new leave request to get started."}
-                        actionText={!search ? "Apply for Leave" : undefined}
-                        onAction={!search ? () => setApplyOpen(true) : undefined}
+                        subtitle="Submit a new leave request to get started."
+                        actionText="Apply for Leave"
+                        onAction={() => setApplyOpen(true)}
                     />
                 ) : viewMode === "list" ? (
                     /* Desktop List View */

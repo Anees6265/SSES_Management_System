@@ -3,12 +3,13 @@ import { createPortal } from "react-dom";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
-  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar
+  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar, Building
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo-ssism.png";
 import SecurityHelmet from "../../shared/SecurityHelmet";
 import NotificationBell from "../../shared/notifications/NotificationBell";
+import { useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
 
 const navItems = [
   { to: "/student-portal/dashboard",     icon: LayoutDashboard, label: "Dashboard" },
@@ -97,9 +98,16 @@ export default function StudentPortalLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const studentData = JSON.parse(localStorage.getItem("studentData") || "{}");
-  const name = `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim() || "Student";
-  const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const { data: profileResponse } = useGetMyStudentProfileQuery();
+  const rawStored = JSON.parse(localStorage.getItem("studentData") || "{}");
+  const studentData = profileResponse?.data || rawStored;
+
+  const name = `${studentData.firstName || ""} ${studentData.lastName || ""}`.trim() || studentData.name || "Student";
+  const initials = name.split(" ").map(n => n[0] || "").join("").slice(0, 2).toUpperCase() || "ST";
+  const avatarImage = studentData.image || rawStored.image || null;
+  const departmentName = studentData.subDepartmentId?.departmentId?.name || studentData.departmentId?.name || rawStored.subDepartmentId?.departmentId?.name || rawStored.departmentId?.name || "ITEG";
+  const subDepartmentName = studentData.subDepartmentId?.name || rawStored.subDepartmentId?.name || "TECH";
+  const courseName = studentData.course || rawStored.course || "Student Portal";
 
   const handleLogout = () => {
     localStorage.removeItem("studentToken");
@@ -149,41 +157,55 @@ export default function StudentPortalLayout() {
 
       {/* Student Profile & Logout Footer */}
       <div className="p-3 border-t border-gray-100 bg-white">
-        <div className="p-2.5 rounded-2xl bg-gray-50/80 border border-gray-100/90 space-y-2.5">
-          {/* User Row (Clickable to Profile) */}
+        <div className="p-2.5 rounded-2xl bg-gray-50/90 border border-gray-100 space-y-2">
+          {/* User Row (Clickable to Profile with Matching Profile Page Avatar Style) */}
           <button
             type="button"
             onClick={() => {
               navigate("/student-portal/profile");
               if (onClose) onClose();
             }}
-            className="flex items-center gap-2.5 w-full text-left group"
+            className="flex items-center gap-2.5 w-full text-left group p-1 -m-1 rounded-xl hover:bg-orange-50/50 transition-colors"
             title="View Profile"
           >
             <div className="relative shrink-0">
-              {studentData.image ? (
+              {avatarImage ? (
                 <img
-                  src={studentData.image}
+                  src={avatarImage}
                   alt={name}
-                  className="w-9 h-9 rounded-xl object-cover border border-gray-200 group-hover:border-orange-400 transition-colors shadow-2xs"
+                  className="w-10 h-10 rounded-2xl object-cover border-2 border-white ring-1 ring-orange-200 group-hover:ring-orange-400 transition-all shadow-2xs"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black border border-orange-200 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-2xs">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center text-xs font-black ring-1 ring-orange-200 group-hover:scale-102 transition-all shadow-2xs">
                   {initials}
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-gray-800 truncate group-hover:text-orange-600 transition-colors">
+              <p className="text-xs font-bold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
                 {name}
               </p>
               <p className="text-[10px] font-semibold text-gray-400 truncate mt-0.5">
-                {studentData.course || "Student Portal"}
+                {courseName}
               </p>
             </div>
           </button>
+
+          {/* Department Name Badge (Right by Logout as requested) */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-200/70 text-[10px] font-bold text-orange-800">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Building size={11} className="text-orange-600 shrink-0" />
+              <span className="text-gray-500 uppercase tracking-wider text-[9px]">Dept:</span>
+              <span className="font-black text-orange-900 truncate">{departmentName}</span>
+            </div>
+            {subDepartmentName && (
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-white text-orange-700 border border-orange-200/80 shrink-0 shadow-2xs">
+                {subDepartmentName}
+              </span>
+            )}
+          </div>
 
           {/* Logout Action Button */}
           <button
@@ -255,16 +277,42 @@ export default function StudentPortalLayout() {
             <span className="text-xs font-bold text-orange-500 uppercase tracking-wide">Student Portal</span>
           </div>
 
-          {/* Right side — notifications & avatar */}
-          <div className="flex items-center gap-2.5 ml-auto">
+          {/* Right side — notifications & student profile */}
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             <NotificationBell title="My Notifications" subtitle="Live academic & task updates" />
-            {studentData.image ? (
-              <img src={studentData.image} alt={name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center text-xs font-bold border border-orange-200">
-                {initials}
+
+            {/* Student Profile Pill / Button matching profile page styling */}
+            <button
+              type="button"
+              onClick={() => navigate("/student-portal/profile")}
+              className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 rounded-xl border border-transparent hover:border-orange-200 bg-transparent hover:bg-orange-50/60 transition-all duration-150 group text-left cursor-pointer"
+              title="View Profile"
+            >
+              <div className="relative shrink-0">
+                {avatarImage ? (
+                  <img
+                    src={avatarImage}
+                    alt={name}
+                    className="w-8 h-8 rounded-xl object-cover border border-gray-200 ring-1 ring-orange-200 shadow-2xs group-hover:ring-orange-400 transition-all"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center text-xs font-black ring-1 ring-orange-200 shadow-2xs group-hover:scale-102 transition-all">
+                    {initials}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
               </div>
-            )}
+
+              <div className="hidden sm:flex flex-col min-w-0">
+                <span className="text-xs font-bold text-gray-800 group-hover:text-orange-600 transition-colors truncate max-w-[120px] md:max-w-[150px]">
+                  {name}
+                </span>
+                <span className="text-[10px] font-semibold text-orange-600 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block shrink-0" />
+                  {departmentName} {subDepartmentName ? `· ${subDepartmentName}` : ""}
+                </span>
+              </div>
+            </button>
           </div>
         </header>
 

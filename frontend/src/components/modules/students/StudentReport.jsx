@@ -864,11 +864,9 @@ export default function StudentReport() {
                       const total = item.maxMarks || 100;
                       const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
                       const parsedRating = parseFloat(item.remark);
-                      const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                      const hasRating = evaluated > 0 && !isNaN(parsedRating) && parsedRating > 0;
                       const rating = hasRating ? parsedRating : 0;
-                      const level = item.value && item.value !== "Needs Improvement"
-                        ? item.value
-                        : (evaluated === 0 ? "Not Started" : item.value || "Good");
+                      const level = evaluated === 0 ? "Not Started" : (item.value || "Good");
 
                       const levelColor =
                         level === "Outstanding" || level === "Excellent"
@@ -967,11 +965,9 @@ export default function StudentReport() {
                   const total = item.maxMarks || 100;
                   const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
                   const parsedRating = parseFloat(item.remark);
-                  const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                  const hasRating = evaluated > 0 && !isNaN(parsedRating) && parsedRating > 0;
                   const rating = hasRating ? parsedRating : 0;
-                  const level = item.value && item.value !== "Needs Improvement"
-                    ? item.value
-                    : (evaluated === 0 ? "Not Started" : item.value || "Good");
+                  const level = evaluated === 0 ? "Not Started" : (item.value || "Good");
 
                   const levelColor =
                     level === "Outstanding" || level === "Excellent"

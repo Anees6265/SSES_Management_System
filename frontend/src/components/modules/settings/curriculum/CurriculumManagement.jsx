@@ -49,6 +49,7 @@ import {
 } from "../../../../redux/api/authApi";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
+import { sortByOrderAsc, mapCombinedExcelRows } from "../../../../utils/taskOrderHelpers";
 
 /* ─── Helpers ─────────────────────────────────────────── */
 const getId = (value) => (typeof value === "object" ? value?._id : value);
@@ -307,6 +308,7 @@ const CurriculumUploadDrawerContent = ({
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hierarchy, setHierarchy] = useState([]);
+  const [rawRows, setRawRows] = useState([]);
   const [fileName, setFileName] = useState("");
   const [subjectMeta, setSubjectMeta] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
@@ -422,6 +424,7 @@ const CurriculumUploadDrawerContent = ({
 
   const resetFile = () => {
     setHierarchy([]);
+    setRawRows([]);
     setFileName("");
     setSubjectMeta([]);
     setShowPreview(false);
@@ -435,6 +438,7 @@ const CurriculumUploadDrawerContent = ({
     }
     setParsing(true);
     setHierarchy([]);
+    setRawRows([]);
     setFileName(file.name);
     try {
       const rows = await parseExcel(file);
@@ -455,6 +459,7 @@ const CurriculumUploadDrawerContent = ({
         return;
       }
       setHierarchy(parsed);
+      setRawRows(mapCombinedExcelRows(rows));
       setSubjectMeta(
         parsed.map((s) => ({
           name: s.subject,
@@ -520,7 +525,8 @@ const CurriculumUploadDrawerContent = ({
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
       const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
 
-      const taskRows = buildTaskRows(hierarchy).map(r => ({
+      const orderedRows = rawRows.length > 0 ? rawRows : buildTaskRows(hierarchy);
+      const taskRows = orderedRows.map(r => ({
         ...r,
         domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
         course: courseStr,
@@ -954,8 +960,16 @@ const CurriculumDetailsModal = ({ curriculumId, onClose }) => {
   const [selectedTopicIds, setSelectedTopicIds] = useState([]);
 
   const version = detailData?.data;
-  const tasks = tasksData?.data || [];
-  const subjects = version?.subjects || [];
+  const tasks = tasksData?.tasks || tasksData?.data || [];
+  const subjects = useMemo(() => {
+    return sortByOrderAsc(version?.subjects || []).map((s) => ({
+      ...s,
+      topics: sortByOrderAsc(s.topics || []).map((t) => ({
+        ...t,
+        subTopics: sortByOrderAsc(t.subTopics || []),
+      })),
+    }));
+  }, [version?.subjects]);
 
   const toggleTopicSelect = (topicId) => {
     setSelectedTopicIds((prev) =>

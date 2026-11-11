@@ -18,6 +18,7 @@ import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { getDepartmentCourses } from "../../../../utils/sessionDurationHelpers";
+import { sortTasksAscending } from "../../../../utils/taskOrderHelpers";
 import {
     useDeleteTaskMutation,
     useGetAllTasksQuery,
@@ -806,12 +807,7 @@ const TaskManagement = () => {
                 return false;
             })
             : rawTasks;
-        const tasks = [...scopedTasks].sort((a, b) => {
-            const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-            const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-            if (timeB !== timeA) return timeB - timeA;
-            return (b._id || "").toString().localeCompare((a._id || "").toString());
-        });
+        const tasks = sortTasksAscending(scopedTasks);
         return tasks.map((task) => {
             const context = task.context || {};
             return {

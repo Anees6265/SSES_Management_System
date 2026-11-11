@@ -24,6 +24,7 @@ import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { usePersistentState } from "../../../../hooks/usePersistentFilters";
+import { sortTasksAscending } from "../../../../utils/taskOrderHelpers";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 
 const SECRET_KEY = "ITEG@123";
@@ -681,40 +682,15 @@ const StudentTaskBoard = () => {
         setSubjectFilter("");
     };
 
-    const getTaskTimestamp = (task) => {
-        if (!task) return 0;
-        if (task.assignedAt) {
-            const t = new Date(task.assignedAt).getTime();
-            if (!isNaN(t) && t > 0) return t;
-        }
-        if (task.createdAt) {
-            const t = new Date(task.createdAt).getTime();
-            if (!isNaN(t) && t > 0) return t;
-        }
-        if (task._id) {
-            try {
-                const hex = task._id.toString().substring(0, 8);
-                const t = parseInt(hex, 16) * 1000;
-                if (!isNaN(t) && t > 0) return t;
-            } catch (_) { }
-        }
-        return 0;
-    };
-
     const allTasks = tasks
         ?? Object.values(data?.groupedBySubject || {}).flatMap(g => g.tasks || []);
 
-    // Sort allTasks strictly by assignedAt/createdAt descending (latest first)
+    // Sort allTasks in ascending upload / assignment order (first row = #1)
     const sortedTasks = useMemo(() => {
-        return [...allTasks].sort((a, b) => {
-            const timeA = getTaskTimestamp(a);
-            const timeB = getTaskTimestamp(b);
-            if (timeB !== timeA) return timeB - timeA;
-            return (b._id || "").toString().localeCompare((a._id || "").toString());
-        });
+        return sortTasksAscending(allTasks);
     }, [allTasks]);
 
-    // Assign sequential serial numbers (1 is latest overall task)
+    // Assign sequential serial numbers in ascending Excel / creation order
     const tasksWithSno = useMemo(() => {
         return sortedTasks.map((t, idx) => ({
             ...t,

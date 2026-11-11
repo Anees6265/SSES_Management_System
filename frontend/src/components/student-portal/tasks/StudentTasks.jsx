@@ -22,6 +22,7 @@ import {
 } from "react-icons/md";
 import { toast } from "react-toastify";
 import EmptyState from "../../shared/empty-state/EmptyState";
+import { sortTasksAscending } from "../../../utils/taskOrderHelpers";
 
 const STATUS_COLS = [
     { 
@@ -139,17 +140,12 @@ export default function StudentTasks() {
         }
     }, [allSubjects, activeSubject]);
 
-    // Sort active tasks strictly by assignedAt/createdAt descending (latest first)
+    // Sort active tasks in ascending upload / assignment order (first row = #1)
     const sortedTasks = useMemo(() => {
-        return [...activeLevelTasks].sort((a, b) => {
-            const timeA = new Date(a.assignedAt || a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-            const timeB = new Date(b.assignedAt || b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-            if (timeB !== timeA) return timeB - timeA;
-            return (b._id || "").toString().localeCompare((a._id || "").toString());
-        });
+        return sortTasksAscending(activeLevelTasks);
     }, [activeLevelTasks]);
 
-    // Assign sequential serial numbers (1 is latest overall task)
+    // Assign sequential serial numbers in ascending Excel / creation order
     const tasksWithSno = useMemo(() => {
         return sortedTasks.map((t, idx) => ({
             ...t,

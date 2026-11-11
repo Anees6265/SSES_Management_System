@@ -32,7 +32,7 @@ exports.getSubjectsBySyllabusVersion = async (req, res) => {
     const subjects = await Subject.find({ 
       syllabusVersionId, 
       isActive: true 
-    }).sort({ createdAt: -1 });
+    }).sort({ order: 1, createdAt: 1, _id: 1 });
 
     res.status(200).json({ success: true, data: subjects });
   } catch (error) {

@@ -34,6 +34,7 @@ import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker
 import { TaskUploadDrawer } from "./SyllabusTab";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
+import { sortTasksAscending, sortByOrderAsc } from "../../../../utils/taskOrderHelpers";
 
 const TASK_TYPES = [
   { value: "assessment", label: "Assessment" },
@@ -153,15 +154,15 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const subjects = useMemo(() => {
     if (!effectiveVersionId || !versionDetail?.data?.subjects) return [];
     if (String(versionDetail.data._id) !== String(effectiveVersionId)) return [];
-    return versionDetail.data.subjects || [];
+    return sortByOrderAsc(versionDetail.data.subjects || []);
   }, [effectiveVersionId, versionDetail]);
 
   const topics = useMemo(() => {
-    return subjects.find(s => s._id === selectedSubjectId)?.topics || [];
+    return sortByOrderAsc(subjects.find(s => s._id === selectedSubjectId)?.topics || []);
   }, [subjects, selectedSubjectId]);
 
   const subTopics = useMemo(() => {
-    return topics.find(t => t._id === selectedTopicId)?.subTopics || [];
+    return sortByOrderAsc(topics.find(t => t._id === selectedTopicId)?.subTopics || []);
   }, [topics, selectedTopicId]);
 
   const { data: tasksData, refetch: refetchTasks } = useGetTasksByLevelQuery(
@@ -171,12 +172,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const allTasks = useMemo(() => {
     if (selectedSessionId && !effectiveVersionId) return [];
     const list = tasksData?.data || [];
-    return [...list].sort((a, b) => {
-      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      return (b._id || "").toString().localeCompare((a._id || "").toString());
-    });
+    return sortTasksAscending(list);
   }, [selectedSessionId, effectiveVersionId, tasksData]);
 
   const [createTask, { isLoading: creating }] = useCreateTaskManualMutation();

@@ -143,7 +143,7 @@ const syncReportCardLive = async (studentId, reportCard) => {
     // 2. Re-calculate "Subject-wise Performance"
     const tasks = await StudentTask.find({ studentId, isActive: true })
       .populate("subLevelId", "name")
-      .sort({ assignedAt: -1, createdAt: -1 });
+      .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
     if (tasks.length > 0) {
       const grouped = {};

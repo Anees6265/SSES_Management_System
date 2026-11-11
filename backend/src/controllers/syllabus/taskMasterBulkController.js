@@ -22,6 +22,8 @@ exports.bulkUploadTasks = async (req, res) => {
 
     const errors   = [];
     const taskDocs = [];
+    const existingVersionTaskCount = await Task.countDocuments({ syllabusVersionId });
+    const baseTime = Date.now();
 
     for (let i = 0; i < tasks.length; i++) {
       const row    = tasks[i];
@@ -29,6 +31,7 @@ exports.bulkUploadTasks = async (req, res) => {
 
       const subjectName    = (row.subject          || row.Subject || "").trim();
       const topicName       = (row.topic            || row.Topic || "").trim();
+      const subTopicName    = (row.subTopic         || row["Sub Topic"] || row.SubTopic || "").trim();
       const taskTitle       = (row.taskTitle         || row["Task Title"] || row.TaskTitle || row.Task || row.task || row.Tasks || row.TASK || row.title || row.Title || "").trim();
       const taskType        = (row.taskType          || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
       const priority        = (row.priority          || row.Priority || "medium").trim().toLowerCase();
@@ -95,11 +98,8 @@ exports.bulkUploadTasks = async (req, res) => {
         continue;
       }
 
-      const taskCount = await Task.countDocuments({
-        syllabusVersionId,
-        topicId:    foundTopic._id,
-        subTopicId: foundSubTopic?._id || null,
-      });
+      const seqOffset = taskDocs.length;
+      const docTimestamp = new Date(baseTime + seqOffset);
 
       const rowCourses = Array.isArray(row.courses) && row.courses.length > 0
         ? row.courses
@@ -107,6 +107,9 @@ exports.bulkUploadTasks = async (req, res) => {
 
       taskDocs.push({
         syllabusVersionId,
+        sessionId:        sv.sessionId || null,
+        levelId:          sv.levelId || null,
+        subLevelId:       sv.subLevelId || null,
         subjectId:        foundSubject._id,
         subjectName:      foundSubject.name,
         topicId:          foundTopic._id,
@@ -119,21 +122,24 @@ exports.bulkUploadTasks = async (req, res) => {
         course:           rowCourses.join(", "),
         courses:          rowCourses,
         type:             resolvedType,
+        priority,
         maxMarks,
         timeDays,
         measurablePoints,
-        order:            taskCount + 1,
+        order:            existingVersionTaskCount + seqOffset + 1,
         assignTo:         assignTo === "specific" ? "specific" : "all",
         specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
         assignedByName:   req.user?.name || "System",
         isActive:         true,
+        createdAt:        docTimestamp,
+        updatedAt:        docTimestamp,
       });
     }
 
     if (taskDocs.length === 0)
       return res.status(400).json({ success: false, message: "No valid tasks to insert", errors });
 
-    const inserted = await Task.insertMany(taskDocs);
+    const inserted = await Task.insertMany(taskDocs, { ordered: true });
 
     if (assignTo === "specific" && Array.isArray(studentIds) && studentIds.length > 0) {
       await Promise.allSettled(

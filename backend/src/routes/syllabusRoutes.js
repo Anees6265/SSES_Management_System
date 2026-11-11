@@ -69,7 +69,7 @@ router.get("/students/:studentId/tasks", verifyToken, async (req, res) => {
     if (!syllabusVersionId) return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
     const query = { studentId, syllabusVersionId, isActive: true };
     if (status) query.status = status;
-    const tasks = await StudentTask.find(query).sort({ assignedAt: -1, createdAt: -1 });
+    const tasks = await StudentTask.find(query).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
     res.json({ success: true, data: tasks });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

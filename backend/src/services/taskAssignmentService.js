@@ -13,7 +13,9 @@ const StudentEventLog = require("../models/student/StudentEventLog");
 const ACTIVE_STUDENT_STATUSES = ["Active"];
 
 const buildTaskEntries = async (syllabusVersionId) => {
-  const tasks = await Task.find({ syllabusVersionId, isActive: true }).lean();
+  const tasks = await Task.find({ syllabusVersionId, isActive: true })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
   return tasks.map((task) => ({
     taskId: task._id,
     subjectId: task.subjectId,
@@ -275,8 +277,11 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   let createdCount = 0;
   let updatedCount = 0;
   const bulkOps = [];
+  const baseAssignedMs = Date.now();
 
-  for (const entry of taskEntries) {
+  for (let entryIdx = 0; entryIdx < taskEntries.length; entryIdx++) {
+    const entry = taskEntries[entryIdx];
+
     // Check if task is restricted to specific students
     if (entry.assignTo === "specific" && Array.isArray(entry.specificStudentIds) && entry.specificStudentIds.length > 0) {
       const studentIdStr = student._id.toString();
@@ -291,18 +296,19 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
     }
 
     const payload = buildStudentTaskPayload(student, syllabusVersion, entry, {
-      assignedType: "auto"
+      assignedType: "auto",
+      assignedAt: new Date(baseAssignedMs + entryIdx)
     });
 
     const existing = existingMap.get(entry.taskId.toString());
 
     if (existing) {
+      delete payload.assignedAt;
       if (existing.assignedType === "manual") {
         delete payload.assignedType;
         delete payload.assignedBy;
         delete payload.assignedByName;
         delete payload.assignedByRole;
-        delete payload.assignedAt;
       }
 
       bulkOps.push({
@@ -328,7 +334,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   }
 
   if (bulkOps.length > 0) {
-    await StudentTask.bulkWrite(bulkOps, { ordered: false });
+    await StudentTask.bulkWrite(bulkOps, { ordered: true });
   }
 
   const activeTaskIds = taskEntries.map((task) => task.taskId);
@@ -512,8 +518,9 @@ const getStudentTasks = async (studentId, syllabusVersionId, filters = {}) => {
   if (filters.subTopicId) query.subTopicId = filters.subTopicId;
 
   const tasks = await StudentTask.find(query).sort({
-    assignedAt: -1,
-    createdAt: -1
+    assignedAt: 1,
+    createdAt: 1,
+    _id: 1
   });
 
   return tasks;

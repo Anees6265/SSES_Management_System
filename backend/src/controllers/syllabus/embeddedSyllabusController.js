@@ -100,6 +100,9 @@ const upsertSubjectTree = (syllabusVersion, inputSubjects) => {
     };
     const existing = resolveMatchingSubject(syllabusVersion, payload);
     if (existing) {
+      if (typeof payload.order !== "number" && typeof existing.order === "number") {
+        normalized.order = existing.order;
+      }
       Object.assign(existing, normalized);
       result.push({ action: "updated", subjectId: existing._id, name: existing.name });
     } else {
@@ -422,7 +425,7 @@ exports.getTasksBySyllabusVersion = async (req, res) => {
     if (subjectId) filter.subjectId = subjectId;
     if (topicId) filter.topicId = topicId;
     if (subTopicId) filter.subTopicId = subTopicId;
-    const tasks = await Task.find(filter).sort({ createdAt: -1, _id: -1 });
+    const tasks = await Task.find(filter).sort({ createdAt: 1, _id: 1 });
     res.status(200).json({ success: true, tasks });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -1122,6 +1125,8 @@ exports.uploadCombined = async (req, res) => {
     const taskRows = rows.filter(r => Boolean(getTaskTitle(r)));
     const taskDocs = [];
     const taskErrors = [];
+    const existingVersionTaskCount = await Task.countDocuments({ syllabusVersionId: sv._id });
+    const baseTime = Date.now();
 
     for (let i = 0; i < taskRows.length; i++) {
       const row = taskRows[i];
@@ -1130,6 +1135,8 @@ exports.uploadCombined = async (req, res) => {
       const subTopicName = (row.subTopic || row["Sub Topic"] || row.SubTopic || "").trim();
       const taskTitle    = getTaskTitle(row);
       const taskType     = (row.taskType || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
+      const priorityVal  = (row.priority || row.Priority || "medium").trim().toLowerCase();
+      const priority     = ["low", "medium", "high"].includes(priorityVal) ? priorityVal : "medium";
       const maxMarks     = Math.min(5, Math.max(1, Number(row.maxMarks || row["Max Marks"]) || 5));
       const timeDays     = (row.timeDays !== undefined && row.timeDays !== null) || (row["Time Days"] !== undefined && row["Time Days"] !== null) ? String(row.timeDays || row["Time Days"] || "").trim() : null;
       const measurablePoints = (row.measurablePoints || row["Measurable Points"] || "").trim();
@@ -1160,10 +1167,14 @@ exports.uploadCombined = async (req, res) => {
       });
       if (exists) { taskErrors.push(`Row ${i + 2}: Task "${taskTitle}" already exists`); continue; }
 
-      const taskCount = await Task.countDocuments({ syllabusVersionId: sv._id, topicId: foundTopic._id, subTopicId: foundSubTopic?._id || null });
+      const seqOffset = taskDocs.length;
+      const docTimestamp = new Date(baseTime + seqOffset);
 
       taskDocs.push({
         syllabusVersionId: sv._id,
+        sessionId:    sv.sessionId || null,
+        levelId:      sv.levelId || null,
+        subLevelId:   sv.subLevelId || null,
         subjectId:    foundSubject._id,
         subjectName:  foundSubject.name,
         topicId:      foundTopic._id,
@@ -1176,18 +1187,21 @@ exports.uploadCombined = async (req, res) => {
         courses:      normalizedCourses,
         course:       normalizedCourses.join(", "),
         type:         ["assignment","project","practice","reading","assessment","other"].includes(taskType) ? taskType : "assessment",
+        priority,
         maxMarks,
         timeDays,
         measurablePoints,
-        order:        taskCount + 1,
+        order:        existingVersionTaskCount + seqOffset + 1,
         assignedByName: req.user?.name || "System",
-        isActive:     true
+        isActive:     true,
+        createdAt:    docTimestamp,
+        updatedAt:    docTimestamp,
       });
     }
 
     let insertedTasks = 0;
     if (taskDocs.length > 0) {
-      await Task.insertMany(taskDocs);
+      await Task.insertMany(taskDocs, { ordered: true });
       insertedTasks = taskDocs.length;
       await syncTasksToSubLevelStudents(sv._id).catch(() => {});
     }

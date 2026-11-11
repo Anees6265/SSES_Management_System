@@ -41,6 +41,7 @@ import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import CommonTable from "../../../shared/table/CommonTable";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
+import { sortTasksAscending, sortByOrderAsc, mapCombinedExcelRows } from "../../../../utils/taskOrderHelpers";
 
 /* ─── helpers ─────────────────────────────────────────── */
 const normalize = (v) => (v === undefined || v === null ? "" : String(v).trim());
@@ -603,6 +604,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const [parsing,          setParsing]          = useState(false);
   const [saving,           setSaving]           = useState(false);
   const [hierarchy,        setHierarchy]        = useState([]);
+  const [rawRows,          setRawRows]          = useState([]);
   const [fileName,         setFileName]         = useState("");
   const [selectedSessionId,setSelectedSessionId]= useState("");
   const [selectedDomain,   setSelectedDomain]   = useState("");
@@ -636,6 +638,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
 
   const reset = () => {
     setHierarchy([]);
+    setRawRows([]);
     setFileName("");
     setSelectedSessionId("");
     setSelectedDomain("");
@@ -652,6 +655,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     }
     setParsing(true);
     setHierarchy([]);
+    setRawRows([]);
     setFileName(file.name);
     try {
       const rows = await parseExcel(file);
@@ -672,6 +676,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
         return;
       }
       setHierarchy(parsed);
+      setRawRows(mapCombinedExcelRows(rows));
       setSubjectMeta(
         parsed.map((s) => ({
           name: s.subject,
@@ -714,7 +719,8 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     try {
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
       const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
-      const taskRows = buildTaskRows(hierarchy).map((r) => ({
+      const orderedRows = rawRows.length > 0 ? rawRows : buildTaskRows(hierarchy);
+      const taskRows = orderedRows.map((r) => ({
         ...r,
         domain: isLevel2B ? (selectedDomain || r.domain || "") : (r.domain || ""),
         course: courseStr,
@@ -1105,13 +1111,13 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
     if (!versionId || !data?.data?.subjects) return [];
     if (String(data.data._id) !== String(versionId)) return [];
     const result = [];
-    data.data.subjects.forEach((subject) => {
+    sortByOrderAsc(data.data.subjects).forEach((subject) => {
       if (activeSubject && subject.name !== activeSubject) return;
-      (subject.topics || []).forEach((topic) => {
+      sortByOrderAsc(subject.topics || []).forEach((topic) => {
         const topicIdStr = String(topic._id);
         const subjectIdStr = String(subject._id);
         if (topic.subTopics && topic.subTopics.length > 0) {
-          topic.subTopics.forEach((st) => {
+          sortByOrderAsc(topic.subTopics).forEach((st) => {
             result.push({
               _id: String(st._id),
               subject: subject.name,
@@ -1149,24 +1155,24 @@ const VersionTopicTable = ({ versionId, searchTerm = "", activeSubject }) => {
   }, [rows, searchTerm]);
 
   const groupedTopics = useMemo(() => {
-    const groups = {};
+    const groupsMap = new Map();
     filtered.forEach((item) => {
       const key = item.topicIdStr;
-      if (!groups[key]) {
-        groups[key] = {
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
           topicIdStr: key,
           subjectId: item.subjectId,
           topic: item.topic,
           topicDescription: item.topicDescription || "",
           subject: item.subject,
           subTopics: []
-        };
+        });
       }
       if (item.subTopic !== "—" && item.subTopic !== "\u2014" && item.subTopic !== "\u2514") {
-        groups[key].subTopics.push(item.subTopic);
+        groupsMap.get(key).subTopics.push(item.subTopic);
       }
     });
-    return Object.values(groups);
+    return Array.from(groupsMap.values());
   }, [filtered]);
 
   const handleDeleteTopic = async (row) => {
@@ -1754,7 +1760,7 @@ export const useSubjectsList = (versionId) => {
   return useMemo(() => {
     if (!versionId || !data?.data?.subjects) return [];
     if (String(data.data._id) !== String(versionId)) return [];
-    return (data.data.subjects || []).map((s) => ({ _id: s._id, name: s.name, topicCount: s.topics?.length || 0 }));
+    return sortByOrderAsc(data.data.subjects || []).map((s) => ({ _id: s._id, name: s.name, topicCount: s.topics?.length || 0 }));
   }, [versionId, data]);
 };
 
@@ -1831,6 +1837,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
       const mapped = parsed.map((r) => ({
         subject:           String(r["Subject"]          || r["subject"]          || r["SUBJECT"] || "").trim(),
         topic:             String(r["Topic"]            || r["topic"]            || r["Topic Name"] || r["TOPIC"] || "").trim(),
+        subTopic:          String(r["SubTopic"]         || r["Sub Topic"]        || r["subTopic"] || r["subtopic"] || r["SUBTOPIC"] || "").trim(),
         taskTitle:         String(r["Task Title"]       || r["taskTitle"]        || r["TaskTitle"]  || r["Task"] || r["task"] || r["Tasks"] || r["TASK"] || r["title"] || r["Title"] || "").trim(),
         taskType:          String(r["taskType"]         || r["TaskType"]         || r["Task Type"]  || r["TASK TYPE"] || "assessment").trim(),
         priority:          String(r["priority"]         || r["Priority"]         || r["PRIORITY"] || "medium").trim(),
@@ -2262,12 +2269,7 @@ export const VersionTasksTable = ({ versionId, searchTerm = "", activeSubjectId,
   const allTasks = useMemo(() => {
     if (!versionId) return [];
     const list = data?.tasks || data?.data || [];
-    return [...list].sort((a, b) => {
-      const timeA = new Date(a.createdAt || (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-      const timeB = new Date(b.createdAt || (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0)).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      return (b._id || "").toString().localeCompare((a._id || "").toString());
-    });
+    return sortTasksAscending(list);
   }, [versionId, data]);
   const [selectedTask, setSelectedTask] = useState(null);
 

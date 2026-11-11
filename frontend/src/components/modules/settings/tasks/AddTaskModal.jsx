@@ -23,6 +23,7 @@ import {
 } from "../../../../redux/api/authApi";
 import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
+import { sortByOrderAsc } from "../../../../utils/taskOrderHelpers";
 
 const getId = (item) => {
     if (!item) return "";
@@ -298,13 +299,13 @@ const AddTaskModal = ({
     const subjects = useMemo(() => {
         if (!selectedVersionId || taskSource !== "syllabus" || !versionDetail?.data?.subjects) return [];
         if (String(versionDetail.data._id) !== String(selectedVersionId)) return [];
-        return versionDetail.data.subjects || [];
+        return sortByOrderAsc(versionDetail.data.subjects || []);
     }, [selectedVersionId, taskSource, versionDetail]);
 
     const currentSubject = subjects.find((s) => s._id === selectedSubjectId);
-    const topics = currentSubject?.topics || [];
+    const topics = sortByOrderAsc(currentSubject?.topics || []);
     const currentTopic = topics.find((t) => t._id === selectedTopicId);
-    const subTopics = currentTopic?.subTopics || [];
+    const subTopics = sortByOrderAsc(currentTopic?.subTopics || []);
 
     // Names for preview breadcrumb bar
     const selectedSessionName = sessionsList.find((s) => s._id === selectedSessionId)?.name;

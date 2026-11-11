@@ -1992,7 +1992,7 @@ exports.getStudentTasks = async (req, res) => {
     const tasks = await StudentTask.find(filter)
       .populate("subLevelId", "name order")
       .populate("levelId", "name order")
-      .sort({ assignedAt: -1, createdAt: -1, _id: -1 });
+      .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
 
     // Group by subject
@@ -2731,7 +2731,7 @@ exports.getExtraTasks = async (req, res) => {
       studentId: id,
       isExtra: true,
       isActive: true,
-    }).sort({ assignedAt: -1 });
+    }).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
     return res.status(200).json({
       total: tasks.length,

@@ -472,7 +472,7 @@ exports.getMyTasks = async (req, res) => {
       filter.$or = currentOrConditions;
     }
 
-    let tasks = await StudentTask.find(filter).sort({ assignedAt: -1, createdAt: -1 });
+    let tasks = await StudentTask.find(filter).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
     // Fallback: If 0 tasks found and no specific subLevelId query was given, check by currentLevelId
     if (tasks.length === 0 && !subLevelId && currentLevelId) {
@@ -482,7 +482,7 @@ exports.getMyTasks = async (req, res) => {
         isActive: { $ne: false },
         isArchived: { $ne: true },
         ...(status ? { status } : {})
-      }).sort({ assignedAt: -1, createdAt: -1 });
+      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
       if (levelTasks.length > 0) {
         tasks = levelTasks;
@@ -496,7 +496,7 @@ exports.getMyTasks = async (req, res) => {
         isActive: { $ne: false },
         isArchived: { $ne: true },
         ...(status ? { status } : {})
-      }).sort({ assignedAt: -1, createdAt: -1 });
+      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
 
       if (allActiveTasks.length > 0) {
         tasks = allActiveTasks;
@@ -559,7 +559,7 @@ exports.getMyTasks = async (req, res) => {
         _id: { $nin: Array.from(currentTaskIds) },
         isActive: { $ne: false },
         isArchived: { $ne: true }
-      }).sort({ assignedAt: -1, createdAt: -1 }).lean();
+      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 }).lean();
 
       const accountedPastTaskIds = new Set();
 
@@ -671,6 +671,34 @@ exports.getMyLevelHistory = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+const sortByOrderAsc = (list = []) =>
+  [...list].sort((a, b) => (Number(a?.order) || 0) - (Number(b?.order) || 0));
+
+const formatOrderedSyllabusSubjects = (subjects = []) =>
+  sortByOrderAsc((subjects || []).filter((subject) => subject && subject.isActive !== false))
+    .map((subject, sIdx) => ({
+      _id: subject._id,
+      name: subject.name,
+      code: subject.code || "",
+      description: subject.description || "",
+      order: subject.order || sIdx + 1,
+      reportCategory: subject.reportCategory || "",
+      topics: sortByOrderAsc((subject.topics || []).filter((topic) => topic && topic.isActive !== false))
+        .map((topic, tIdx) => ({
+          _id: topic._id,
+          name: topic.name,
+          description: topic.description || "",
+          order: topic.order || tIdx + 1,
+          subTopics: sortByOrderAsc((topic.subTopics || []).filter((st) => st && st.isActive !== false))
+            .map((st, stIdx) => ({
+              _id: st._id,
+              name: st.name,
+              description: st.description || "",
+              order: st.order || stIdx + 1,
+            }))
+        }))
+    }));
 
 // ✅ Get My Syllabus & Previous Level Syllabi (Pure Academic Curriculum - No Tasks)
 exports.getMySyllabus = async (req, res) => {
@@ -836,32 +864,7 @@ exports.getMySyllabus = async (req, res) => {
     }
 
     // Format Current Level Subjects -> Topics -> SubTopics (filtering active items)
-    const currentSubjects = (currentSyllabus?.subjects || [])
-      .filter((subject) => subject && subject.isActive !== false)
-      .map((subject, sIdx) => ({
-        _id: subject._id,
-        name: subject.name,
-        code: subject.code || "",
-        description: subject.description || "",
-        order: subject.order || sIdx + 1,
-        reportCategory: subject.reportCategory || "",
-        topics: (subject.topics || [])
-          .filter((topic) => topic && topic.isActive !== false)
-          .map((topic, tIdx) => ({
-            _id: topic._id,
-            name: topic.name,
-            description: topic.description || "",
-            order: topic.order || tIdx + 1,
-            subTopics: (topic.subTopics || [])
-              .filter((st) => st && st.isActive !== false)
-              .map((st, stIdx) => ({
-                _id: st._id,
-                name: st.name,
-                description: st.description || "",
-                order: st.order || stIdx + 1,
-              }))
-          }))
-      }));
+    const currentSubjects = formatOrderedSyllabusSubjects(currentSyllabus?.subjects);
 
     const totalCurrentTopics = currentSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
     const totalCurrentSubTopics = currentSubjects.reduce(
@@ -967,32 +970,7 @@ exports.getMySyllabus = async (req, res) => {
         }).sort({ createdAt: -1, versionNumber: -1 }).lean();
       }
 
-      const pastSubjects = (pastSyllabus?.subjects || [])
-        .filter((subject) => subject && subject.isActive !== false)
-        .map((subject, sIdx) => ({
-          _id: subject._id,
-          name: subject.name,
-          code: subject.code || "",
-          description: subject.description || "",
-          order: subject.order || sIdx + 1,
-          reportCategory: subject.reportCategory || "",
-          topics: (subject.topics || [])
-            .filter((topic) => topic && topic.isActive !== false)
-            .map((topic, tIdx) => ({
-              _id: topic._id,
-              name: topic.name,
-              description: topic.description || "",
-              order: topic.order || tIdx + 1,
-              subTopics: (topic.subTopics || [])
-                .filter((st) => st && st.isActive !== false)
-                .map((st, stIdx) => ({
-                  _id: st._id,
-                  name: st.name,
-                  description: st.description || "",
-                  order: st.order || stIdx + 1,
-                }))
-            }))
-        }));
+      const pastSubjects = formatOrderedSyllabusSubjects(pastSyllabus?.subjects);
 
       const totalTopics = pastSubjects.reduce((acc, s) => acc + (s.topics?.length || 0), 0);
       const totalSubTopics = pastSubjects.reduce(

@@ -794,23 +794,25 @@ export default function ActivityLogs() {
 
       {/* ── INSPECTION DETAIL MODAL ── */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="fixed inset-0" onClick={() => setSelectedLog(null)} />
+          <div className="relative bg-white rounded-2xl max-w-xl w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col z-10 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${selectedLog.isSecurityAlert
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selectedLog.isSecurityAlert
                       ? "bg-rose-100 text-rose-600 border border-rose-200"
                       : "bg-orange-100 text-orange-600 border border-orange-200"
                     }`}
                 >
                   {selectedLog.isSecurityAlert ? <ShieldAlert size={20} /> : <Info size={20} />}
                 </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">
+                <div className="min-w-0">
+                  <h3 className="text-base font-extrabold text-slate-900 truncate">
                     Activity Inspection
                   </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
+                  <p className="text-[11px] text-slate-400 font-mono truncate">
                     ID: {selectedLog._id}
                   </p>
                 </div>
@@ -818,72 +820,76 @@ export default function ActivityLogs() {
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition shrink-0 ml-2"
+                aria-label="Close modal"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                <div>
+            {/* Scrollable Modal Content */}
+            <div className="space-y-3 text-xs sm:text-sm overflow-y-auto flex-1 pr-0.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                <div className="min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">User</span>
-                  <p className="font-bold text-slate-800">{selectedLog.userName} ({selectedLog.role})</p>
-                  <p className="text-slate-500 text-xs font-medium">{selectedLog.userEmail || "No email"}</p>
+                  <p className="font-bold text-slate-800 break-words">{selectedLog.userName} ({selectedLog.role})</p>
+                  <p className="text-slate-500 text-xs font-medium break-all">{selectedLog.userEmail || "No email"}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Timestamp</span>
                   <p className="font-bold text-slate-800">
                     {new Date(selectedLog.createdAt).toLocaleString()}
                   </p>
-                  <p className="text-slate-500 text-xs font-medium">{selectedLog.departmentName || "No Department"}</p>
+                  <p className="text-slate-500 text-xs font-medium truncate">{selectedLog.departmentName || "No Department"}</p>
                 </div>
               </div>
 
-              <div>
+              {/* Activity Summary with word break, pre-wrap, and clean overflow containment */}
+              <div className="min-w-0">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity Summary</span>
-                <p className="font-semibold text-slate-800 mt-0.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80 leading-relaxed">
-                  {selectedLog.description}
-                </p>
+                <div className="font-semibold text-slate-800 mt-1 bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200/80 leading-relaxed break-words break-all whitespace-pre-wrap max-h-48 overflow-y-auto overscroll-contain text-xs sm:text-sm">
+                  {selectedLog.description || "No description provided"}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Action & Module</span>
-                  <p className="font-bold text-slate-800 mt-0.5">{selectedLog.action} • {selectedLog.module}</p>
+                  <p className="font-bold text-slate-800 mt-0.5 break-words">{selectedLog.action} • {selectedLog.module}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status & Severity</span>
-                  <p className="font-bold text-slate-800 mt-0.5">{selectedLog.status} ({selectedLog.severity})</p>
+                  <p className="font-bold text-slate-800 mt-0.5 break-words">{selectedLog.status} ({selectedLog.severity})</p>
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 min-w-0">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Client & Origin</span>
-                <p className="font-mono font-bold text-slate-800">IP: {selectedLog.ipAddress}</p>
-                <p className="text-slate-600 font-medium">Device: {selectedLog.device}</p>
+                <p className="font-mono font-bold text-slate-800 break-all">IP: {selectedLog.ipAddress}</p>
+                <p className="text-slate-600 font-medium break-words">Device: {selectedLog.device}</p>
                 {selectedLog.userAgent && (
-                  <p className="text-[11px] text-slate-400 truncate font-mono" title={selectedLog.userAgent}>
+                  <p className="text-[11px] text-slate-400 font-mono break-all line-clamp-2 hover:line-clamp-none transition-all cursor-text" title={selectedLog.userAgent}>
                     UA: {selectedLog.userAgent}
                   </p>
                 )}
               </div>
 
               {selectedLog.meta && Object.keys(selectedLog.meta).length > 0 && (
-                <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] overflow-x-auto max-h-36 border border-slate-800">
+                <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] overflow-x-auto max-h-36 border border-slate-800 min-w-0">
                   <p className="text-slate-400 text-[10px] font-sans font-bold uppercase mb-1">
                     Metadata Payload
                   </p>
-                  <pre>{JSON.stringify(selectedLog.meta, null, 2)}</pre>
+                  <pre className="whitespace-pre-wrap break-all">{JSON.stringify(selectedLog.meta, null, 2)}</pre>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end pt-2">
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white transition cursor-pointer shadow-xs"
+                className="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white transition cursor-pointer shadow-xs active:scale-98"
               >
                 Close
               </button>

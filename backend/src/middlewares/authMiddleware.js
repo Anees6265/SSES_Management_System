@@ -29,11 +29,16 @@ const verifyToken = (req, res, next) => {
 // Alternative name for compatibility
 const authenticateToken = verifyToken;
 
+const normalizeRole = (role) => {
+    const cleaned = String(role || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+    return cleaned === "cordinator" ? "coordinator" : cleaned;
+};
+
 // Middleware to check required role
 const checkRole = (roles) => {
-    const allowed = roles.map(r => String(r).toLowerCase().trim());
+    const allowed = roles.map(normalizeRole);
     return (req, res, next) => {
-        const userRole = String(req.user?.role || "").toLowerCase().trim();
+        const userRole = normalizeRole(req.user?.role);
         if (!req.user || !allowed.includes(userRole)) {
             return res.status(403).json({ message: "Access Denied. Unauthorized Role." });
         }

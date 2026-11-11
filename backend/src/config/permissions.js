@@ -231,7 +231,9 @@ const allPermissions = {
 };
 
 const getPermissionsForRole = (role) => {
-    return allPermissions[role] || [];
+    const cleaned = String(role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+    const normalized = cleaned === 'cordinator' ? 'coordinator' : cleaned;
+    return allPermissions[normalized] || [];
 };
 
 module.exports = {

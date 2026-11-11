@@ -130,16 +130,27 @@ const AddTaskModal = ({
         // Department
         let dId = "";
         if (initialFilters.filterDept) {
-            const match = departments.find((d) => d.name === initialFilters.filterDept);
+            const targetDept = String(initialFilters.filterDept).trim().toLowerCase();
+            const match = departments.find((d) => String(d.name || "").trim().toLowerCase() === targetDept);
             if (match) dId = match._id;
+        }
+        if (!dId && departments.length === 1) {
+            dId = departments[0]._id;
         }
         setSelectedDepartmentId(dId);
 
         // SubDepartment
         let sdId = "";
         if (initialFilters.filterSub) {
-            const match = subDepartments.find((sd) => sd.name === initialFilters.filterSub);
+            const targetSub = String(initialFilters.filterSub).trim().toLowerCase();
+            const match = subDepartments.find((sd) => String(sd.name || "").trim().toLowerCase() === targetSub);
             if (match) sdId = match._id;
+        }
+        if (!sdId && dId) {
+            const deptSubs = subDepartments.filter((sd) => getId(sd.departmentId) === String(dId));
+            if (deptSubs.length === 1) {
+                sdId = getId(deptSubs[0]);
+            }
         }
         setSelectedSubDepartmentId(sdId);
 

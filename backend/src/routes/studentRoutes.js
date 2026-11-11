@@ -28,7 +28,7 @@ const excelUpload = multer({
   }
 });
 
-const allowedRoles = ["superadmin", "faculty", "admin", "hod", "placement_officer"];
+const allowedRoles = ["superadmin", "faculty", "admin", "hod", "placement_officer", "coordinator"];
 const { studentAccessFilter } = require("../middlewares/studentAccessFilter");
 const auth = [verifyToken, checkRole(allowedRoles), departmentFilter, studentAccessFilter];
 

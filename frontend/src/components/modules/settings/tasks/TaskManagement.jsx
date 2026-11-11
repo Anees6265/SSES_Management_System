@@ -15,6 +15,7 @@ import Pagination from "../../../shared/pagination/Pagination";
 import AddTaskModal from "./AddTaskModal";
 import { buttonStyles } from "../../../../styles/buttonStyles";
 import { usePersistentFilters } from "../../../../hooks/usePersistentFilters";
+import { usePermissions } from "../../../../hooks/usePermissions";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { getDepartmentCourses } from "../../../../utils/sessionDurationHelpers";
 import {
@@ -698,13 +699,18 @@ const TaskManagement = () => {
         }
     }, []);
 
-    const role = (
+    const { hasPermission } = usePermissions();
+
+    const rawRole = (
         localStorage.getItem("role") ||
         user?.role ||
         ""
-    ).toLowerCase();
+    ).toLowerCase().trim().replace(/[\s-]+/g, "_");
+    const role = rawRole === "cordinator" ? "coordinator" : rawRole;
 
-    const isFaculty = role === "faculty";
+    const canCreateTask =
+        ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"].includes(role) ||
+        hasPermission("Page_TaskManagement", "create");
     const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(role);
     const userDept = user?.department || "";
 
@@ -836,7 +842,7 @@ const TaskManagement = () => {
                 raw: task,
             };
         });
-    }, [tasksResponse]);
+    }, [tasksResponse, isDeptScoped, userDept, user?.departmentId]);
 
     const years = getOptionValues(taskRows, "academicYear").filter((v) => v !== "-");
     const sessions = useMemo(() => {
@@ -1053,7 +1059,7 @@ const TaskManagement = () => {
 
                 {/* Top Action & Search Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
-                    {!isFaculty && (
+                    {canCreateTask && (
                         <button
                             type="button"
                             onClick={() => setIsAddModalOpen(true)}

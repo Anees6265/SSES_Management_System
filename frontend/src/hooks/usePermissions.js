@@ -24,7 +24,8 @@ const PERMISSION_ALIASES = {
 export const usePermissions = () => {
     const userPermissions = useSelector(selectUserPermissions);
     const currentUser = useSelector(selectCurrentUser);
-    const userRole = String(currentUser?.role || '').toLowerCase();
+    const rawRole = String(currentUser?.role || localStorage.getItem('role') || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+    const userRole = rawRole === 'cordinator' ? 'coordinator' : rawRole;
 
     /**
      * Checks if the current user has a specific permission.

@@ -52,6 +52,8 @@ const RoleBasedStudentPage = () => {
   return <DepartmentSelector />;
 };
 
+const STAFF_ROLES = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
+
 const routeTitleMap = {
     "/": "Dashboard",
     "/attendance-details": "Attendance Details",
@@ -104,51 +106,51 @@ const Layout = () => {
             <SidebarProvider>
                 <Sidebar>
                 <Routes>
-                    <Route path="/" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><AdminDashboard /></ProtectedRoute>} />
+                    <Route path="/" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><AdminDashboard /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<Navigate to="/" replace />} />
-                    {/* <Route path="/attendance-details" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><AttendanceDetails /></ProtectedRoute>} /> */}
-                    <Route path="/user-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><UsersManagement /></ProtectedRoute>} />
-                    <Route path="/user-profile/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><UserProfile /></ProtectedRoute>} />
-                    <Route path="/student/edit/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentEditPage /></ProtectedRoute>} />
-                    <Route path="/student-detail-table" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><RoleBasedStudentPage /></ProtectedRoute>} />
-                    <Route path="/student-detail-table/:subDepartmentId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentDetailTable /></ProtectedRoute>} />
-                    <Route path="/student/leveldata/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentLevelData /></ProtectedRoute>} />
-                    <Route path="/student-profile/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentProfilePage /></ProtectedRoute>} />
-                    <Route path="/student/:id/archive" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentArchivePage /></ProtectedRoute>} />
-                    <Route path="/student/:id/report/edit" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentReportForm /></ProtectedRoute>} />
-                    <Route path="/student/:id/report" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentReport /></ProtectedRoute>} />
-                    <Route path="/student-level-interviews/:studentId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentLevelInterviewHistory /></ProtectedRoute>} />
-                    <Route path="/student/:id/task-list" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><TaskList /></ProtectedRoute>} />
-                    <Route path="/student-permission" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentPermission /></ProtectedRoute>} />
-                    <Route path="/leave-requests" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><LeaveRequests /></ProtectedRoute>} />
-                    <Route path="/readiness-status" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><PlacementReadyStudents /></ProtectedRoute>} />
-                    <Route path="/placements/dashboard" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><RoleBasedPlacementDashboard /></ProtectedRoute>} />
-                    <Route path="/placements/drives" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><PlacementDriveManagement /></ProtectedRoute>} />
-                    <Route path="/placements/resume-sharing" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><ResumeSharingScreen /></ProtectedRoute>} />
-                    <Route path="/placements/department/:subDepartmentId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><DepartmentPlacementDetail /></ProtectedRoute>} />
-                    <Route path="/placement-interview-record" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><PlacementRecords /></ProtectedRoute>} />
-                    <Route path="/company-details" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><CompanyDetail /></ProtectedRoute>} />
-                    <Route path="/placement/company/:companyId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><PlacedStudents /></ProtectedRoute>} />
-                    <Route path="/placement-post" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><PlacementPost /></ProtectedRoute>} />
-                    <Route path="/interview-history/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><InterviewHistory /></ProtectedRoute>} />
-                    <Route path="/interview-rounds-history/:studentId/:interviewId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><InterviewRoundsHistory /></ProtectedRoute>} />
-                    <Route path="/department-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><DepartmentManagement /></ProtectedRoute>} />
-                    <Route path="/department-details/:id" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><DepartmentDetails /></ProtectedRoute>} />
-                    <Route path="/subdepartment/:id/levels" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SubdepartmentDetails /></ProtectedRoute>} />
-                    <Route path="/subdepartment/:id/level/:levelId" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SubLevelManagement /></ProtectedRoute>} />
-                    <Route path="/subdepartment-details" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SubdepartmentDetails /></ProtectedRoute>} />
-                    <Route path="/show-sublevel-tables" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><ShowSubLevelTablesData /></ProtectedRoute>} />
-                    <Route path="/setting/student-profile" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentProfilePage /></ProtectedRoute>} />
-                    <Route path="/student/task-board" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><StudentTaskBoard /></ProtectedRoute>} />
-                    <Route path="/task-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><TaskManagement /></ProtectedRoute>} />
-                    <Route path="/subdepartments" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SubDepartment /></ProtectedRoute>} />
-                    <Route path="/levels" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><ShowLevels /></ProtectedRoute>} />
-                    <Route path="/user-permission" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><UserPermission /></ProtectedRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><SettingFIle /></ProtectedRoute>} />
-                    <Route path="/support" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><Supportfile /></ProtectedRoute>} />
-                    <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer"]}><CurriculumManagement /></ProtectedRoute>} />
-                    <Route path="/session-management" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"]}><SessionManagement /></ProtectedRoute>} />
-                    <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"]}><ActivityLogs /></ProtectedRoute>} />
+                    {/* <Route path="/attendance-details" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><AttendanceDetails /></ProtectedRoute>} /> */}
+                    <Route path="/user-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UsersManagement /></ProtectedRoute>} />
+                    <Route path="/user-profile/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UserProfile /></ProtectedRoute>} />
+                    <Route path="/student/edit/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentEditPage /></ProtectedRoute>} />
+                    <Route path="/student-detail-table" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><RoleBasedStudentPage /></ProtectedRoute>} />
+                    <Route path="/student-detail-table/:subDepartmentId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentDetailTable /></ProtectedRoute>} />
+                    <Route path="/student/leveldata/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentLevelData /></ProtectedRoute>} />
+                    <Route path="/student-profile/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentProfilePage /></ProtectedRoute>} />
+                    <Route path="/student/:id/archive" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentArchivePage /></ProtectedRoute>} />
+                    <Route path="/student/:id/report/edit" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentReportForm /></ProtectedRoute>} />
+                    <Route path="/student/:id/report" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentReport /></ProtectedRoute>} />
+                    <Route path="/student-level-interviews/:studentId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentLevelInterviewHistory /></ProtectedRoute>} />
+                    <Route path="/student/:id/task-list" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TaskList /></ProtectedRoute>} />
+                    <Route path="/student-permission" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentPermission /></ProtectedRoute>} />
+                    <Route path="/leave-requests" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><LeaveRequests /></ProtectedRoute>} />
+                    <Route path="/readiness-status" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementReadyStudents /></ProtectedRoute>} />
+                    <Route path="/placements/dashboard" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><RoleBasedPlacementDashboard /></ProtectedRoute>} />
+                    <Route path="/placements/drives" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementDriveManagement /></ProtectedRoute>} />
+                    <Route path="/placements/resume-sharing" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ResumeSharingScreen /></ProtectedRoute>} />
+                    <Route path="/placements/department/:subDepartmentId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DepartmentPlacementDetail /></ProtectedRoute>} />
+                    <Route path="/placement-interview-record" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementRecords /></ProtectedRoute>} />
+                    <Route path="/company-details" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><CompanyDetail /></ProtectedRoute>} />
+                    <Route path="/placement/company/:companyId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacedStudents /></ProtectedRoute>} />
+                    <Route path="/placement-post" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementPost /></ProtectedRoute>} />
+                    <Route path="/interview-history/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><InterviewHistory /></ProtectedRoute>} />
+                    <Route path="/interview-rounds-history/:studentId/:interviewId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><InterviewRoundsHistory /></ProtectedRoute>} />
+                    <Route path="/department-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DepartmentManagement /></ProtectedRoute>} />
+                    <Route path="/department-details/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DepartmentDetails /></ProtectedRoute>} />
+                    <Route path="/subdepartment/:id/levels" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SubdepartmentDetails /></ProtectedRoute>} />
+                    <Route path="/subdepartment/:id/level/:levelId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SubLevelManagement /></ProtectedRoute>} />
+                    <Route path="/subdepartment-details" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SubdepartmentDetails /></ProtectedRoute>} />
+                    <Route path="/show-sublevel-tables" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ShowSubLevelTablesData /></ProtectedRoute>} />
+                    <Route path="/setting/student-profile" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentProfilePage /></ProtectedRoute>} />
+                    <Route path="/student/task-board" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentTaskBoard /></ProtectedRoute>} />
+                    <Route path="/task-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TaskManagement /></ProtectedRoute>} />
+                    <Route path="/subdepartments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SubDepartment /></ProtectedRoute>} />
+                    <Route path="/levels" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ShowLevels /></ProtectedRoute>} />
+                    <Route path="/user-permission" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UserPermission /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SettingFIle /></ProtectedRoute>} />
+                    <Route path="/support" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Supportfile /></ProtectedRoute>} />
+                    <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><CurriculumManagement /></ProtectedRoute>} />
+                    <Route path="/session-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SessionManagement /></ProtectedRoute>} />
+                    <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ActivityLogs /></ProtectedRoute>} />
                     <Route path="/unauthorized" element={<PageNotFound />} />
                     <Route path="*" element={<PageNotFound />} />
                 </Routes>

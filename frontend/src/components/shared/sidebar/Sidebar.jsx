@@ -110,7 +110,8 @@ const Sidebar = ({ children }) => {
     };
   }, [isMobileOpen]);
 
-  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const rawRole = (localStorage.getItem("role") || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  const role = rawRole === "cordinator" ? "coordinator" : rawRole;
 
   // admin/superadmin go to dept selector, faculty goes directly to student list
   const studentProgressPath = (role === "superadmin" || role === "admin")
@@ -295,7 +296,7 @@ const Sidebar = ({ children }) => {
       icon: <MdWork />,
       permission: "Page_Placement",
       subMenu: [
-        ...(role === "superadmin" || role === "admin" || role === "hod" || role === "faculty" || role === "placement_officer"
+        ...(role === "superadmin" || role === "admin" || role === "hod" || role === "faculty" || role === "placement_officer" || role === "coordinator"
           ? [
               { name: "Dashboard", path: "/placements/dashboard", permission: "Page_PlacementDashboard" },
               { name: "Placement Drives", path: "/placements/drives", permission: "Page_PlacementDrives" },

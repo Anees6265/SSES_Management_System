@@ -192,7 +192,8 @@ async function resolveStudentDepartmentHierarchy({
  */
 async function getDepartmentScopeForUser(reqUser) {
   if (!reqUser) return null;
-  const userRole = String(reqUser.role || "").toLowerCase().trim();
+  const rawRole = String(reqUser.role || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  const userRole = rawRole === "cordinator" ? "coordinator" : rawRole;
   const isDeptScoped = ["hod", "faculty", "placement_officer", "coordinator"].includes(userRole);
   if (!isDeptScoped) return null;
 

@@ -1,15 +1,14 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
     User, GraduationCap, Lock, ShieldCheck, CheckCircle2,
-    Camera, Phone, Mail, MapPin, Calendar, Building,
+    Phone, Mail, MapPin, Calendar, Building,
     X, Eye, EyeOff, RefreshCw, Award, Layers, BookOpen,
     Clock, HeartHandshake, Sparkles, ChevronRight, AlertCircle
 } from "lucide-react";
 import {
     useGetMyStudentProfileQuery,
-    useUpdateMyStudentProfileImageMutation,
     useChangeMyStudentPasswordMutation,
     useGetMyStudentLevelHistoryQuery,
 } from "../../../redux/api/studentApi";
@@ -194,10 +193,8 @@ export default function StudentProfile() {
     const navigate = useNavigate();
     const [pwdModal, setPwdModal] = useState(false);
     const [activeTab, setActiveTab] = useState("all"); // "all" | "academic" | "personal" | "prior" | "leaves"
-    const fileRef = useRef(null);
 
-    const { data, isLoading, refetch } = useGetMyStudentProfileQuery();
-    const [updateImage, { isLoading: uploading }] = useUpdateMyStudentProfileImageMutation();
+    const { data, isLoading } = useGetMyStudentProfileQuery();
     const { data: levelHistoryResponse } = useGetMyStudentLevelHistoryQuery();
 
     const raw = data?.data || {};
@@ -250,25 +247,6 @@ export default function StudentProfile() {
         return diffDays === 0 ? "Today" : diffDays === 1 ? "1 Day" : `${diffDays} Days`;
     }, [raw, levelHistoryResponse]);
 
-    const handleImageChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (!file.type.startsWith("image/")) { toast.error("Only image files are allowed"); return; }
-        if (file.size > 3 * 1024 * 1024) { toast.error("Image size must be under 3 MB"); return; }
-        const image = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) => resolve(ev.target.result);
-            reader.readAsDataURL(file);
-        });
-        try {
-            await updateImage({ image }).unwrap();
-            toast.success("Profile image updated successfully!");
-            refetch();
-        } catch (err) {
-            toast.error(err?.data?.message || "Failed to update profile image");
-        }
-    };
-
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center pt-24 space-y-3">
@@ -299,7 +277,7 @@ export default function StudentProfile() {
                         {/* Left: Avatar + Identity + Tags */}
                         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3.5 sm:gap-5 text-center sm:text-left w-full sm:w-auto">
                             
-                            {/* Photo with Camera upload */}
+                            {/* Photo (Read-only for Student) */}
                             <div className="relative shrink-0">
                                 {raw.image ? (
                                     <img
@@ -312,19 +290,6 @@ export default function StudentProfile() {
                                         {initials}
                                     </div>
                                 )}
-                                <button
-                                    onClick={() => fileRef.current?.click()}
-                                    disabled={uploading}
-                                    className="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 hover:bg-orange-600 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-md transition-all duration-150 active:scale-95 border-2 border-white cursor-pointer"
-                                    title="Upload new profile picture"
-                                >
-                                    {uploading ? (
-                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        <Camera size={13} className="sm:w-3.5 sm:h-3.5" />
-                                    )}
-                                </button>
-                                <input ref={fileRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                             </div>
 
                             {/* Identity and Highlights */}

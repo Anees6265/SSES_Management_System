@@ -200,43 +200,11 @@ exports.getMyProfile = async (req, res) => {
   }
 };
 
-// ✅ Update My Profile Image (Student)
+// ✅ Update My Profile Image (Student - Disabled from Student Portal)
 exports.updateMyProfileImage = async (req, res) => {
-  try {
-    const { image } = req.body;
-    if (!image) return res.status(400).json({ message: "Image is required" });
-    if (!/^data:image\/[a-zA-Z0-9+.-]+;(?:[^;]+;)*base64,/i.test(image))
-      return res.status(400).json({ message: "Invalid image format. Supported formats: PNG, JPEG, JPG, WEBP, GIF" });
-
-    // Validate payload size (Max 3MB)
-    const base64Data = image.split(",")[1] || "";
-    const sizeInBytes = (base64Data.length * 3) / 4;
-    if (sizeInBytes > 3 * 1024 * 1024) {
-      return res.status(400).json({ message: "Profile image exceeds the 3 MB size limit" });
-    }
-
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
-
-    const uploadResponse = await cloudinary.uploader.upload(image, {
-      folder: "student_profiles",
-      public_id: `student_${req.user.id}`,
-      overwrite: true,
-    });
-
-    const student = await Student.findByIdAndUpdate(
-      req.user.id,
-      { image: uploadResponse.secure_url },
-      { new: true }
-    ).select("_id image");
-
-    return res.status(200).json({ message: "Profile image updated", imageURL: student.image });
-  } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
-  }
+  return res.status(403).json({
+    message: "Profile image update is disabled for students. Please contact administration."
+  });
 };
 
 // ✅ Change My Password (Student)

@@ -82,9 +82,10 @@ export default function StudentSyllabus() {
 
     const activePrevLevel = previousLevels[selectedPrevIndex] || previousLevels[0] || null;
 
-    const handlePrint = () => {
-        window.print();
-    };
+    // TODO: Syllabus PDF download / print functionality temporarily commented out for future enablement
+    // const handlePrint = () => {
+    //     window.print();
+    // };
 
     if (isLoading) {
         return (
@@ -240,7 +241,8 @@ export default function StudentSyllabus() {
                                 </div>
                             </div>
 
-                            {/* Download PDF / Print Button */}
+                            {/* Download PDF / Print Button (Temporarily commented out for future enablement) */}
+                            {/*
                             <button
                                 onClick={handlePrint}
                                 title="Download Syllabus as PDF or Print"
@@ -249,6 +251,7 @@ export default function StudentSyllabus() {
                                 <MdPictureAsPdf size={16} className="shrink-0" />
                                 <span>Download PDF / Print</span>
                             </button>
+                            */}
                         </div>
                     </div>
                 </div>

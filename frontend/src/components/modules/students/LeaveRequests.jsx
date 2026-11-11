@@ -92,7 +92,10 @@ const formatLeaveForExport = (list) => {
     const levelName = student.currentLevelId?.name || "";
     const subLevelName = student.currentSubLevelId?.name || "";
     const levelStr = [levelName, subLevelName].filter(Boolean).join(" • ") || "—";
-    const assignedName = row.assignedFacultyId?.name || "—";
+    const assignedList = Array.isArray(row.assignedFacultyIds) && row.assignedFacultyIds.length > 0
+      ? row.assignedFacultyIds
+      : (row.assignedFacultyId ? [row.assignedFacultyId] : []);
+    const assignedName = assignedList.map((f) => f?.name).filter(Boolean).join(", ") || "—";
 
     return {
       sno: idx + 1,
@@ -268,26 +271,35 @@ const ReasonCell = ({ row }) => {
       )}
 
       {/* Assigned / Approved tags in a single compact line */}
-      {(row.assignedFacultyId || row.approvedBy) && (
-        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
-          {row.assignedFacultyId && (
-            <span
-              className="text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-orange-100 truncate max-w-[130px]"
-              title={`Assigned to: ${row.assignedFacultyId.name}`}
-            >
-              {row.assignedFacultyId.name}
-            </span>
-          )}
-          {row.approvedBy && (
-            <span
-              className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-emerald-100 truncate max-w-[130px]"
-              title={`Approved by: ${row.approvedBy}`}
-            >
-              By: {row.approvedBy}
-            </span>
-          )}
-        </div>
-      )}
+      {(() => {
+        const assignedList = Array.isArray(row.assignedFacultyIds) && row.assignedFacultyIds.length > 0
+          ? row.assignedFacultyIds
+          : (row.assignedFacultyId ? [row.assignedFacultyId] : []);
+
+        if (assignedList.length === 0 && !row.approvedBy) return null;
+
+        return (
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+            {assignedList.map((fac, fIdx) => (
+              <span
+                key={fac._id || fIdx}
+                className="text-orange-600 font-bold bg-orange-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-orange-100 truncate max-w-[130px]"
+                title={`Assigned to: ${fac.name || "Faculty"}`}
+              >
+                {fac.name || "Faculty"}
+              </span>
+            ))}
+            {row.approvedBy && (
+              <span
+                className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] uppercase border border-emerald-100 truncate max-w-[130px]"
+                title={`Approved by: ${row.approvedBy}`}
+              >
+                By: {row.approvedBy}
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Floating Hover Tooltip Portal */}
       {showTooltip &&
@@ -977,20 +989,28 @@ const LeaveRequests = () => {
                         </div>
                       )}
 
-                      {(row.assignedFacultyId || row.approvedBy) && (
-                        <div className="pt-2 border-t border-gray-200/70 flex items-center gap-2 flex-wrap text-[10.5px]">
-                          {row.assignedFacultyId && (
-                            <span className="text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md font-semibold">
-                              Assigned: {row.assignedFacultyId.name}
-                            </span>
-                          )}
-                          {row.approvedBy && (
-                            <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md font-semibold">
-                              Approved by: {row.approvedBy}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {(() => {
+                        const assignedList = Array.isArray(row.assignedFacultyIds) && row.assignedFacultyIds.length > 0
+                          ? row.assignedFacultyIds
+                          : (row.assignedFacultyId ? [row.assignedFacultyId] : []);
+
+                        if (assignedList.length === 0 && !row.approvedBy) return null;
+
+                        return (
+                          <div className="pt-2 border-t border-gray-200/70 flex items-center gap-2 flex-wrap text-[10.5px]">
+                            {assignedList.length > 0 && (
+                              <span className="text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md font-semibold">
+                                Assigned: {assignedList.map((f) => f?.name).filter(Boolean).join(", ")}
+                              </span>
+                            )}
+                            {row.approvedBy && (
+                              <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md font-semibold">
+                                Approved by: {row.approvedBy}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Action Buttons Row (only if doc attached or pending) */}

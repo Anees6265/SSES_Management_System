@@ -6,7 +6,7 @@ import {
   LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar, Building
 } from "lucide-react";
 import { toast } from "react-toastify";
-import logo from "../../../assets/images/logo-ssism.png";
+import logo from "../../../assets/images/logo.png";
 import SecurityHelmet from "../../shared/SecurityHelmet";
 import NotificationBell from "../../shared/notifications/NotificationBell";
 import { useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
@@ -121,14 +121,13 @@ export default function StudentPortalLayout() {
   const SidebarContent = ({ onClose }) => (
     <div className="flex flex-col h-full">
 
-      {/* Logo */}
+      {/* Logo & College Name (Matching Faculty / HOD Sidebar) */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Logo" className="h-9 w-auto object-contain" />
-          <p className="text-[11px] font-bold text-orange-500 uppercase tracking-wider leading-tight">Student Portal</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={logo} alt="SSISM College Logo" className="h-12 sm:h-14 w-auto object-contain" />
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-100 cursor-pointer">
             <X size={18} />
           </button>
         )}
@@ -271,21 +270,20 @@ export default function StudentPortalLayout() {
             <Menu size={20} />
           </button>
 
-          {/* Mobile logo */}
+          {/* Mobile logo (College Logo matching Faculty/HOD) */}
           <div className="flex items-center gap-2 md:hidden">
-            <img src={logo} alt="Logo" className="h-7 w-auto object-contain" />
-            <span className="text-xs font-bold text-orange-500 uppercase tracking-wide">Student Portal</span>
+            <img src={logo} alt="SSISM Logo" className="h-7 sm:h-8 w-auto object-contain" />
           </div>
 
           {/* Right side — notifications & student profile */}
           <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             <NotificationBell title="My Notifications" subtitle="Live academic & task updates" />
 
-            {/* Student Profile Pill / Button matching profile page styling */}
+            {/* Student Profile Avatar Button (Name removed as requested) */}
             <button
               type="button"
               onClick={() => navigate("/student-portal/profile")}
-              className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 rounded-xl border border-transparent hover:border-orange-200 bg-transparent hover:bg-orange-50/60 transition-all duration-150 group text-left cursor-pointer"
+              className="flex items-center p-1 rounded-xl border border-transparent hover:border-orange-200 bg-transparent hover:bg-orange-50/60 transition-all duration-150 group cursor-pointer"
               title="View Profile"
             >
               <div className="relative shrink-0">
@@ -301,16 +299,6 @@ export default function StudentPortalLayout() {
                   </div>
                 )}
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-              </div>
-
-              <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-xs font-bold text-gray-800 group-hover:text-orange-600 transition-colors truncate max-w-[120px] md:max-w-[150px]">
-                  {name}
-                </span>
-                <span className="text-[10px] font-semibold text-orange-600 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block shrink-0" />
-                  {departmentName} {subDepartmentName ? `· ${subDepartmentName}` : ""}
-                </span>
               </div>
             </button>
           </div>

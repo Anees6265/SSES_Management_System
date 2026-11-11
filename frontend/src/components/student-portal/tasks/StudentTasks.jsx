@@ -7,10 +7,8 @@ import {
     MdCheckCircle, 
     MdAccessTime, 
     MdSearch, 
-    MdDragIndicator,
     MdArrowForward,
     MdClose,
-    MdInfoOutline,
     MdRefresh,
     MdPerson,
     MdOutlineCalendarToday,
@@ -756,7 +754,7 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask, isReadOnly 
                 }`}
             >
                 <div>
-                    {/* Subject tag + Drag Handle */}
+                    {/* Subject tag */}
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                             <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
@@ -767,18 +765,6 @@ function TaskCard({ task, onDragStart, onStatusChange, onSelectTask, isReadOnly 
                                     {task.subjectName}
                                 </span>
                             ) : null}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => onSelectTask(task)}
-                                title="View details"
-                                className="text-gray-300 hover:text-gray-600 p-0.5 rounded"
-                            >
-                                <MdInfoOutline size={14} />
-                            </button>
-                            {!isReadOnly && task.status !== "completed" && (
-                                <MdDragIndicator className="text-gray-300 hover:text-gray-400 shrink-0" size={14} />
-                            )}
                         </div>
                     </div>
 

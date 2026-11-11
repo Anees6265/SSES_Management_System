@@ -1097,7 +1097,8 @@ exports.getStudentById = async (req, res) => {
       .populate("syllabusVersionId", "version title")
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
-      .populate("permissions.assignedFacultyId", "name role position email");
+      .populate("permissions.assignedFacultyId", "name role position email")
+      .populate("permissions.assignedFacultyIds", "name role position email");
 
     if (!student) return res.status(404).json({ message: "Student not found" });
 
@@ -2196,13 +2197,11 @@ exports.getStudentArchivedTasks = async (req, res) => {
 exports.getStudentProgressSnapshots = async (req, res) => {
   try {
     const { id } = req.params;
-    const { subLevelId, scope, page = 1, limit = 20 } = req.query;
+    const { subLevelId, scope = "overall", page = 1, limit = 50 } = req.query;
 
-
-    const filter = { studentId: id };
+    const filter = { studentId: id, completedTasks: { $gt: 0 } };
     if (subLevelId) filter.subLevelId = subLevelId;
-    if (scope) filter.snapshotScope = scope;
-
+    if (scope && scope !== "all") filter.snapshotScope = scope;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [snapshots, total] = await Promise.all([
@@ -2210,12 +2209,22 @@ exports.getStudentProgressSnapshots = async (req, res) => {
       StudentProgressSnapshot.countDocuments(filter),
     ]);
 
+    // Ensure legacy duplicate snapshots for the same milestone are collapsed into a single record
+    const dedupedSnapshots = [];
+    const seenMilestones = new Set();
+    for (const snap of snapshots) {
+      const milestoneKey = `${snap.levelId || snap.levelName}_${snap.subLevelId || snap.subLevelName}_${snap.completedTasks}_${snap.totalTasks}`;
+      if (!seenMilestones.has(milestoneKey)) {
+        seenMilestones.add(milestoneKey);
+        dedupedSnapshots.push(snap);
+      }
+    }
 
     return res.status(200).json({
-      total,
+      total: dedupedSnapshots.length,
       page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit)),
-      data: snapshots,
+      totalPages: Math.ceil(dedupedSnapshots.length / parseInt(limit)) || 1,
+      data: dedupedSnapshots,
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -2294,6 +2303,7 @@ exports.getLeaveRequests = async (req, res) => {
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
       .populate("permissions.assignedFacultyId", "name role position email")
+      .populate("permissions.assignedFacultyIds", "name role position email")
       .sort({ updatedAt: -1 });
 
     const requests = students.flatMap((student) => {
@@ -2306,7 +2316,12 @@ exports.getLeaveRequests = async (req, res) => {
           // If the logged-in user is just a faculty member, they only see leave requests assigned to them
           if (isFacultyOnly) {
             const assignedId = permission.assignedFacultyId?._id || permission.assignedFacultyId;
-            return assignedId && assignedId.toString() === req.user.id.toString();
+            const matchSingle = assignedId && assignedId.toString() === req.user.id.toString();
+            const matchMulti = Array.isArray(permission.assignedFacultyIds) && permission.assignedFacultyIds.some((f) => {
+              const fId = f?._id || f;
+              return fId && fId.toString() === req.user.id.toString();
+            });
+            return matchSingle || matchMulti;
           }
           return true;
         })
@@ -2787,9 +2802,13 @@ exports.getExtraDocuments = async (req, res) => {
 // ✅ Apply for Permission (student-initiated flow)
 exports.applyPermission = async (req, res) => {
   try {
-    const { reason, fromDate, toDate, imageURL, assignedFacultyId } = req.body;
+    const { reason, fromDate, toDate, imageURL, assignedFacultyId, assignedFacultyIds } = req.body;
     if (!reason || !fromDate || !toDate)
       return res.status(400).json({ message: "reason, fromDate, toDate are required" });
+
+    const facultyList = Array.isArray(assignedFacultyIds) && assignedFacultyIds.length > 0
+      ? assignedFacultyIds.filter(Boolean)
+      : (assignedFacultyId ? [assignedFacultyId] : []);
 
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
@@ -2812,7 +2831,8 @@ exports.applyPermission = async (req, res) => {
       toDate: new Date(toDate),
       status: "pending",
       uploadDate: new Date(),
-      assignedFacultyId: assignedFacultyId || null
+      assignedFacultyId: facultyList[0] || null,
+      assignedFacultyIds: facultyList,
     };
 
     student.permissions.push(permission);
@@ -2832,6 +2852,7 @@ exports.applyPermission = async (req, res) => {
         toDate: permission.toDate,
         hasDocument: Boolean(uploadedImageURL),
         assignedFacultyId: addedPermission.assignedFacultyId,
+        assignedFacultyIds: addedPermission.assignedFacultyIds,
       },
       createdBy: req.user?.id || req.user?._id || null,
       createdByName: req.user?.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
@@ -2852,7 +2873,8 @@ exports.getPermissions = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
       .select("permissions")
-      .populate("permissions.assignedFacultyId", "name role position email");
+      .populate("permissions.assignedFacultyId", "name role position email")
+      .populate("permissions.assignedFacultyIds", "name role position email");
     if (!student) return res.status(404).json({ message: "Student not found" });
     return res.status(200).json({
       count: student.permissions.length,
@@ -2879,9 +2901,15 @@ exports.resolvePermission = async (req, res) => {
       return res.status(400).json({ message: "Permission already resolved" });
 
     // Role and Assignment Validation
+    const isAssigned = 
+      (permission.assignedFacultyId && permission.assignedFacultyId.toString() === req.user.id.toString()) ||
+      (Array.isArray(permission.assignedFacultyIds) && permission.assignedFacultyIds.some((f) => {
+        const fId = f?._id || f;
+        return fId && fId.toString() === req.user.id.toString();
+      }));
+
     const isAuthorized = 
-      ["superadmin", "hod", "admin"].includes(req.user.role) ||
-      (permission.assignedFacultyId && permission.assignedFacultyId.toString() === req.user.id.toString());
+      ["superadmin", "hod", "admin"].includes(req.user.role) || isAssigned;
 
     if (!isAuthorized) {
       return res.status(403).json({ 

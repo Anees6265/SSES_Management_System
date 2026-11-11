@@ -170,6 +170,7 @@ exports.getMyProfile = async (req, res) => {
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
       .populate("permissions.assignedFacultyId", "name role position email")
+      .populate("permissions.assignedFacultyIds", "name role position email")
       .select("-password");
 
     if (!student) return res.status(404).json({ message: "Student not found" });
@@ -1085,9 +1086,13 @@ exports.getMySyllabus = async (req, res) => {
 exports.getMySnapshots = async (req, res) => {
   try {
     const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
-    const { scope, page = 1, limit = 20 } = req.query;
-    const filter = { studentId: req.user.id, isArchived: false };
-    if (scope) filter.snapshotScope = scope;
+    const { scope = "overall", page = 1, limit = 50 } = req.query;
+    const filter = {
+      studentId: req.user.id,
+      isArchived: false,
+      completedTasks: { $gt: 0 }
+    };
+    if (scope && scope !== "all") filter.snapshotScope = scope;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [snapshots, total] = await Promise.all([
@@ -1095,10 +1100,42 @@ exports.getMySnapshots = async (req, res) => {
       StudentProgressSnapshot.countDocuments(filter),
     ]);
 
+    // Filter out snapshots for deleted syllabi
+    const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+    const subLevelIds = [...new Set(snapshots.map(s => s.subLevelId?.toString()).filter(Boolean))];
+    const activeSyllabi = await SyllabusVersion.find({
+      subLevelId: { $in: subLevelIds },
+      isActive: true,
+      status: { $ne: "archived" }
+    }).select("subLevelId subjects").lean();
+    
+    const activeSubLevelSet = new Set(
+      activeSyllabi
+        .filter(sv => (sv.subjects || []).filter(s => s && s.isActive !== false).length > 0)
+        .map(sv => sv.subLevelId?.toString())
+    );
+
+    // Ensure legacy duplicate snapshots for the same milestone are collapsed into a single record,
+    // and omit any snapshots belonging to sublevels where syllabus was deleted
+    const dedupedSnapshots = [];
+    const seenMilestones = new Set();
+    for (const snap of snapshots) {
+      const snapSubId = snap.subLevelId?.toString();
+      if (snapSubId && !activeSubLevelSet.has(snapSubId)) {
+        continue;
+      }
+      const milestoneKey = `${snap.levelId || snap.levelName}_${snap.subLevelId || snap.subLevelName}_${snap.completedTasks}_${snap.totalTasks}`;
+      if (!seenMilestones.has(milestoneKey)) {
+        seenMilestones.add(milestoneKey);
+        dedupedSnapshots.push(snap);
+      }
+    }
+
     return res.status(200).json({
-      total, page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit)),
-      data: snapshots,
+      total: dedupedSnapshots.length,
+      page: parseInt(page),
+      totalPages: Math.ceil(dedupedSnapshots.length / parseInt(limit)) || 1,
+      data: dedupedSnapshots,
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -1108,9 +1145,14 @@ exports.getMySnapshots = async (req, res) => {
 // ✅ Apply for Permission (Student self-service)
 exports.applyMyPermission = async (req, res) => {
   try {
-    const { reason, fromDate, toDate, imageURL, assignedFacultyId } = req.body;
-    if (!reason || !fromDate || !toDate || !assignedFacultyId)
-      return res.status(400).json({ message: "reason, fromDate, toDate, and assignedFacultyId are required" });
+    const { reason, fromDate, toDate, imageURL, assignedFacultyId, assignedFacultyIds } = req.body;
+    
+    const facultyList = Array.isArray(assignedFacultyIds) && assignedFacultyIds.length > 0
+      ? assignedFacultyIds.filter(Boolean)
+      : (assignedFacultyId ? [assignedFacultyId] : []);
+
+    if (!reason || !fromDate || !toDate || facultyList.length === 0)
+      return res.status(400).json({ message: "reason, fromDate, toDate, and at least one assigned faculty member are required" });
 
     const student = await Student.findById(req.user.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
@@ -1150,7 +1192,8 @@ exports.applyMyPermission = async (req, res) => {
       toDate: new Date(toDate),
       status: "pending",
       uploadDate: new Date(),
-      assignedFacultyId: assignedFacultyId,
+      assignedFacultyId: facultyList[0] || null,
+      assignedFacultyIds: facultyList,
     });
     await student.save();
 
@@ -1168,6 +1211,7 @@ exports.applyMyPermission = async (req, res) => {
         toDate: added.toDate,
         hasDocument: Boolean(uploadedImageURL),
         assignedFacultyId: added.assignedFacultyId,
+        assignedFacultyIds: added.assignedFacultyIds,
       },
       createdBy: null,
       createdByName: `${student.firstName || ""} ${student.lastName || ""}`.trim(),
@@ -1185,7 +1229,8 @@ exports.getMyPermissions = async (req, res) => {
   try {
     const student = await Student.findById(req.user.id)
       .select("permissions")
-      .populate("permissions.assignedFacultyId", "name role position email");
+      .populate("permissions.assignedFacultyId", "name role position email")
+      .populate("permissions.assignedFacultyIds", "name role position email");
     if (!student) return res.status(404).json({ message: "Student not found" });
     const sorted = [...student.permissions].sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
     return res.status(200).json({ count: sorted.length, data: sorted });

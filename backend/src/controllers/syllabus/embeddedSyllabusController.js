@@ -533,34 +533,37 @@ exports.deleteSubjectFromSyllabusVersion = async (req, res) => {
     const StudentTask = require("../../models/syllabus/StudentTask");
 
     if (taskIds.length > 0) {
-      await Task.updateMany(
-        { _id: { $in: taskIds } },
-        { $set: { isActive: false, deletedAt: new Date() } }
-      );
-
-      // 3. Inactivate/archive associated student tasks so they disappear from student task boards
-      await StudentTask.updateMany(
-        {
-          $or: [
-            { taskId: { $in: taskIds } },
-            {
-              syllabusVersionId: sv._id,
-              $or: [{ subjectId: subjectId }, { subjectName: subjectName }]
-            }
-          ]
-        },
-        { $set: { isActive: false, isArchived: true } }
-      );
-    } else {
-      // Also catch any StudentTask with this subjectName and syllabusVersionId
-      await StudentTask.updateMany(
-        {
-          syllabusVersionId: sv._id,
-          $or: [{ subjectId: subjectId }, { subjectName: subjectName }]
-        },
-        { $set: { isActive: false, isArchived: true } }
-      );
+      await Task.deleteMany({
+        $or: [
+          { _id: { $in: taskIds } },
+          { syllabusVersionId: sv._id, subjectId },
+          { syllabusVersionId: sv._id, subjectName }
+        ]
+      });
     }
+
+    // 3. Permanently delete associated student tasks so they disappear completely from student side
+    await StudentTask.deleteMany({
+      $or: [
+        { taskId: { $in: taskIds } },
+        { syllabusVersionId: sv._id, subjectId },
+        { syllabusVersionId: sv._id, subjectName },
+        { subjectId },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName }] : [])
+      ]
+    });
+
+    // 4. Clean up any progress snapshots for this deleted subject
+    try {
+      const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
+      await StudentProgressSnapshot.deleteMany({
+        $or: [
+          { subjectId },
+          { syllabusVersionId: sv._id, subjectName },
+          ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName }] : [])
+        ]
+      });
+    } catch (_) {}
 
     res.status(200).json({
       success: true,

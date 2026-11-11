@@ -135,17 +135,39 @@ router.delete("/:id", verifyToken, checkRole(writeRoles), async (req, res) => {
     sv.status = "archived";
     await sv.save();
 
-    // Deactivate associated tasks
-    await Task.updateMany(
-      { syllabusVersionId: sv._id },
-      { $set: { isActive: false, deletedAt: new Date() } }
-    );
+    // Permanently remove associated tasks and student tasks
+    await Task.deleteMany({ syllabusVersionId: sv._id });
 
-    // Deactivate associated student tasks
-    await StudentTask.updateMany(
-      { syllabusVersionId: sv._id },
-      { $set: { isActive: false } }
-    );
+    // Remove associated student tasks from student side
+    await StudentTask.deleteMany({
+      $or: [
+        { syllabusVersionId: sv._id },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId }] : [])
+      ]
+    });
+
+    // Clean up student progress snapshots for this deleted syllabus/sublevel
+    const StudentProgressSnapshot = require("../models/student/StudentProgressSnapshot");
+    await StudentProgressSnapshot.deleteMany({
+      $or: [
+        { syllabusVersionId: sv._id },
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId }] : [])
+      ]
+    });
+
+    // If no other active syllabus exists for this sublevel, clean up StudentLevelProgress
+    if (sv.subLevelId) {
+      const otherActive = await SyllabusVersion.findOne({
+        subLevelId: sv.subLevelId,
+        _id: { $ne: sv._id },
+        isActive: true,
+        status: { $ne: "archived" }
+      });
+      if (!otherActive) {
+        const StudentLevelProgress = require("../models/student/StudentLevelProgress");
+        await StudentLevelProgress.deleteMany({ subLevelId: sv.subLevelId });
+      }
+    }
 
     // Clear student syllabusVersionId reference
     await Student.updateMany(

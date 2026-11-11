@@ -1020,8 +1020,76 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     const subLevelIdStr = (item.subLevelId?._id || item.subLevelId)?.toString();
     const levelIdStr = (item.levelId?._id || item.levelId)?.toString();
 
-    // A. Tasks in this sublevel
-    const subTasks = allTasks.filter(t => (t.subLevelId?._id || t.subLevelId)?.toString() === subLevelIdStr);
+    // Verify active syllabus exists for this sublevel (or level)
+    let activeSyllabus = null;
+    if (subLevelIdStr) {
+      activeSyllabus = await SyllabusVersion.findOne({
+        subLevelId: subLevelIdStr,
+        isActive: { $ne: false },
+        status: { $ne: "archived" }
+      }).select("subjects").sort({ versionNumber: -1, createdAt: -1 }).lean();
+    }
+    if (!activeSyllabus && levelIdStr) {
+      activeSyllabus = await SyllabusVersion.findOne({
+        levelId: levelIdStr,
+        isActive: { $ne: false },
+        status: { $ne: "archived" }
+      }).select("subjects").sort({ versionNumber: -1, createdAt: -1 }).lean();
+    }
+
+    // Check if the syllabus for this sublevel was explicitly archived/deleted
+    const explicitlyDeletedSyllabus = await SyllabusVersion.findOne({
+      $or: [
+        ...(subLevelIdStr ? [{ subLevelId: subLevelIdStr }] : []),
+        ...(levelIdStr ? [{ levelId: levelIdStr }] : [])
+      ],
+      $or: [{ isActive: false }, { status: "archived" }]
+    }).lean();
+
+    // If an explicitly deleted syllabus exists, no active replacement exists, and this is not the current level, omit it
+    if (!activeSyllabus && explicitlyDeletedSyllabus && !item.isCurrent) {
+      return null;
+    }
+
+    const activeSubjects = (activeSyllabus?.subjects || []).filter(s => s && s.isActive !== false);
+    if (!item.isCurrent && explicitlyDeletedSyllabus && activeSubjects.length === 0) {
+      return null;
+    }
+
+    const activeSubjectIdSet = new Set(activeSubjects.map(s => s._id?.toString()).filter(Boolean));
+    const activeSubjectNameSet = new Set(activeSubjects.map(s => (s.name || "").trim().toLowerCase()).filter(Boolean));
+
+    const activeTopicIdSet = new Set();
+    const activeTopicNameSet = new Set();
+    activeSubjects.forEach(s => {
+      (s.topics || []).filter(t => t && t.isActive !== false).forEach(t => {
+        if (t._id) activeTopicIdSet.add(t._id.toString());
+        if (t.name) activeTopicNameSet.add(t.name.trim().toLowerCase());
+      });
+    });
+
+    // A. Tasks in this sublevel - if active syllabus has subjects, filter out deleted subjects/topics
+    const subTasks = allTasks.filter(t => {
+      const taskSubId = (t.subLevelId?._id || t.subLevelId)?.toString();
+      if (taskSubId !== subLevelIdStr) return false;
+
+      if (activeSubjects.length > 0) {
+        // Validate subject is not deleted
+        const sId = t.subjectId?.toString();
+        const sName = (t.subjectName || "").trim().toLowerCase();
+        const isSubjValid = (sId && activeSubjectIdSet.has(sId)) || (sName && activeSubjectNameSet.has(sName));
+        if (!isSubjValid) return false;
+
+        // Validate topic is not deleted
+        if (t.topicId || t.topicName) {
+          const topId = t.topicId?.toString();
+          const topName = (t.topicName || "").trim().toLowerCase();
+          const isTopicValid = (topId && activeTopicIdSet.has(topId)) || (topName && activeTopicNameSet.has(topName));
+          if (!isTopicValid) return false;
+        }
+      }
+      return true;
+    });
 
     // B. Snapshots in this sublevel
     const subSnapshots = snapshots.filter(s => 
@@ -1127,128 +1195,96 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
       else if (lower === "system") promoterRole = "System Automation";
     }
 
-    // D. Subject-wise tasks breakdown: "KIS SUBJECT KE KITNE TASK COMPLETE KARKE AAYA"
-    const subjectMap = new Map();
+    // D. Subject-wise tasks breakdown: ONLY for active subjects (deleted subjects will NEVER appear!)
+    let subjectStats = [];
+    if (activeSubjects.length > 0) {
+      subjectStats = activeSubjects.map(subj => {
+        const sName = (subj.name || "").trim();
+        const sId = subj._id?.toString();
 
-    subTasks.forEach(task => {
-      const sName = (task.subjectName || "General").trim();
-      if (!subjectMap.has(sName)) {
-        subjectMap.set(sName, {
-          subjectId: task.subjectId || null,
+        const subjTasks = subTasks.filter(t =>
+          (sId && t.subjectId && t.subjectId.toString() === sId) ||
+          ((t.subjectName || "").trim().toLowerCase() === sName.toLowerCase())
+        );
+
+        const completed = subjTasks.filter(t => t.status === "completed").length;
+        const inProgress = subjTasks.filter(t => t.status === "inProgress").length;
+        const pending = subjTasks.filter(t => t.status !== "completed" && t.status !== "inProgress").length;
+        const marksTasks = subjTasks.filter(t => typeof t.marks === "number");
+        const avgMarks = marksTasks.length > 0
+          ? Number((marksTasks.reduce((acc, t) => acc + t.marks, 0) / marksTasks.length).toFixed(1))
+          : null;
+
+        // Topics: ONLY topics that are currently present in this subject of the active syllabus! (deleted topics removed)
+        const currentTopics = (subj.topics || []).filter(t => t && t.isActive !== false && t.name).map(t => t.name.trim());
+
+        return {
+          subjectId: subj._id,
           subjectName: sName,
-          totalTasks: 0,
-          completedTasks: 0,
-          pendingTasks: 0,
-          inProgressTasks: 0,
-          marksSum: 0,
-          marksCount: 0,
-          topicsSet: new Set()
-        });
-      }
-      const sStat = subjectMap.get(sName);
-      sStat.totalTasks++;
-      if (task.status === "completed") {
-        sStat.completedTasks++;
-      } else if (task.status === "inProgress") {
-        sStat.inProgressTasks++;
-      } else {
-        sStat.pendingTasks++;
-      }
-
-      if (typeof task.marks === "number" && !isNaN(task.marks)) {
-        sStat.marksSum += task.marks;
-        sStat.marksCount++;
-      }
-      if (task.topicName && task.topicName.trim()) {
-        sStat.topicsSet.add(task.topicName.trim());
-      }
-      if (task.subTopicName && task.subTopicName.trim()) {
-        sStat.topicsSet.add(task.subTopicName.trim());
-      }
-    });
-
-    if (subjectMap.size === 0) {
-      const subjSnapshots = subSnapshots.filter(s => s.snapshotScope === "subject");
-      subjSnapshots.forEach(s => {
-        const sName = (s.subjectName || "General").trim();
+          totalTasks: subjTasks.length,
+          completedTasks: completed,
+          pendingTasks: pending,
+          inProgressTasks: inProgress,
+          completionPercentage: subjTasks.length > 0 ? Math.round((completed / subjTasks.length) * 100) : (item.status === "completed" ? 100 : 0),
+          averageMarks: avgMarks,
+          topics: currentTopics,
+          topicsCount: currentTopics.length
+        };
+      });
+    } else {
+      // Fallback: build from subTasks so active current tasks are preserved
+      const subjectMap = new Map();
+      subTasks.forEach(task => {
+        const sName = (task.subjectName || "General").trim();
         if (!subjectMap.has(sName)) {
           subjectMap.set(sName, {
-            subjectId: s.subjectId || null,
+            subjectId: task.subjectId || null,
             subjectName: sName,
-            totalTasks: s.totalTasks || 0,
-            completedTasks: s.completedTasks || 0,
-            pendingTasks: s.pendingTasks || 0,
-            inProgressTasks: s.inProgressTasks || 0,
-            marksSum: (s.averageMarks || 0) * (s.completedTasks || 0),
-            marksCount: s.completedTasks || 0,
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            inProgressTasks: 0,
+            marksSum: 0,
+            marksCount: 0,
             topicsSet: new Set()
           });
         }
+        const sStat = subjectMap.get(sName);
+        sStat.totalTasks++;
+        if (task.status === "completed") sStat.completedTasks++;
+        else if (task.status === "inProgress") sStat.inProgressTasks++;
+        else sStat.pendingTasks++;
+
+        if (typeof task.marks === "number" && !isNaN(task.marks)) {
+          sStat.marksSum += task.marks;
+          sStat.marksCount++;
+        }
+        if (task.topicName && task.topicName.trim()) sStat.topicsSet.add(task.topicName.trim());
+      });
+
+      subjectStats = Array.from(subjectMap.values()).map(s => {
+        const topicsList = Array.from(s.topicsSet);
+        return {
+          subjectId: s.subjectId,
+          subjectName: s.subjectName,
+          totalTasks: s.totalTasks,
+          completedTasks: s.completedTasks,
+          pendingTasks: s.pendingTasks,
+          inProgressTasks: s.inProgressTasks,
+          completionPercentage: s.totalTasks > 0 ? Math.round((s.completedTasks / s.totalTasks) * 100) : (item.status === "completed" ? 100 : 0),
+          averageMarks: s.marksCount > 0 ? Number((s.marksSum / s.marksCount).toFixed(1)) : null,
+          topics: topicsList,
+          topicsCount: topicsList.length
+        };
       });
     }
-
-    // E. Curriculum & Topics Studied: "KYA KYA PADH KAR AAYA"
-    try {
-      const syllabus = await SyllabusVersion.findOne({
-        levelId: item.levelId?._id || item.levelId,
-        subLevelId: item.subLevelId?._id || item.subLevelId
-      }).select("subjects").lean();
-
-      if (syllabus?.subjects) {
-        syllabus.subjects.forEach(subj => {
-          const sName = (subj.name || subj.title || "").trim();
-          if (sName) {
-            if (!subjectMap.has(sName) && subj.topics?.length) {
-              subjectMap.set(sName, {
-                subjectId: subj._id || null,
-                subjectName: sName,
-                totalTasks: 0,
-                completedTasks: 0,
-                pendingTasks: 0,
-                inProgressTasks: 0,
-                marksSum: 0,
-                marksCount: 0,
-                topicsSet: new Set()
-              });
-            }
-            if (subjectMap.has(sName)) {
-              (subj.topics || []).forEach(t => {
-                if (t.name) subjectMap.get(sName).topicsSet.add(t.name.trim());
-              });
-            }
-          }
-        });
-      }
-    } catch (_) {}
-
-    const subjectStats = Array.from(subjectMap.values()).map(s => {
-      const topicsList = Array.from(s.topicsSet);
-      return {
-        subjectId: s.subjectId,
-        subjectName: s.subjectName,
-        totalTasks: s.totalTasks,
-        completedTasks: s.completedTasks,
-        pendingTasks: s.pendingTasks,
-        inProgressTasks: s.inProgressTasks,
-        completionPercentage: s.totalTasks > 0 ? Math.round((s.completedTasks / s.totalTasks) * 100) : (item.status === "completed" ? 100 : 0),
-        averageMarks: s.marksCount > 0 ? Number((s.marksSum / s.marksCount).toFixed(1)) : null,
-        topics: topicsList,
-        topicsCount: topicsList.length
-      };
-    });
 
     const allTopicsStudied = Array.from(new Set(
       subjectStats.flatMap(s => s.topics)
     ));
 
-    const totalTasks = subTasks.length > 0
-      ? subTasks.length
-      : subjectStats.reduce((acc, s) => acc + s.totalTasks, 0) || item.totalTasks || 0;
-
-    const completedTasksCount = subTasks.length > 0
-      ? subTasks.filter(t => t.status === "completed").length
-      : subjectStats.reduce((acc, s) => acc + s.completedTasks, 0) || item.completedTasksCount || 0;
-
+    const totalTasks = subTasks.length;
+    const completedTasksCount = subTasks.filter(t => t.status === "completed").length;
     const completionPercentage = totalTasks > 0
       ? Math.round((completedTasksCount / totalTasks) * 100)
       : (item.status === "completed" ? 100 : item.completionPercentage || 0);
@@ -1294,7 +1330,7 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     };
   }));
 
-  return enrichedHistory;
+  return enrichedHistory.filter(Boolean);
 };
 
 module.exports = { 

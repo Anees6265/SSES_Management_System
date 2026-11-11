@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useGetMyStudentLevelHistoryQuery, useGetMyStudentSnapshotsQuery } from "../../../redux/api/studentApi";
 import { 
     MdTrendingUp, 
@@ -65,7 +65,32 @@ export default function StudentLevelHistory() {
 
     const history = historyData?.data || [];
     const snapshots = snapshotData?.data || [];
-    const overallSnapshots = snapshots.filter(s => s.snapshotScope === "overall");
+
+    // Only show single snapshot per completed task milestone (completedTasks > 0, deduplicated, and only for active levels)
+    const overallSnapshots = useMemo(() => {
+        const validSubLevelIds = new Set(
+            history.map(h => (h.subLevelId?._id || h.subLevelId)?.toString()).filter(Boolean)
+        );
+        const raw = (snapshots || []).filter(s => {
+            const snapSubId = (s.subLevelId?._id || s.subLevelId)?.toString();
+            if (snapSubId && validSubLevelIds.size > 0 && !validSubLevelIds.has(snapSubId)) {
+                return false;
+            }
+            return (s.snapshotScope === "overall" || !s.snapshotScope) && (s.completedTasks > 0);
+        });
+        const deduped = [];
+        const seenMilestones = new Set();
+        for (const snap of raw) {
+            const levelKey = snap.levelId?._id || snap.levelId || snap.levelName || "";
+            const subLevelKey = snap.subLevelId?._id || snap.subLevelId || snap.subLevelName || "";
+            const milestoneKey = `${levelKey}_${subLevelKey}_${snap.completedTasks}_${snap.totalTasks}`;
+            if (!seenMilestones.has(milestoneKey)) {
+                seenMilestones.add(milestoneKey);
+                deduped.push(snap);
+            }
+        }
+        return deduped;
+    }, [snapshots, history]);
 
     const completedLevels = history.filter(h => h.status !== "in_progress").length;
     const currentLevel = history.find(h => h.status === "in_progress");
@@ -448,7 +473,7 @@ export default function StudentLevelHistory() {
                             />
                         ) : (
                             <div className="space-y-2 sm:space-y-2.5">
-                                {overallSnapshots.slice(0, 10).map((snap, i) => {
+                                {overallSnapshots.slice(0, 20).map((snap, i) => {
                                     const pct = snap.totalTasks > 0
                                         ? Math.round((snap.completedTasks / snap.totalTasks) * 100)
                                         : 0;
@@ -460,7 +485,7 @@ export default function StudentLevelHistory() {
                                                     {snap.levelName} – {snap.subLevelName}
                                                 </p>
                                                 <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                                                    {snap.subjectName || "Overall"} · {formatDate(snap.changedAt)}
+                                                    {snap.subjectName ? `${snap.subjectName} · ` : ""}{snap.completedTasks} {snap.completedTasks === 1 ? "task" : "tasks"} completed · {formatDate(snap.changedAt)}
                                                 </p>
                                             </div>
                                             <div className="text-right flex-shrink-0">

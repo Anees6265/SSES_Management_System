@@ -600,52 +600,55 @@ const createProgressSnapshot = async (studentId, syllabusVersionId, actor = null
 
     const tasks = await StudentTask.find(query).select("status marks subjectId subjectName");
 
+    // Only create progress snapshots when there are completed tasks
+    const completedTasksList = tasks.filter((t) => t.status === "completed");
+    if (completedTasksList.length === 0) {
+      return [];
+    }
+
     const actorDetails = getActorDetails(actor);
     const context = await getSnapshotContext({ student, syllabusVersionId: effectiveVersionId });
-    const snapshots = [
-      buildProgressSnapshot({
-        tasks,
-        actorDetails,
-        context,
-        snapshotScope: "overall"
-      })
-    ];
 
-    if (updatedTask?.subjectId) {
-      const subjectTasks = tasks.filter(
-        (task) => task.subjectId?.toString() === updatedTask.subjectId.toString()
-      );
-
-      const validSubjectId = mongoose.Types.ObjectId.isValid(updatedTask.subjectId)
-        ? updatedTask.subjectId
-        : null;
-
-      snapshots.push(
-        buildProgressSnapshot({
-          tasks: subjectTasks,
-          actorDetails,
-          context,
-          snapshotScope: "subject",
-          subject: {
-            subjectId: validSubjectId,
-            subjectName: updatedTask.subjectName || ""
-          }
-        })
-      );
-    }
+    // Single overall milestone snapshot per completed task state (no duplicate subject snapshot)
+    const snapshotData = buildProgressSnapshot({
+      tasks,
+      actorDetails,
+      context,
+      snapshotScope: "overall"
+    });
 
     await Student.findByIdAndUpdate(studentId, {
       $set: { updatedAt: new Date() }
     });
 
-    await StudentProgressSnapshot.insertMany(
-      snapshots.map((snapshot) => ({
-        studentId,
-        ...snapshot
-      }))
-    );
+    // Check if a snapshot for this student and completion milestone already exists
+    const existingSnapshot = await StudentProgressSnapshot.findOne({
+      studentId,
+      subLevelId: student.currentSubLevelId || context.subLevelId,
+      completedTasks: snapshotData.completedTasks,
+      snapshotScope: "overall"
+    }).sort({ changedAt: -1 });
 
-    return snapshots;
+    let finalDoc;
+    if (existingSnapshot) {
+      // Update existing snapshot rather than creating a duplicate
+      existingSnapshot.totalTasks = snapshotData.totalTasks;
+      existingSnapshot.pendingTasks = snapshotData.pendingTasks;
+      existingSnapshot.inProgressTasks = snapshotData.inProgressTasks;
+      existingSnapshot.averageMarks = snapshotData.averageMarks;
+      existingSnapshot.changedBy = actorDetails.changedBy;
+      existingSnapshot.changedByName = actorDetails.changedByName;
+      existingSnapshot.changedByRole = actorDetails.changedByRole;
+      existingSnapshot.changedAt = new Date();
+      finalDoc = await existingSnapshot.save();
+    } else {
+      finalDoc = await StudentProgressSnapshot.create({
+        studentId,
+        ...snapshotData
+      });
+    }
+
+    return [finalDoc];
   } catch (snapshotErr) {
     console.warn("createProgressSnapshot warning:", snapshotErr.message);
     return [];
@@ -730,15 +733,18 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
   const actorRole = payload.actor?.role || "";
 
   let progressSnapshots = [];
-  try {
-    progressSnapshots = await createProgressSnapshot(
-      studentId,
-      studentTask.syllabusVersionId,
-      payload.actor,
-      studentTask
-    );
-  } catch (snapErr) {
-    console.warn("createProgressSnapshot warning:", snapErr.message);
+  // Only create/record progress snapshots when task status is completed
+  if (studentTask.status === "completed" || nextStatus === "completed") {
+    try {
+      progressSnapshots = await createProgressSnapshot(
+        studentId,
+        studentTask.syllabusVersionId,
+        payload.actor,
+        studentTask
+      );
+    } catch (snapErr) {
+      console.warn("createProgressSnapshot warning:", snapErr.message);
+    }
   }
 
   const snapshotContext = await getSnapshotContext({

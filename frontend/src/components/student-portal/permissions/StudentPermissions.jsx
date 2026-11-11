@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import {
     ShieldCheck, Clock, CheckCircle2, AlertCircle, Calendar,
     Plus, FileText, LayoutGrid, ListFilter,
     X, UploadCloud, Trash2,
     Eye, Printer, ChevronRight,
-    Check, RefreshCw, Star
+    Check, RefreshCw, Star,
+    Users, ChevronDown, Search
 } from "lucide-react";
 import {
     useGetMyPermissionsQuery,
@@ -55,6 +56,17 @@ const calculateDays = (from, to) => {
     const diffTime = end.getTime() - start.getTime();
     if (diffTime < 0) return 0;
     return Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+};
+
+const getAssignedFaculties = (item) => {
+    if (!item) return [];
+    if (Array.isArray(item.assignedFacultyIds) && item.assignedFacultyIds.length > 0) {
+        return item.assignedFacultyIds.filter(Boolean);
+    }
+    if (item.assignedFacultyId) {
+        return [item.assignedFacultyId];
+    }
+    return [];
 };
 
 const getRelativeTime = (d) => {
@@ -217,12 +229,19 @@ const GatePassModal = ({ item, student, onClose }) => {
 
                     {/* Approver info */}
                     <div className="pt-1.5 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                        <div>
-                            <span className="text-[9px] text-gray-400 block font-semibold">RECOMMENDED BY</span>
-                            <span className="font-bold text-gray-700 text-[11px]">
-                                {item.assignedFacultyId?.name || "Assigned Faculty"}
-                            </span>
-                        </div>
+                        {(() => {
+                            const assignedFaculties = getAssignedFaculties(item);
+                            return (
+                                <div>
+                                    <span className="text-[9px] text-gray-400 block font-semibold">
+                                        {assignedFaculties.length > 1 ? "RECOMMENDED BY (FACULTIES)" : "RECOMMENDED BY"}
+                                    </span>
+                                    <span className="font-bold text-gray-700 text-[11px]">
+                                        {assignedFaculties.map(f => f?.name).filter(Boolean).join(", ") || "Assigned Faculty"}
+                                    </span>
+                                </div>
+                            );
+                        })()}
                         <div className="text-right">
                             <span className="text-[9px] text-gray-400 block font-semibold">APPROVED BY</span>
                             <span className="font-bold text-emerald-600 text-[11px]">
@@ -308,19 +327,26 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
                             </div>
 
                             {/* Step 2 */}
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <div className={`w-7 h-7 rounded-full flex items-center justify-center shadow-xs ${
-                                    item.status === "pending" 
-                                        ? "bg-amber-500 text-white animate-pulse"
-                                        : "bg-emerald-500 text-white"
-                                }`}>
-                                    {item.status === "pending" ? <Clock size={12} /> : <Check size={12} />}
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-800 mt-1">Faculty</span>
-                                <span className="text-[8px] text-gray-400 max-w-[70px] truncate">
-                                    {item.assignedFacultyId?.name || "Assigned"}
-                                </span>
-                            </div>
+                            {(() => {
+                                const assignedFaculties = getAssignedFaculties(item);
+                                return (
+                                    <div className="relative z-10 flex flex-col items-center text-center">
+                                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shadow-xs ${
+                                            item.status === "pending" 
+                                                ? "bg-amber-500 text-white animate-pulse"
+                                                : "bg-emerald-500 text-white"
+                                        }`}>
+                                            {item.status === "pending" ? <Clock size={12} /> : <Check size={12} />}
+                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-800 mt-1">Faculty</span>
+                                        <span className="text-[8px] text-gray-400 max-w-[85px] truncate" title={assignedFaculties.map(f => f?.name).join(", ")}>
+                                            {assignedFaculties.length > 1
+                                                ? `${assignedFaculties[0]?.name || "Faculty"} +${assignedFaculties.length - 1}`
+                                                : (assignedFaculties[0]?.name || "Assigned")}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Step 3 */}
                             <div className="relative z-10 flex flex-col items-center text-center">
@@ -378,24 +404,39 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
                     </div>
 
                     {/* Assigned Faculty */}
-                    <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                            Assigned Faculty
-                        </span>
-                        <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                {(item.assignedFacultyId?.name || "F")[0].toUpperCase()}
+                    {(() => {
+                        const assignedFaculties = getAssignedFaculties(item);
+                        return (
+                            <div>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                                    Assigned {assignedFaculties.length > 1 ? `Faculties (${assignedFaculties.length})` : "Faculty"}
+                                </span>
+                                {assignedFaculties.length === 0 ? (
+                                    <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-500">
+                                        No faculty assigned
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {assignedFaculties.map((fac, idx) => (
+                                            <div key={fac?._id || idx} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                                    {(fac?.name || "F")[0].toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-bold text-gray-900 truncate">
+                                                        {fac?.name || "Assigned Faculty"}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                        {fac?.position || fac?.role?.toUpperCase() || "Faculty Member"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-gray-900 truncate">
-                                    {item.assignedFacultyId?.name || "Assigned Faculty"}
-                                </p>
-                                <p className="text-[10px] text-gray-500 truncate">
-                                    {item.assignedFacultyId?.position || item.assignedFacultyId?.role?.toUpperCase() || "Faculty Member"}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                        );
+                    })()}
 
                     {/* Remarks */}
                     {item.remark && (
@@ -479,6 +520,230 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
     );
 };
 
+// ── Faculty Multi-Select Component ───────────────────────────────────────────
+const FacultyMultiSelect = ({
+    faculties = [],
+    selectedIds = [],
+    onChange,
+    isLoading = false
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const dropdownRef = useRef(null);
+
+    // Click outside to close dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filteredFaculties = useMemo(() => {
+        if (!searchQuery.trim()) return faculties;
+        const q = searchQuery.toLowerCase();
+        return faculties.filter(fac =>
+            fac.name?.toLowerCase().includes(q) ||
+            fac.position?.toLowerCase().includes(q) ||
+            fac.role?.toLowerCase().includes(q) ||
+            fac.email?.toLowerCase().includes(q)
+        );
+    }, [faculties, searchQuery]);
+
+    const handleToggle = (id) => {
+        if (selectedIds.includes(id)) {
+            onChange(selectedIds.filter(item => item !== id));
+        } else {
+            onChange([...selectedIds, id]);
+        }
+    };
+
+    const handleSelectAll = () => {
+        const allIds = filteredFaculties.map(f => f._id);
+        const merged = Array.from(new Set([...selectedIds, ...allIds]));
+        onChange(merged);
+    };
+
+    const handleClearAll = () => {
+        onChange([]);
+    };
+
+    const selectedFacultyObjects = useMemo(() => {
+        return faculties.filter(fac => selectedIds.includes(fac._id));
+    }, [faculties, selectedIds]);
+
+    return (
+        <div className="relative space-y-2" ref={dropdownRef}>
+            {/* Main Toggle Button */}
+            <button
+                type="button"
+                onClick={() => setIsOpen(prev => !prev)}
+                className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl bg-white font-medium transition-all shadow-2xs focus:outline-none cursor-pointer ${
+                    isOpen ? "border-orange-500 ring-2 ring-orange-100" : "border-gray-200 hover:border-orange-400"
+                }`}
+            >
+                <div className="flex items-center gap-2 truncate text-left">
+                    <Users size={16} className={selectedIds.length > 0 ? "text-orange-500" : "text-gray-400"} />
+                    {selectedIds.length === 0 ? (
+                        <span className="text-gray-400">Select faculty members (multiple allowed)...</span>
+                    ) : (
+                        <span className="text-gray-900 font-bold">
+                            {selectedIds.length} {selectedIds.length === 1 ? "Faculty Member" : "Faculty Members"} Selected
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {selectedIds.length > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                            {selectedIds.length}
+                        </span>
+                    )}
+                    <ChevronDown size={15} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </div>
+            </button>
+
+            {/* Selected Chips Pill Box */}
+            {selectedFacultyObjects.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-orange-50/40 border border-orange-100 rounded-xl max-h-32 overflow-y-auto">
+                    {selectedFacultyObjects.map((fac) => (
+                        <span
+                            key={fac._id}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-orange-200 text-xs text-gray-800 shadow-2xs font-medium"
+                        >
+                            <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center shrink-0">
+                                {(fac.name || "F")[0].toUpperCase()}
+                            </span>
+                            <span className="truncate max-w-[130px] font-semibold">{fac.name}</span>
+                            <span className="text-[10px] text-gray-400 font-normal">
+                                ({fac.role?.toUpperCase() || "FACULTY"})
+                            </span>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggle(fac._id);
+                                }}
+                                className="text-gray-400 hover:text-rose-500 transition-colors ml-0.5 cursor-pointer"
+                                title="Remove faculty"
+                            >
+                                <X size={12} />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Dropdown Menu */}
+            {isOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    {/* Search & Actions Bar */}
+                    <div className="p-2.5 border-b border-gray-100 bg-gray-50/70 space-y-2">
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search by name, role, department..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400 focus:bg-white bg-white text-gray-800 transition-all placeholder:text-gray-400"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] px-1 text-gray-500">
+                            <span>{filteredFaculties.length} available</span>
+                            <div className="flex items-center gap-2 font-semibold">
+                                <button
+                                    type="button"
+                                    onClick={handleSelectAll}
+                                    className="text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                                >
+                                    Select All
+                                </button>
+                                <span>·</span>
+                                <button
+                                    type="button"
+                                    onClick={handleClearAll}
+                                    className="text-gray-500 hover:text-gray-700 hover:underline cursor-pointer"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Faculties Scrollable List */}
+                    <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 divide-y divide-gray-50">
+                        {isLoading ? (
+                            <div className="p-4 text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
+                                <RefreshCw size={13} className="animate-spin text-orange-500" />
+                                <span>Loading faculties...</span>
+                            </div>
+                        ) : filteredFaculties.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-gray-400">
+                                No faculty members found.
+                            </div>
+                        ) : (
+                            filteredFaculties.map((fac) => {
+                                const isChecked = selectedIds.includes(fac._id);
+                                return (
+                                    <div
+                                        key={fac._id}
+                                        onClick={() => handleToggle(fac._id)}
+                                        className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all ${
+                                            isChecked ? "bg-orange-50/70 border border-orange-200/60" : "hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {}} // handled by parent div onClick
+                                                className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400 border-gray-300 pointer-events-none"
+                                            />
+                                            <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                {(fac.name || "F")[0].toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-gray-900 truncate">
+                                                    {fac.name}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400 truncate">
+                                                    {fac.position || fac.role?.toUpperCase() || "Faculty"}
+                                                    {fac.departmentId?.name ? ` · ${fac.departmentId.name}` : ""}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {isChecked && (
+                                            <Check size={14} className="text-orange-600 shrink-0" />
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Footer Close Button */}
+                    <div className="p-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                        <span className="text-[11px] text-gray-500 font-medium">
+                            {selectedIds.length} faculty member{selectedIds.length !== 1 ? "s" : ""} selected
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen(false)}
+                            className="px-3 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        >
+                            Done
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ── Apply For Permission Modal ────────────────────────────────────────────────
 const ApplyModal = ({ onClose }) => {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -486,7 +751,7 @@ const ApplyModal = ({ onClose }) => {
         reason: "",
         fromDate: todayStr,
         toDate: todayStr,
-        assignedFacultyId: ""
+        assignedFacultyIds: []
     });
     const [file, setFile] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
@@ -494,14 +759,6 @@ const ApplyModal = ({ onClose }) => {
 
     const [applyPermission, { isLoading }] = useApplyMyPermissionMutation();
     const { data: facultiesRes, isLoading: facultiesLoading } = useGetFacultiesQuery();
-
-    const facultyOptions = useMemo(() => [
-        { value: "", label: "— Select Faculty Member —" },
-        ...(facultiesRes?.data || []).map(fac => ({
-            value: fac._id,
-            label: `${fac.name} (${fac.role?.toUpperCase() || "FACULTY"})${fac.position ? ` · ${fac.position}` : ""}`
-        }))
-    ], [facultiesRes]);
 
     const leaveDays = calculateDays(form.fromDate, form.toDate);
     const isDateInvalid = form.fromDate && form.toDate && new Date(form.toDate) < new Date(form.fromDate);
@@ -555,8 +812,8 @@ const ApplyModal = ({ onClose }) => {
             toast.error("To Date cannot be before From Date.");
             return;
         }
-        if (!form.assignedFacultyId) {
-            toast.error("Please assign a reviewing faculty member.");
+        if (!form.assignedFacultyIds || form.assignedFacultyIds.length === 0) {
+            toast.error("Please assign at least one reviewing faculty member.");
             return;
         }
 
@@ -571,7 +828,11 @@ const ApplyModal = ({ onClose }) => {
 
         try {
             await applyPermission({
-                ...form,
+                reason: form.reason,
+                fromDate: form.fromDate,
+                toDate: form.toDate,
+                assignedFacultyIds: form.assignedFacultyIds,
+                assignedFacultyId: form.assignedFacultyIds[0] || "",
                 imageURL: imageURL || undefined
             }).unwrap();
             toast.success("Leave request submitted successfully!");
@@ -690,18 +951,22 @@ const ApplyModal = ({ onClose }) => {
                         )}
                     </div>
 
-                    {/* Faculty Assignment */}
+                    {/* Faculty Assignment Multi-Select */}
                     <div>
-                        <label className={labelClasses}>
-                            <span>Assign Faculty Member <span className="text-red-500">*</span></span>
-                        </label>
-                        <SelectDropdown
-                            value={form.assignedFacultyId}
-                            onChange={val => setForm(p => ({ ...p, assignedFacultyId: val }))}
-                            options={facultyOptions}
-                            placeholder="— Select Faculty Member —"
-                            buttonClassName="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm border border-gray-200 hover:border-orange-500 bg-white rounded-xl text-gray-800 font-medium transition-all shadow-2xs focus:outline-none cursor-pointer"
-                            menuClassName="w-full text-xs sm:text-sm max-h-52 shadow-xl"
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                                <span>Assign Faculty Members</span>
+                                <span className="text-red-500">*</span>
+                            </label>
+                            <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
+                                Multiple Allowed
+                            </span>
+                        </div>
+                        <FacultyMultiSelect
+                            faculties={facultiesRes?.data || []}
+                            selectedIds={form.assignedFacultyIds}
+                            onChange={(ids) => setForm(p => ({ ...p, assignedFacultyIds: ids }))}
+                            isLoading={facultiesLoading}
                         />
                     </div>
 
@@ -831,16 +1096,22 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
                 </div>
 
                 {/* Assigned Faculty */}
-                {item.assignedFacultyId && (
-                    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-50 border border-gray-100 mb-2.5">
-                        <div className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-[8px] shrink-0">
-                            {(item.assignedFacultyId.name || "F")[0]}
+                {(() => {
+                    const assignedFaculties = getAssignedFaculties(item);
+                    if (assignedFaculties.length === 0) return null;
+                    return (
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
+                            {assignedFaculties.map((fac, idx) => (
+                                <div key={fac?._id || idx} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-orange-50/70 border border-orange-100/80 text-[10.5px] font-semibold text-orange-800">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-orange-200 text-orange-700 flex items-center justify-center font-bold text-[7px] shrink-0">
+                                        {(fac?.name || "F")[0]}
+                                    </div>
+                                    <span className="truncate max-w-[120px]">{fac?.name}</span>
+                                </div>
+                            ))}
                         </div>
-                        <span className="text-[11px] font-semibold text-gray-700 truncate">
-                            {item.assignedFacultyId.name}
-                        </span>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Remark */}
                 {item.remark && (
@@ -919,11 +1190,20 @@ const PermissionRow = ({ item, onOpenDetails, onOpenGatePass }) => {
                             <Calendar size={11} className="text-gray-400" />
                             <span>{formatDate(item.fromDate)} → {formatDate(item.toDate)}</span>
                         </div>
-                        {item.assignedFacultyId && (
-                            <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.2 rounded">
-                                Reviewer: {item.assignedFacultyId.name}
-                            </span>
-                        )}
+                        {(() => {
+                            const assignedFaculties = getAssignedFaculties(item);
+                            if (assignedFaculties.length === 0) return null;
+                            return (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-[10px] text-gray-400 font-medium">Reviewers:</span>
+                                    {assignedFaculties.map((fac, idx) => (
+                                        <span key={fac?._id || idx} className="text-[10px] font-semibold text-orange-700 bg-orange-50 border border-orange-100 px-1.5 py-0.2 rounded">
+                                            {fac?.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

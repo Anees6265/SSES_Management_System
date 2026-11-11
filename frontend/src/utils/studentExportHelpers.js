@@ -338,7 +338,10 @@ const extractCellValue = (row, col) => {
   }
 
   // Assigned Faculty extraction
-  if ((key === "assignedTo" || key === "assignedFacultyId") && (val === null || val === undefined)) {
+  if ((key === "assignedTo" || key === "assignedFacultyId" || key === "assignedFacultyIds")) {
+    if (Array.isArray(row.assignedFacultyIds) && row.assignedFacultyIds.length > 0) {
+      return row.assignedFacultyIds.map(f => f?.name || f).filter(Boolean).join(", ");
+    }
     if (row.assignedFacultyId?.name) return row.assignedFacultyId.name;
   }
 

@@ -230,7 +230,7 @@ const baseQueryWithAutoRefresh = async (args, api, extraOptions) => {
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryWithAutoRefresh,
-  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications', 'ActivityLog'],
+  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications', 'ActivityLog', 'SupportTicket'],
   // Global configuration for better caching
   keepUnusedDataFor: 300, // 5 minutes default cache
   refetchOnMountOrArgChange: 30, // Only refetch if data is older than 30 seconds
@@ -2161,6 +2161,51 @@ export const authApi = createApi({
       invalidatesTags: ["Notifications"],
     }),
 
+    // --- Support & Help Desk ---
+    getSupportDevelopers: builder.query({
+      query: () => ({ url: "/support/developers", method: "GET" }),
+      providesTags: ["SupportTicket"],
+    }),
+    getSupportTickets: builder.query({
+      query: (params = {}) => ({
+        url: "/support/tickets",
+        params: typeof params === "object" ? params : {},
+      }),
+      providesTags: ["SupportTicket"],
+    }),
+    createSupportTicket: builder.mutation({
+      query: (body) => ({
+        url: "/support/tickets",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["SupportTicket", "Notifications"],
+    }),
+    sendDirectDeveloperMail: builder.mutation({
+      query: (body) => ({
+        url: "/support/quick-mail",
+        method: "POST",
+        body: { ...body, source: "direct_mail" },
+      }),
+      invalidatesTags: ["SupportTicket", "Notifications"],
+    }),
+    updateSupportTicketStatus: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/support/tickets/${id}/status`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["SupportTicket", "Notifications"],
+    }),
+    addSupportTicketComment: builder.mutation({
+      query: ({ id, message }) => ({
+        url: `/support/tickets/${id}/comments`,
+        method: "POST",
+        body: { message },
+      }),
+      invalidatesTags: ["SupportTicket"],
+    }),
+
   }),
 });
 
@@ -2367,4 +2412,10 @@ export const {
   useGetActivityLogsQuery,
   useGetActivityLogStatsQuery,
   useGetActivityLogUsersQuery,
+  useGetSupportDevelopersQuery,
+  useGetSupportTicketsQuery,
+  useCreateSupportTicketMutation,
+  useSendDirectDeveloperMailMutation,
+  useUpdateSupportTicketStatusMutation,
+  useAddSupportTicketCommentMutation,
 } = authApi;

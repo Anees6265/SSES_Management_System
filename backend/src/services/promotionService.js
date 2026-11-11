@@ -578,18 +578,35 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   }
 
   // Step 8: Log promotion event
+  const fromSubLevelName = prevSubLevel?.name || "previous sub-level";
+  const toSubLevelName = newSubLevelDoc?.name || nextSubLevel?.name || "next sub-level";
+  const fromLevelName = prevLevel?.name || "previous level";
+  const toLevelName = newLevelDoc?.name || "new level";
+
+  const promoTitle = promotedToNewLevel
+    ? `Promoted to ${toLevelName} (${toSubLevelName})`
+    : `Promoted to SubLevel ${toSubLevelName}`;
+
+  const promoDescription = promotedToNewLevel
+    ? `Student promoted from ${fromLevelName} (${fromSubLevelName}) to ${toLevelName} (${toSubLevelName})`
+    : `Student moved from SubLevel ${fromSubLevelName} to ${toSubLevelName}`;
+
   await StudentEventLog.create({
     studentId,
     type: "promotion",
     action: isAuto ? "auto_promoted" : "manual_promoted",
-    title: `Promoted to ${promotedToNewLevel ? "new level" : "next sub-level"}`,
-    description: `Student moved from SubLevel ${prevSubLevelId} to ${nextSubLevel._id}`,
+    title: promoTitle,
+    description: promoDescription,
     meta: {
       prevLevelId,
+      prevLevelName: fromLevelName,
       prevSubLevelId,
+      prevSubLevelName: fromSubLevelName,
       prevSyllabusVersionId,
       newLevelId: targetLevelId,
+      newLevelName: toLevelName,
       newSubLevelId: nextSubLevel._id,
+      newSubLevelName: toSubLevelName,
       newSyllabusVersionId: newSyllabus._id,
       promotedToNewLevel,
       tasksAssigned,

@@ -227,7 +227,7 @@ export default function StudentReportCard() {
   const departmentLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
   const batchYear = rc?.batchYear || raw.batchYear || raw.sessionId?.name || "2025–26";
-  const overallGrade = rc?.overallGrade || "A";
+  const overallGrade = rc?.overallGrade || "—";
 
   // Parse Dynamic Sections if available
   const dynamicSections = rc?.dynamicSections || [];
@@ -286,8 +286,13 @@ export default function StudentReportCard() {
 
   const avgInterviewScore = useMemo(() => {
     if (!interviewItemsList.length) return null;
-    const total = interviewItemsList.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
-    return (total / interviewItemsList.length).toFixed(1);
+    const scored = interviewItemsList.filter(it => {
+      const v = parseFloat(it.value);
+      return !isNaN(v) && v > 0;
+    });
+    if (!scored.length) return null;
+    const total = scored.reduce((acc, it) => acc + (parseFloat(it.value) || 0), 0);
+    return (total / scored.length).toFixed(1);
   }, [interviewItemsList]);
 
   const allStudentTasks = useMemo(() => {
@@ -618,9 +623,11 @@ export default function StudentReportCard() {
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-orange-600 transition">
                   {overallGrade}
                 </h3>
-                <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full ${gradeColor(overallGrade)}`}>
-                  Top
-                </span>
+                {overallGrade && overallGrade !== "—" && (
+                  <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full ${gradeColor(overallGrade)}`}>
+                    {overallGrade === "A+" || overallGrade === "A" ? "Top" : "Grade"}
+                  </span>
+                )}
               </div>
               <p className="text-[10px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
                 Overall Evaluation
@@ -656,11 +663,13 @@ export default function StudentReportCard() {
               </div>
               <div className="flex items-baseline gap-1.5">
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-emerald-600 transition">
-                  {rc.discipline?.totalDisciplineMarks ?? 28}
+                  {rc.discipline?.totalDisciplineMarks !== undefined && rc.discipline?.totalDisciplineMarks !== null ? rc.discipline.totalDisciplineMarks : "—"}
                 </h3>
-                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700">
-                  Good
-                </span>
+                {rc.discipline?.totalDisciplineMarks !== undefined && rc.discipline?.totalDisciplineMarks !== null && (
+                  <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700">
+                    Good
+                  </span>
+                )}
               </div>
               <p className="text-[10px] sm:text-xs font-semibold text-slate-400 pt-0.5 truncate">
                 Conduct & Discipline
@@ -821,14 +830,31 @@ export default function StudentReportCard() {
                     const evaluated = item.score ?? 0;
                     const total = item.maxMarks || 100;
                     const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-                    const rating = parseFloat(item.remark) || 4.0;
-                    const level = item.value || "Good";
+                    const parsedRating = parseFloat(item.remark);
+                    const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                    const rating = hasRating ? parsedRating : 0;
+                    const level = item.value && item.value !== "Needs Improvement"
+                      ? item.value
+                      : (evaluated === 0 ? "Not Started" : item.value || "Good");
+
+                    const levelColor =
+                      level === "Outstanding" || level === "Excellent"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : level === "Very Good"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : level === "Good"
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                            : level === "Average"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : level === "Needs Improvement"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-slate-50 text-slate-500 border-slate-200";
 
                     return (
                       <div key={idx} className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-bold text-xs text-slate-900 truncate">{item.itemName}</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${levelColor}`}>
                             {level}
                           </span>
                         </div>
@@ -846,8 +872,17 @@ export default function StudentReportCard() {
 
                         {/* Rating */}
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                          <StarRating rating={rating} size="text-[11px]" />
-                          <span className="font-black text-slate-800">{rating.toFixed(1)} / 5.0</span>
+                          {hasRating ? (
+                            <>
+                              <StarRating rating={rating} size="text-[11px]" />
+                              <span className="font-black text-slate-800">{rating.toFixed(1)} / 5.0</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-slate-400 text-[11px]">Rating</span>
+                              <span className="font-bold text-slate-400">—</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     );
@@ -886,10 +921,10 @@ export default function StudentReportCard() {
                 {(softSkillsSection?.items?.length > 0
                   ? softSkillsSection.items
                   : [
-                    { itemName: "Communication Skills", value: 4.2 },
-                    { itemName: "Team Collaboration", value: 4.1 },
-                    { itemName: "Presentation Clarity", value: 4.0 },
-                    { itemName: "Time Management", value: 4.3 }
+                    { itemName: "Communication Skills", value: 0 },
+                    { itemName: "Team Collaboration", value: 0 },
+                    { itemName: "Presentation Clarity", value: 0 },
+                    { itemName: "Time Management", value: 0 }
                   ]
                 ).map((item, idx) => {
                   const isSyllabus = item.isFromSyllabus || item.completedTasks !== undefined || softSkillsSection?.hasSyllabusTasks;
@@ -914,7 +949,11 @@ export default function StudentReportCard() {
                               {item.completedTasks}/{item.totalTasks}
                             </span>
                           )}
-                          <span className="font-black text-slate-800">{score.toFixed(1)} / {max}</span>
+                          {score > 0 ? (
+                            <span className="font-black text-slate-800">{score.toFixed(1)} / {max}</span>
+                          ) : (
+                            <span className="font-bold text-slate-400 text-[11px]">—</span>
+                          )}
                         </div>
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-1">
@@ -949,8 +988,14 @@ export default function StudentReportCard() {
                     <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 text-xs gap-2">
                       <span className="font-semibold text-slate-700 truncate min-w-0 flex-1">{displayName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <StarRating rating={score} size="text-[10px]" />
-                        <span className="font-bold text-slate-800">{score.toFixed(1)}</span>
+                        {score > 0 ? (
+                          <>
+                            <StarRating rating={score} size="text-[10px]" />
+                            <span className="font-bold text-slate-800">{score.toFixed(1)}</span>
+                          </>
+                        ) : (
+                          <span className="font-bold text-slate-400 text-[11px]">—</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -1211,15 +1256,25 @@ export default function StudentReportCard() {
                           const evaluated = item.score ?? 0;
                           const total = item.maxMarks || 100;
                           const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-                          const rating = parseFloat(item.remark) || 4.0;
-                          const level = item.value || "Good";
+                          const parsedRating = parseFloat(item.remark);
+                          const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                          const rating = hasRating ? parsedRating : 0;
+                          const level = item.value && item.value !== "Needs Improvement"
+                            ? item.value
+                            : (evaluated === 0 ? "Not Started" : item.value || "Good");
 
                           const levelColor =
                             level === "Outstanding" || level === "Excellent"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : level === "Very Good"
                                 ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200";
+                                : level === "Good"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  : level === "Average"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : level === "Needs Improvement"
+                                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                                      : "bg-slate-50 text-slate-500 border-slate-200";
 
                           return (
                             <tr key={idx} className="hover:bg-slate-50/50 transition">
@@ -1248,10 +1303,16 @@ export default function StudentReportCard() {
 
                               <td className="py-4 px-4 text-center">
                                 <div className="inline-flex flex-col items-center">
-                                  <StarRating rating={rating} size="text-xs" />
-                                  <span className="text-xs font-bold text-slate-800 mt-1">
-                                    {rating.toFixed(2)} <span className="text-slate-400 font-normal">/ 5.0</span>
-                                  </span>
+                                  {hasRating ? (
+                                    <>
+                                      <StarRating rating={rating} size="text-xs" />
+                                      <span className="text-xs font-bold text-slate-800 mt-1">
+                                        {rating.toFixed(2)} <span className="text-slate-400 font-normal">/ 5.0</span>
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs font-bold text-slate-400">—</span>
+                                  )}
                                 </div>
                               </td>
 
@@ -1321,10 +1382,10 @@ export default function StudentReportCard() {
                   {(softSkillsSection?.items?.length > 0
                     ? softSkillsSection.items
                     : [
-                      { itemName: "Communication Skills", value: 4.2 },
-                      { itemName: "Team Collaboration", value: 4.1 },
-                      { itemName: "Presentation Clarity", value: 4.0 },
-                      { itemName: "Time Management", value: 4.3 }
+                      { itemName: "Communication Skills", value: 0 },
+                      { itemName: "Team Collaboration", value: 0 },
+                      { itemName: "Presentation Clarity", value: 0 },
+                      { itemName: "Time Management", value: 0 }
                     ]
                   ).map((item, idx) => {
                     const isSyllabus = item.isFromSyllabus || item.completedTasks !== undefined || softSkillsSection?.hasSyllabusTasks;
@@ -1355,10 +1416,16 @@ export default function StudentReportCard() {
                               </span>
                             )}
                             <div className="flex items-center gap-2">
-                              <StarRating rating={score} size="text-[11px]" />
-                              <span className="text-xs font-black text-slate-800">
-                                {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
-                              </span>
+                              {score > 0 ? (
+                                <>
+                                  <StarRating rating={score} size="text-[11px]" />
+                                  <span className="text-xs font-black text-slate-800">
+                                    {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-bold text-slate-400">—</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1418,10 +1485,16 @@ export default function StudentReportCard() {
                             {displayName}
                           </span>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <StarRating rating={score} size="text-[11px]" />
-                            <span className="text-xs font-black text-slate-800">
-                              {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
-                            </span>
+                            {score > 0 ? (
+                              <>
+                                <StarRating rating={score} size="text-[11px]" />
+                                <span className="text-xs font-black text-slate-800">
+                                  {score.toFixed(1)} <span className="text-slate-400 font-normal">/ {max}</span>
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-400">—</span>
+                            )}
                           </div>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">

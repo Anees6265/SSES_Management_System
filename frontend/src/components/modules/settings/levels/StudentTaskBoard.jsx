@@ -375,11 +375,14 @@ const selectBtnCls = "w-full flex items-center justify-between gap-2 px-3.5 py-2
 const inputCls = "w-full border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder-gray-400 font-medium text-gray-800 shadow-2xs";
 const labelCls = "block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5";
 
-const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) => {
+const ExtraTaskModal = ({ student, selectedSubLevelId, selectedLevelInfo, onClose, onSuccess, defaultSubjects = [] }) => {
     const [form, setForm] = useState(EMPTY_EXTRA);
     const [assignExtraTask, { isLoading }] = useAssignExtraTaskMutation();
 
-    const rawVersionId = student?.syllabusVersionId;
+    const activeSubId = selectedSubLevelId || (typeof student?.currentSubLevelId === "object" ? student.currentSubLevelId?._id : student?.currentSubLevelId) || undefined;
+    const activeLvlId = (selectedSubLevelId ? (selectedLevelInfo?.levelId?._id || selectedLevelInfo?.levelId) : (typeof student?.currentLevelId === "object" ? student.currentLevelId?._id : student?.currentLevelId)) || undefined;
+
+    const rawVersionId = selectedLevelInfo?.syllabusVersionId || student?.syllabusVersionId;
     const versionId = typeof rawVersionId === "object" && rawVersionId !== null
         ? (rawVersionId._id || rawVersionId.id)
         : (typeof rawVersionId === "string" && rawVersionId.trim() && rawVersionId !== "[object Object]" ? rawVersionId.trim() : null);
@@ -415,6 +418,8 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
                 timeDays: form.timeDays ? String(form.timeDays).trim() : undefined,
                 dueDate: form.dueDate || undefined,
                 priority: form.priority,
+                subLevelId: activeSubId,
+                levelId: activeLvlId
             }).unwrap();
             toast.success("Extra task assigned successfully!");
             onSuccess();
@@ -424,13 +429,17 @@ const ExtraTaskModal = ({ student, onClose, onSuccess, defaultSubjects = [] }) =
     };
 
     const studentDisplayName = `${student?.firstName || student?.name || "Student"} ${student?.lastName || ""}`.trim();
+    const levelTag = selectedLevelInfo
+        ? `${selectedLevelInfo.levelId?.name || "Level"} (${selectedLevelInfo.subLevelId?.name || ""})`
+        : `${student?.currentLevelId?.name || ""} ${student?.currentSubLevelId?.name ? `(${student.currentSubLevelId.name})` : ""}`.trim();
+    const subtitleText = levelTag ? `${studentDisplayName} · ${levelTag}` : studentDisplayName;
 
     return (
         <OrangeButton
             isOpen={true}
             onClose={onClose}
             panelTitle="Assign New Task"
-            panelSubtitle={studentDisplayName}
+            panelSubtitle={subtitleText}
             showFooter={true}
             customFooter={
                 <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 w-full">
@@ -947,6 +956,8 @@ const StudentTaskBoard = () => {
             {showExtraModal && (
                 <ExtraTaskModal
                     student={student}
+                    selectedSubLevelId={selectedSubLevelId}
+                    selectedLevelInfo={selectedLevelInfo}
                     defaultSubjects={subjects}
                     onClose={() => setShowExtraModal(false)}
                     onSuccess={() => { setShowExtraModal(false); refetch(); }}

@@ -469,10 +469,7 @@ exports.getMyTasks = async (req, res) => {
     if (subLevelId) {
       filter.subLevelId = subLevelId;
     } else {
-      const currentOrConditions = [
-        { isGeneralTask: true },
-        { isExtra: true }
-      ];
+      const currentOrConditions = [];
 
       if (targetSubLevelId) {
         currentOrConditions.push({ subLevelId: targetSubLevelId });
@@ -484,11 +481,23 @@ exports.getMyTasks = async (req, res) => {
         currentOrConditions.push({ syllabusVersionId: student.syllabusVersionId });
       }
       if (currentLevelId) {
-        currentOrConditions.push({ levelId: currentLevelId, subLevelId: null });
-        currentOrConditions.push({ levelId: currentLevelId, subLevelId: { $exists: false } });
+        currentOrConditions.push({
+          levelId: currentLevelId,
+          subLevelId: null,
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        });
+        currentOrConditions.push({
+          levelId: currentLevelId,
+          subLevelId: { $exists: false },
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        });
         if (targetSubLevelId) {
           currentOrConditions.push({ levelId: currentLevelId, subLevelId: targetSubLevelId });
         }
+      }
+
+      if (currentOrConditions.length === 0) {
+        currentOrConditions.push({ isExtra: true }, { isGeneralTask: true });
       }
 
       filter.$or = currentOrConditions;
@@ -1267,6 +1276,16 @@ exports.getMyReportCard = async (req, res) => {
     if (!reportCard)
       return res.status(200).json({ data: null, message: "Report card not generated yet" });
 
+    // Live-sync tasks and performance so student always sees real evaluated progress
+    try {
+      const { syncReportCardLive } = require("./studentReportCardController");
+      if (typeof syncReportCardLive === "function") {
+        await syncReportCardLive(req.user.id, reportCard);
+      }
+    } catch (syncErr) {
+      console.error("[getMyReportCard] sync error:", syncErr.message);
+    }
+
     return res.status(200).json({ data: reportCard });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -1294,9 +1313,33 @@ exports.getMyEventLog = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [events, total] = await Promise.all([
-      StudentEventLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+      StudentEventLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
       StudentEventLog.countDocuments(filter),
     ]);
+
+    // Resolve any raw SubLevel ObjectIds in promotion descriptions
+    const SubLevel = require("../../models/department/SubLevel");
+    const idRegex = /[a-f\d]{24}/g;
+    const allIds = new Set();
+    events.forEach(e => {
+      if (typeof e.description === "string") {
+        const matches = e.description.match(idRegex);
+        if (matches) matches.forEach(id => allIds.add(id));
+      }
+    });
+
+    if (allIds.size > 0) {
+      const subLevels = await SubLevel.find({ _id: { $in: Array.from(allIds) } }).select("_id name").lean();
+      const subLevelMap = new Map(subLevels.map(sl => [sl._id.toString(), sl.name]));
+
+      events.forEach(e => {
+        if (typeof e.description === "string" && e.description.includes("SubLevel")) {
+          e.description = e.description.replace(idRegex, (match) => {
+            return subLevelMap.get(match) || match;
+          });
+        }
+      });
+    }
 
     return res.status(200).json({
       total, page: parseInt(page),
@@ -1308,7 +1351,7 @@ exports.getMyEventLog = async (req, res) => {
   }
 };
 
-// ✅ Get Active Faculties / Admin Staff list for Student Assignment
+// ✅ Get Active Faculties / Leadership / Placement / Admin Staff list for Student
 exports.getFaculties = async (req, res) => {
   try {
     const student = await Student.findById(req.user.id).select("subDepartmentId");
@@ -1316,16 +1359,63 @@ exports.getFaculties = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    const subDept = await SubDepartment.findById(student.subDepartmentId).select("departmentId");
-    if (!subDept) {
-      return res.status(404).json({ message: "Sub-department not found for student" });
+    let departmentId = null;
+    if (student.subDepartmentId) {
+      const subDept = await SubDepartment.findById(student.subDepartmentId).select("departmentId");
+      if (subDept?.departmentId) {
+        departmentId = subDept.departmentId;
+      }
+    }
+
+    // Include:
+    // 1. College Leadership: Chairman, CEO, or users with leadership position/role
+    // 2. Department staff: HOD, Faculty, Coordinator, Placement Officer of student's department
+    // 3. College-wide Placement Officers & Coordinators
+    const orConditions = [
+      { position: { $regex: /chairman|ceo/i } },
+      { role: { $in: ["chairman", "ceo"] } },
+      {
+        departmentId: null,
+        role: { $in: ["placement_officer", "coordinator", "cordinator"] }
+      }
+    ];
+
+    if (departmentId) {
+      orConditions.push({
+        departmentId: departmentId,
+        role: { $in: ["faculty", "hod", "coordinator", "cordinator", "placement_officer", "admin"] }
+      });
+    } else {
+      orConditions.push({
+        role: { $in: ["faculty", "hod", "coordinator", "cordinator", "placement_officer"] }
+      });
     }
 
     const faculties = await User.find({
-      departmentId: subDept.departmentId,
-      role: { $in: ["faculty", "hod", "admin", "superadmin"] },
       isActive: true,
-    }).select("name role position email mobileNo profileImage");
+      $or: orConditions
+    })
+      .select("name role position email mobileNo profileImage departmentId")
+      .populate("departmentId", "name code")
+      .lean();
+
+    const getHierarchyRank = (user) => {
+      const pos = (user.position || "").toLowerCase();
+      const role = (user.role || "").toLowerCase();
+      if (pos.includes("chairman") || role === "chairman") return 1;
+      if (pos.includes("ceo") || role === "ceo") return 2;
+      if (role === "hod" || pos.includes("head of department") || pos.includes("hod")) return 3;
+      if (role === "coordinator" || role === "cordinator" || pos.includes("coordinator")) return 4;
+      if (role === "placement_officer" || pos.includes("placement")) return 5;
+      if (role === "faculty" || pos.includes("professor")) return 6;
+      return 7;
+    };
+
+    faculties.sort((a, b) => {
+      const rankDiff = getHierarchyRank(a) - getHierarchyRank(b);
+      if (rankDiff !== 0) return rankDiff;
+      return (a.name || "").localeCompare(b.name || "");
+    });
 
     return res.status(200).json({ success: true, data: faculties });
   } catch (error) {

@@ -475,14 +475,14 @@ export default function StudentPlacement() {
             </div>
 
             {/* ── Desktop Two-Column View (`hidden md:grid md:grid-cols-2 gap-5`) ── */}
-            <div className="hidden md:grid md:grid-cols-2 gap-5 items-start">
+            <div className="hidden md:grid md:grid-cols-2 gap-5 items-stretch">
                 
                 {/* Left Column: Readiness Roadmap & Placed Info */}
-                <div className="space-y-5">
+                <div className="space-y-5 flex flex-col h-full">
                     
                     {/* Readiness Journey Card */}
-                    <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
-                        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-orange-50/20">
+                    <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col flex-1">
+                        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-orange-50/20 shrink-0">
                             <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                                 <div>
@@ -495,8 +495,8 @@ export default function StudentPlacement() {
                             </span>
                         </div>
 
-                        <div className="p-5">
-                            <div className="relative space-y-4">
+                        <div className="p-5 flex-1 flex flex-col justify-center">
+                            <div className="relative space-y-4 my-auto">
                                 {/* Vertical line */}
                                 <div className="absolute left-[14px] top-3 bottom-3 w-0.5 bg-gray-200 -translate-x-1/2 pointer-events-none" />
 
@@ -590,8 +590,8 @@ export default function StudentPlacement() {
                 </div>
 
                 {/* Right Column: Campus Drives & Interview History */}
-                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-blue-50/20">
+                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col h-full min-h-[380px]">
+                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-blue-50/20 shrink-0">
                         <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                             <div>
@@ -604,7 +604,7 @@ export default function StudentPlacement() {
                         </span>
                     </div>
 
-                    <div className="p-4">
+                    <div className={`p-4 flex-1 flex flex-col ${interviews.length === 0 ? "justify-center" : ""}`}>
                         {interviews.length === 0 ? (
                             <EmptyState
                                 icon={Building2}
@@ -613,7 +613,7 @@ export default function StudentPlacement() {
                                 compact
                             />
                         ) : (
-                            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+                            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
                                 {interviews.map((rec, i) => (
                                     <div
                                         key={rec._id || i}

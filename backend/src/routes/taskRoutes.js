@@ -508,16 +508,27 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
         ? Number((completedWithMarks.reduce((sum, t) => sum + t.marks, 0) / completedWithMarks.length).toFixed(2))
         : 0;
 
-      let performanceLevel = "Needs Improvement";
-      if (averageMarks >= 4.5) performanceLevel = "Outstanding";
-      else if (averageMarks >= 4.0) performanceLevel = "Excellent";
-      else if (averageMarks >= 3.5) performanceLevel = "Very Good";
-      else if (averageMarks >= 3.0) performanceLevel = "Good";
-      else if (averageMarks >= 2.5) performanceLevel = "Average";
-      else if (completedCount > 0) performanceLevel = "Good";
+      let performanceLevel = "Not Started";
+      if (completedCount === 0) {
+        performanceLevel = "Not Started";
+      } else if (completedWithMarks.length === 0) {
+        performanceLevel = "Pending Evaluation";
+      } else if (averageMarks >= 4.5) {
+        performanceLevel = "Outstanding";
+      } else if (averageMarks >= 4.0) {
+        performanceLevel = "Excellent";
+      } else if (averageMarks >= 3.5) {
+        performanceLevel = "Very Good";
+      } else if (averageMarks >= 3.0) {
+        performanceLevel = "Good";
+      } else if (averageMarks >= 2.5) {
+        performanceLevel = "Average";
+      } else {
+        performanceLevel = "Needs Improvement";
+      }
 
       const pct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-      const rating = averageMarks > 0 ? averageMarks : 4.0;
+      const rating = averageMarks > 0 ? averageMarks : 0;
 
       technicalSkills.push({
         skillName: subjectName,
@@ -563,23 +574,35 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
           }
         });
 
-        let rating = 4.0;
+        let rating = 0;
         if (gradedCount > 0) {
           rating = Number((scoreSum / gradedCount).toFixed(1));
         } else if (completed > 0) {
-          rating = Number(Math.min(5, Math.max(1, 2.5 + ((completed / total) * 2.5))).toFixed(1));
-        } else if (inProgress > 0) {
-          rating = 2.5;
+          rating = Number(Math.min(5, Math.max(1, (completed / total) * 5)).toFixed(1));
         } else {
           rating = 0;
         }
 
-        let remark = "Needs Improvement";
-        if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
-        else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
-        else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
-        else if (rating >= 3.0 || pct >= 50) remark = "Good";
-        else if (completed > 0) remark = "Average";
+        let remark = "Not Started";
+        if (completed === 0 && inProgress === 0) {
+          remark = "Not Started";
+        } else if (completed === 0 && inProgress > 0) {
+          remark = "In Progress";
+        } else if (completed > 0 && gradedCount === 0) {
+          remark = "Pending Evaluation";
+        } else if (rating >= 4.5 || pct >= 90) {
+          remark = "Outstanding";
+        } else if (rating >= 4.0 || pct >= 75) {
+          remark = "Excellent";
+        } else if (rating >= 3.5 || pct >= 60) {
+          remark = "Very Good";
+        } else if (rating >= 3.0 || pct >= 50) {
+          remark = "Good";
+        } else if (rating >= 2.5) {
+          remark = "Average";
+        } else {
+          remark = "Needs Improvement";
+        }
 
         return {
           itemName: topicName,
@@ -667,14 +690,42 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
 router.get("/student/:studentId", verifyToken, checkRole([...writeRoles, "placement_officer", "student"]), async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { status } = req.query;
+    const { status, subLevelId, levelId } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(studentId)) {
       return res.status(400).json({ success: false, message: "Invalid student ID" });
     }
 
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
     const filter = { studentId, isActive: true };
     if (status) filter.status = status;
+
+    if (subLevelId === "all") {
+      // all tasks
+    } else if (subLevelId) {
+      filter.$or = [
+        { subLevelId },
+        {
+          subLevelId: null,
+          levelId: levelId || student.currentLevelId || null,
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        }
+      ];
+    } else if (student.currentSubLevelId) {
+      filter.$or = [
+        { subLevelId: student.currentSubLevelId },
+        { syllabusVersionId: student.syllabusVersionId },
+        {
+          levelId: student.currentLevelId || null,
+          subLevelId: null,
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        }
+      ];
+    }
 
     const tasks = await StudentTask.find(filter)
       .populate("subLevelId", "name")
@@ -718,18 +769,21 @@ router.put("/student/:studentId/task/:taskId", verifyToken, checkRole([...writeR
 router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { title, description, subjectName, topicName, maxMarks, dueDate, priority } = req.body;
+    const { title, description, subjectName, topicName, maxMarks, dueDate, priority, subLevelId, levelId } = req.body;
 
     const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ success: false, message: "Student not found" });
     }
 
+    const targetSubLevel = subLevelId || student.currentSubLevelId || null;
+    const targetLevel = levelId || student.currentLevelId || null;
+
     const task = await StudentTask.create({
       studentId,
       sessionId: student.sessionId || null,
-      levelId: student.currentLevelId || null,
-      subLevelId: student.currentSubLevelId || null,
+      levelId: targetLevel,
+      subLevelId: targetSubLevel,
       syllabusVersionId: student.syllabusVersionId || null,
       title: title?.trim() || "Individual Assignment",
       description: description || "",

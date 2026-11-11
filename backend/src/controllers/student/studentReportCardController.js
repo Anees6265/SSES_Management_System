@@ -32,10 +32,10 @@ const calcDisciplineMarks = (discipline) => {
 
 const syncReportCardLive = async (studentId, reportCard) => {
   try {
-    const Student = mongoose.model("Student");
-    const StudentTask = mongoose.model("StudentTask");
-    const Level = mongoose.model("Level");
-    const SubLevel = mongoose.model("SubLevel");
+    const Student = mongoose.models.Student || require("../../models/student/Student");
+    const StudentTask = mongoose.models.StudentTask || require("../../models/syllabus/StudentTask");
+    const Level = mongoose.models.Level || require("../../models/department/Level");
+    const SubLevel = mongoose.models.SubLevel || require("../../models/department/SubLevel");
 
     const student = await Student.findById(studentId);
     if (!student) return;
@@ -191,12 +191,24 @@ const syncReportCardLive = async (studentId, reportCard) => {
           ? Number((completedWithMarks.reduce((sum, t) => sum + t.marks, 0) / completedWithMarks.length).toFixed(2))
           : 0;
 
-        let performanceLevel = "Needs Improvement";
-        if (averageMarks >= 4.5) performanceLevel = "Outstanding";
-        else if (averageMarks >= 4.0) performanceLevel = "Excellent";
-        else if (averageMarks >= 3.5) performanceLevel = "Very Good";
-        else if (averageMarks >= 3.0) performanceLevel = "Good";
-        else if (averageMarks >= 2.5) performanceLevel = "Average";
+        let performanceLevel = "Not Started";
+        if (completedCount === 0) {
+          performanceLevel = "Not Started";
+        } else if (completedWithMarks.length === 0) {
+          performanceLevel = "Pending Evaluation";
+        } else if (averageMarks >= 4.5) {
+          performanceLevel = "Outstanding";
+        } else if (averageMarks >= 4.0) {
+          performanceLevel = "Excellent";
+        } else if (averageMarks >= 3.5) {
+          performanceLevel = "Very Good";
+        } else if (averageMarks >= 3.0) {
+          performanceLevel = "Good";
+        } else if (averageMarks >= 2.5) {
+          performanceLevel = "Average";
+        } else {
+          performanceLevel = "Needs Improvement";
+        }
 
         const ratingStr = averageMarks > 0 ? averageMarks.toFixed(2) : "—";
 
@@ -243,19 +255,30 @@ const syncReportCardLive = async (studentId, reportCard) => {
             rating = Number((scoreSum / gradedCount).toFixed(1));
           } else if (completed > 0) {
             rating = Number(Math.min(5, Math.max(1, (completed / total) * 5)).toFixed(1));
-          } else if (inProgress > 0) {
-            rating = 2.5;
           } else {
             rating = 0;
           }
 
-          let remark = "Pending";
-          if (rating >= 4.5 || pct >= 90) remark = "Outstanding";
-          else if (rating >= 4.0 || pct >= 75) remark = "Excellent";
-          else if (rating >= 3.5 || pct >= 60) remark = "Very Good";
-          else if (rating >= 3.0 || pct >= 50) remark = "Good";
-          else if (completed > 0) remark = "Average";
-          else if (inProgress > 0) remark = "In Progress";
+          let remark = "Not Started";
+          if (completed === 0 && inProgress === 0) {
+            remark = "Not Started";
+          } else if (completed === 0 && inProgress > 0) {
+            remark = "In Progress";
+          } else if (completed > 0 && gradedCount === 0) {
+            remark = "Pending Evaluation";
+          } else if (rating >= 4.5 || pct >= 90) {
+            remark = "Outstanding";
+          } else if (rating >= 4.0 || pct >= 75) {
+            remark = "Excellent";
+          } else if (rating >= 3.5 || pct >= 60) {
+            remark = "Very Good";
+          } else if (rating >= 3.0 || pct >= 50) {
+            remark = "Good";
+          } else if (rating >= 2.5) {
+            remark = "Average";
+          } else {
+            remark = "Needs Improvement";
+          }
 
           return {
             itemName: topicName,
@@ -514,3 +537,6 @@ exports.generateAiFeedback = async (req, res) => {
     });
   }
 };
+
+exports.syncReportCardLive = syncReportCardLive;
+

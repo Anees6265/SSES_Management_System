@@ -1943,19 +1943,46 @@ exports.getStudentTasks = async (req, res) => {
     if (subLevelId === "all") {
       // Return all tasks across all sublevels/syllabus versions
     } else if (subLevelId) {
+      // Explicit sublevel filter (e.g. from previous level selector in TaskBoard)
       filter.$or = [
         { subLevelId },
-        { subLevelId: null, isExtra: true },
-        { subLevelId: null, isGeneralTask: true }
+        {
+          subLevelId: null,
+          levelId: student.currentLevelId || null,
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        }
       ];
     } else {
-      const orConditions = [{ isExtra: true }, { isGeneralTask: true }];
-      if (student.currentSubLevelId) {
-        orConditions.push({ subLevelId: student.currentSubLevelId });
+      // Current active sublevel view (default when opening task board)
+      const targetSubLevel = student.currentSubLevelId;
+      const targetSyllabus = student.syllabusVersionId;
+      const targetLevel = student.currentLevelId;
+
+      const orConditions = [];
+
+      if (targetSubLevel) {
+        orConditions.push({ subLevelId: targetSubLevel });
       }
-      if (student.syllabusVersionId) {
-        orConditions.push({ syllabusVersionId: student.syllabusVersionId });
+      if (targetSyllabus) {
+        orConditions.push({ syllabusVersionId: targetSyllabus });
       }
+      if (targetLevel) {
+        orConditions.push({
+          levelId: targetLevel,
+          subLevelId: null,
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        });
+        orConditions.push({
+          levelId: targetLevel,
+          subLevelId: { $exists: false },
+          $or: [{ isExtra: true }, { isGeneralTask: true }]
+        });
+      }
+
+      if (orConditions.length === 0) {
+        orConditions.push({ isExtra: true }, { isGeneralTask: true });
+      }
+
       filter.$or = orConditions;
     }
     if (status) filter.status = status;
@@ -2208,9 +2235,33 @@ exports.getStudentActivity = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [activity, total] = await Promise.all([
-      StudentEventLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+      StudentEventLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
       StudentEventLog.countDocuments(filter),
     ]);
+
+    // Resolve any raw SubLevel ObjectIds in promotion descriptions
+    const SubLevel = require("../../models/department/SubLevel");
+    const idRegex = /[a-f\d]{24}/g;
+    const allIds = new Set();
+    activity.forEach(e => {
+      if (typeof e.description === "string") {
+        const matches = e.description.match(idRegex);
+        if (matches) matches.forEach(id => allIds.add(id));
+      }
+    });
+
+    if (allIds.size > 0) {
+      const subLevels = await SubLevel.find({ _id: { $in: Array.from(allIds) } }).select("_id name").lean();
+      const subLevelMap = new Map(subLevels.map(sl => [sl._id.toString(), sl.name]));
+
+      activity.forEach(e => {
+        if (typeof e.description === "string" && e.description.includes("SubLevel")) {
+          e.description = e.description.replace(idRegex, (match) => {
+            return subLevelMap.get(match) || match;
+          });
+        }
+      });
+    }
 
     return res.status(200).json({
       total,
@@ -2523,7 +2574,7 @@ exports.moveToReadyForPlacement = async (req, res) => {
 exports.assignExtraTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, type, maxMarks, subjectName, topicName, notes, priority, timeDays, measurablePoints, dueDate } = req.body;
+    const { title, description, type, maxMarks, subjectName, topicName, notes, priority, timeDays, measurablePoints, dueDate, subLevelId, levelId } = req.body;
 
     if (!title) return res.status(400).json({ success: false, message: "Task title is required" });
 
@@ -2531,19 +2582,35 @@ exports.assignExtraTask = async (req, res) => {
     if (!student) return res.status(404).json({ success: false, message: "Student not found" });
     if (student.status !== "Active") return res.status(400).json({ success: false, message: "Only active students can receive extra tasks" });
 
-    // Auto-resolve syllabusVersionId if student does not have one
-    let resolvedSyllabusVersionId = student.syllabusVersionId || null;
-    if (!resolvedSyllabusVersionId && student.currentSubLevelId) {
+    let targetSubLevelId = subLevelId || student.currentSubLevelId || null;
+    let targetLevelId = levelId || student.currentLevelId || null;
+
+    if (targetSubLevelId && !targetLevelId) {
+      try {
+        const SubLevel = require("../../models/department/SubLevel");
+        const slDoc = await SubLevel.findById(targetSubLevelId).select("levelId");
+        if (slDoc?.levelId) targetLevelId = slDoc.levelId;
+      } catch (_) {}
+    }
+
+    // Auto-resolve syllabusVersionId for the target sublevel
+    let resolvedSyllabusVersionId = (targetSubLevelId && student.currentSubLevelId && targetSubLevelId.toString() === student.currentSubLevelId.toString())
+      ? (student.syllabusVersionId || null)
+      : null;
+
+    if (!resolvedSyllabusVersionId && targetSubLevelId) {
       try {
         const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
         const activeSv = await SyllabusVersion.findOne({
-          subLevelId: student.currentSubLevelId,
+          subLevelId: targetSubLevelId,
           status: "active",
           isActive: true
         }).select("_id");
         if (activeSv) {
           resolvedSyllabusVersionId = activeSv._id;
-          await Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: activeSv._id } });
+          if (targetSubLevelId.toString() === student.currentSubLevelId?.toString()) {
+            await Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: activeSv._id } });
+          }
         }
       } catch (svErr) {
         // Continue gracefully if resolution fails
@@ -2580,8 +2647,8 @@ exports.assignExtraTask = async (req, res) => {
     const extraTask = await StudentTask.create({
       studentId: student._id,
       sessionId: student.sessionId || null,
-      levelId: student.currentLevelId || null,
-      subLevelId: student.currentSubLevelId || null,
+      levelId: targetLevelId,
+      subLevelId: targetSubLevelId,
       syllabusVersionId: resolvedSyllabusVersionId,
       taskId: extraTaskId,
       subjectId,

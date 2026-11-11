@@ -1,25 +1,91 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
-  Search, Mail, Phone, Users, ShieldCheck, UserCheck,
-  Building, GraduationCap, X, ExternalLink, Sparkles
+  Search, Mail, Phone, Users, ShieldCheck,
+  Building, GraduationCap, X, Crown, Briefcase, Award
 } from "lucide-react";
 import { useGetFacultiesQuery } from "../../../redux/api/studentApi";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import { usePersistentState } from "../../../hooks/usePersistentFilters";
 
-const ROLE_COLORS = {
-  hod: "bg-amber-50 text-amber-700 border-amber-200/80",
-  faculty: "bg-blue-50 text-blue-700 border-blue-200/80",
-  admin: "bg-slate-100 text-slate-700 border-slate-200/80",
-  superadmin: "bg-purple-50 text-purple-700 border-purple-200/80",
+// Helper to categorize faculty and staff roles with dedicated branding
+export const getFacultyCategory = (fac) => {
+  const pos = (fac.position || "").toLowerCase();
+  const role = (fac.role || "").toLowerCase();
+
+  if (pos.includes("chairman") || role === "chairman") {
+    return {
+      key: "leadership",
+      roleKey: "chairman",
+      label: "Chairman",
+      badgeLabel: "CHAIRMAN",
+      color: "bg-rose-50 text-rose-700 border-rose-200/80",
+      accentBg: "from-rose-500 to-red-600",
+      scopeLabel: "College Leadership"
+    };
+  }
+  if (pos.includes("ceo") || role === "ceo") {
+    return {
+      key: "leadership",
+      roleKey: "ceo",
+      label: "Chief Executive Officer (CEO)",
+      badgeLabel: "CEO",
+      color: "bg-purple-50 text-purple-700 border-purple-200/80",
+      accentBg: "from-purple-500 to-indigo-600",
+      scopeLabel: "College Leadership"
+    };
+  }
+  if (role === "hod" || pos.includes("head of department") || pos.includes("hod")) {
+    return {
+      key: "hod",
+      roleKey: "hod",
+      label: "Head of Department (HOD)",
+      badgeLabel: "HOD",
+      color: "bg-amber-50 text-amber-700 border-amber-200/80",
+      accentBg: "from-amber-500 to-orange-500",
+      scopeLabel: fac.departmentId?.name ? `${fac.departmentId.name} Department` : "Department Head"
+    };
+  }
+  if (role === "coordinator" || role === "cordinator" || pos.includes("coordinator")) {
+    return {
+      key: "coordinator",
+      roleKey: "coordinator",
+      label: "Academic Coordinator",
+      badgeLabel: "COORDINATOR",
+      color: "bg-teal-50 text-teal-700 border-teal-200/80",
+      accentBg: "from-teal-500 to-emerald-500",
+      scopeLabel: fac.departmentId?.name ? `${fac.departmentId.name} Department` : "Academic Coordinator"
+    };
+  }
+  if (role === "placement_officer" || pos.includes("placement")) {
+    return {
+      key: "placement",
+      roleKey: "placement_officer",
+      label: "Placement Officer",
+      badgeLabel: "PLACEMENT OFFICER",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+      accentBg: "from-emerald-500 to-teal-600",
+      scopeLabel: "Training & Placement Cell"
+    };
+  }
+  return {
+    key: "faculty",
+    roleKey: "faculty",
+    label: fac.position || "Faculty Member",
+    badgeLabel: "FACULTY",
+    color: "bg-blue-50 text-blue-700 border-blue-200/80",
+    accentBg: "from-blue-500 to-sky-600",
+    scopeLabel: fac.departmentId?.name ? `${fac.departmentId.name} Department` : "Department Faculty"
+  };
 };
 
-const ROLE_LABELS = {
-  hod: "Head of Department",
-  faculty: "Faculty Member",
-  admin: "Administrator",
-  superadmin: "Super Admin",
+const TAB_LABELS = {
+  all: "All",
+  leadership: "Leadership (CEO & Chairman)",
+  hod: "HODs",
+  coordinator: "Coordinators",
+  faculty: "Faculty",
+  placement: "Placement Cell",
 };
 
 // Helper to generate a background gradient based on faculty name
@@ -39,17 +105,26 @@ const getAvatarGradient = (name = "") => {
 export default function StudentFaculty() {
   const { data: facultiesRes, isLoading } = useGetFacultiesQuery();
   const [searchQuery, setSearchQuery] = usePersistentState("student_faculty_search", "");
-  const [mobileTab, setMobileTab] = usePersistentState("student_faculty_tab", "all");
+  const [activeTab, setActiveTab] = usePersistentState("student_faculty_tab", "all");
+
+  const faculties = facultiesRes?.data || [];
+
+  // Metrics
+  const leadershipCount = faculties.filter(f => getFacultyCategory(f).key === "leadership").length;
+  const hodCount = faculties.filter(f => getFacultyCategory(f).key === "hod").length;
+  const coordinatorCount = faculties.filter(f => getFacultyCategory(f).key === "coordinator").length;
+  const placementCount = faculties.filter(f => getFacultyCategory(f).key === "placement").length;
+  const facultyCount = faculties.filter(f => getFacultyCategory(f).key === "faculty").length;
 
   const activeFacultyChips = useMemo(() => {
     const chips = [];
-    if (mobileTab !== "all") {
+    if (activeTab !== "all") {
       chips.push({
         key: "role",
-        label: "Role",
-        value: mobileTab,
-        displayValue: ROLE_LABELS[mobileTab] || mobileTab,
-        onRemove: () => setMobileTab("all"),
+        label: "Category",
+        value: activeTab,
+        displayValue: TAB_LABELS[activeTab] || activeTab,
+        onRemove: () => setActiveTab("all"),
       });
     }
     if (searchQuery.trim()) {
@@ -62,26 +137,33 @@ export default function StudentFaculty() {
       });
     }
     return chips;
-  }, [mobileTab, searchQuery, setMobileTab, setSearchQuery]);
+  }, [activeTab, searchQuery, setActiveTab, setSearchQuery]);
 
-  const faculties = facultiesRes?.data || [];
-
-  // Metrics
-  const hodCount = faculties.filter(f => f.role === "hod").length;
-  const facultyCount = faculties.filter(f => f.role === "faculty" || !f.role).length;
-
-  // Filter faculties by search & role
+  // Filter faculties by search & tab
   const filteredFaculties = useMemo(() => {
     return faculties.filter((fac) => {
+      const cat = getFacultyCategory(fac);
       const name = (fac.name || "").toLowerCase();
       const pos = (fac.position || "").toLowerCase();
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = !query || name.includes(query) || pos.includes(query);
+      const email = (fac.email || "").toLowerCase();
+      const mobile = (fac.mobileNo || "").toLowerCase();
+      const deptName = (fac.departmentId?.name || "").toLowerCase();
+      const query = searchQuery.toLowerCase().trim();
 
-      const matchesRole = mobileTab === "all" || fac.role === mobileTab;
-      return matchesSearch && matchesRole;
+      const matchesSearch =
+        !query ||
+        name.includes(query) ||
+        pos.includes(query) ||
+        email.includes(query) ||
+        mobile.includes(query) ||
+        deptName.includes(query) ||
+        cat.label.toLowerCase().includes(query) ||
+        cat.badgeLabel.toLowerCase().includes(query);
+
+      const matchesTab = activeTab === "all" || cat.key === activeTab;
+      return matchesSearch && matchesTab;
     });
-  }, [faculties, searchQuery, mobileTab]);
+  }, [faculties, searchQuery, activeTab]);
 
   if (isLoading) {
     return (
@@ -94,7 +176,7 @@ export default function StudentFaculty() {
   return (
     <div className="space-y-4 sm:space-y-5 pb-10">
 
-      {/* ── Header Card (Matching StudentTasks Design System) ── */}
+      {/* ── Header Card ── */}
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
         <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
         <div className="p-3.5 sm:p-5">
@@ -109,16 +191,16 @@ export default function StudentFaculty() {
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">
-                Department faculty members, academic mentors and heads
+                College leadership, department faculties, coordinators and placement officers
               </p>
             </div>
 
-            {/* Search Input (Mobile full-width, desktop w-64) */}
-            <div className="relative w-full sm:w-60 md:w-64">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64 md:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder="Search faculty..."
+                placeholder="Search by name, role, dept..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:bg-white bg-gray-50 text-gray-800 transition-all duration-200 placeholder:text-gray-400"
@@ -134,28 +216,48 @@ export default function StudentFaculty() {
             </div>
           </div>
 
-          {/* Stat Pills & Progress Bar (Identical to StudentTasks) */}
+          {/* Stat Pills */}
           <div className="mt-3.5 pt-3 border-t border-gray-100/80">
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50/80 border border-orange-100">
                 <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{faculties.length} Total Faculty</span>
+                <span className="text-[11px] sm:text-xs font-bold text-orange-700 truncate">{faculties.length} Total Members</span>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
-                <Building size={13} className="text-amber-500 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{hodCount} HODs</span>
-              </div>
+              {leadershipCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50/80 border border-rose-100">
+                  <Crown size={13} className="text-rose-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-rose-700 truncate">{leadershipCount} Leadership (CEO / Chairman)</span>
+                </div>
+              )}
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50/80 border border-blue-100">
-                <GraduationCap size={13} className="text-blue-500 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-bold text-blue-700 truncate">{facultyCount} Mentors</span>
-              </div>
+              {hodCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/80 border border-amber-100">
+                  <Building size={13} className="text-amber-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-amber-700 truncate">{hodCount} HOD</span>
+                </div>
+              )}
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
-                <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">SSISM Staff</span>
-              </div>
+              {facultyCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50/80 border border-blue-100">
+                  <GraduationCap size={13} className="text-blue-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-blue-700 truncate">{facultyCount} Faculties</span>
+                </div>
+              )}
+
+              {placementCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-100">
+                  <Briefcase size={13} className="text-emerald-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-emerald-700 truncate">{placementCount} Placement Officer</span>
+                </div>
+              )}
+
+              {coordinatorCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-50/80 border border-teal-100">
+                  <Award size={13} className="text-teal-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-teal-700 truncate">{coordinatorCount} Coordinator</span>
+                </div>
+              )}
             </div>
 
             {/* Progress Bar */}
@@ -170,12 +272,12 @@ export default function StudentFaculty() {
         </div>
       </div>
 
-      {/* ── Mobile Role Tabs (`md:hidden`) — Matches StudentTasks ── */}
-      <div className="md:hidden bg-gray-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
+      {/* ── Segmented Category Filter Tabs (Responsive: Desktop & Mobile) ── */}
+      <div className="bg-gray-100/90 p-1 rounded-xl flex items-center gap-1 text-xs font-bold overflow-x-auto scrollbar-none">
         <button
-          onClick={() => setMobileTab("all")}
-          className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-            mobileTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
+          onClick={() => setActiveTab("all")}
+          className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+            activeTab === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <span>All</span>
@@ -184,13 +286,29 @@ export default function StudentFaculty() {
           </span>
         </button>
 
-        {hodCount > 0 && (
+        {leadershipCount > 0 && (
           <button
-            onClick={() => setMobileTab("hod")}
-            className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-              mobileTab === "hod" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            onClick={() => setActiveTab("leadership")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "leadership" ? "bg-white text-rose-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
             }`}
           >
+            <Crown size={12} className={activeTab === "leadership" ? "text-rose-500" : "text-gray-400"} />
+            <span>Leadership (CEO / Chairman)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
+              {leadershipCount}
+            </span>
+          </button>
+        )}
+
+        {hodCount > 0 && (
+          <button
+            onClick={() => setActiveTab("hod")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "hod" ? "bg-white text-amber-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Building size={12} className={activeTab === "hod" ? "text-amber-500" : "text-gray-400"} />
             <span>HODs</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800">
               {hodCount}
@@ -198,24 +316,57 @@ export default function StudentFaculty() {
           </button>
         )}
 
-        <button
-          onClick={() => setMobileTab("faculty")}
-          className={`flex-1 py-1.5 rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
-            mobileTab === "faculty" ? "bg-white text-blue-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <span>Faculty</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
-            {facultyCount}
-          </span>
-        </button>
+        {coordinatorCount > 0 && (
+          <button
+            onClick={() => setActiveTab("coordinator")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "coordinator" ? "bg-white text-teal-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Award size={12} className={activeTab === "coordinator" ? "text-teal-500" : "text-gray-400"} />
+            <span>Coordinators</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-800">
+              {coordinatorCount}
+            </span>
+          </button>
+        )}
+
+        {facultyCount > 0 && (
+          <button
+            onClick={() => setActiveTab("faculty")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "faculty" ? "bg-white text-blue-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <GraduationCap size={12} className={activeTab === "faculty" ? "text-blue-500" : "text-gray-400"} />
+            <span>Faculty</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
+              {facultyCount}
+            </span>
+          </button>
+        )}
+
+        {placementCount > 0 && (
+          <button
+            onClick={() => setActiveTab("placement")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "placement" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Briefcase size={12} className={activeTab === "placement" ? "text-emerald-500" : "text-gray-400"} />
+            <span>Placement</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+              {placementCount}
+            </span>
+          </button>
+        )}
       </div>
 
       {activeFacultyChips.length > 0 && (
         <ActiveFilterChips
           chips={activeFacultyChips}
           onClearAll={() => {
-            setMobileTab("all");
+            setActiveTab("all");
             setSearchQuery("");
           }}
         />
@@ -225,16 +376,17 @@ export default function StudentFaculty() {
       {filteredFaculties.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No Faculty Found"
+          title="No Faculty or Staff Found"
           subtitle={searchQuery
             ? "No faculty members match your search criteria. Try checking spelling or resetting."
-            : "No faculty members are registered in your department yet."}
+            : "No faculty members or leaders found under this filter."}
           actionText={searchQuery ? "Clear Search" : undefined}
           onAction={searchQuery ? () => setSearchQuery("") : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {filteredFaculties.map((fac) => {
+            const cat = getFacultyCategory(fac);
             const initials = (fac.name || "")
               .split(" ")
               .map((n) => n[0] || "")
@@ -243,12 +395,20 @@ export default function StudentFaculty() {
               .toUpperCase();
 
             const gradientClass = getAvatarGradient(fac.name);
+            const isLeadership = cat.key === "leadership";
 
             return (
               <div
                 key={fac._id}
-                className="bg-white border border-gray-200/80 rounded-2xl shadow-xs hover:border-orange-200 hover:shadow-sm transition-all duration-150 overflow-hidden flex flex-col p-4 sm:p-5 group justify-between"
+                className={`bg-white border ${
+                  isLeadership ? "border-rose-200/90 shadow-xs ring-1 ring-rose-100" : "border-gray-200/80 shadow-xs"
+                } rounded-2xl hover:border-orange-300 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col p-4 sm:p-5 group justify-between relative`}
               >
+                {/* Top Subtle Accent Strip for Leadership */}
+                {isLeadership && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-purple-500 to-amber-500" />
+                )}
+
                 <div>
                   {/* Photo & Identity */}
                   <div className="flex items-start gap-3 sm:gap-3.5">
@@ -264,17 +424,27 @@ export default function StudentFaculty() {
                       </div>
                     )}
 
-                    <div className="space-y-0.5 min-w-0 flex-1">
-                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
-                        {fac.name}
-                      </h3>
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate group-hover:text-orange-600 transition-colors">
+                          {fac.name}
+                        </h3>
+                        {isLeadership && (
+                          <Crown size={13} className="text-amber-500 shrink-0" title="College Leadership" />
+                        )}
+                      </div>
 
-                      <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${ROLE_COLORS[fac.role] || ROLE_COLORS.faculty}`}>
-                        {ROLE_LABELS[fac.role] || fac.role?.toUpperCase() || "FACULTY"}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${cat.color}`}>
+                          {cat.badgeLabel}
+                        </span>
+                        <span className="text-[10px] font-semibold text-gray-500 bg-gray-100/80 px-2 py-0.5 rounded-full truncate">
+                          {cat.scopeLabel}
+                        </span>
+                      </div>
 
                       {fac.position && (
-                        <p className="text-[11px] sm:text-xs text-gray-500 truncate pt-0.5">
+                        <p className="text-[11px] sm:text-xs text-gray-600 truncate pt-0.5 font-medium">
                           {fac.position}
                         </p>
                       )}
@@ -316,8 +486,8 @@ export default function StudentFaculty() {
                   </div>
                 </div>
 
-                {/* Mobile Quick Action Buttons */}
-                <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-gray-50">
+                {/* Quick Action Buttons */}
+                <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-gray-100/80">
                   {fac.email ? (
                     <a
                       href={`mailto:${fac.email}`}

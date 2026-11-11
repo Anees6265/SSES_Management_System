@@ -404,12 +404,16 @@ export default function StudentReportForm() {
     if (taskPerf?.technicalSkills && taskPerf.technicalSkills.length > 0) {
       taskPerf.technicalSkills.forEach(skill => {
         if (softSkillsSyllabus && isSoftSkillSubject(skill.skillName)) return;
+        const comp = skill.completedTasks || 0;
+        const ratingVal = skill.rating && skill.rating > 0 ? Number(skill.rating).toFixed(2) : "—";
+        let lvl = skill.remark || (comp === 0 ? "Not Started" : "Good");
+        if (comp === 0) lvl = "Not Started";
         subjectItems.push({
           itemName: skill.skillName,
-          value: skill.remark || "Good",
-          score: skill.completedTasks || 0,
+          value: lvl,
+          score: comp,
           maxMarks: skill.totalTasks || 0,
-          remark: skill.rating ? Number(skill.rating).toFixed(2) : "—"
+          remark: ratingVal
         });
       });
     } else if (tasks?.groupedBySubject) {
@@ -431,11 +435,22 @@ export default function StudentReportForm() {
         });
         const rating = gradedCount > 0 ? (scoreSum / gradedCount).toFixed(2) : "—";
         const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-        let level = "Needs Improvement";
-        if (pct >= 85) level = "Outstanding";
-        else if (pct >= 70) level = "Excellent";
-        else if (pct >= 50) level = "Very Good";
-        else if (evaluated > 0) level = "Good";
+        let level = "Not Started";
+        if (evaluated === 0) {
+          level = "Not Started";
+        } else if (gradedCount === 0) {
+          level = "Pending Evaluation";
+        } else if (pct >= 85) {
+          level = "Outstanding";
+        } else if (pct >= 70) {
+          level = "Excellent";
+        } else if (pct >= 50) {
+          level = "Very Good";
+        } else if (pct >= 35) {
+          level = "Good";
+        } else {
+          level = "Needs Improvement";
+        }
 
         subjectItems.push({
           itemName: subjectName,

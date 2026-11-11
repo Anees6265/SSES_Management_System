@@ -262,7 +262,7 @@ export default function StudentReport() {
   const departmentLogo = getDepartmentLogo(deptType);
   const collegeName = isBTech ? "Sant Singaji Engineering College" : "Sant Singaji Institute of Science & Management";
   const batchYear = reportCardData?.batchYear || studentData.batchYear || studentData.sessionId?.name || "2025–26";
-  const overallGrade = reportCardData?.overallGrade || "A";
+  const overallGrade = reportCardData?.overallGrade || "—";
   const gradeStyle = getGradeBadgeStyle(overallGrade);
 
   // Fallbacks & dynamic sections extractor
@@ -866,14 +866,22 @@ export default function StudentReport() {
                       const parsedRating = parseFloat(item.remark);
                       const hasRating = !isNaN(parsedRating) && parsedRating > 0;
                       const rating = hasRating ? parsedRating : 0;
-                      const level = item.value || "Good";
+                      const level = item.value && item.value !== "Needs Improvement"
+                        ? item.value
+                        : (evaluated === 0 ? "Not Started" : item.value || "Good");
 
                       const levelColor =
                         level === "Outstanding" || level === "Excellent"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : level === "Very Good"
                             ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200";
+                            : level === "Good"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : level === "Average"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : level === "Needs Improvement"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-slate-50 text-slate-500 border-slate-200";
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition">
@@ -961,14 +969,22 @@ export default function StudentReport() {
                   const parsedRating = parseFloat(item.remark);
                   const hasRating = !isNaN(parsedRating) && parsedRating > 0;
                   const rating = hasRating ? parsedRating : 0;
-                  const level = item.value || "Good";
+                  const level = item.value && item.value !== "Needs Improvement"
+                    ? item.value
+                    : (evaluated === 0 ? "Not Started" : item.value || "Good");
 
                   const levelColor =
                     level === "Outstanding" || level === "Excellent"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : level === "Very Good"
                         ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200";
+                        : level === "Good"
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          : level === "Average"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : level === "Needs Improvement"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-slate-50 text-slate-500 border-slate-200";
 
                   return (
                     <div key={idx} className="bg-slate-50/60 rounded-2xl p-3.5 border border-slate-100 space-y-2.5">

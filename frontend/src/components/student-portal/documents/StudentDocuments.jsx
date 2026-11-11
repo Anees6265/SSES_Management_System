@@ -735,11 +735,11 @@ export default function StudentDocuments() {
             </div>
 
             {/* ── Desktop Two-Column View (hidden md:grid md:grid-cols-2 gap-5) ── */}
-            <div className="hidden md:grid md:grid-cols-2 gap-5 items-start">
+            <div className="hidden md:grid md:grid-cols-2 gap-5 items-stretch">
 
                 {/* Left Column: Core Documents */}
-                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-blue-50/20">
+                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col h-full min-h-[320px]">
+                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-blue-50/20 shrink-0">
                         <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                             <div>
@@ -752,7 +752,7 @@ export default function StudentDocuments() {
                         </span>
                     </div>
 
-                    <div className="p-4">
+                    <div className={`p-4 flex-1 flex flex-col ${filteredCore.length === 0 ? "justify-center" : ""}`}>
                         {filteredCore.length === 0 ? (
                             <EmptyState
                                 icon={FileText}
@@ -775,8 +775,8 @@ export default function StudentDocuments() {
                 </div>
 
                 {/* Right Column: Extra Documents */}
-                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-orange-50/20">
+                <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col h-full min-h-[320px]">
+                    <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-orange-50/20 shrink-0">
                         <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                             <div>
@@ -790,14 +790,14 @@ export default function StudentDocuments() {
                             </span>
                             <button
                                 onClick={() => setUploadOpen(true)}
-                                className="text-[11px] font-bold text-orange-600 hover:text-orange-700"
+                                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 cursor-pointer"
                             >
                                 + Upload
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-4">
+                    <div className={`p-4 flex-1 flex flex-col ${filteredExtra.length === 0 ? "justify-center" : ""}`}>
                         {filteredExtra.length === 0 ? (
                             <EmptyState
                                 icon={Folder}

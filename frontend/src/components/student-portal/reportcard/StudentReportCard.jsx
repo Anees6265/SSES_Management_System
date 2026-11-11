@@ -203,7 +203,7 @@ function LevelJourneyStepper({ levels = ['1A', '1B', '1C', '2A', '2B', '2C'], cu
 // ── Main StudentReportCard Component ──────────────────────────────────────────
 
 export default function StudentReportCard() {
-  const [mobileTab, setMobileTab] = useState("overview"); // "overview" | "subjects" | "skills" | "feedback"
+  const [mobileTab, setMobileTab] = useState("all"); // "all" | "overview" | "subjects" | "skills" | "feedback"
 
   const { data: rcData, isLoading: rcLoading } = useGetMyReportCardQuery();
   const { data: profileData, isLoading: profileLoading } = useGetMyStudentProfileQuery();
@@ -476,58 +476,60 @@ export default function StudentReportCard() {
         <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-orange-500 to-amber-500" />
 
         <div className="p-3.5 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5 sm:gap-3.5 flex-wrap sm:flex-nowrap">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 sm:pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
               {/* College Logo */}
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="SSISM College Logo">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="SSISM College Logo">
                 <img src={collegeLogo} alt="SSISM Logo" className="w-full h-full object-contain" />
               </div>
 
               {/* Department Logo */}
-              <div className="h-10 px-2 sm:h-12 sm:px-2.5 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="Department Logo">
-                <img src={departmentLogo} alt="Department Logo" className="h-full w-auto max-w-[75px] sm:max-w-[95px] object-contain" />
+              <div className="h-9 px-1.5 sm:h-12 sm:px-2.5 rounded-xl sm:rounded-2xl bg-white border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs" title="Department Logo">
+                <img src={departmentLogo} alt="Department Logo" className="h-full w-auto max-w-[70px] sm:max-w-[95px] object-contain" />
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h1 className="text-xs sm:text-base font-black text-slate-900 uppercase tracking-tight truncate">
                   {collegeName}
                 </h1>
                 <p className="text-[10px] sm:text-xs font-semibold text-orange-500 uppercase tracking-wider truncate">
-                  {departmentName} · Performance Report Card · Session {raw.sessionId?.name || "AY 2025-26"}{batchYear ? ` (Batch ${batchYear})` : ""}
+                  {departmentName} · Report Card · Session {raw.sessionId?.name || "AY 2025-26"}{batchYear ? ` (${batchYear})` : ""}
                 </p>
               </div>
             </div>
 
             {/* Actions & Badges */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {rc?.overallGrade && (
-                <span className={`text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full border ${gradeColor(rc.overallGrade)}`}>
-                  Grade: {rc.overallGrade}
-                </span>
-              )}
-              {rc?.isFinalReport ? (
-                <span className="text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                  <MdVerified size={12} /> Final
-                </span>
-              ) : (
-                <span className="text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Evaluation
-                </span>
-              )}
+            <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto pt-1 sm:pt-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {rc?.overallGrade && (
+                  <span className={`text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border ${gradeColor(rc.overallGrade)}`}>
+                    Grade: {rc.overallGrade}
+                  </span>
+                )}
+                {rc?.isFinalReport ? (
+                  <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                    <MdVerified size={12} /> Final
+                  </span>
+                ) : (
+                  <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Evaluation
+                  </span>
+                )}
+              </div>
 
               {rc && (
                 <PDFDownloadLink
                   document={<StudentReportPDF studentData={raw} reportCardData={rc} />}
                   fileName={`${raw.firstName || 'Student'}_${raw.lastName || 'Report'}_Report_Card.pdf`}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[11px] sm:text-xs font-bold transition shadow-2xs"
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
                 >
                   {({ loading }) =>
                     loading ? (
-                      <span className="text-xs">⏳</span>
+                      <span className="text-xs">⏳ Loading...</span>
                     ) : (
                       <>
-                        <FaDownload size={10} />
-                        <span>PDF</span>
+                        <FaDownload size={11} />
+                        <span>Download PDF</span>
                       </>
                     )
                   }
@@ -537,16 +539,16 @@ export default function StudentReportCard() {
           </div>
 
           {/* Student Info Strip */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-3.5 sm:mt-4">
             <div className="flex items-center gap-3">
               {raw.image ? (
                 <img
                   src={raw.image}
                   alt={name}
-                  className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl object-cover border-2 border-white shadow-xs shrink-0"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white shadow-xs shrink-0 ring-2 ring-orange-100"
                 />
               ) : (
-                <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-sm sm:text-lg font-black shadow-xs border-2 border-white shrink-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center text-base sm:text-lg font-black shadow-xs border-2 border-white shrink-0 ring-2 ring-orange-100">
                   {initials}
                 </div>
               )}
@@ -555,7 +557,7 @@ export default function StudentReportCard() {
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h2 className="text-sm sm:text-base font-black text-slate-900 truncate">{name}</h2>
                   <MdVerified size={14} className="text-blue-500 shrink-0" />
-                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.2 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shrink-0">
                     Lvl {currentSubLevel}
                   </span>
                 </div>
@@ -565,33 +567,35 @@ export default function StudentReportCard() {
                 </p>
 
                 {(raw.fatherName || raw.motherName) && (
-                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap text-[10px] sm:text-[11px] text-slate-500">
                     {raw.fatherName && (
-                      <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-100">
-                        Father: <strong className="text-slate-800">{raw.fatherName}</strong>
-                      </span>
+                      <span>Father: <strong className="text-slate-800 font-semibold">{raw.fatherName}</strong></span>
                     )}
+                    {raw.fatherName && raw.motherName && <span className="text-slate-300">·</span>}
                     {raw.motherName && (
-                      <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-100">
-                        Mother: <strong className="text-slate-800">{raw.motherName}</strong>
-                      </span>
+                      <span>Mother: <strong className="text-slate-800 font-semibold">{raw.motherName}</strong></span>
                     )}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="bg-slate-50/80 rounded-xl p-2.5 sm:p-3 border border-slate-100 text-left sm:text-right self-start sm:self-auto min-w-[170px]">
-              <span className="text-[9px] uppercase font-bold text-slate-400 block">Evaluation Date</span>
-              <p className="text-xs font-bold text-slate-800 mt-0.5">
-                {rc?.createdAt
-                  ? new Date(rc.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                  : new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
+            <div className="bg-slate-50/90 rounded-xl p-2.5 sm:p-3 border border-slate-100 flex items-center justify-between sm:flex-col sm:items-end w-full sm:w-auto sm:min-w-[170px] shrink-0">
+              <div className="text-left sm:text-right">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block">Evaluation Date</span>
+                <p className="text-xs font-bold text-slate-800 mt-0.5">
+                  {rc?.createdAt
+                    ? new Date(rc.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
               {rc?.generatedByName && (
-                <span className="text-[10px] text-slate-400 block mt-0.5 truncate">
-                  By: <strong className="text-slate-600">{rc.generatedByName}</strong>
-                </span>
+                <div className="text-right sm:mt-1">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block sm:hidden">Evaluator</span>
+                  <span className="text-[10px] text-slate-500 block truncate">
+                    By: <strong className="text-slate-700">{rc.generatedByName}</strong>
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -696,43 +700,35 @@ export default function StudentReportCard() {
           </div>
 
           {/* ── Mobile Segmented Tabs (`md:hidden`) ── */}
-          <div className="md:hidden bg-slate-100/90 p-1 rounded-xl flex gap-1 text-xs font-bold">
-            <button
-              onClick={() => setMobileTab("overview")}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
-                mobileTab === "overview" ? "bg-white text-gray-900 shadow-xs" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setMobileTab("subjects")}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
-                mobileTab === "subjects" ? "bg-white text-orange-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Subjects
-            </button>
-            <button
-              onClick={() => setMobileTab("skills")}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
-                mobileTab === "skills" ? "bg-white text-violet-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Skills & Mock
-            </button>
-            <button
-              onClick={() => setMobileTab("feedback")}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center ${
-                mobileTab === "feedback" ? "bg-white text-emerald-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Feedback
-            </button>
+          <div className="md:hidden bg-slate-100/90 p-1 rounded-xl sm:rounded-2xl flex items-center gap-1 text-xs font-bold overflow-x-auto scrollbar-none -mx-0.5 px-1 sm:mx-0">
+            {[
+              { id: "all", label: "All Details", icon: MdBarChart },
+              { id: "overview", label: "Overview", icon: FaGraduationCap },
+              { id: "subjects", label: "Subjects", icon: FaLaptopCode },
+              { id: "skills", label: "Skills & Mock", icon: FaBrain },
+              { id: "feedback", label: "Feedback", icon: RiDoubleQuotesL },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = mobileTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setMobileTab(tab.id)}
+                  className={`py-1.5 px-3 rounded-lg sm:rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer text-[11px] sm:text-xs font-bold ${
+                    isActive
+                      ? "bg-white text-orange-600 shadow-2xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <Icon size={12} className={isActive ? "text-orange-500" : "text-slate-400"} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* ── Mobile Tab 1: Overview ── */}
-          <div className={`space-y-4 md:hidden ${mobileTab === "overview" ? "block" : "hidden"}`}>
+          <div className={`space-y-3.5 md:hidden ${(mobileTab === "all" || mobileTab === "overview") ? "block" : "hidden"}`}>
             
             {/* Level Stepper */}
             <LevelJourneyStepper
@@ -741,183 +737,264 @@ export default function StudentReportCard() {
             />
 
             {/* SGPA & CGPA Cards */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <FaGraduationCap className="text-blue-600" />
-                  <h3 className="text-xs font-bold text-slate-800">
-                    {isBTech ? "SGPA & CGPA Summary (B.Tech)" : "SGPA & CGPA Summary"}
-                  </h3>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+              <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-blue-50/20">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                    <FaGraduationCap size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                      {isBTech ? "Academic Semester SGPA & CGPA" : "Academic SGPA & CGPA Summary"}
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">University evaluation on 10.0 scale</p>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                  CGPA: {cgpaValue}
+                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                  Scale: 10.0
                 </span>
               </div>
 
-              {isBTech ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {btechYearList.map((yItem, idx) => (
-                    <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-200/50">
-                        <span className="text-[10px] font-bold text-slate-700">{yItem.year}</span>
-                        <span className="text-[10px] font-black text-blue-700">CGPA: {yItem.yearCgpa}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-600">
-                        {yItem.semesters.map((s, sIdx) => (
-                          <span key={sIdx}>
-                            {s.semester}: <strong className="text-slate-800 font-bold">{s.sgpa}</strong>
-                          </span>
-                        ))}
-                      </div>
+              <div className="p-3.5 sm:p-5 space-y-3">
+                {/* Cumulative CGPA Hero Card on Mobile */}
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl sm:rounded-2xl p-3.5 shadow-xs relative overflow-hidden flex items-center justify-between">
+                  <div className="text-left">
+                    <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400 block">CUMULATIVE CGPA</span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-2xl sm:text-3xl font-black text-white">{cgpaValue}</span>
+                      <span className="text-xs text-slate-400 font-medium">/ 10.0</span>
                     </div>
-                  ))}
+                  </div>
+                  <span className="text-[11px] sm:text-xs font-bold text-orange-400 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+                    {classificationLabel}
+                  </span>
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {sgpaList.map((item, idx) => (
-                    <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 block">{item.year}</span>
-                      <span className="text-sm font-black text-slate-800 mt-0.5 block">{item.sgpa || "—"}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+
+                {isBTech ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {btechYearList.map((yItem, idx) => (
+                      <div key={idx} className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                        <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-200/50">
+                          <span className="text-[10px] font-bold text-slate-700">{yItem.year}</span>
+                          <span className="text-[10px] font-black text-blue-700">CGPA: {yItem.yearCgpa}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-600">
+                          {yItem.semesters.map((s, sIdx) => (
+                            <span key={sIdx}>
+                              {s.semester}: <strong className="text-slate-800 font-bold">{s.sgpa}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {sgpaList.map((item, idx) => {
+                      const val = parseFloat(item.sgpa) || 0;
+                      const pct = Math.min(val * 10, 100);
+                      return (
+                        <div key={idx} className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-center">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{item.year}</span>
+                          <span className="text-base font-black text-slate-800 mt-0.5 block">{item.sgpa || "—"}</span>
+                          <span className="text-[9px] text-slate-400 block">SGPA</span>
+                          <div className="w-full bg-slate-200 rounded-full h-1 mt-1.5 overflow-hidden">
+                            <div className="h-1 rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Quick Career Milestones */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 space-y-2.5">
-              <h3 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100">
-                Career Milestones
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {(careerReadinessSection?.items?.length > 0
-                  ? careerReadinessSection.items
-                  : [
-                    { itemName: "Resume", value: hasResumeInProfile ? "Created" : (rc?.careerReadiness?.resumeStatus || "Not created") },
-                    { itemName: "LinkedIn", value: rc?.careerReadiness?.linkedinStatus || "Not created" },
-                    { itemName: "Aptitude", value: rc?.careerReadiness?.aptitudeStatus || "Not Started" },
-                    { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
-                  ]
-                ).map((item, idx) => {
-                  const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
-                  const isResumeItem = (item.itemName || "").toLowerCase().includes("resume");
-                  let val = item.value || "Not Started";
-                  if (isPlacementItem) {
-                    val = isCareerReady ? "Ready" : "Not Ready";
-                  } else if (isResumeItem && hasResumeInProfile) {
-                    val = "Created";
-                  }
-                  return (
-                    <div key={idx} className="bg-slate-50 p-2 rounded-lg text-center">
-                      <span className="text-[10px] text-slate-400 block font-semibold truncate">{item.itemName}</span>
-                      <span className={`text-[10px] font-bold mt-0.5 inline-block px-2 py-0.2 rounded-full border ${readinessBadge(val)}`}>
-                        {val}
-                      </span>
-                    </div>
-                  );
-                })}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+              <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-emerald-50/20">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <FaRocket size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                      Placement & Career Milestones
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Recruitment preparedness</p>
+                  </div>
+                </div>
+                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  T&P Cell
+                </span>
+              </div>
+
+              <div className="p-3.5 sm:p-5">
+                <div className="grid grid-cols-2 gap-2">
+                  {(careerReadinessSection?.items?.length > 0
+                    ? careerReadinessSection.items
+                    : [
+                      { itemName: "Resume", value: hasResumeInProfile ? "Created" : (rc?.careerReadiness?.resumeStatus || "Not created") },
+                      { itemName: "LinkedIn", value: rc?.careerReadiness?.linkedinStatus || "Not created" },
+                      { itemName: "Aptitude", value: rc?.careerReadiness?.aptitudeStatus || "Not Started" },
+                      { itemName: "Placement Ready", value: isCareerReady ? "Ready" : "Not Ready" }
+                    ]
+                  ).map((item, idx) => {
+                    const isPlacementItem = (item.itemName || "").toLowerCase().includes("placement");
+                    const isResumeItem = (item.itemName || "").toLowerCase().includes("resume");
+                    let val = item.value || "Not Started";
+                    if (isPlacementItem) {
+                      val = isCareerReady ? "Ready" : "Not Ready";
+                    } else if (isResumeItem && hasResumeInProfile) {
+                      val = "Created";
+                    }
+                    const isReady = ["Created", "Updated", "Ready", "Completed", "Done"].includes(val);
+                    return (
+                      <div key={idx} className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-center">
+                        <span className="text-[10px] text-slate-400 block font-semibold truncate">{item.itemName}</span>
+                        <span className={`text-[10px] font-bold mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${readinessBadge(val)}`}>
+                          {isReady ? <FaCheck size={9} /> : <span className="w-1 h-1 rounded-full bg-current" />}
+                          {val}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
           </div>
 
           {/* ── Mobile Tab 2: Subjects ── */}
-          <div className={`space-y-3 md:hidden ${mobileTab === "subjects" ? "block" : "hidden"}`}>
+          <div className={`space-y-3 md:hidden ${(mobileTab === "all" || mobileTab === "subjects") ? "block" : "hidden"}`}>
             {(subjectPerformanceSection?.items?.length > 0 || rc.technicalSkills?.length > 0) && (
-              <div className="space-y-2.5">
-                {subjectPerformanceSection?.items?.length > 0 ? (
-                  subjectPerformanceSection.items.map((item, idx) => {
-                    const evaluated = item.score ?? 0;
-                    const total = item.maxMarks || 100;
-                    const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
-                    const parsedRating = parseFloat(item.remark);
-                    const hasRating = !isNaN(parsedRating) && parsedRating > 0;
-                    const rating = hasRating ? parsedRating : 0;
-                    const level = item.value && item.value !== "Needs Improvement"
-                      ? item.value
-                      : (evaluated === 0 ? "Not Started" : item.value || "Good");
-
-                    const levelColor =
-                      level === "Outstanding" || level === "Excellent"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : level === "Very Good"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : level === "Good"
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                            : level === "Average"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : level === "Needs Improvement"
-                                ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : "bg-slate-50 text-slate-500 border-slate-200";
-
-                    return (
-                      <div key={idx} className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-xs text-slate-900 truncate">{item.itemName}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${levelColor}`}>
-                            {level}
-                          </span>
-                        </div>
-
-                        {/* Task progress */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-slate-400">Task Completion</span>
-                            <span className="font-bold text-slate-700">{evaluated} / {total}</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-1.5">
-                            <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-
-                        {/* Rating */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                          {hasRating ? (
-                            <>
-                              <StarRating rating={rating} size="text-[11px]" />
-                              <span className="font-black text-slate-800">{rating.toFixed(1)} / 5.0</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-slate-400 text-[11px]">Rating</span>
-                              <span className="font-bold text-slate-400">—</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  rc.technicalSkills.map((skill, idx) => (
-                    <div key={idx} className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs flex items-center justify-between">
-                      <div>
-                        <h4 className="font-bold text-xs text-slate-800">{skill.skillName}</h4>
-                        <span className="text-[11px] text-slate-400">Theory: {skill.theoryMarks}★ · Practical: {skill.practicalMarks}★</span>
-                      </div>
-                      <span className="text-xs font-bold text-emerald-600">{skill.totalPercentage}%</span>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+                <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-orange-50/20">
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                      {isMeg ? <FaGraduationCap size={14} /> : <FaLaptopCode size={14} />}
                     </div>
-                  ))
-                )}
+                    <div className="min-w-0">
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                        {isMeg ? "Subject-Wise Academic Excellence" : "Subject-Wise Performance & Technical Mastery"}
+                      </h3>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Task completion & practical evaluations</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-white text-orange-700 border border-orange-200 shrink-0">
+                    Continuous Tasks
+                  </span>
+                </div>
+
+                <div className="p-3 sm:p-4 space-y-2.5">
+                  {subjectPerformanceSection?.items?.length > 0 ? (
+                    subjectPerformanceSection.items.map((item, idx) => {
+                      const evaluated = item.score ?? 0;
+                      const total = item.maxMarks || 100;
+                      const pct = total > 0 ? Math.round((evaluated / total) * 100) : 0;
+                      const parsedRating = parseFloat(item.remark);
+                      const hasRating = !isNaN(parsedRating) && parsedRating > 0;
+                      const rating = hasRating ? parsedRating : 0;
+                      const level = item.value && item.value !== "Needs Improvement"
+                        ? item.value
+                        : (evaluated === 0 ? "Not Started" : item.value || "Good");
+
+                      const levelColor =
+                        level === "Outstanding" || level === "Excellent"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : level === "Very Good"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : level === "Good"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : level === "Average"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : level === "Needs Improvement"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-slate-50 text-slate-500 border-slate-200";
+
+                      return (
+                        <div key={idx} className="bg-slate-50/60 hover:bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-3.5 space-y-2.5 transition">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-orange-100/70 text-orange-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                {item.itemName.slice(0, 2).toUpperCase()}
+                              </div>
+                              <span className="font-bold text-xs text-slate-900 truncate">{item.itemName}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${levelColor}`}>
+                              {level}
+                            </span>
+                          </div>
+
+                          {/* Task progress */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400 font-medium">Task Completion</span>
+                              <span className="font-bold text-slate-700">{evaluated} / {total} tasks ({pct}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="h-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Rating */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                            <span className="text-slate-400 text-[11px] font-medium">Average Rating</span>
+                            <div className="flex items-center gap-1.5">
+                              {hasRating ? (
+                                <>
+                                  <StarRating rating={rating} size="text-[11px]" />
+                                  <span className="font-black text-slate-800">{rating.toFixed(1)} <span className="text-slate-400 font-normal">/ 5.0</span></span>
+                                </>
+                              ) : (
+                                <span className="font-bold text-slate-400 text-xs">—</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    rc.technicalSkills.map((skill, idx) => (
+                      <div key={idx} className="bg-slate-50/60 rounded-xl border border-slate-100 p-3 shadow-xs flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-xs text-slate-800">{skill.skillName}</h4>
+                          <span className="text-[11px] text-slate-400">Theory: {skill.theoryMarks}★ · Practical: {skill.practicalMarks}★</span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600">{skill.totalPercentage}%</span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           {/* ── Mobile Tab 3: Skills & Mock ── */}
-          <div className={`space-y-3.5 md:hidden ${mobileTab === "skills" ? "block" : "hidden"}`}>
+          <div className={`space-y-3.5 md:hidden ${(mobileTab === "all" || mobileTab === "skills") ? "block" : "hidden"}`}>
             
             {/* Soft Skills */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="text-xs font-bold text-slate-800">
-                  Soft Skills & Behaviour
-                </h3>
-                {(softSkillsSection?.hasSyllabusTasks || softSkillsSection?.items?.some(i => i.isFromSyllabus || i.completedTasks !== undefined)) && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
-                    {softSkillsSection.subjectName || "Soft Skills"}
-                  </span>
-                )}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+              <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-violet-50/20">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shrink-0">
+                    <FaBrain size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                      Soft Skills & Behavioural Evaluation
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Communication & team mastery</p>
+                  </div>
+                </div>
+                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
+                  Max 5.0
+                </span>
               </div>
-              <div className="space-y-2.5">
+
+              <div className="p-3.5 sm:p-5 space-y-2.5">
                 {(softSkillsSection?.items?.length > 0
                   ? softSkillsSection.items
                   : [
@@ -934,30 +1011,30 @@ export default function StudentReportCard() {
                   const total = item.totalTasks ?? max;
                   const pct = item.completionPercentage !== undefined
                     ? item.completionPercentage
-                    : (isSyllabus && total > 0 ? Math.min(Math.round((completed / total) * 100), 100) : Math.min(Math.round((score / 5) * 100), 100));
+                    : (isSyllabus && total > 0 ? Math.min(Math.round((completed / total) * 100), 100) : Math.min(Math.round((score / max) * 100), 100));
 
                   return (
-                    <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
+                    <div key={idx} className="p-3 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-100 space-y-2">
+                      <div className="flex items-center justify-between text-xs gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           {isSyllabus && <span className="w-1.5 h-1.5 rounded-full bg-violet-600 shrink-0" />}
-                          <span className="font-bold text-slate-700 truncate">{item.itemName}</span>
+                          <span className="font-bold text-slate-800 truncate">{item.itemName}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isSyllabus && item.completedTasks !== undefined && (
-                            <span className="text-[9px] font-bold text-slate-500 bg-white px-1.5 py-0.2 rounded border border-slate-200">
+                            <span className="text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.2 rounded border border-slate-200">
                               {item.completedTasks}/{item.totalTasks}
                             </span>
                           )}
                           {score > 0 ? (
-                            <span className="font-black text-slate-800">{score.toFixed(1)} / {max}</span>
+                            <span className="font-black text-slate-900">{score.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ {max}</span></span>
                           ) : (
-                            <span className="font-bold text-slate-400 text-[11px]">—</span>
+                            <span className="font-bold text-slate-400 text-xs">—</span>
                           )}
                         </div>
                       </div>
-                      <div className="w-full bg-slate-200 rounded-full h-1">
-                        <div className="h-1 rounded-full bg-violet-500" style={{ width: `${pct}%` }} />
+                      <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -966,36 +1043,46 @@ export default function StudentReportCard() {
             </div>
 
             {/* Interview Mock Assessment */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FaUserTie className="text-orange-500 shrink-0" size={13} />
-                  <h3 className="text-xs font-bold text-slate-800 truncate">
-                    Interview Mock Ratings
-                  </h3>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+              <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-orange-50/20 gap-2">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                    <FaUserTie size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                      Interview Mock Ratings
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Panel evaluation & feedback</p>
+                  </div>
                 </div>
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 shrink-0 whitespace-nowrap">
                   <FaStar className="text-amber-500 text-[9px]" />
-                  Panel Rating
-                  {avgInterviewScore && <span className="font-extrabold text-orange-900">({avgInterviewScore})</span>}
+                  Rating {avgInterviewScore ? `(${avgInterviewScore})` : ""}
                 </span>
               </div>
-              <div className="space-y-2.5">
+
+              <div className="p-3.5 sm:p-5 space-y-2.5">
                 {interviewItemsList.map((item, idx) => {
                   const score = parseFloat(item.value) || 0;
                   const displayName = mapInterviewItemName(item.itemName, deptType);
                   return (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 text-xs gap-2">
-                      <span className="font-semibold text-slate-700 truncate min-w-0 flex-1">{displayName}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {score > 0 ? (
-                          <>
-                            <StarRating rating={score} size="text-[10px]" />
-                            <span className="font-bold text-slate-800">{score.toFixed(1)}</span>
-                          </>
-                        ) : (
-                          <span className="font-bold text-slate-400 text-[11px]">—</span>
-                        )}
+                    <div key={idx} className="p-3 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-100 space-y-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-semibold text-slate-800 truncate min-w-0 flex-1">{displayName}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {score > 0 ? (
+                            <>
+                              <StarRating rating={score} size="text-[10px]" />
+                              <span className="font-black text-slate-900">{score.toFixed(1)}</span>
+                            </>
+                          ) : (
+                            <span className="font-bold text-slate-400 text-xs">—</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500" style={{ width: `${Math.min(Math.round((score / 5) * 100), 100)}%` }} />
                       </div>
                     </div>
                   );
@@ -1006,24 +1093,34 @@ export default function StudentReportCard() {
           </div>
 
           {/* ── Mobile Tab 4: Feedback & Mentorship ── */}
-          <div className={`space-y-3.5 md:hidden ${mobileTab === "feedback" ? "block" : "hidden"}`}>
+          <div className={`space-y-3.5 md:hidden ${(mobileTab === "all" || mobileTab === "feedback") ? "block" : "hidden"}`}>
             
             {/* Faculty Remark Card */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-2.5">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <RiDoubleQuotesL className="text-orange-500" size={18} />
-                <h4 className="text-xs font-bold text-slate-800">Faculty Mentorship Note</h4>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+              <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-orange-50/20">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                    <RiDoubleQuotesL size={15} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-800">Faculty Mentorship Note</h4>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400">Official observation & comments</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs italic text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                "{rc.facultyRemark || `${name} exhibits strong conceptual understanding, high academic discipline, and proactive engagement.`}"
-              </p>
-              <div className="text-[11px] text-slate-500 font-semibold flex items-center justify-between pt-1">
-                <span>By: {rc.generatedByName || "Faculty Mentor"}</span>
-                <div className="flex items-center gap-1.5">
-                  <StarRating rating={placementRating} size="text-[10px]" />
-                  <span className="text-emerald-600 font-bold">
-                    {placementRating > 0 ? `${placementRating.toFixed(1)} / 5.0` : "Recommended"}
-                  </span>
+
+              <div className="p-3.5 sm:p-5 space-y-3">
+                <p className="text-xs italic text-slate-700 leading-relaxed bg-slate-50/90 p-3.5 rounded-xl sm:rounded-2xl border border-slate-100">
+                  "{rc.facultyRemark || `${name} exhibits strong conceptual understanding, high academic discipline, and proactive engagement.`}"
+                </p>
+                <div className="text-[11px] text-slate-500 font-semibold flex items-center justify-between pt-1">
+                  <span>By: <strong className="text-slate-700">{rc.generatedByName || "Faculty Mentor"}</strong></span>
+                  <div className="flex items-center gap-1.5">
+                    <StarRating rating={placementRating} size="text-[10px]" />
+                    <span className="text-emerald-600 font-bold">
+                      {placementRating > 0 ? `${placementRating.toFixed(1)} / 5.0` : "Recommended"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1089,15 +1186,25 @@ export default function StudentReportCard() {
 
             {/* Certifications */}
             {rc.coCurricular?.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs space-y-2">
-                <h4 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100">
-                  Certifications ({rc.coCurricular.length})
-                </h4>
-                <div className="space-y-2">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
+                <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-100 flex items-center justify-between bg-amber-50/20">
+                  <div className="flex items-center gap-2">
+                    <FaAward className="text-amber-600" size={15} />
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-800">
+                      Certifications ({rc.coCurricular.length})
+                    </h4>
+                  </div>
+                </div>
+                <div className="p-3 sm:p-4 space-y-2">
                   {rc.coCurricular.map((item, i) => (
-                    <div key={i} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                      <p className="font-bold text-slate-800">{item.title}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{item.category} · {item.remark}</p>
+                    <div key={i} className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 text-xs flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <FaAward size={12} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">{item.title}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{item.category} · {item.remark}</p>
+                      </div>
                     </div>
                   ))}
                 </div>

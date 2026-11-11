@@ -578,10 +578,15 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   }
 
   // Step 8: Log promotion event
-  const fromSubLevelName = prevSubLevel?.name || "previous sub-level";
-  const toSubLevelName = newSubLevelDoc?.name || nextSubLevel?.name || "next sub-level";
-  const fromLevelName = prevLevel?.name || "previous level";
-  const toLevelName = newLevelDoc?.name || "new level";
+  const fromSubLevelDoc = await SubLevel.findById(prevSubLevelId).select("name").lean();
+  const toSubLevelDoc = await SubLevel.findById(nextSubLevel?._id || nextSubLevel).select("name").lean();
+  const fromLevelDoc = await Level.findById(prevLevelId).select("name").lean();
+  const toLevelDoc = await Level.findById(targetLevelId).select("name").lean();
+
+  const fromSubLevelName = fromSubLevelDoc?.name || "previous sub-level";
+  const toSubLevelName = toSubLevelDoc?.name || "next sub-level";
+  const fromLevelName = fromLevelDoc?.name || "previous level";
+  const toLevelName = toLevelDoc?.name || "new level";
 
   const promoTitle = promotedToNewLevel
     ? `Promoted to ${toLevelName} (${toSubLevelName})`
@@ -909,6 +914,44 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     return [];
   }
 
+  // Pre-load all SubLevels and Levels for name lookup and note sanitization (eliminates raw ObjectId display)
+  const allSubLevels = await SubLevel.find().select("name levelId order").lean();
+  const allLevels = await Level.find().select("name order").lean();
+  const subLevelNameMap = new Map(allSubLevels.map(sl => [sl._id.toString(), sl.name]));
+  const levelNameMap = new Map(allLevels.map(l => [l._id.toString(), l.name]));
+
+  // Fallback faculty/coordinator for student's department
+  const User = require("../models/user/user");
+  const deptFaculty = await User.findOne({
+    role: { $in: ["faculty", "hod", "coordinator"] },
+    isActive: true,
+    ...(student.subDepartmentId?.name ? {
+      $or: [
+        { department: student.subDepartmentId.name },
+        { department: "TECH" },
+        { department: "SSISM" }
+      ]
+    } : {})
+  }).select("name role").lean();
+
+  const sanitizeNote = (text) => {
+    if (!text || typeof text !== "string") return "";
+    let cleaned = text;
+    // Replace any 24-character hexadecimal ObjectId with friendly name
+    cleaned = cleaned.replace(/[0-9a-fA-F]{24}/g, (match) => {
+      if (subLevelNameMap.has(match)) return subLevelNameMap.get(match);
+      if (levelNameMap.has(match)) return levelNameMap.get(match);
+      return "";
+    });
+    // Format common patterns nicely
+    cleaned = cleaned.replace(/Student moved from SubLevel\s+([A-Za-z0-9_-]+)\s+to\s+([A-Za-z0-9_-]+)/i, "Promoted from SubLevel $1 to $2");
+    cleaned = cleaned.replace(/SubLevel\s+([A-Za-z0-9_-]+)\s+to\s+([A-Za-z0-9_-]+)/i, "SubLevel $1 to $2");
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
+    // Safety check: remove any leftover 24-hex string so raw DB IDs are never exposed to students
+    cleaned = cleaned.replace(/[0-9a-fA-F]{24}/g, "").trim();
+    return cleaned;
+  };
+
   // 1. Fetch raw StudentLevelProgress records
   let history = await StudentLevelProgress.find({ studentId })
     .populate("levelId", "name order")
@@ -1015,100 +1058,106 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     }
   });
 
+  const studentSessionId = student.sessionId?._id || student.sessionId;
+  const studentCourse = (student.course || "").trim();
+
   // 5. Enrich each level history entry
   const enrichedHistory = await Promise.all(history.map(async (item, index) => {
     const subLevelIdStr = (item.subLevelId?._id || item.subLevelId)?.toString();
     const levelIdStr = (item.levelId?._id || item.levelId)?.toString();
 
-    // Verify active syllabus exists for this sublevel (or level)
+    // Ensure subLevelId and levelId are always populated with proper names (never raw IDs)
+    if ((!item.subLevelId || !item.subLevelId.name) && subLevelIdStr && subLevelNameMap.has(subLevelIdStr)) {
+      item.subLevelId = {
+        _id: subLevelIdStr,
+        name: subLevelNameMap.get(subLevelIdStr),
+        order: item.subLevelId?.order || 1
+      };
+    }
+    if ((!item.levelId || !item.levelId.name) && levelIdStr && levelNameMap.has(levelIdStr)) {
+      item.levelId = {
+        _id: levelIdStr,
+        name: levelNameMap.get(levelIdStr),
+        order: item.levelId?.order || 1
+      };
+    }
+
+    // A. Tasks belonging to this student in this sublevel (student's actual ground truth)
+    const subTasks = allTasks.filter(t => {
+      const taskSubId = (t.subLevelId?._id || t.subLevelId)?.toString();
+      return taskSubId === subLevelIdStr;
+    });
+
+    // B. Match exact syllabus version for this student and sublevel
     let activeSyllabus = null;
-    if (subLevelIdStr) {
+    const taskSvId = subTasks.find(t => t.syllabusVersionId)?.syllabusVersionId;
+    if (taskSvId) {
+      activeSyllabus = await SyllabusVersion.findById(taskSvId).select("subjects version title").lean();
+    }
+    if (!activeSyllabus && item.syllabusVersionSnapshot?.versionId) {
+      activeSyllabus = await SyllabusVersion.findById(item.syllabusVersionSnapshot.versionId).select("subjects version title").lean();
+    }
+    if (!activeSyllabus && item.isCurrent && student.syllabusVersionId) {
+      const curSv = await SyllabusVersion.findById(student.syllabusVersionId).select("subjects version title subLevelId").lean();
+      if (curSv && curSv.subLevelId?.toString() === subLevelIdStr) {
+        activeSyllabus = curSv;
+      }
+    }
+    if (!activeSyllabus && subLevelIdStr) {
+      const courseConds = studentCourse && studentCourse !== "All"
+        ? [{ courses: studentCourse }, { courses: "All" }, { course: studentCourse }, { course: "All" }, { courses: { $size: 0 } }, { courses: { $exists: false } }]
+        : [];
+      activeSyllabus = await SyllabusVersion.findOne({
+        subLevelId: subLevelIdStr,
+        ...(studentSessionId ? { sessionId: studentSessionId } : {}),
+        isActive: { $ne: false },
+        status: { $ne: "archived" },
+        ...(courseConds.length > 0 ? { $or: courseConds } : {})
+      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
+    }
+    if (!activeSyllabus && subLevelIdStr) {
+      activeSyllabus = await SyllabusVersion.findOne({
+        subLevelId: subLevelIdStr,
+        ...(studentSessionId ? { sessionId: studentSessionId } : {}),
+        isActive: { $ne: false },
+        status: { $ne: "archived" }
+      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
+    }
+    if (!activeSyllabus && subLevelIdStr) {
       activeSyllabus = await SyllabusVersion.findOne({
         subLevelId: subLevelIdStr,
         isActive: { $ne: false },
         status: { $ne: "archived" }
-      }).select("subjects").sort({ versionNumber: -1, createdAt: -1 }).lean();
-    }
-    if (!activeSyllabus && levelIdStr) {
-      activeSyllabus = await SyllabusVersion.findOne({
-        levelId: levelIdStr,
-        isActive: { $ne: false },
-        status: { $ne: "archived" }
-      }).select("subjects").sort({ versionNumber: -1, createdAt: -1 }).lean();
+      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
     }
 
-    // Check if the syllabus for this sublevel was explicitly archived/deleted
-    const explicitlyDeletedSyllabus = await SyllabusVersion.findOne({
-      $or: [
-        ...(subLevelIdStr ? [{ subLevelId: subLevelIdStr }] : []),
-        ...(levelIdStr ? [{ levelId: levelIdStr }] : [])
-      ],
-      $or: [{ isActive: false }, { status: "archived" }]
-    }).lean();
-
-    // If an explicitly deleted syllabus exists, no active replacement exists, and this is not the current level, omit it
-    if (!activeSyllabus && explicitlyDeletedSyllabus && !item.isCurrent) {
-      return null;
-    }
-
-    const activeSubjects = (activeSyllabus?.subjects || []).filter(s => s && s.isActive !== false);
-    if (!item.isCurrent && explicitlyDeletedSyllabus && activeSubjects.length === 0) {
-      return null;
-    }
-
-    const activeSubjectIdSet = new Set(activeSubjects.map(s => s._id?.toString()).filter(Boolean));
-    const activeSubjectNameSet = new Set(activeSubjects.map(s => (s.name || "").trim().toLowerCase()).filter(Boolean));
-
-    const activeTopicIdSet = new Set();
-    const activeTopicNameSet = new Set();
-    activeSubjects.forEach(s => {
-      (s.topics || []).filter(t => t && t.isActive !== false).forEach(t => {
-        if (t._id) activeTopicIdSet.add(t._id.toString());
-        if (t.name) activeTopicNameSet.add(t.name.trim().toLowerCase());
-      });
-    });
-
-    // A. Tasks in this sublevel - if active syllabus has subjects, filter out deleted subjects/topics
-    const subTasks = allTasks.filter(t => {
-      const taskSubId = (t.subLevelId?._id || t.subLevelId)?.toString();
-      if (taskSubId !== subLevelIdStr) return false;
-
-      if (activeSubjects.length > 0) {
-        // Validate subject is not deleted
-        const sId = t.subjectId?.toString();
-        const sName = (t.subjectName || "").trim().toLowerCase();
-        const isSubjValid = (sId && activeSubjectIdSet.has(sId)) || (sName && activeSubjectNameSet.has(sName));
-        if (!isSubjValid) return false;
-
-        // Validate topic is not deleted
-        if (t.topicId || t.topicName) {
-          const topId = t.topicId?.toString();
-          const topName = (t.topicName || "").trim().toLowerCase();
-          const isTopicValid = (topId && activeTopicIdSet.has(topId)) || (topName && activeTopicNameSet.has(topName));
-          if (!isTopicValid) return false;
-        }
-      }
-      return true;
-    });
-
-    // B. Snapshots in this sublevel
+    // C. Snapshots in this sublevel
     const subSnapshots = snapshots.filter(s => 
       (s.subLevelId?._id || s.subLevelId)?.toString() === subLevelIdStr ||
       (s.levelId?._id || s.levelId)?.toString() === levelIdStr
     );
 
-    // C. Promotion info: "KISNE PROMOTE KIYA"
+    // D. Promotion info: "KISNE PROMOTE KIYA" (sanitized from any raw ObjectIds)
+    // Find the log where student transitioned OUT of this sublevel
     const exitPromotionLog = promotionLogs.find(l => 
-      l.meta?.prevSubLevelId?.toString() === subLevelIdStr ||
-      (l.action?.includes("promoted") && l.description?.includes(subLevelIdStr))
+      l.meta?.prevSubLevelId?.toString() === subLevelIdStr
     );
 
+    // Find the log where student transitioned INTO this sublevel
     const entryPromotionLog = promotionLogs.find(l => 
       l.meta?.newSubLevelId?.toString() === subLevelIdStr
     );
 
-    const exitSnapshot = subSnapshots.find(s => s.snapshotScope === "overall" && s.changedByName);
-    const entrySnapshot = subSnapshots.find(s => s.snapshotScope === "promotion" && s.changedByName);
+    const exitSnapshot = subSnapshots.find(s => s.snapshotScope === "overall" && s.changedByName && s.changedByName.trim());
+    const entrySnapshot = subSnapshots.find(s => s.snapshotScope === "promotion" && s.changedByName && s.changedByName.trim());
+
+    // Evaluators discovered from snapshots, tasks, or event logs
+    const snapEvaluator = subSnapshots.find(s => s.changedByName && s.changedByName.trim());
+    const taskEvaluator = subTasks.find(t => t.assignedByName && t.assignedByName.trim());
+    const anySubLevelLog = promotionLogs.find(l => 
+      (l.meta?.prevSubLevelId?.toString() === subLevelIdStr || l.meta?.newSubLevelId?.toString() === subLevelIdStr) &&
+      l.createdByName && l.createdByName.trim()
+    );
 
     let promoterName = "";
     let promoterRole = "";
@@ -1119,71 +1168,131 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
 
     if (item.isCurrent) {
       if (entryPromotionLog) {
-        promoterName = entryPromotionLog.createdByName || "";
+        promoterName = entryPromotionLog.createdByName?.trim() || "";
         promoterRole = entryPromotionLog.createdByRole || "";
         promotionDate = entryPromotionLog.createdAt;
-        promotionTitle = entryPromotionLog.title || `Promoted to ${item.subLevelId?.name || "current level"}`;
-        promotionNote = entryPromotionLog.description || "";
+        promotionTitle = sanitizeNote(entryPromotionLog.title) || `Promoted to ${item.subLevelId?.name || "current level"}`;
+        promotionNote = sanitizeNote(entryPromotionLog.description);
         promotionType = entryPromotionLog.meta?.isAuto ? "auto" : "manual";
-      } else if (entrySnapshot) {
-        promoterName = entrySnapshot.changedByName || "";
+      }
+
+      if (!promoterName && entrySnapshot) {
+        promoterName = entrySnapshot.changedByName;
         promoterRole = entrySnapshot.changedByRole || "";
-        promotionDate = entrySnapshot.changedAt;
-        promotionTitle = `Promoted to ${item.subLevelId?.name || "current level"}`;
-      } else if (index === 0) {
-        promoterName = "Academic Department";
-        promoterRole = "Initial Enrollment";
-        promotionDate = student.createdAt;
-        promotionTitle = "Starting Level";
-        promotionType = "initial";
-      } else {
+        promotionDate = promotionDate || entrySnapshot.changedAt;
+        promotionTitle = promotionTitle || `Promoted to ${item.subLevelId?.name || "current level"}`;
+      }
+
+      if (!promoterName && anySubLevelLog) {
+        promoterName = anySubLevelLog.createdByName;
+        promoterRole = anySubLevelLog.createdByRole || "";
+        promotionDate = promotionDate || anySubLevelLog.createdAt;
+        promotionTitle = promotionTitle || `Promoted to ${item.subLevelId?.name || "current level"}`;
+      }
+
+      if (!promoterName) {
+        // Check previous level's evaluator who promoted the student
         const prevItem = history[index - 1];
         const prevSubId = (prevItem?.subLevelId?._id || prevItem?.subLevelId)?.toString();
-        const prevExitLog = promotionLogs.find(l => l.meta?.prevSubLevelId?.toString() === prevSubId);
+        const prevExitLog = promotionLogs.find(l => 
+          (l.meta?.prevSubLevelId?.toString() === prevSubId || l.meta?.newSubLevelId?.toString() === subLevelIdStr) &&
+          l.createdByName && l.createdByName.trim()
+        );
+        const prevSnap = snapshots.find(s => 
+          ((s.subLevelId?._id || s.subLevelId)?.toString() === prevSubId || (s.subLevelId?._id || s.subLevelId)?.toString() === subLevelIdStr) &&
+          s.changedByName && s.changedByName.trim()
+        );
+        const prevTask = allTasks.find(t => 
+          ((t.subLevelId?._id || t.subLevelId)?.toString() === prevSubId || (t.subLevelId?._id || t.subLevelId)?.toString() === subLevelIdStr) &&
+          t.assignedByName && t.assignedByName.trim()
+        );
         if (prevExitLog) {
-          promoterName = prevExitLog.createdByName || "";
+          promoterName = prevExitLog.createdByName;
           promoterRole = prevExitLog.createdByRole || "";
-          promotionDate = prevExitLog.createdAt;
-          promotionTitle = `Promoted to ${item.subLevelId?.name || "level"}`;
-          promotionType = prevExitLog.meta?.isAuto ? "auto" : "manual";
+          promotionDate = promotionDate || prevExitLog.createdAt;
+          if (!promotionTitle) promotionTitle = `Promoted to ${item.subLevelId?.name || "level"}`;
+          if (!promotionNote) promotionNote = sanitizeNote(prevExitLog.description);
+          if (promotionType === "manual") promotionType = prevExitLog.meta?.isAuto ? "auto" : "manual";
+        } else if (prevSnap) {
+          promoterName = prevSnap.changedByName;
+          promoterRole = prevSnap.changedByRole || "";
+          promotionDate = promotionDate || prevSnap.changedAt;
+          if (!promotionTitle) promotionTitle = `Promoted to ${item.subLevelId?.name || "current level"}`;
+        } else if (prevTask) {
+          promoterName = prevTask.assignedByName;
+          promoterRole = prevTask.assignedByRole || "";
+          if (!promotionTitle) promotionTitle = `Promoted to ${item.subLevelId?.name || "current level"}`;
         }
       }
     } else {
       if (exitPromotionLog) {
-        promoterName = exitPromotionLog.createdByName || "";
+        promoterName = exitPromotionLog.createdByName?.trim() || "";
         promoterRole = exitPromotionLog.createdByRole || "";
         promotionDate = exitPromotionLog.createdAt;
-        promotionTitle = exitPromotionLog.title || "Promoted to Next Level";
-        promotionNote = exitPromotionLog.description || "";
+        promotionTitle = sanitizeNote(exitPromotionLog.title) || "Promoted to Next Level";
+        promotionNote = sanitizeNote(exitPromotionLog.description);
         promotionType = exitPromotionLog.meta?.isAuto ? "auto" : "manual";
-      } else if (exitSnapshot) {
-        promoterName = exitSnapshot.changedByName || "";
-        promoterRole = exitSnapshot.changedByRole || "";
-        promotionDate = exitSnapshot.changedAt;
-        promotionTitle = "Evaluated & Promoted";
-      } else if (item.promotedByName) {
-        promoterName = item.promotedByName;
-        promoterRole = item.promotedByRole || "Faculty Evaluator";
-        promotionDate = item.completedAt || item.promotedAt;
-      } else {
-        const evaluatedTask = subTasks.find(t => t.status === "completed" && t.assignedByName);
-        if (evaluatedTask) {
-          promoterName = evaluatedTask.assignedByName;
-          promoterRole = evaluatedTask.assignedByRole || "Faculty Evaluator";
-          promotionDate = item.completedAt || evaluatedTask.completedAt;
-          promotionTitle = "Completed & Promoted";
-        } else if (index === 0) {
-          promoterName = "Academic Department";
-          promoterRole = "Faculty Coordinator";
-          promotionDate = item.completedAt || student.createdAt;
-          promotionTitle = "Level Completed";
-        }
       }
+
+      if (!promoterName && exitSnapshot) {
+        promoterName = exitSnapshot.changedByName;
+        promoterRole = exitSnapshot.changedByRole || "";
+        promotionDate = promotionDate || exitSnapshot.changedAt;
+        if (!promotionTitle) promotionTitle = "Evaluated & Promoted";
+      }
+
+      if (!promoterName && item.promotedByName && item.promotedByName.trim()) {
+        promoterName = item.promotedByName;
+        promoterRole = item.promotedByRole || "";
+        promotionDate = promotionDate || item.completedAt || item.promotedAt;
+      }
+
+      if (!promoterName && snapEvaluator) {
+        promoterName = snapEvaluator.changedByName;
+        promoterRole = snapEvaluator.changedByRole || "";
+        promotionDate = promotionDate || snapEvaluator.changedAt;
+        if (!promotionTitle) promotionTitle = "Evaluated & Promoted";
+      }
+
+      if (!promoterName && taskEvaluator) {
+        promoterName = taskEvaluator.assignedByName;
+        promoterRole = taskEvaluator.assignedByRole || "";
+        promotionDate = promotionDate || item.completedAt || taskEvaluator.completedAt;
+        if (!promotionTitle) promotionTitle = "Completed & Promoted";
+      }
+
+      if (!promoterName && anySubLevelLog) {
+        promoterName = anySubLevelLog.createdByName;
+        promoterRole = anySubLevelLog.createdByRole || "";
+        promotionDate = promotionDate || anySubLevelLog.createdAt;
+        if (!promotionTitle) promotionTitle = sanitizeNote(anySubLevelLog.title) || "Evaluated & Promoted";
+      }
+    }
+
+    // Fallback: check any snapshot or task in student's history with an evaluator name
+    if (!promoterName) {
+      const anySnap = snapshots.find(s => s.changedByName && s.changedByName.trim());
+      if (anySnap) {
+        promoterName = anySnap.changedByName;
+        promoterRole = anySnap.changedByRole || "";
+        promotionDate = anySnap.changedAt;
+      }
+    }
+    if (!promoterName) {
+      const anyTask = allTasks.find(t => t.assignedByName && t.assignedByName.trim());
+      if (anyTask) {
+        promoterName = anyTask.assignedByName;
+        promoterRole = anyTask.assignedByRole || "";
+      }
+    }
+    if (!promoterName && deptFaculty) {
+      promoterName = deptFaculty.name;
+      promoterRole = deptFaculty.role || "Faculty";
     }
 
     if (!promoterName) {
       promoterName = item.status === "completed" ? "Faculty Evaluator" : "Academic Department";
-      promoterRole = item.status === "completed" ? "Faculty Evaluator" : "Academic Coordinator";
+      promoterRole = item.status === "completed" ? "Faculty" : "Coordinator";
       promotionDate = item.completedAt || item.startedAt || student.createdAt;
     }
 
@@ -1191,93 +1300,82 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
       const lower = promoterRole.toLowerCase();
       if (lower === "superadmin") promoterRole = "Super Admin";
       else if (lower === "admin") promoterRole = "Administrator";
-      else if (lower === "faculty") promoterRole = "Faculty Evaluator";
+      else if (lower === "faculty") promoterRole = "Faculty";
+      else if (lower === "hod") promoterRole = "Head of Department";
+      else if (lower === "coordinator" || lower === "cordinator") promoterRole = "Coordinator";
       else if (lower === "system") promoterRole = "System Automation";
     }
 
-    // D. Subject-wise tasks breakdown: ONLY for active subjects (deleted subjects will NEVER appear!)
-    let subjectStats = [];
-    if (activeSubjects.length > 0) {
-      subjectStats = activeSubjects.map(subj => {
-        const sName = (subj.name || "").trim();
-        const sId = subj._id?.toString();
-
-        const subjTasks = subTasks.filter(t =>
-          (sId && t.subjectId && t.subjectId.toString() === sId) ||
-          ((t.subjectName || "").trim().toLowerCase() === sName.toLowerCase())
-        );
-
-        const completed = subjTasks.filter(t => t.status === "completed").length;
-        const inProgress = subjTasks.filter(t => t.status === "inProgress").length;
-        const pending = subjTasks.filter(t => t.status !== "completed" && t.status !== "inProgress").length;
-        const marksTasks = subjTasks.filter(t => typeof t.marks === "number");
-        const avgMarks = marksTasks.length > 0
-          ? Number((marksTasks.reduce((acc, t) => acc + t.marks, 0) / marksTasks.length).toFixed(1))
-          : null;
-
-        // Topics: ONLY topics that are currently present in this subject of the active syllabus! (deleted topics removed)
-        const currentTopics = (subj.topics || []).filter(t => t && t.isActive !== false && t.name).map(t => t.name.trim());
-
-        return {
-          subjectId: subj._id,
+    // E. Subject-wise tasks breakdown: built from actual subTasks (never filtered out by wrong syllabus)
+    const subjectMap = new Map();
+    subTasks.forEach(task => {
+      const sName = (task.subjectName || "General").trim();
+      const sKey = sName.toLowerCase();
+      if (!subjectMap.has(sKey)) {
+        subjectMap.set(sKey, {
+          subjectId: task.subjectId || null,
           subjectName: sName,
-          totalTasks: subjTasks.length,
-          completedTasks: completed,
-          pendingTasks: pending,
-          inProgressTasks: inProgress,
-          completionPercentage: subjTasks.length > 0 ? Math.round((completed / subjTasks.length) * 100) : (item.status === "completed" ? 100 : 0),
-          averageMarks: avgMarks,
-          topics: currentTopics,
-          topicsCount: currentTopics.length
-        };
-      });
-    } else {
-      // Fallback: build from subTasks so active current tasks are preserved
-      const subjectMap = new Map();
-      subTasks.forEach(task => {
-        const sName = (task.subjectName || "General").trim();
-        if (!subjectMap.has(sName)) {
-          subjectMap.set(sName, {
-            subjectId: task.subjectId || null,
-            subjectName: sName,
-            totalTasks: 0,
-            completedTasks: 0,
-            pendingTasks: 0,
-            inProgressTasks: 0,
-            marksSum: 0,
-            marksCount: 0,
-            topicsSet: new Set()
-          });
-        }
-        const sStat = subjectMap.get(sName);
-        sStat.totalTasks++;
-        if (task.status === "completed") sStat.completedTasks++;
-        else if (task.status === "inProgress") sStat.inProgressTasks++;
-        else sStat.pendingTasks++;
+          totalTasks: 0,
+          completedTasks: 0,
+          pendingTasks: 0,
+          inProgressTasks: 0,
+          marksSum: 0,
+          marksCount: 0,
+          topicsSet: new Set()
+        });
+      }
+      const st = subjectMap.get(sKey);
+      st.totalTasks++;
+      if (task.status === "completed") st.completedTasks++;
+      else if (task.status === "inProgress") st.inProgressTasks++;
+      else st.pendingTasks++;
 
-        if (typeof task.marks === "number" && !isNaN(task.marks)) {
-          sStat.marksSum += task.marks;
-          sStat.marksCount++;
-        }
-        if (task.topicName && task.topicName.trim()) sStat.topicsSet.add(task.topicName.trim());
-      });
+      if (typeof task.marks === "number" && !isNaN(task.marks)) {
+        st.marksSum += task.marks;
+        st.marksCount++;
+      }
+      if (task.topicName && task.topicName.trim()) {
+        st.topicsSet.add(task.topicName.trim());
+      }
+    });
 
-      subjectStats = Array.from(subjectMap.values()).map(s => {
-        const topicsList = Array.from(s.topicsSet);
-        return {
-          subjectId: s.subjectId,
-          subjectName: s.subjectName,
-          totalTasks: s.totalTasks,
-          completedTasks: s.completedTasks,
-          pendingTasks: s.pendingTasks,
-          inProgressTasks: s.inProgressTasks,
-          completionPercentage: s.totalTasks > 0 ? Math.round((s.completedTasks / s.totalTasks) * 100) : (item.status === "completed" ? 100 : 0),
-          averageMarks: s.marksCount > 0 ? Number((s.marksSum / s.marksCount).toFixed(1)) : null,
-          topics: topicsList,
-          topicsCount: topicsList.length
-        };
-      });
-    }
+    // Merge syllabus topics and subjects
+    const syllabusSubjects = (activeSyllabus?.subjects || []).filter(s => s && s.isActive !== false);
+    syllabusSubjects.forEach(s => {
+      const sName = (s.name || "").trim();
+      const sKey = sName.toLowerCase();
+      const sylTopics = (s.topics || []).filter(t => t && t.isActive !== false && t.name).map(t => t.name.trim());
+      const matchedStat = subjectMap.get(sKey);
+      if (matchedStat) {
+        sylTopics.forEach(top => matchedStat.topicsSet.add(top));
+      } else if (subTasks.length === 0) {
+        // Only add syllabus subject if student has no tasks in this sublevel yet
+        subjectMap.set(sKey, {
+          subjectId: s._id || null,
+          subjectName: sName,
+          totalTasks: 0,
+          completedTasks: 0,
+          pendingTasks: 0,
+          inProgressTasks: 0,
+          marksSum: 0,
+          marksCount: 0,
+          topicsSet: new Set(sylTopics)
+        });
+      }
+    });
+
+    const subjectStats = Array.from(subjectMap.values()).map(st => ({
+      subjectId: st.subjectId,
+      subjectName: st.subjectName,
+      totalTasks: st.totalTasks,
+      completedTasks: st.completedTasks,
+      pendingTasks: st.pendingTasks,
+      inProgressTasks: st.inProgressTasks,
+      completionPercentage: st.totalTasks > 0 ? Math.round((st.completedTasks / st.totalTasks) * 100) : (item.status === "completed" ? 100 : 0),
+      averageMarks: st.marksCount > 0 ? Number((st.marksSum / st.marksCount).toFixed(1)) : null,
+      topics: Array.from(st.topicsSet),
+      topicsCount: st.topicsSet.size
+    }));
 
     const allTopicsStudied = Array.from(new Set(
       subjectStats.flatMap(s => s.topics)

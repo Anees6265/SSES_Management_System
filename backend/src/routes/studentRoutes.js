@@ -146,6 +146,7 @@ router.post("/:id/move-ready-for-placement", ...auth, studentController.moveToRe
 // Mark Dropped (with document upload)
 router.patch("/:id/mark-dropped", ...auth, studentController.markDropped);
 router.patch("/:id/mark-dummy", ...auth, studentController.markDummy);
+router.patch("/:id/dummy", ...auth, studentController.updateDummyDetails);
 
 // Syllabus Tasks
 router.get("/:id/tasks", ...auth, studentController.getStudentTasks);

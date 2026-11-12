@@ -644,6 +644,15 @@ export const authApi = createApi({
       invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student'],
     }),
 
+    updateDummyDetails: builder.mutation({
+      query: ({ id, reason, remark, fileData, fileType, removeDocument }) => ({
+        url: `/students/${id}/dummy`,
+        method: 'PATCH',
+        body: { reason, remark, fileData, fileType, removeDocument },
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student'],
+    }),
+
     getNewReadyStudents: builder.query({
       query: () => ({ url: '/students/Ready_Students', method: 'GET' }),
       providesTags: ['PlacementStudent'],
@@ -2240,6 +2249,7 @@ export const {
   useResolvePermissionMutation,
   useMarkStudentDroppedMutation,
   useMarkStudentDummyMutation,
+  useUpdateDummyDetailsMutation,
   useGetNewReadyStudentsQuery,
   useGetNewPlacedStudentsQuery,
   useGetNewSelectedStudentsQuery,

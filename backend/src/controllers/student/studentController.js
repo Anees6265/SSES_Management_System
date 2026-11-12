@@ -3040,13 +3040,29 @@ exports.markDropped = async (req, res) => {
 };
 
 // ✅ Get Student Dashboard Stats (department-aware)
+const uploadDummyApplicationFile = async (studentId, fileData, fileType) => {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  return cloudinary.uploader.upload(fileData, {
+    folder: "dummy_applications",
+    resource_type: fileType === "pdf" ? "raw" : "image",
+    public_id: `dummy_${studentId}_${Date.now()}`,
+  });
+};
+
 // ✅ Mark Student as Dummy (separate from dropped and leave permission)
 exports.markDummy = async (req, res) => {
   try {
     const { reason, remark, fileData, fileType } = req.body;
-    if (!reason) return res.status(400).json({ message: "reason is required" });
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ message: "reason is required" });
+    }
 
-    if (fileData && fileType && !["image", "pdf"].includes(fileType)) {
+    if (fileData && !["image", "pdf"].includes(fileType)) {
       return res.status(400).json({ message: "fileType must be image or pdf" });
     }
 
@@ -3056,19 +3072,11 @@ exports.markDummy = async (req, res) => {
 
     let applicationURL = "";
     let applicationType = "";
+    const trimmedReason = String(reason).trim();
+    const trimmedRemark = remark ? String(remark).trim() : "";
 
     if (fileData && fileType) {
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-      });
-
-      const uploadResponse = await cloudinary.uploader.upload(fileData, {
-        folder: "dummy_applications",
-        resource_type: fileType === "pdf" ? "raw" : "image",
-        public_id: `dummy_${req.params.id}_${Date.now()}`,
-      });
+      const uploadResponse = await uploadDummyApplicationFile(req.params.id, fileData, fileType);
 
       applicationURL = uploadResponse.secure_url;
       applicationType = fileType;
@@ -3077,7 +3085,7 @@ exports.markDummy = async (req, res) => {
         title: "Dummy Student Application",
         fileURL: uploadResponse.secure_url,
         fileType,
-        remark: remark || reason,
+        remark: trimmedRemark || trimmedReason,
         isExtra: false,
         uploadedBy: req.user?._id || null,
         uploadedByName: req.user?.name || "",
@@ -3086,8 +3094,8 @@ exports.markDummy = async (req, res) => {
     }
 
     student.dummyDetails = {
-      reason,
-      remark: remark || "",
+      reason: trimmedReason,
+      remark: trimmedRemark,
       applicationURL,
       applicationType,
       markedBy: req.user?._id || null,
@@ -3101,6 +3109,94 @@ exports.markDummy = async (req, res) => {
     return res.status(200).json({
       message: "Student marked as Dummy",
       data: { studentId: student._id, status: student.status, dummyDetails: student.dummyDetails },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ✅ Update Dummy Student Reason, Remark, or Application Document
+exports.updateDummyDetails = async (req, res) => {
+  try {
+    const { reason, remark, fileData, fileType, removeDocument } = req.body;
+    const trimmedReason = reason !== undefined ? String(reason).trim() : "";
+    if (!trimmedReason) {
+      return res.status(400).json({ message: "reason is required" });
+    }
+
+    if (fileData && !["image", "pdf"].includes(fileType)) {
+      return res.status(400).json({ message: "fileType must be image or pdf" });
+    }
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (!["Dummy", "Dropped"].includes(student.status)) {
+      return res.status(400).json({ message: "Only Dummy or Dropped student details can be edited here" });
+    }
+
+    const trimmedRemark = remark !== undefined ? String(remark).trim() : "";
+    const existingDetails = student.dummyDetails || {};
+    const appDocIndex = student.documents.findIndex(
+      (doc) => !doc.isExtra && (doc.title === "Dummy Student Application" || doc.title === "Drop Application")
+    );
+
+    let applicationURL =
+      existingDetails.applicationURL || (appDocIndex !== -1 ? student.documents[appDocIndex].fileURL : "");
+    let applicationType =
+      existingDetails.applicationType || (appDocIndex !== -1 ? student.documents[appDocIndex].fileType : "");
+
+    if (fileData && fileType) {
+      const uploadResponse = await uploadDummyApplicationFile(req.params.id, fileData, fileType);
+      applicationURL = uploadResponse.secure_url;
+      applicationType = fileType;
+
+      const updatedDocEntry = {
+        title: student.status === "Dropped" && appDocIndex !== -1 && student.documents[appDocIndex].title === "Drop Application"
+          ? "Drop Application"
+          : "Dummy Student Application",
+        fileURL: uploadResponse.secure_url,
+        fileType,
+        remark: trimmedRemark || trimmedReason,
+        isExtra: false,
+        uploadedBy: req.user?._id || null,
+        uploadedByName: req.user?.name || "",
+        uploadedAt: new Date(),
+      };
+
+      if (appDocIndex !== -1) {
+        Object.assign(student.documents[appDocIndex], updatedDocEntry);
+      } else {
+        student.documents.push(updatedDocEntry);
+      }
+    } else if (removeDocument) {
+      applicationURL = "";
+      applicationType = "";
+      student.documents = student.documents.filter(
+        (doc) => doc.isExtra || !["Dummy Student Application", "Drop Application"].includes(doc.title)
+      );
+    } else if (appDocIndex !== -1) {
+      student.documents[appDocIndex].remark = trimmedRemark || trimmedReason;
+    }
+
+    student.dummyDetails = {
+      reason: trimmedReason,
+      remark: trimmedRemark,
+      applicationURL,
+      applicationType,
+      markedBy: existingDetails.markedBy || req.user?._id || null,
+      markedByName: existingDetails.markedByName || req.user?.name || "",
+      markedAt: existingDetails.markedAt || new Date(),
+    };
+
+    await student.save();
+
+    return res.status(200).json({
+      message: "Dummy student details updated successfully",
+      data: {
+        studentId: student._id,
+        status: student.status,
+        dummyDetails: student.dummyDetails,
+      },
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

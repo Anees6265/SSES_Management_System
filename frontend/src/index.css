@@ -430,3 +430,32 @@ body.drawer-open .drawer-no-blur {
     print-color-adjust: exact !important;
   }
 }
+
+/* Native <dialog> light-dismiss & required field validation styles */
+.dummy-edit-dialog {
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  width: min(32rem, calc(100vw - 1.5rem));
+  max-width: calc(100vw - 1.5rem);
+  max-height: 90dvh;
+  overflow: visible;
+}
+
+.dummy-edit-dialog::backdrop {
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.dummy-required-field:user-invalid,
+.dummy-required-field.user-invalid-fallback {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.dummy-required-field:user-invalid:focus,
+.dummy-required-field.user-invalid-fallback:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}

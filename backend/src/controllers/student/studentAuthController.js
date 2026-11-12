@@ -238,6 +238,128 @@ exports.changeMyPassword = async (req, res) => {
   }
 };
 
+/**
+ * Resolve the single authoritative SyllabusVersion for a student and sublevel/level,
+ * strictly enforcing the student's sessionId for non-UIUX/non-FTP students.
+ */
+const resolveStudentSubLevelSyllabus = async ({
+  student,
+  subLevelId,
+  levelId = null,
+  sessionId = null,
+  course = "",
+  checkStudentPreferred = false,
+  checkTaskSv = false
+}) => {
+  const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+  const StudentTask = require("../../models/syllabus/StudentTask");
+  const { selectBestSyllabusForStudent } = require("../../services/taskAssignmentService");
+
+  const allowCrossSession = Boolean(student?.isUIUX || student?.isFTP || !sessionId);
+  const sessionStr = sessionId ? sessionId.toString() : null;
+  const subLevelStr = subLevelId ? subLevelId.toString() : null;
+  const studentCourse = (course || student?.course || "").trim();
+
+  const isSessionCompatible = (sv) =>
+    allowCrossSession || !sessionStr || !sv?.sessionId || sv.sessionId.toString() === sessionStr;
+
+  if (checkStudentPreferred && student?.syllabusVersionId) {
+    const sv = await SyllabusVersion.findById(student.syllabusVersionId).lean();
+    if (sv && (!subLevelStr || sv.subLevelId?.toString() === subLevelStr) && isSessionCompatible(sv)) {
+      return sv;
+    }
+  }
+
+  if (checkTaskSv && subLevelId) {
+    const taskWithSvs = await StudentTask.find({
+      studentId: student._id,
+      subLevelId,
+      syllabusVersionId: { $ne: null },
+      isActive: { $ne: false }
+    }).select("syllabusVersionId").lean();
+
+    const svIds = [...new Set(taskWithSvs.map((t) => t.syllabusVersionId?.toString()).filter(Boolean))];
+    if (svIds.length > 0) {
+      const candidateSvs = await SyllabusVersion.find({ _id: { $in: svIds } })
+        .sort({ createdAt: -1, versionNumber: -1 })
+        .lean();
+      const validSv = candidateSvs.find(
+        (sv) => sv.subLevelId?.toString() === subLevelStr && isSessionCompatible(sv)
+      );
+      if (validSv) return validSv;
+    }
+  }
+
+  const pickFromQuery = async (query) => {
+    const list = await SyllabusVersion.find(query)
+      .sort({ createdAt: -1, versionNumber: -1 })
+      .lean();
+    return selectBestSyllabusForStudent(list, studentCourse);
+  };
+
+  if (subLevelId) {
+    if (sessionId) {
+      let sv = await pickFromQuery({
+        subLevelId,
+        sessionId,
+        status: "active",
+        isActive: true
+      });
+      if (sv) return sv;
+
+      sv = await pickFromQuery({
+        subLevelId,
+        sessionId,
+        isActive: true
+      });
+      if (sv) return sv;
+    }
+
+    if (allowCrossSession) {
+      let sv = await pickFromQuery({
+        subLevelId,
+        status: "active",
+        isActive: true
+      });
+      if (sv) return sv;
+
+      sv = await pickFromQuery({
+        subLevelId,
+        isActive: true
+      });
+      if (sv) return sv;
+
+      sv = await pickFromQuery({ subLevelId });
+      if (sv) return sv;
+    }
+  }
+
+  if (levelId) {
+    if (sessionId) {
+      const sv = await pickFromQuery({
+        levelId,
+        sessionId,
+        status: "active",
+        isActive: true
+      });
+      if (sv) return sv;
+    }
+
+    if (allowCrossSession) {
+      let sv = await pickFromQuery({
+        levelId,
+        isActive: true
+      });
+      if (sv) return sv;
+
+      sv = await pickFromQuery({ levelId });
+      if (sv) return sv;
+    }
+  }
+
+  return null;
+};
+
 // ✅ Get My Tasks (Student)
 exports.getMyTasks = async (req, res) => {
   try {
@@ -272,153 +394,42 @@ exports.getMyTasks = async (req, res) => {
     const { status, subLevelId } = req.query;
     const targetSubLevelId = subLevelId || currentSubLevelId;
 
-    // 1. Resolve Current Syllabus Version strictly matching the student's current sublevel/level
-    let currentSyllabusId = student.syllabusVersionId;
+    const {
+      assignTasksToStudent,
+      filterStudentTasksBySession
+    } = require("../../services/taskAssignmentService");
 
-    // Check if student.syllabusVersionId matches the current sublevel
-    if (currentSyllabusId) {
-      const sv = await SyllabusVersion.findById(currentSyllabusId).lean();
-      if (!sv || (currentSubLevelId && sv.subLevelId?.toString() !== currentSubLevelId.toString())) {
-        currentSyllabusId = null;
-      }
-    }
+    // 1. Resolve Current Syllabus Version strictly matching the student's session & sublevel/level
+    const resolvedSv = await resolveStudentSubLevelSyllabus({
+      student,
+      subLevelId: currentSubLevelId,
+      levelId: currentLevelId,
+      sessionId: currentSessionId,
+      course: studentCourse,
+      checkStudentPreferred: true,
+      checkTaskSv: true
+    });
+    let currentSyllabusId = resolvedSv?._id || null;
 
-    // Check if student already has active tasks for current sublevel pointing to a syllabusVersion
-    if (!currentSyllabusId && currentSubLevelId) {
-      const taskWithSv = await StudentTask.findOne({
-        studentId: student._id,
-        subLevelId: currentSubLevelId,
-        syllabusVersionId: { $ne: null },
-        isActive: { $ne: false },
-      }).select("syllabusVersionId").lean();
-
-      if (taskWithSv?.syllabusVersionId) {
-        const svFromTask = await SyllabusVersion.findById(taskWithSv.syllabusVersionId).lean();
-        if (svFromTask && svFromTask.subLevelId?.toString() === currentSubLevelId.toString()) {
-          currentSyllabusId = svFromTask._id;
-        }
-      }
-    }
-
-    // Search active SyllabusVersion by subLevelId with course priority
-    if (!currentSyllabusId && currentSubLevelId) {
-      const courseConditions = studentCourse && studentCourse !== "All"
-        ? [{ courses: studentCourse }, { courses: "All" }, { course: studentCourse }, { course: "All" }, { courses: { $size: 0 } }, { courses: { $exists: false } }]
-        : [];
-
-      let sv = null;
-      if (currentSessionId && courseConditions.length > 0) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-          $or: courseConditions,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv && currentSessionId) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv && currentSessionId) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv && courseConditions.length > 0) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          status: "active",
-          isActive: true,
-          $or: courseConditions,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!sv) {
-        sv = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (sv) {
-        currentSyllabusId = sv._id;
-      }
-    }
-
-    // Fallback: search by levelId if sublevel has no syllabus
-    if (!currentSyllabusId && currentLevelId) {
-      let sv = null;
-      if (currentSessionId) {
-        sv = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-      if (!sv) {
-        sv = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-      if (!sv) {
-        sv = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-      if (sv) {
-        currentSyllabusId = sv._id;
-      }
-    }
-
-    // Self-heal: update student's syllabusVersionId to the current active syllabus
+    // Self-heal: update student's syllabusVersionId to the current active session syllabus
     if (currentSyllabusId && (!student.syllabusVersionId || student.syllabusVersionId.toString() !== currentSyllabusId.toString())) {
       Student.findByIdAndUpdate(student._id, { $set: { syllabusVersionId: currentSyllabusId } }).exec();
     }
 
-    // 2. Auto-assign tasks if student has 0 tasks assigned for current level/sublevel
+    // 2. Auto-assign tasks if student has 0 active tasks assigned for this session's syllabus
     if (currentSyllabusId) {
       const currentTasksCount = await StudentTask.countDocuments({
         studentId: student._id,
-        isActive: { $ne: false },
-        $or: [
-          ...(targetSubLevelId ? [{ subLevelId: targetSubLevelId }] : []),
-          { syllabusVersionId: currentSyllabusId }
-        ]
+        syllabusVersionId: currentSyllabusId,
+        isActive: { $ne: false }
       });
 
       if (currentTasksCount === 0) {
         try {
-          const { assignTasksToStudent } = require("../../services/taskAssignmentService");
+          const allowCrossSession = Boolean(student.isUIUX || student.isFTP);
           await assignTasksToStudent(student._id, currentSyllabusId, {
             student,
-            allowSessionMismatch: true,
-            allowLevelMismatch: true
+            ...(allowCrossSession ? { allowSessionMismatch: true, allowLevelMismatch: true } : {})
           });
         } catch (assignErr) {
           console.error("Auto-assign tasks in getMyTasks error:", assignErr.message);
@@ -472,31 +483,40 @@ exports.getMyTasks = async (req, res) => {
       filter.$or = currentOrConditions;
     }
 
-    let tasks = await StudentTask.find(filter).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+    let tasks = await filterStudentTasksBySession(
+      await StudentTask.find(filter).sort({ assignedAt: 1, createdAt: 1, _id: 1 }),
+      student
+    );
 
     // Fallback: If 0 tasks found and no specific subLevelId query was given, check by currentLevelId
     if (tasks.length === 0 && !subLevelId && currentLevelId) {
-      const levelTasks = await StudentTask.find({
-        studentId: student._id,
-        levelId: currentLevelId,
-        isActive: { $ne: false },
-        isArchived: { $ne: true },
-        ...(status ? { status } : {})
-      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+      const levelTasks = await filterStudentTasksBySession(
+        await StudentTask.find({
+          studentId: student._id,
+          levelId: currentLevelId,
+          isActive: { $ne: false },
+          isArchived: { $ne: true },
+          ...(status ? { status } : {})
+        }).sort({ assignedAt: 1, createdAt: 1, _id: 1 }),
+        student
+      );
 
       if (levelTasks.length > 0) {
         tasks = levelTasks;
       }
     }
 
-    // Final Fallback: If still 0 and student has any active tasks, return them
+    // Final Fallback: If still 0 and student has any active session-matched tasks, return them
     if (tasks.length === 0 && !subLevelId) {
-      const allActiveTasks = await StudentTask.find({
-        studentId: student._id,
-        isActive: { $ne: false },
-        isArchived: { $ne: true },
-        ...(status ? { status } : {})
-      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+      const allActiveTasks = await filterStudentTasksBySession(
+        await StudentTask.find({
+          studentId: student._id,
+          isActive: { $ne: false },
+          isArchived: { $ne: true },
+          ...(status ? { status } : {})
+        }).sort({ assignedAt: 1, createdAt: 1, _id: 1 }),
+        student
+      );
 
       if (allActiveTasks.length > 0) {
         tasks = allActiveTasks;
@@ -553,13 +573,16 @@ exports.getMyTasks = async (req, res) => {
 
       const currentTaskIds = new Set(tasks.map(t => t._id.toString()));
 
-      // Fetch all past tasks of this student that are not in current tasks
-      const allPastTasks = await StudentTask.find({
-        studentId: student._id,
-        _id: { $nin: Array.from(currentTaskIds) },
-        isActive: { $ne: false },
-        isArchived: { $ne: true }
-      }).sort({ assignedAt: 1, createdAt: 1, _id: 1 }).lean();
+      // Fetch all past session-matched tasks of this student that are not in current tasks
+      const allPastTasks = await filterStudentTasksBySession(
+        await StudentTask.find({
+          studentId: student._id,
+          _id: { $nin: Array.from(currentTaskIds) },
+          isActive: { $ne: false },
+          isArchived: { $ne: true }
+        }).sort({ assignedAt: 1, createdAt: 1, _id: 1 }).lean(),
+        student
+      );
 
       const accountedPastTaskIds = new Set();
 
@@ -734,129 +757,16 @@ exports.getMySyllabus = async (req, res) => {
     const currentSessionId = student.sessionId?._id || student.sessionId;
     const studentCourse = (student.course || "").trim();
 
-    // 1. Fetch Current Syllabus Version strictly matching the student's current sublevel/level
-    let currentSyllabus = null;
-
-    // A. Check student.syllabusVersionId ONLY if it matches the student's current sublevel
-    if (student.syllabusVersionId) {
-      const sv = await SyllabusVersion.findById(student.syllabusVersionId).lean();
-      if (sv && currentSubLevelId && sv.subLevelId?.toString() === currentSubLevelId.toString()) {
-        currentSyllabus = sv;
-      }
-    }
-
-    // B. Check if student has active tasks assigned for this current sublevel that specify a syllabusVersionId
-    if (!currentSyllabus && currentSubLevelId) {
-      const taskWithSv = await StudentTask.findOne({
-        studentId: student._id,
-        subLevelId: currentSubLevelId,
-        syllabusVersionId: { $ne: null },
-        isActive: { $ne: false },
-      }).select("syllabusVersionId").lean();
-
-      if (taskWithSv?.syllabusVersionId) {
-        const svFromTask = await SyllabusVersion.findById(taskWithSv.syllabusVersionId).lean();
-        if (svFromTask && svFromTask.subLevelId?.toString() === currentSubLevelId.toString()) {
-          currentSyllabus = svFromTask;
-        }
-      }
-    }
-
-    // C. Search SyllabusVersion for currentSubLevelId with course & session priority
-    if (!currentSyllabus && currentSubLevelId) {
-      const courseConditions = studentCourse && studentCourse !== "All"
-        ? [{ courses: studentCourse }, { courses: "All" }, { course: studentCourse }, { course: "All" }, { courses: { $size: 0 } }, { courses: { $exists: false } }]
-        : [];
-
-      // 1) Match subLevelId + sessionId + course + active status
-      if (currentSessionId && courseConditions.length > 0) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-          $or: courseConditions,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 2) Match subLevelId + sessionId + active status
-      if (!currentSyllabus && currentSessionId) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 3) Match subLevelId + sessionId + isActive true
-      if (!currentSyllabus && currentSessionId) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          sessionId: currentSessionId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 4) Match subLevelId + course + active status (across sessions)
-      if (!currentSyllabus && courseConditions.length > 0) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          status: "active",
-          isActive: true,
-          $or: courseConditions,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 5) Match subLevelId + status: "active" + isActive: true
-      if (!currentSyllabus) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 6) Match subLevelId + isActive: true
-      if (!currentSyllabus) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      // 7) Any latest syllabus for subLevelId
-      if (!currentSyllabus) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          subLevelId: currentSubLevelId,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-    }
-
-    // D. Fallback: Search by levelId if sublevel has no specific syllabus
-    if (!currentSyllabus && currentLevelId) {
-      if (currentSessionId) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-          sessionId: currentSessionId,
-          status: "active",
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!currentSyllabus) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-          isActive: true,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!currentSyllabus) {
-        currentSyllabus = await SyllabusVersion.findOne({
-          levelId: currentLevelId,
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-    }
+    // 1. Fetch Current Syllabus Version strictly matching the student's session & current sublevel/level
+    const currentSyllabus = await resolveStudentSubLevelSyllabus({
+      student,
+      subLevelId: currentSubLevelId,
+      levelId: currentLevelId,
+      sessionId: currentSessionId,
+      course: studentCourse,
+      checkStudentPreferred: true,
+      checkTaskSv: true
+    });
 
     // Self-heal: update student's syllabusVersionId to the verified current version
     if (currentSyllabus && (!student.syllabusVersionId || student.syllabusVersionId.toString() !== currentSyllabus._id.toString())) {
@@ -933,42 +843,14 @@ exports.getMySyllabus = async (req, res) => {
 
     const previousLevels = [];
     for (const prevSL of prevSubLevels) {
-      // Find syllabus version for this past sublevel
-      let pastSyllabus = await SyllabusVersion.findOne({
+      // Find syllabus version for this past sublevel scoped to student's session
+      const pastSyllabus = await resolveStudentSubLevelSyllabus({
+        student,
         subLevelId: prevSL._id,
-        ...(currentSessionId ? { sessionId: currentSessionId } : {}),
-        status: "active",
-        isActive: true
-      }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-
-      if (!pastSyllabus && currentSessionId) {
-        pastSyllabus = await SyllabusVersion.findOne({
-          subLevelId: prevSL._id,
-          sessionId: currentSessionId,
-          isActive: true
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!pastSyllabus) {
-        pastSyllabus = await SyllabusVersion.findOne({
-          subLevelId: prevSL._id,
-          status: "active",
-          isActive: true
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!pastSyllabus) {
-        pastSyllabus = await SyllabusVersion.findOne({
-          subLevelId: prevSL._id,
-          isActive: true
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
-
-      if (!pastSyllabus) {
-        pastSyllabus = await SyllabusVersion.findOne({
-          subLevelId: prevSL._id
-        }).sort({ createdAt: -1, versionNumber: -1 }).lean();
-      }
+        sessionId: currentSessionId,
+        course: studentCourse,
+        checkTaskSv: true
+      });
 
       const pastSubjects = formatOrderedSyllabusSubjects(pastSyllabus?.subjects);
 
@@ -1046,14 +928,19 @@ exports.getMySnapshots = async (req, res) => {
       StudentProgressSnapshot.countDocuments(filter),
     ]);
 
-    // Filter out snapshots for deleted syllabi
+    // Filter out snapshots for deleted or out-of-session syllabi
     const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
+    const studentInfo = await Student.findById(req.user.id).select("sessionId isUIUX isFTP").lean();
     const subLevelIds = [...new Set(snapshots.map(s => s.subLevelId?.toString()).filter(Boolean))];
-    const activeSyllabi = await SyllabusVersion.find({
+    const svFilter = {
       subLevelId: { $in: subLevelIds },
       isActive: true,
       status: { $ne: "archived" }
-    }).select("subLevelId subjects").lean();
+    };
+    if (studentInfo?.sessionId && !studentInfo.isUIUX && !studentInfo.isFTP) {
+      svFilter.sessionId = studentInfo.sessionId;
+    }
+    const activeSyllabi = await SyllabusVersion.find(svFilter).select("subLevelId subjects").lean();
     
     const activeSubLevelSet = new Set(
       activeSyllabi

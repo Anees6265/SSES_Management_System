@@ -1,6 +1,6 @@
 const Task            = require("../../models/syllabus/Task");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
-const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents, assignTasksToStudent } = require("../../services/taskAssignmentService");
+const { syncSyllabusTasksToStudents, syncTasksToSubLevelStudents, assignTasksToStudent, isUiUxLevel } = require("../../services/taskAssignmentService");
 
 const VALID_TYPES    = ["assignment", "project", "practice", "reading", "assessment", "other"];
 const VALID_PRIORITY = ["low", "medium", "high"];
@@ -142,9 +142,12 @@ exports.bulkUploadTasks = async (req, res) => {
     const inserted = await Task.insertMany(taskDocs, { ordered: true });
 
     if (assignTo === "specific" && Array.isArray(studentIds) && studentIds.length > 0) {
+      const uiUxTarget = await isUiUxLevel(sv.levelId);
       await Promise.allSettled(
         studentIds.map((stId) =>
-          assignTasksToStudent(stId, syllabusVersionId, { allowSessionMismatch: true })
+          assignTasksToStudent(stId, syllabusVersionId, {
+            ...(uiUxTarget ? { allowSessionMismatch: true } : {})
+          })
         )
       );
     } else {

@@ -135,37 +135,31 @@ router.delete("/:id", verifyToken, checkRole(writeRoles), async (req, res) => {
     sv.status = "archived";
     await sv.save();
 
-    // Permanently remove associated tasks and student tasks
+    // Permanently remove associated tasks and student tasks strictly scoped to this syllabus version
     await Task.deleteMany({ syllabusVersionId: sv._id });
 
-    // Remove associated student tasks from student side
-    await StudentTask.deleteMany({
-      $or: [
-        { syllabusVersionId: sv._id },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId }] : [])
-      ]
-    });
+    // Remove associated student tasks from student side strictly for this syllabus version
+    await StudentTask.deleteMany({ syllabusVersionId: sv._id });
 
-    // Clean up student progress snapshots for this deleted syllabus/sublevel
+    // Clean up student progress snapshots for this deleted syllabus (scoped to session)
     const StudentProgressSnapshot = require("../models/student/StudentProgressSnapshot");
-    await StudentProgressSnapshot.deleteMany({
-      $or: [
-        { syllabusVersionId: sv._id },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId }] : [])
-      ]
-    });
+    await StudentProgressSnapshot.deleteMany({ syllabusVersionId: sv._id });
 
-    // If no other active syllabus exists for this sublevel, clean up StudentLevelProgress
+    // If no other active syllabus exists for this sublevel + session, clean up session-scoped StudentLevelProgress
     if (sv.subLevelId) {
       const otherActive = await SyllabusVersion.findOne({
         subLevelId: sv.subLevelId,
+        ...(sv.sessionId ? { sessionId: sv.sessionId } : {}),
         _id: { $ne: sv._id },
         isActive: true,
         status: { $ne: "archived" }
       });
       if (!otherActive) {
         const StudentLevelProgress = require("../models/student/StudentLevelProgress");
-        await StudentLevelProgress.deleteMany({ subLevelId: sv.subLevelId });
+        await StudentLevelProgress.deleteMany({
+          subLevelId: sv.subLevelId,
+          ...(sv.sessionId ? { sessionId: sv.sessionId } : {})
+        });
       }
     }
 

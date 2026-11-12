@@ -1827,10 +1827,16 @@ export const authApi = createApi({
     }),
 
     getTasksByLevel: builder.query({
-      query: ({ subLevelId, syllabusVersionId }) => ({
-        url: `/tasks/level/${subLevelId}${syllabusVersionId ? `?syllabusVersionId=${syllabusVersionId}` : ''}`,
-        method: 'GET',
-      }),
+      query: ({ subLevelId, syllabusVersionId, sessionId }) => {
+        const params = new URLSearchParams();
+        if (syllabusVersionId) params.set('syllabusVersionId', syllabusVersionId);
+        if (sessionId) params.set('sessionId', sessionId);
+        const qs = params.toString();
+        return {
+          url: `/tasks/level/${subLevelId}${qs ? `?${qs}` : ''}`,
+          method: 'GET',
+        };
+      },
       providesTags: ['Task'],
     }),
 

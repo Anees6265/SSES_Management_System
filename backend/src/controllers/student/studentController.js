@@ -9,7 +9,12 @@ const SubLevel = require("../../models/department/SubLevel");
 const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const Task = require("../../models/syllabus/Task");
-const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
+const {
+  assignTasksToStudent,
+  assignTasksToMultipleStudents,
+  selectBestSyllabusForStudent,
+  filterStudentTasksBySession
+} = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel, demoteToPreviousSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
 const { calculateBatchYear, resolveCourseDuration } = require("../../utils/batchHelper");
@@ -113,23 +118,15 @@ exports.createStudent = async (req, res) => {
     });
     const targetSession = await Session.findById(targetSessionId);
 
-    // 4️⃣ Latest active SyllabusVersion for this session + level + sublevel (or fallback to any active for level+sublevel)
-    let latestSyllabus = await SyllabusVersion.findOne({
+    // 4️⃣ Latest active SyllabusVersion strictly for this session + level + sublevel (course-matched)
+    const sessionSyllabi = await SyllabusVersion.find({
       sessionId: targetSessionId,
       levelId: firstLevel._id,
       subLevelId: firstSubLevel._id,
       status: "active",
       isActive: true
     }).sort({ createdAt: -1 });
-
-    if (!latestSyllabus) {
-      latestSyllabus = await SyllabusVersion.findOne({
-        levelId: firstLevel._id,
-        subLevelId: firstSubLevel._id,
-        status: "active",
-        isActive: true
-      }).sort({ createdAt: -1 });
-    }
+    const latestSyllabus = selectBestSyllabusForStudent(sessionSyllabi, resolvedCourse);
 
     // Names resolution
     const firstName = String(req.body.firstName || "").trim();
@@ -693,14 +690,38 @@ exports.importStudentsExcel = async (req, res) => {
     if (validStudentsToInsert.length > 0) {
       insertedStudents = await Student.insertMany(validStudentsToInsert, { ordered: false });
 
-      // Auto-assign tasks if syllabus exists
-      if (typeof latestSyllabus !== "undefined" && latestSyllabus) {
-        try {
-          const studentIds = insertedStudents.map(s => s._id);
-          await assignTasksToMultipleStudents(studentIds, latestSyllabus._id);
-        } catch (taskErr) {
-          console.error("Bulk task assignment warning:", taskErr.message);
+      // Auto-assign session-matched syllabus tasks per student group (sessionId + levelId + subLevelId)
+      try {
+        const svCache = new Map();
+        const svStudentGroupMap = new Map();
+
+        for (const st of insertedStudents) {
+          const cacheKey = `${st.sessionId}_${st.currentLevelId}_${st.currentSubLevelId}`;
+          if (!svCache.has(cacheKey)) {
+            const versions = await SyllabusVersion.find({
+              sessionId: st.sessionId,
+              levelId: st.currentLevelId,
+              subLevelId: st.currentSubLevelId,
+              status: "active",
+              isActive: true
+            }).sort({ createdAt: -1 });
+            svCache.set(cacheKey, versions);
+          }
+          const matchedSv = selectBestSyllabusForStudent(svCache.get(cacheKey), st.course);
+          if (matchedSv) {
+            const svKey = matchedSv._id.toString();
+            if (!svStudentGroupMap.has(svKey)) {
+              svStudentGroupMap.set(svKey, []);
+            }
+            svStudentGroupMap.get(svKey).push(st._id);
+          }
         }
+
+        for (const [svId, studentIds] of svStudentGroupMap.entries()) {
+          await assignTasksToMultipleStudents(studentIds, svId);
+        }
+      } catch (taskErr) {
+        console.error("Bulk task assignment warning:", taskErr.message);
       }
     }
 
@@ -1989,10 +2010,11 @@ exports.getStudentTasks = async (req, res) => {
     if (status) filter.status = status;
 
 
-    const tasks = await StudentTask.find(filter)
+    const rawTasks = await StudentTask.find(filter)
       .populate("subLevelId", "name order")
       .populate("levelId", "name order")
       .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, student);
 
 
     // Group by subject
@@ -2031,12 +2053,13 @@ exports.getStudentTasksBySubLevel = async (req, res) => {
     if (!student) return res.status(404).json({ message: "Student not found" });
 
 
-    const tasks = await StudentTask.find({
+    const rawTasks = await StudentTask.find({
       studentId: id,
       subLevelId,
       isActive: { $ne: false },
       isArchived: { $ne: true }
     }).sort({ subjectName: 1, topicName: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, student);
 
 
     const stats = {
@@ -2608,19 +2631,35 @@ exports.assignExtraTask = async (req, res) => {
       } catch (_) {}
     }
 
-    // Auto-resolve syllabusVersionId for the target sublevel
-    let resolvedSyllabusVersionId = (targetSubLevelId && student.currentSubLevelId && targetSubLevelId.toString() === student.currentSubLevelId.toString())
-      ? (student.syllabusVersionId || null)
-      : null;
+    // Auto-resolve syllabusVersionId for the target sublevel strictly matching student's session
+    let resolvedSyllabusVersionId = null;
+    if (
+      targetSubLevelId &&
+      student.currentSubLevelId &&
+      targetSubLevelId.toString() === student.currentSubLevelId.toString() &&
+      student.syllabusVersionId
+    ) {
+      const currentSv = await SyllabusVersion.findById(student.syllabusVersionId).select("_id sessionId").lean();
+      if (
+        currentSv &&
+        (student.isUIUX || student.isFTP || !student.sessionId || !currentSv.sessionId || currentSv.sessionId.toString() === student.sessionId.toString())
+      ) {
+        resolvedSyllabusVersionId = currentSv._id;
+      }
+    }
 
     if (!resolvedSyllabusVersionId && targetSubLevelId) {
       try {
-        const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
-        const activeSv = await SyllabusVersion.findOne({
+        const svQuery = {
           subLevelId: targetSubLevelId,
           status: "active",
           isActive: true
-        }).select("_id");
+        };
+        if (student.sessionId && !student.isUIUX && !student.isFTP) {
+          svQuery.sessionId = student.sessionId;
+        }
+        const candidateSvs = await SyllabusVersion.find(svQuery).sort({ createdAt: -1 }).lean();
+        const activeSv = selectBestSyllabusForStudent(candidateSvs, student.course);
         if (activeSv) {
           resolvedSyllabusVersionId = activeSv._id;
           if (targetSubLevelId.toString() === student.currentSubLevelId?.toString()) {

@@ -93,6 +93,16 @@ const syncStudentReadiness = async (studentId) => {
         description: "Student has completed all levels and is ready for placement",
         meta: {},
       });
+
+      const { createNotification } = require("./notificationService");
+      createNotification({
+        title: "All Levels Completed — Ready for Placement",
+        message: "Congratulations! You have completed all academic levels and are now ready for placement.",
+        type: "success",
+        category: "level",
+        studentId,
+        recipientRole: "student",
+      }).catch((notifErr) => console.error("All-levels notification error:", notifErr));
     }
     // All other errors are silently swallowed - promotion is best-effort on auto-trigger
   } finally {
@@ -547,7 +557,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   let tasksAssigned = 0;
   try {
     const { assignTasksToStudent } = require("./taskAssignmentService");
-    const result = await assignTasksToStudent(student._id, newSyllabus._id);
+    const result = await assignTasksToStudent(student._id, newSyllabus._id, { skipTaskNotification: true });
     tasksAssigned = result.totalTasks;
   } catch (err) {
     // Task assignment failure must never block promotion
@@ -634,6 +644,35 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     createdByName: actorUser?.name || "",
     createdByRole: actorUser?.role || "",
   });
+
+  try {
+    const { createNotification } = require("./notificationService");
+    const taskNote = tasksAssigned > 0 ? ` ${tasksAssigned} task${tasksAssigned > 1 ? "s" : ""} assigned.` : "";
+    createNotification({
+      title: promoTitle,
+      message: promotedToNewLevel
+        ? `Congratulations! You have been promoted from ${fromLevelName} (${fromSubLevelName}) to ${toLevelName} (${toSubLevelName}).${taskNote}`
+        : `Congratulations! You have moved from SubLevel ${fromSubLevelName} to ${toSubLevelName}.${taskNote}`,
+      type: "success",
+      category: "level",
+      studentId: student._id,
+      recipientRole: "student",
+      actorId,
+      actorName: actorUser?.name || (isAuto ? "System" : "Faculty"),
+      actorRole: actorUser?.role || (isAuto ? "system" : "faculty"),
+      metadata: {
+        prevLevelName: fromLevelName,
+        prevSubLevelName: fromSubLevelName,
+        newLevelName: toLevelName,
+        newSubLevelName: toSubLevelName,
+        promotedToNewLevel,
+        tasksAssigned,
+        isAuto,
+      },
+    }).catch((notifErr) => console.error("Promotion notification error:", notifErr));
+  } catch (notifErr) {
+    console.error("Failed to trigger promotion notification:", notifErr);
+  }
 
   return {
     promotedToNewLevel,

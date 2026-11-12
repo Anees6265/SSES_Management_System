@@ -1724,7 +1724,7 @@ exports.updateStudent = async (req, res) => {
           type: "info",
           category: "level",
           studentId: student._id,
-          recipientRole: "all",
+          recipientRole: "student",
           actorId: req.user?.id || req.user?._id,
           actorName: req.user?.name || "",
           actorRole: req.user?.role || "",
@@ -2739,7 +2739,7 @@ exports.assignExtraTask = async (req, res) => {
         type: "info",
         category: "task",
         studentId: student._id,
-        recipientRole: "all",
+        recipientRole: "student",
         actorId: req.user?.id || req.user?._id,
         actorName: req.user?.name || "",
         actorRole: req.user?.role || "",
@@ -2980,6 +2980,29 @@ exports.resolvePermission = async (req, res) => {
       createdByName: req.user?.name || "",
       createdByRole: req.user?.role || "",
     });
+
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      const reasonSnippet = permission.reason ? ` ("${permission.reason}")` : "";
+      const remarkSnippet = remark ? ` Note: ${remark}` : "";
+      createNotification({
+        title: status === "approved" ? "Leave Request Approved" : "Leave Request Rejected",
+        message:
+          status === "approved"
+            ? `Your leave request${reasonSnippet} has been approved.${remarkSnippet}`
+            : `Your leave request${reasonSnippet} has been rejected.${remarkSnippet}`,
+        type: status === "approved" ? "success" : "warning",
+        category: "permission",
+        studentId: student._id,
+        recipientRole: "student",
+        actorId: req.user?.id || req.user?._id || null,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { permissionId: permission._id, status, fromDate: permission.fromDate, toDate: permission.toDate },
+      }).catch((err) => console.error("Leave notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger leave notification:", notifErr);
+    }
 
     return res.status(200).json({ message: `Permission ${status}`, data: permission });
   } catch (error) {

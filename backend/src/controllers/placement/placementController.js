@@ -184,6 +184,24 @@ exports.createInterview = async (req, res) => {
     placement.PlacementinterviewRecord.push(newInterview);
     await placement.save();
 
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      createNotification({
+        title: "Interview Scheduled",
+        message: `Interview scheduled with ${company.companyName}${jobProfile ? ` for ${jobProfile}` : ""}.`,
+        type: "info",
+        category: "placement",
+        studentId: req.params.id,
+        recipientRole: "student",
+        actorId: req.user?.id || req.user?._id || null,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { companyName: company.companyName, jobProfile, scheduleDate },
+      }).catch((err) => console.error("Interview notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger interview notification:", notifErr);
+    }
+
     res.status(201).json({
       success: true,
       message: "Interview scheduled successfully",
@@ -720,6 +738,24 @@ exports.confirmPlacement = async (req, res) => {
         { session }
       );
     });
+
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      createNotification({
+        title: "Placement Confirmed",
+        message: `Congratulations! Your placement at ${companyName}${jobProfile ? ` as ${jobProfile}` : ""} has been confirmed.`,
+        type: "success",
+        category: "placement",
+        studentId,
+        recipientRole: "student",
+        actorId: req.user?.id || req.user?._id || null,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { companyName, jobProfile, salary, location },
+      }).catch((err) => console.error("Placement notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger placement notification:", notifErr);
+    }
 
     res.json({
       success: true,

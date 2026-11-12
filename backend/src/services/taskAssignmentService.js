@@ -403,6 +403,7 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
 
   let createdCount = 0;
   let updatedCount = 0;
+  let firstCreatedTitle = "";
   const bulkOps = [];
   const baseAssignedMs = Date.now();
 
@@ -457,6 +458,9 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
         }
       }
     });
+    if (!firstCreatedTitle && entry.title) {
+      firstCreatedTitle = entry.title;
+    }
     createdCount += 1;
   }
 
@@ -508,6 +512,26 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   }
 
   await syncStudentLevelProgressStats(student._id);
+
+  if (!options.skipTaskNotification && createdCount > 0) {
+    try {
+      const { createNotification } = require("./notificationService");
+      createNotification({
+        title: createdCount === 1 ? "New Task Assigned" : "New Tasks Assigned",
+        message:
+          createdCount === 1 && firstCreatedTitle
+            ? `Task "${firstCreatedTitle}" has been added to your task board.`
+            : `${createdCount} new tasks have been added to your task board.`,
+        type: "info",
+        category: "task",
+        studentId: student._id,
+        recipientRole: "student",
+        metadata: { syllabusVersionId: syllabusVersion._id, createdCount },
+      }).catch((err) => console.error("Task assignment notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger task assignment notification:", notifErr);
+    }
+  }
 
   return {
     studentId: student._id,
@@ -576,6 +600,7 @@ const assignSelectedTasksToStudents = async ({ studentIds, taskIds, syllabusVers
 
       let createdCount = 0;
       let updatedCount = 0;
+      let firstCreatedTitle = "";
 
       for (const taskId of taskIds) {
         const entry = taskEntryMap.get(taskId.toString());
@@ -603,7 +628,33 @@ const assignSelectedTasksToStudents = async ({ studentIds, taskIds, syllabusVers
           taskId: entry.taskId,
           ...payload
         });
+        if (!firstCreatedTitle && entry.title) {
+          firstCreatedTitle = entry.title;
+        }
         createdCount += 1;
+      }
+
+      if (createdCount > 0) {
+        try {
+          const { createNotification } = require("./notificationService");
+          createNotification({
+            title: createdCount === 1 ? "New Task Assigned" : "New Tasks Assigned",
+            message:
+              createdCount === 1 && firstCreatedTitle
+                ? `Task "${firstCreatedTitle}" has been assigned to you.`
+                : `${createdCount} new tasks have been assigned to you.`,
+            type: "info",
+            category: "task",
+            studentId: student._id,
+            recipientRole: "student",
+            actorId: assignmentMeta.assignedBy,
+            actorName: assignmentMeta.assignedByName,
+            actorRole: assignmentMeta.assignedByRole,
+            metadata: { syllabusVersionId: syllabusVersion._id, createdCount },
+          }).catch((err) => console.error("Manual task notification error:", err));
+        } catch (notifErr) {
+          console.error("Failed to trigger manual task notification:", notifErr);
+        }
       }
 
       results.push({
@@ -989,7 +1040,7 @@ const updateStudentTaskStatus = async (studentId, taskId, payload) => {
       type: studentTask.status === "completed" ? "success" : "info",
       category: "task",
       studentId,
-      recipientRole: "all",
+      recipientRole: "staff",
       actorId,
       actorName,
       actorRole,
@@ -1365,7 +1416,24 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
   });
 
   if (bulkOps.length > 0) {
-    await StudentTask.bulkWrite(bulkOps, { ordered: false });
+    const bulkRes = await StudentTask.bulkWrite(bulkOps, { ordered: false });
+    const upsertedMap = bulkRes?.upsertedIds || {};
+    const newlyAssignedIndices = Object.keys(upsertedMap).map(Number).filter((idx) => !Number.isNaN(idx) && students[idx]);
+    if (newlyAssignedIndices.length > 0 && taskDoc.isActive !== false) {
+      const { createBulkNotifications } = require("./notificationService");
+      createBulkNotifications(
+        newlyAssignedIndices.map((idx) => ({
+          title: "New Task Assigned",
+          message: `Task "${taskDoc.title}" has been added to your task board.`,
+          type: "info",
+          category: "task",
+          studentId: students[idx]._id,
+          recipientRole: "student",
+          actorName: taskDoc.assignedByName || "Faculty",
+          metadata: { taskId: taskDoc._id, title: taskDoc.title },
+        }))
+      ).catch((err) => console.error("Bulk task notification error:", err));
+    }
   }
 
   // Update progress stats for affected students asynchronously

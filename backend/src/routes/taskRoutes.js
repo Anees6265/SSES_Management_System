@@ -840,7 +840,7 @@ router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), as
         type: "info",
         category: "task",
         studentId: student._id,
-        recipientRole: "all",
+        recipientRole: "student",
         actorId: req.user?._id || req.user?.id,
         actorName: req.user?.name || "Faculty",
         actorRole: req.user?.role || "faculty",

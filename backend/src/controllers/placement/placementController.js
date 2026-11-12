@@ -781,8 +781,28 @@ exports.getPlacedStudents = async (req, res) => {
     const filter = placementFilter(req, extraFilter);
 
     const placements = await StudentPlacement.find(filter)
-      .populate("studentId", "firstName lastName prkey course email studentMobile image subDepartmentId status")
-      .populate("placedInfo.companyRef", "companyName location companyLogo")
+      .populate({
+        path: "studentId",
+        select:
+          "firstName lastName prkey course year currentYear gender fatherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status",
+        populate: [
+          {
+            path: "subDepartmentId",
+            select: "name departmentId",
+            populate: { path: "departmentId", select: "name code logo" },
+          },
+          {
+            path: "currentLevelId",
+            select: "name order",
+          },
+        ],
+      })
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: { path: "departmentId", select: "name code logo" },
+      })
+      .populate("placedInfo.companyRef", "companyName location headOffice companyLogo")
       .lean();
 
     const studentIdSet = new Set();
@@ -790,16 +810,35 @@ exports.getPlacedStudents = async (req, res) => {
       .filter((p) => p.studentId)
       .map((p) => {
         studentIdSet.add(p.studentId._id.toString());
+        const resolvedSubDept =
+          (p.subDepartmentId && typeof p.subDepartmentId === "object" && p.subDepartmentId.name
+            ? p.subDepartmentId
+            : null) ||
+          (p.studentId?.subDepartmentId && typeof p.studentId.subDepartmentId === "object"
+            ? p.studentId.subDepartmentId
+            : null) ||
+          p.subDepartmentId ||
+          p.studentId?.subDepartmentId;
+
         return {
           _id: p.studentId?._id,
           firstName: p.studentId?.firstName,
           lastName: p.studentId?.lastName,
           prkey: p.studentId?.prkey,
           course: p.studentId?.course,
+          year: p.studentId?.year || p.studentId?.currentYear || "",
+          currentYear: p.studentId?.currentYear || p.studentId?.year || "",
+          currentLevelName: p.studentId?.currentLevelId?.name || "",
+          gender: p.studentId?.gender || "",
+          fatherName: p.studentId?.fatherName || "",
+          village: p.studentId?.village || "",
+          tehsil: p.studentId?.tehsil || "",
+          district: p.studentId?.district || "",
+          address: p.studentId?.address || "",
           email: p.studentId?.email,
           studentMobile: p.studentId?.studentMobile,
           image: p.studentId?.image,
-          subDepartmentId: p.subDepartmentId || p.studentId?.subDepartmentId,
+          subDepartmentId: resolvedSubDept,
           status: p.studentId?.status || "Placed",
           readinessStatus: p.readinessStatus || "Placed",
           placedInfo: p.placedInfo,
@@ -816,7 +855,15 @@ exports.getPlacedStudents = async (req, res) => {
       studentQuery.subDepartmentId = req.query.subDepartmentId;
     }
     const standalonePlaced = await Student.find(studentQuery)
-      .select("firstName lastName prkey course email studentMobile image subDepartmentId status")
+      .select(
+        "firstName lastName prkey course year currentYear gender fatherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status"
+      )
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: { path: "departmentId", select: "name code logo" },
+      })
+      .populate("currentLevelId", "name order")
       .lean();
 
     for (const st of standalonePlaced) {
@@ -827,6 +874,15 @@ exports.getPlacedStudents = async (req, res) => {
           lastName: st.lastName,
           prkey: st.prkey,
           course: st.course,
+          year: st.year || st.currentYear || "",
+          currentYear: st.currentYear || st.year || "",
+          currentLevelName: st.currentLevelId?.name || "",
+          gender: st.gender || "",
+          fatherName: st.fatherName || "",
+          village: st.village || "",
+          tehsil: st.tehsil || "",
+          district: st.district || "",
+          address: st.address || "",
           email: st.email,
           studentMobile: st.studentMobile,
           image: st.image,
@@ -990,6 +1046,9 @@ exports.updatePlacementPost = async (req, res) => {
     const placement = await StudentPlacement.findOne({ studentId });
     if (placement?.placedInfo) {
       placement.placedInfo.jobProfile = position;
+      if (headOffice) {
+        placement.placedInfo.location = headOffice;
+      }
       await placement.save();
     }
 

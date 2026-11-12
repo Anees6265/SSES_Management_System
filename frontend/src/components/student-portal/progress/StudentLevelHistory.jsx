@@ -16,6 +16,15 @@ import EmptyState from "../../shared/empty-state/EmptyState";
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const formatDateTime = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
+const getCleanName = (obj, fallback = "") => {
+    if (!obj) return fallback;
+    const val = typeof obj === "string" ? obj : obj.name;
+    if (!val || typeof val !== "string") return fallback;
+    // Guard against showing raw 24-character hex ObjectIds
+    if (/^[0-9a-fA-F]{24}$/.test(val.trim())) return fallback;
+    return val.trim() || fallback;
+};
+
 // ── Circular Progress ─────────────────────────────────────────────────────────
 const CircleProgress = ({ pct, size = 44, stroke = 3, color = "#F97316" }) => {
     // Correct SVG circle radius so stroke fits cleanly inside size without clipping
@@ -137,7 +146,7 @@ export default function StudentLevelHistory() {
                             <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 col-span-2 sm:col-span-1">
                                 <MdAccessTime size={13} className="text-blue-500 shrink-0" />
                                 <span className="text-xs font-bold text-blue-600 truncate">
-                                    Current: {currentLevel.levelId?.name} – {currentLevel.subLevelId?.name}
+                                    Current: {getCleanName(currentLevel.levelId, "Level")} – {getCleanName(currentLevel.subLevelId, "Sub Level")}
                                 </span>
                             </div>
                         )}
@@ -219,10 +228,10 @@ export default function StudentLevelHistory() {
                                                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                                                                         isCurrent ? "bg-orange-600 text-white" : "bg-slate-900 text-white"
                                                                     }`}>
-                                                                        {item.levelId?.name || "Level"}
+                                                                        {getCleanName(item.levelId, "Level")}
                                                                     </span>
                                                                     <h4 className="text-sm sm:text-base font-extrabold text-gray-900 tracking-tight">
-                                                                        {item.subLevelId?.name || "Sub Level"}
+                                                                        {getCleanName(item.subLevelId, "Sub Level")}
                                                                     </h4>
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-gray-400 mt-1 flex-wrap">
@@ -304,9 +313,13 @@ export default function StudentLevelHistory() {
                                                                     <span className="text-xs font-bold text-gray-900 truncate">
                                                                         {item.promotion?.promotedBy || (isCurrent ? "Academic Department" : "Faculty Evaluator")}
                                                                     </span>
-                                                                    <span className="text-[10px] font-semibold text-gray-500 bg-white border border-gray-200/60 px-1.5 py-0.2 rounded-md">
-                                                                        {item.promotion?.promotedByRole || (isCurrent ? "Coordinator" : "Faculty Evaluator")}
-                                                                    </span>
+                                                                    {item.promotion?.promotedByRole &&
+                                                                     item.promotion.promotedByRole.trim().toLowerCase() !== (item.promotion?.promotedBy || "").trim().toLowerCase() &&
+                                                                     item.promotion.promotedByRole.trim().toLowerCase() !== "faculty evaluator" && (
+                                                                        <span className="text-[10px] font-semibold text-gray-500 bg-white border border-gray-200/60 px-1.5 py-0.5 rounded-md">
+                                                                            {item.promotion.promotedByRole}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -325,7 +338,7 @@ export default function StudentLevelHistory() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {item.promotion?.note && (
+                                                    {item.promotion?.note && !/^[0-9a-fA-F]{24}$/.test(item.promotion.note.trim()) && (
                                                         <p className="text-xs text-gray-600 bg-amber-50/40 p-2 rounded-lg border border-amber-100/60 italic mt-2">
                                                             "{item.promotion.note}"
                                                         </p>
@@ -482,7 +495,7 @@ export default function StudentLevelHistory() {
                                             <CircleProgress pct={pct} size={34} stroke={3} color="#F97316" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-bold text-gray-800 truncate">
-                                                    {snap.levelName} – {snap.subLevelName}
+                                                    {getCleanName(snap.levelName, "Level")} – {getCleanName(snap.subLevelName, "Sub Level")}
                                                 </p>
                                                 <p className="text-[10px] text-gray-400 mt-0.5 truncate">
                                                     {snap.subjectName ? `${snap.subjectName} · ` : ""}{snap.completedTasks} {snap.completedTasks === 1 ? "task" : "tasks"} completed · {formatDate(snap.changedAt)}

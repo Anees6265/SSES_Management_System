@@ -3,7 +3,10 @@ const usercontroller = require("../controllers/user/userController");
 const passport = require("passport");
 const { googleAuthCallback } = require('../controllers/user/userController');
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
-const rateLimit = require("express-rate-limit");
+const {
+  createLoginRateLimiters,
+  createPasswordResetLimiter,
+} = require("../middlewares/rateLimiters");
 
 const router = express.Router();
 
@@ -13,27 +16,23 @@ const adminOnly = [verifyToken, checkRole(adminRoles)];
 const userManagementRoles = ["superadmin", "admin", "hod", "faculty", "placement_officer", "coordinator"];
 const userManagementOnly = [verifyToken, checkRole(userManagementRoles)];
 
-// Rate Limiter for Login (Anti-Brute Force: Max 10 attempts per 15 min per IP)
-const loginLimiter = rateLimit({
+// Campus-safe login limiters: keyed per-(IP + account email) & counts failed attempts only
+const loginLimiters = createLoginRateLimiters({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: "Too many login attempts from this IP. Please try again after 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
+  accountMax: 10,
+  ipFailedCeiling: 100,
 });
 
-// Rate Limiter for Password Reset Requests (Max 20 attempts per 15 min per IP)
-const forgotPasswordLimiter = rateLimit({
+// Rate Limiter for Password Reset Requests (keyed per-(IP + account email))
+const forgotPasswordLimiter = createPasswordResetLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { message: "Too many password reset requests. Please try again after 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
+  max: 15,
+  message: "Too many password reset requests for this account. Please try again after 15 minutes.",
 });
 
 // POST /api/users/signup - Handled with permission checks in usercontroller.createUser
 router.post("/signup", usercontroller.createUser);
-router.post("/login", loginLimiter, usercontroller.login);
+router.post("/login", ...loginLimiters, usercontroller.login);
 router.post("/logout", usercontroller.logout);
 router.patch('/update/:id', verifyToken, usercontroller.updateUserFields);
 

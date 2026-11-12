@@ -1,41 +1,38 @@
 const express = require("express");
 const router = express.Router();
-const rateLimit = require("express-rate-limit");
 const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
+const {
+  createLoginRateLimiters,
+  createAuthenticatedActionLimiter,
+} = require("../middlewares/rateLimiters");
 const studentAuthController = require("../controllers/student/studentAuthController");
 
 const adminAuth = [verifyToken, checkRole(["superadmin", "admin", "faculty", "hod", "placement_officer"])];
 const studentAuth = [verifyToken, checkRole(["student"])];
 
-// Rate Limiter for Login (Anti-Brute Force: Max 10 attempts per 15 min per IP)
-const studentLoginLimiter = rateLimit({
+// Campus-safe login limiters: keyed per-(IP + account email) & counts failed attempts only
+const studentLoginLimiters = createLoginRateLimiters({
+  windowMs: 15 * 60 * 1000,
+  accountMax: 10,
+  ipFailedCeiling: 100,
+});
+
+// Rate Limiter for Password Change (Max 10 attempts per 15 min per student)
+const studentPasswordLimiter = createAuthenticatedActionLimiter({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { message: "Too many login attempts from this IP. Please try again after 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
+  message: "Too many password change attempts. Please try again after 15 minutes.",
 });
 
-// Rate Limiter for Password Change (Max 5 attempts per 15 min)
-const studentPasswordLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { message: "Too many password change attempts. Please try again after 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate Limiter for Document / Image Uploads (Max 20 uploads per 10 min)
-const studentUploadLimiter = rateLimit({
+// Rate Limiter for Document / Image Uploads (Max 25 uploads per 10 min per student)
+const studentUploadLimiter = createAuthenticatedActionLimiter({
   windowMs: 10 * 60 * 1000,
-  max: 20,
-  message: { message: "Too many upload requests. Please wait a few minutes before trying again." },
-  standardHeaders: true,
-  legacyHeaders: false,
+  max: 25,
+  message: "Too many upload requests. Please wait a few minutes before trying again.",
 });
 
 // Public
-router.post("/login", studentLoginLimiter, studentAuthController.studentLogin);
+router.post("/login", ...studentLoginLimiters, studentAuthController.studentLogin);
 
 // Admin only — set password for a student
 router.patch("/:id/set-password", ...adminAuth, studentAuthController.setStudentPassword);

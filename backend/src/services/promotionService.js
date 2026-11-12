@@ -4,6 +4,7 @@ const Level = require("../models/department/Level");
 const SubLevel = require("../models/department/SubLevel");
 const StudentTask = require("../models/syllabus/StudentTask");
 const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
+const Task = require("../models/syllabus/Task");
 const Session = require("../models/Session");
 const StudentEventLog = require("../models/student/StudentEventLog");
 const StudentProgressSnapshot = require("../models/student/StudentProgressSnapshot");
@@ -32,6 +33,34 @@ const markPlacementReady = async (studentId, subDepartmentId) => {
   );
 
   return placement;
+};
+
+// Verify a SyllabusVersion actually has active academic content (not an empty placeholder doc)
+const syllabusHasContent = async (sv) => {
+  if (!sv || sv.isActive === false || sv.status !== "active") return false;
+  const activeSubjects = (sv.subjects || []).filter((sub) => sub && sub.isActive !== false);
+  if (activeSubjects.length === 0) return false;
+
+  const hasActiveTopics = activeSubjects.some(
+    (sub) => Array.isArray(sub.topics) && sub.topics.some((t) => t && t.isActive !== false)
+  );
+  if (hasActiveTopics) return true;
+
+  const hasActiveTask = await Task.exists({ syllabusVersionId: sv._id, isActive: true });
+  return Boolean(hasActiveTask);
+};
+
+// Pick an active, non-empty SyllabusVersion matching student's course (never falls back to an unrelated course)
+const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
+  const { matchesCourse, selectBestSyllabusForStudent } = require("./taskAssignmentService");
+  const courseMatched = (candidates || []).filter(
+    (sv) => !studentCourse || matchesCourse(studentCourse, sv.courses, sv.course)
+  );
+  const usable = [];
+  for (const sv of courseMatched) {
+    if (await syllabusHasContent(sv)) usable.push(sv);
+  }
+  return selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true });
 };
 
 // Called after every task status update.
@@ -188,30 +217,6 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   const currentSubLevel = await SubLevel.findById(student.currentSubLevelId);
   if (!currentSubLevel) throw toClientError("Current sub-level not found");
 
-  // Automatic "Ready for Drive" transition upon completing Level 2B
-  const currentSubName = (currentSubLevel.name || "").toUpperCase();
-  if (currentSubName.includes("2B")) {
-    await StudentPlacement.findOneAndUpdate(
-      { studentId },
-      {
-        $set: { readinessStatus: "Ready for Drive" },
-        $setOnInsert: { studentId, subDepartmentId: student.subDepartmentId }
-      },
-      { new: true, upsert: true }
-    );
-
-    await StudentEventLog.create({
-      studentId,
-      type: "promotion",
-      action: "auto_ready_for_drive",
-      title: "Moved to Ready for Drive",
-      description: "Student successfully completed Level 2B and was automatically moved to Ready for Drive stage",
-      createdBy: actorId,
-      createdByName: actorUser?.name || "System",
-      createdByRole: actorUser?.role || "system",
-    }).catch(() => {});
-  }
-
   let nextSubLevel = await SubLevel.findOne({
     levelId: student.currentLevelId,
     order: { $gt: currentSubLevel.order },
@@ -279,11 +284,13 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
 
   const targetLevelId = promotedToNewLevel ? nextLevel._id : student.currentLevelId;
 
-  // Step 3: Find active SyllabusVersion for new position (strictly scoped to student's session)
-  const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
-  if (!latestSession) throw toClientError("No active session found");
-  const targetSessionId = student.sessionId || latestSession._id;
-  const { selectBestSyllabusForStudent } = require("./taskAssignmentService");
+  // Step 3: Find active, non-empty SyllabusVersion for new position (strictly scoped to student's session & course)
+  let targetSessionId = student.sessionId;
+  if (!targetSessionId) {
+    const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
+    if (!latestSession) throw toClientError("No active session found");
+    targetSessionId = latestSession._id;
+  }
 
   const sessionSyllabi = await SyllabusVersion.find({
     sessionId: targetSessionId,
@@ -293,7 +300,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     isActive: true,
   }).sort({ createdAt: -1 });
 
-  let newSyllabus = selectBestSyllabusForStudent(sessionSyllabi, student.course);
+  let newSyllabus = await selectUsablePromotionSyllabus(sessionSyllabi, student.course);
 
   if (!newSyllabus && student.isUIUX) {
     const uiuxSyllabi = await SyllabusVersion.find({
@@ -302,10 +309,42 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       status: "active",
       isActive: true,
     }).sort({ createdAt: -1 });
-    newSyllabus = selectBestSyllabusForStudent(uiuxSyllabi, student.course);
+    newSyllabus = await selectUsablePromotionSyllabus(uiuxSyllabi, student.course);
   }
 
-  if (!newSyllabus) throw toClientError("No active syllabus found for the next sub-level");
+  if (!newSyllabus) {
+    const targetLabel = promotedToNewLevel
+      ? `${nextLevel?.name || "Next Level"} (${nextSubLevel?.name || ""})`
+      : `Sub-Level ${nextSubLevel?.name || ""}`;
+    throw toClientError(
+      `Promotion blocked: No active syllabus found for ${targetLabel}. Please add a syllabus before promoting.`,
+      400
+    );
+  }
+
+  // Automatic "Ready for Drive" transition upon completing Level 2B (only after verifying promotion target & syllabus)
+  const currentSubName = (currentSubLevel.name || "").toUpperCase();
+  if (currentSubName.includes("2B")) {
+    await StudentPlacement.findOneAndUpdate(
+      { studentId },
+      {
+        $set: { readinessStatus: "Ready for Drive" },
+        $setOnInsert: { studentId, subDepartmentId: student.subDepartmentId }
+      },
+      { new: true, upsert: true }
+    );
+
+    await StudentEventLog.create({
+      studentId,
+      type: "promotion",
+      action: "auto_ready_for_drive",
+      title: "Moved to Ready for Drive",
+      description: "Student successfully completed Level 2B and was automatically moved to Ready for Drive stage",
+      createdBy: actorId,
+      createdByName: actorUser?.name || "System",
+      createdByRole: actorUser?.role || "system",
+    }).catch(() => {});
+  }
 
   const prevLevelId = student.currentLevelId;
   const prevSubLevelId = student.currentSubLevelId;

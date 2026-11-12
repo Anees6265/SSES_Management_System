@@ -141,12 +141,14 @@ const isUiUxLevel = async (levelId) => {
 const isSessionExempt = (student, options = {}) =>
   Boolean(options.allowSessionMismatch || student?.isUIUX);
 
-const selectBestSyllabusForStudent = (versions, studentCourse) => {
+const selectBestSyllabusForStudent = (versions, studentCourse, options = {}) => {
+  const { strictCourseMatch = false } = options;
   if (!Array.isArray(versions) || versions.length === 0) return null;
   if (!studentCourse) return versions[0];
 
   const exactMatch = versions.find((v) => matchesCourse(studentCourse, v.courses, v.course));
-  return exactMatch || versions[0];
+  if (exactMatch) return exactMatch;
+  return strictCourseMatch ? null : versions[0];
 };
 
 const filterStudentTasksBySession = async (tasks, student) => {

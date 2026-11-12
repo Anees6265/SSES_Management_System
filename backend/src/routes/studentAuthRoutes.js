@@ -52,6 +52,7 @@ router.get("/me/syllabus", ...studentAuth, studentAuthController.getMySyllabus);
 router.get("/me/snapshots", ...studentAuth, studentAuthController.getMySnapshots);
 router.get("/me/event-log", ...studentAuth, studentAuthController.getMyEventLog);
 router.post("/me/permissions", ...studentAuth, studentUploadLimiter, studentAuthController.applyMyPermission);
+router.patch("/me/permissions/:permissionId", ...studentAuth, studentUploadLimiter, studentAuthController.updateMyPermission);
 router.get("/me/permissions", ...studentAuth, studentAuthController.getMyPermissions);
 router.post("/me/extra-documents", ...studentAuth, studentUploadLimiter, studentAuthController.uploadMyExtraDocument);
 router.get("/me/extra-documents", ...studentAuth, studentAuthController.getMyExtraDocuments);

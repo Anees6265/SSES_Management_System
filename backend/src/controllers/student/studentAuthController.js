@@ -975,6 +975,41 @@ exports.getMySnapshots = async (req, res) => {
   }
 };
 
+const uploadPermissionDocument = async (imageURL) => {
+  if (typeof imageURL !== "string") {
+    const err = new Error("Invalid document data format");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (imageURL.startsWith("data:")) {
+    if (!/^data:(image\/(png|jpeg|jpg|webp)|application\/pdf);base64,/.test(imageURL)) {
+      const err = new Error("Supporting document must be PNG, JPEG, WEBP, or PDF");
+      err.statusCode = 400;
+      throw err;
+    }
+    const base64Data = imageURL.split(",")[1] || "";
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 5 * 1024 * 1024) {
+      const err = new Error("Supporting document exceeds the 5 MB size limit");
+      err.statusCode = 400;
+      throw err;
+    }
+  } else if (!imageURL.startsWith("https://res.cloudinary.com/")) {
+    const err = new Error("Invalid document source URL");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  const uploadResponse = await cloudinary.uploader.upload(imageURL, { folder: "permission_applications" });
+  return uploadResponse.secure_url;
+};
+
 // ✅ Apply for Permission (Student self-service)
 exports.applyMyPermission = async (req, res) => {
   try {
@@ -984,43 +1019,25 @@ exports.applyMyPermission = async (req, res) => {
       ? assignedFacultyIds.filter(Boolean)
       : (assignedFacultyId ? [assignedFacultyId] : []);
 
-    if (!reason || !fromDate || !toDate || facultyList.length === 0)
+    if (!reason || !String(reason).trim() || !fromDate || !toDate || facultyList.length === 0)
       return res.status(400).json({ message: "reason, fromDate, toDate, and at least one assigned faculty member are required" });
+
+    if (new Date(toDate) < new Date(fromDate)) {
+      return res.status(400).json({ message: "To Date cannot be before From Date" });
+    }
 
     const student = await Student.findById(req.user.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
 
     let uploadedImageURL = "";
     if (imageURL) {
-      if (typeof imageURL !== "string") {
-        return res.status(400).json({ message: "Invalid document data format" });
-      }
-
-      if (imageURL.startsWith("data:")) {
-        if (!/^data:(image\/(png|jpeg|jpg|webp)|application\/pdf);base64,/.test(imageURL)) {
-          return res.status(400).json({ message: "Supporting document must be PNG, JPEG, WEBP, or PDF" });
-        }
-        const base64Data = imageURL.split(",")[1] || "";
-        const sizeInBytes = (base64Data.length * 3) / 4;
-        if (sizeInBytes > 5 * 1024 * 1024) {
-          return res.status(400).json({ message: "Supporting document exceeds the 5 MB size limit" });
-        }
-      } else if (!imageURL.startsWith("https://res.cloudinary.com/")) {
-        return res.status(400).json({ message: "Invalid document source URL" });
-      }
-
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-      });
-      const uploadResponse = await cloudinary.uploader.upload(imageURL, { folder: "permission_applications" });
-      uploadedImageURL = uploadResponse.secure_url;
+      uploadedImageURL = await uploadPermissionDocument(imageURL);
     }
 
+    const trimmedReason = String(reason).trim();
     student.permissions.push({
       imageURL: uploadedImageURL,
-      reason,
+      reason: trimmedReason,
       fromDate: new Date(fromDate),
       toDate: new Date(toDate),
       status: "pending",
@@ -1036,7 +1053,7 @@ exports.applyMyPermission = async (req, res) => {
       type: "permission",
       action: "leave_request_submitted",
       title: "Leave request submitted",
-      description: reason,
+      description: trimmedReason,
       meta: {
         permissionId: added._id,
         status: "pending",
@@ -1053,7 +1070,82 @@ exports.applyMyPermission = async (req, res) => {
 
     return res.status(201).json({ message: "Permission applied successfully", data: added });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "Server error", error: error.message });
+  }
+};
+
+// ✅ Update Pending Permission (Student self-service — locked once approved/rejected)
+exports.updateMyPermission = async (req, res) => {
+  try {
+    const { reason, fromDate, toDate, imageURL, removeDocument, assignedFacultyId, assignedFacultyIds } = req.body;
+
+    const facultyList = Array.isArray(assignedFacultyIds) && assignedFacultyIds.length > 0
+      ? assignedFacultyIds.filter(Boolean)
+      : (assignedFacultyId ? [assignedFacultyId] : []);
+
+    const trimmedReason = reason !== undefined ? String(reason).trim() : "";
+    if (!trimmedReason || !fromDate || !toDate || facultyList.length === 0) {
+      return res.status(400).json({
+        message: "reason, fromDate, toDate, and at least one assigned faculty member are required",
+      });
+    }
+
+    if (new Date(toDate) < new Date(fromDate)) {
+      return res.status(400).json({ message: "To Date cannot be before From Date" });
+    }
+
+    const student = await Student.findById(req.user.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const permission = student.permissions.id(req.params.permissionId);
+    if (!permission) return res.status(404).json({ message: "Leave request not found" });
+
+    if (permission.status !== "pending") {
+      return res.status(400).json({
+        message: `Cannot edit a leave request that is already ${permission.status}`,
+      });
+    }
+
+    if (removeDocument) {
+      permission.imageURL = "";
+    } else if (imageURL && imageURL !== permission.imageURL) {
+      permission.imageURL = await uploadPermissionDocument(imageURL);
+    }
+
+    permission.reason = trimmedReason;
+    permission.fromDate = new Date(fromDate);
+    permission.toDate = new Date(toDate);
+    permission.assignedFacultyId = facultyList[0] || null;
+    permission.assignedFacultyIds = facultyList;
+
+    await student.save();
+
+    await StudentEventLog.create({
+      studentId: student._id,
+      type: "permission",
+      action: "leave_request_updated",
+      title: "Leave request updated",
+      description: trimmedReason,
+      meta: {
+        permissionId: permission._id,
+        status: permission.status,
+        fromDate: permission.fromDate,
+        toDate: permission.toDate,
+        hasDocument: Boolean(permission.imageURL),
+        assignedFacultyId: permission.assignedFacultyId,
+        assignedFacultyIds: permission.assignedFacultyIds,
+      },
+      createdBy: null,
+      createdByName: `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+      createdByRole: "student",
+    });
+
+    return res.status(200).json({ message: "Leave request updated successfully", data: permission });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Server error",
+      error: error.message,
+    });
   }
 };
 

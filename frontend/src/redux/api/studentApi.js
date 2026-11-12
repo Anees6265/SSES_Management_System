@@ -96,6 +96,15 @@ export const studentApi = createApi({
       invalidatesTags: ["StudentProfile", "StudentEvents"],
     }),
 
+    updateMyPermission: builder.mutation({
+      query: ({ permissionId, ...data }) => ({
+        url: `/student-auth/me/permissions/${permissionId}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["StudentProfile", "StudentEvents"],
+    }),
+
     getMyPermissions: builder.query({
       query: () => ({ url: "/student-auth/me/permissions", method: "GET" }),
       providesTags: ["StudentProfile"],
@@ -141,6 +150,7 @@ export const {
   useGetMyStudentSnapshotsQuery,
   useGetMyStudentEventLogQuery,
   useApplyMyPermissionMutation,
+  useUpdateMyPermissionMutation,
   useGetMyPermissionsQuery,
   useGetFacultiesQuery,
   useUploadMyExtraDocumentMutation,

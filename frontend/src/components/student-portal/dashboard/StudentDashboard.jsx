@@ -721,14 +721,13 @@ export default function StudentDashboard() {
                     <div className="bg-white border border-gray-100 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden">
                         <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/60">
                             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Activity Log</h3>
-                            {activityItems.length > 4 && (
-                                <button
-                                    onClick={() => setActivityOpen(true)}
-                                    className="text-xs font-bold text-orange-600 hover:text-orange-700 cursor-pointer"
-                                >
-                                    All →
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setActivityOpen(true)}
+                                className="text-xs font-bold text-orange-600 hover:text-orange-700 cursor-pointer"
+                            >
+                                All →
+                            </button>
                         </div>
 
                         <div className="p-3 sm:p-4">
@@ -786,25 +785,34 @@ export default function StudentDashboard() {
                             </button>
                         </div>
                         <div className="overflow-y-auto flex-1 p-5 space-y-2.5">
-                            {activityItems.map((item, i) => (
-                                <div key={item._id || i} className="flex items-start gap-3 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.iconColor}`}>
-                                        {item.icon === "task"       && <MdTableChart size={14} />}
-                                        {item.icon === "promote"    && <MdArrowUpward size={14} />}
-                                        {item.icon === "document"   && <MdSchool size={14} />}
-                                        {item.icon === "permission" && <MdCalendarToday size={14} />}
-                                        {item.icon === "email"      && <MdEmail size={14} />}
-                                        {item.icon === "note"       && <MdAccessTime size={14} />}
+                            {activityItems.length === 0 ? (
+                                <EmptyState
+                                    icon={MdAccessTime}
+                                    title="No activity recorded"
+                                    subtitle="Updates from faculties will appear here."
+                                    compact
+                                />
+                            ) : (
+                                activityItems.map((item, i) => (
+                                    <div key={item._id || i} className="flex items-start gap-3 p-2.5 rounded-xl bg-gray-50/70 border border-gray-100">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.iconColor}`}>
+                                            {item.icon === "task"       && <MdTableChart size={14} />}
+                                            {item.icon === "promote"    && <MdArrowUpward size={14} />}
+                                            {item.icon === "document"   && <MdSchool size={14} />}
+                                            {item.icon === "permission" && <MdCalendarToday size={14} />}
+                                            {item.icon === "email"      && <MdEmail size={14} />}
+                                            {item.icon === "note"       && <MdAccessTime size={14} />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-gray-900">{item.title}</p>
+                                            {item.cleanDesc && (
+                                                <p className="text-xs text-gray-600 mt-0.5 break-words">{item.cleanDesc}</p>
+                                            )}
+                                            <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{formatDateTime(item.time)}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-900">{item.title}</p>
-                                        {item.cleanDesc && (
-                                            <p className="text-xs text-gray-600 mt-0.5 break-words">{item.cleanDesc}</p>
-                                        )}
-                                        <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{formatDateTime(item.time)}</p>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

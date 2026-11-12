@@ -6,11 +6,12 @@ import {
     X, UploadCloud, Trash2,
     Eye, Printer, ChevronRight,
     Check, RefreshCw, Star,
-    Users, ChevronDown, Search
+    Users, ChevronDown, Search, Pencil
 } from "lucide-react";
 import {
     useGetMyPermissionsQuery,
     useApplyMyPermissionMutation,
+    useUpdateMyPermissionMutation,
     useGetFacultiesQuery,
     useGetMyStudentProfileQuery
 } from "../../../redux/api/studentApi";
@@ -34,6 +35,12 @@ const formatDate = (d) => {
         month: "short",
         year: "numeric"
     });
+};
+
+const toDateInputValue = (d) => {
+    if (!d) return "";
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
 };
 
 const formatDateTime = (d) => {
@@ -279,7 +286,7 @@ const GatePassModal = ({ item, student, onClose }) => {
 };
 
 // ── Detailed Application Modal ────────────────────────────────────────────────
-const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
+const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass, onEdit }) => {
     const colCfg = STATUS_COLS.find(c => c.key === item.status) || STATUS_COLS[0];
     const StatusIcon = colCfg.icon;
     const days = calculateDays(item.fromDate, item.toDate);
@@ -497,18 +504,33 @@ const PermissionDetailModal = ({ item, student, onClose, onOpenGatePass }) => {
                 {/* Footer */}
                 <div className="flex items-center gap-2.5 px-4 sm:px-6 py-3.5 bg-gray-50 border-t border-gray-100">
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="flex-1 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+                        className="flex-1 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                         Close
                     </button>
+                    {item.status === "pending" && onEdit && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onClose();
+                                onEdit(item);
+                            }}
+                            className="flex-1 py-2 text-xs font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                            <Pencil size={13} />
+                            Edit Request
+                        </button>
+                    )}
                     {item.status === "approved" && (
                         <button
+                            type="button"
                             onClick={() => {
                                 onClose();
                                 onOpenGatePass(item);
                             }}
-                            className="flex-1 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                            className="flex-1 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                         >
                             <ShieldCheck size={14} />
                             Gate Pass
@@ -744,22 +766,29 @@ const FacultyMultiSelect = ({
     );
 };
 
-// ── Apply For Permission Modal ────────────────────────────────────────────────
-const ApplyModal = ({ onClose }) => {
+// ── Apply / Edit For Permission Modal ─────────────────────────────────────────
+const ApplyModal = ({ onClose, initialItem = null }) => {
+    const isEditMode = Boolean(initialItem?._id);
     const todayStr = new Date().toISOString().split("T")[0];
-    const [form, setForm] = useState({
-        reason: "",
-        fromDate: todayStr,
-        toDate: todayStr,
-        assignedFacultyIds: []
-    });
+    const [form, setForm] = useState(() => ({
+        reason: initialItem?.reason || "",
+        fromDate: toDateInputValue(initialItem?.fromDate) || todayStr,
+        toDate: toDateInputValue(initialItem?.toDate) || todayStr,
+        assignedFacultyIds: initialItem
+            ? getAssignedFaculties(initialItem).map((f) => f?._id || f).filter(Boolean).map(String)
+            : [],
+    }));
     const [file, setFile] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
+    const [removeExistingDoc, setRemoveExistingDoc] = useState(false);
     const [fileErr, setFileErr] = useState("");
 
-    const [applyPermission, { isLoading }] = useApplyMyPermissionMutation();
+    const [applyPermission, { isLoading: isApplying }] = useApplyMyPermissionMutation();
+    const [updatePermission, { isLoading: isUpdating }] = useUpdateMyPermissionMutation();
+    const isLoading = isApplying || isUpdating;
     const { data: facultiesRes, isLoading: facultiesLoading } = useGetFacultiesQuery();
 
+    const existingDocUrl = initialItem?.imageURL || "";
     const leaveDays = calculateDays(form.fromDate, form.toDate);
     const isDateInvalid = form.fromDate && form.toDate && new Date(form.toDate) < new Date(form.fromDate);
 
@@ -776,6 +805,7 @@ const ApplyModal = ({ onClose }) => {
         }
         setFileErr("");
         setFile(f);
+        setRemoveExistingDoc(false);
 
         if (f.type.startsWith("image/")) {
             const previewUrl = URL.createObjectURL(f);
@@ -800,6 +830,7 @@ const ApplyModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isLoading) return;
         if (!form.reason.trim()) {
             toast.error("Please provide a reason for leave.");
             return;
@@ -826,19 +857,27 @@ const ApplyModal = ({ onClose }) => {
             });
         }
 
+        const payload = {
+            reason: form.reason.trim(),
+            fromDate: form.fromDate,
+            toDate: form.toDate,
+            assignedFacultyIds: form.assignedFacultyIds,
+            assignedFacultyId: form.assignedFacultyIds[0] || "",
+            ...(imageURL ? { imageURL } : {}),
+            ...(isEditMode && removeExistingDoc && !imageURL ? { removeDocument: true } : {}),
+        };
+
         try {
-            await applyPermission({
-                reason: form.reason,
-                fromDate: form.fromDate,
-                toDate: form.toDate,
-                assignedFacultyIds: form.assignedFacultyIds,
-                assignedFacultyId: form.assignedFacultyIds[0] || "",
-                imageURL: imageURL || undefined
-            }).unwrap();
-            toast.success("Leave request submitted successfully!");
+            if (isEditMode) {
+                await updatePermission({ permissionId: initialItem._id, ...payload }).unwrap();
+                toast.success("Leave request updated successfully!");
+            } else {
+                await applyPermission(payload).unwrap();
+                toast.success("Leave request submitted successfully!");
+            }
             onClose();
         } catch (err) {
-            toast.error(err?.data?.message || "Failed to submit leave request.");
+            toast.error(err?.data?.message || (isEditMode ? "Failed to update leave request." : "Failed to submit leave request."));
         }
     };
 
@@ -853,16 +892,21 @@ const ApplyModal = ({ onClose }) => {
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/70 shrink-0">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center shadow-xs">
-                            <Plus size={18} />
+                            {isEditMode ? <Pencil size={16} /> : <Plus size={18} />}
                         </div>
                         <div>
-                            <h3 className="text-xs sm:text-sm font-bold text-gray-900">Apply for Leave Request</h3>
-                            <p className="text-[10px] sm:text-xs text-gray-400">Leave request for faculty endorsement</p>
+                            <h3 className="text-xs sm:text-sm font-bold text-gray-900">
+                                {isEditMode ? "Edit Pending Leave Request" : "Apply for Leave Request"}
+                            </h3>
+                            <p className="text-[10px] sm:text-xs text-gray-400">
+                                {isEditMode ? "Update details while request is still pending" : "Leave request for faculty endorsement"}
+                            </p>
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                         <X size={16} />
                     </button>
@@ -892,15 +936,17 @@ const ApplyModal = ({ onClose }) => {
 
                     {/* Reason Textarea */}
                     <div>
-                        <label className={labelClasses}>
+                        <label htmlFor="leave-reason-input" className={labelClasses}>
                             <span>Detailed Reason <span className="text-red-500">*</span></span>
                         </label>
                         <textarea
+                            id="leave-reason-input"
                             value={form.reason}
                             onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
                             rows={3}
+                            required
                             placeholder="Enter reason for leave request..."
-                            className={`${inputClasses} resize-none`}
+                            className={`${inputClasses} resize-y`}
                         />
                     </div>
 
@@ -911,18 +957,22 @@ const ApplyModal = ({ onClose }) => {
                         </label>
                         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                             <div>
-                                <span className="text-[10px] text-gray-400 block font-semibold mb-0.5">FROM DATE</span>
+                                <label htmlFor="leave-from-date" className="text-[10px] text-gray-400 block font-semibold mb-0.5">FROM DATE</label>
                                 <input
+                                    id="leave-from-date"
                                     type="date"
+                                    required
                                     value={form.fromDate}
                                     onChange={e => setForm(p => ({ ...p, fromDate: e.target.value }))}
                                     className={inputClasses}
                                 />
                             </div>
                             <div>
-                                <span className="text-[10px] text-gray-400 block font-semibold mb-0.5">TO DATE</span>
+                                <label htmlFor="leave-to-date" className="text-[10px] text-gray-400 block font-semibold mb-0.5">TO DATE</label>
                                 <input
+                                    id="leave-to-date"
                                     type="date"
+                                    required
                                     value={form.toDate}
                                     min={form.fromDate}
                                     onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))}
@@ -975,12 +1025,62 @@ const ApplyModal = ({ onClose }) => {
                         <label className={labelClasses}>
                             <span>Supporting Document <span className="text-gray-400 font-normal">(Optional)</span></span>
                         </label>
+
+                        {isEditMode && existingDocUrl && !file && !removeExistingDoc && (
+                            <div className="mb-2 p-2.5 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {!existingDocUrl.toLowerCase().endsWith(".pdf") ? (
+                                        <img
+                                            src={existingDocUrl}
+                                            alt="Existing supporting document"
+                                            className="w-8 h-8 rounded-lg object-cover border border-gray-200 bg-white shrink-0"
+                                        />
+                                    ) : (
+                                        <FileText size={18} className="text-orange-500 shrink-0" />
+                                    )}
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-gray-800 truncate">Current Attachment</p>
+                                        <p className="text-[10px] text-gray-400">Saved on this request</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <a
+                                        href={existingDocUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="px-2 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-100 transition"
+                                    >
+                                        View
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRemoveExistingDoc(true)}
+                                        className="px-2 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {isEditMode && existingDocUrl && !file && removeExistingDoc && (
+                            <div className="mb-2 px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 flex items-center justify-between gap-2 text-[11px]">
+                                <span className="font-semibold text-amber-800">Existing document will be removed on save.</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setRemoveExistingDoc(false)}
+                                    className="font-bold text-amber-900 underline hover:no-underline cursor-pointer shrink-0"
+                                >
+                                    Undo
+                                </button>
+                            </div>
+                        )}
                         
                         {!file ? (
                             <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl sm:rounded-2xl p-3.5 cursor-pointer hover:border-orange-400 hover:bg-orange-50/20 transition-all bg-gray-50/60">
                                 <UploadCloud size={20} className="text-gray-400 mb-1" />
                                 <span className="text-xs font-bold text-gray-700">
-                                    Upload Document or Photo
+                                    {isEditMode && existingDocUrl ? "Replace Document or Photo" : "Upload Document or Photo"}
                                 </span>
                                 <span className="text-[10px] text-gray-400 mt-0.5">
                                     PNG, JPG, PDF up to 5 MB
@@ -1046,12 +1146,12 @@ const ApplyModal = ({ onClose }) => {
                         {isLoading ? (
                             <>
                                 <RefreshCw size={13} className="animate-spin" />
-                                <span>Submitting...</span>
+                                <span>{isEditMode ? "Saving..." : "Submitting..."}</span>
                             </>
                         ) : (
                             <>
                                 <CheckCircle2 size={14} />
-                                <span>Submit Request</span>
+                                <span>{isEditMode ? "Save Changes" : "Submit Request"}</span>
                             </>
                         )}
                     </button>
@@ -1062,7 +1162,7 @@ const ApplyModal = ({ onClose }) => {
 };
 
 // ── Permission Card (Kanban & Mobile List) ────────────────────────────────────
-const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
+const PermissionCard = ({ item, onOpenDetails, onOpenGatePass, onEdit }) => {
     const colCfg = STATUS_COLS.find(c => c.key === item.status) || STATUS_COLS[0];
     const StatusIcon = colCfg.icon;
     const days = calculateDays(item.fromDate, item.toDate);
@@ -1128,6 +1228,16 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
                     {getRelativeTime(item.uploadDate)}
                 </span>
                 <div className="flex items-center gap-1.5">
+                    {item.status === "pending" && onEdit && (
+                        <button
+                            type="button"
+                            onClick={() => onEdit(item)}
+                            className="px-2 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 text-[11px] font-bold transition-colors flex items-center gap-1 border border-orange-200 cursor-pointer"
+                        >
+                            <Pencil size={11} />
+                            Edit
+                        </button>
+                    )}
                     {item.status === "approved" && (
                         <button
                             onClick={() => onOpenGatePass(item)}
@@ -1139,7 +1249,7 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
                     )}
                     <button
                         onClick={() => onOpenDetails(item)}
-                        className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-600 text-gray-600 text-[11px] font-bold transition-colors flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-600 text-gray-600 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
                     >
                         <Eye size={11} />
                         Details
@@ -1151,7 +1261,7 @@ const PermissionCard = ({ item, onOpenDetails, onOpenGatePass }) => {
 };
 
 // ── Permission Row (List View on Desktop) ─────────────────────────────────────
-const PermissionRow = ({ item, onOpenDetails, onOpenGatePass }) => {
+const PermissionRow = ({ item, onOpenDetails, onOpenGatePass, onEdit }) => {
     const colCfg = STATUS_COLS.find(c => c.key === item.status) || STATUS_COLS[0];
     const StatusIcon = colCfg.icon;
     const days = calculateDays(item.fromDate, item.toDate);
@@ -1209,6 +1319,16 @@ const PermissionRow = ({ item, onOpenDetails, onOpenGatePass }) => {
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+                {item.status === "pending" && onEdit && (
+                    <button
+                        type="button"
+                        onClick={() => onEdit(item)}
+                        className="px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold transition-all flex items-center gap-1 border border-orange-200 cursor-pointer"
+                    >
+                        <Pencil size={12} />
+                        <span>Edit</span>
+                    </button>
+                )}
                 {item.status === "approved" && (
                     <button
                         onClick={() => onOpenGatePass(item)}
@@ -1220,7 +1340,7 @@ const PermissionRow = ({ item, onOpenDetails, onOpenGatePass }) => {
                 )}
                 <button
                     onClick={() => onOpenDetails(item)}
-                    className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-600 text-gray-700 text-xs font-bold transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-orange-50 hover:text-orange-600 text-gray-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 >
                     <Eye size={13} />
                     <span>Details</span>
@@ -1233,6 +1353,7 @@ const PermissionRow = ({ item, onOpenDetails, onOpenGatePass }) => {
 // ── Main Page Component ───────────────────────────────────────────────────────
 export default function StudentPermissions() {
     const [applyOpen, setApplyOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
     const [selectedDetail, setSelectedDetail] = useState(null);
     const [selectedGatePass, setSelectedGatePass] = useState(null);
     const [mobileTab, setMobileTab] = usePersistentState("student_permissions_mobile_tab", "all");
@@ -1319,7 +1440,16 @@ export default function StudentPermissions() {
         <div className="space-y-4 sm:space-y-5">
 
             {/* Modals */}
-            {applyOpen && <ApplyModal onClose={() => setApplyOpen(false)} />}
+            {(applyOpen || editingItem) && (
+                <ApplyModal
+                    key={editingItem?._id || "new"}
+                    initialItem={editingItem}
+                    onClose={() => {
+                        setApplyOpen(false);
+                        setEditingItem(null);
+                    }}
+                />
+            )}
             
             {selectedDetail && (
                 <PermissionDetailModal
@@ -1327,6 +1457,7 @@ export default function StudentPermissions() {
                     student={studentInfo}
                     onClose={() => setSelectedDetail(null)}
                     onOpenGatePass={(item) => setSelectedGatePass(item)}
+                    onEdit={(it) => setEditingItem(it)}
                 />
             )}
 
@@ -1487,6 +1618,7 @@ export default function StudentPermissions() {
                                             item={item}
                                             onOpenDetails={(it) => setSelectedDetail(it)}
                                             onOpenGatePass={(it) => setSelectedGatePass(it)}
+                                            onEdit={(it) => setEditingItem(it)}
                                         />
                                     ))}
                                 </div>
@@ -1512,6 +1644,7 @@ export default function StudentPermissions() {
                                     item={item}
                                     onOpenDetails={(it) => setSelectedDetail(it)}
                                     onOpenGatePass={(it) => setSelectedGatePass(it)}
+                                    onEdit={(it) => setEditingItem(it)}
                                 />
                             ))
                         )}
@@ -1629,6 +1762,7 @@ export default function StudentPermissions() {
                                 item={item}
                                 onOpenDetails={(it) => setSelectedDetail(it)}
                                 onOpenGatePass={(it) => setSelectedGatePass(it)}
+                                onEdit={(it) => setEditingItem(it)}
                             />
                         ))}
                     </div>
@@ -1673,6 +1807,7 @@ export default function StudentPermissions() {
                                                     item={item}
                                                     onOpenDetails={(it) => setSelectedDetail(it)}
                                                     onOpenGatePass={(it) => setSelectedGatePass(it)}
+                                                    onEdit={(it) => setEditingItem(it)}
                                                 />
                                             ))
                                         )}

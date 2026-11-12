@@ -3,13 +3,16 @@ import { createPortal } from "react-dom";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, TrendingUp, User,
-  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar, Building
+  LogOut, Menu, X, ShieldCheck, FolderOpen, Award, FileText, Users, BookOpen, Calendar, Building,
+  Sun, Moon
 } from "lucide-react";
 import { toast } from "react-toastify";
 import logo from "../../../assets/images/logo.png";
+import logoSsism from "../../../assets/images/logo-ssism.png";
 import SecurityHelmet from "../../shared/SecurityHelmet";
 import NotificationBell from "../../shared/notifications/NotificationBell";
 import { useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
+import { useStudentTheme, resetStudentPortalTheme } from "../../../utils/studentTheme";
 
 const navItems = [
   { to: "/student-portal/dashboard",     icon: LayoutDashboard, label: "Dashboard" },
@@ -92,6 +95,14 @@ export default function StudentPortalLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const { isDark, toggleTheme } = useStudentTheme();
+
+  // Ensure student-portal dark mode cleans up when leaving Student Portal (e.g., logout to /login or staff portal)
+  useEffect(() => {
+    return () => {
+      resetStudentPortalTheme();
+    };
+  }, []);
 
   // Auto-close mobile sidebar whenever route changes
   useEffect(() => {
@@ -118,13 +129,45 @@ export default function StudentPortalLayout() {
     navigate("/login");
   };
 
+  const renderBrandLogo = (compact = false) =>
+    isDark ? (
+      <div className={`flex items-center ${compact ? "gap-2" : "gap-2.5"} min-w-0`}>
+        <span
+          className={`${
+            compact ? "w-7 h-7 sm:w-8 sm:h-8" : "w-10 h-10 sm:w-11 sm:h-11"
+          } rounded-full overflow-hidden shrink-0 inline-flex items-center justify-center shadow-xs`}
+        >
+          <img
+            src={logoSsism}
+            alt="SSISM Emblem"
+            className="w-full h-full object-cover scale-[1.18]"
+          />
+        </span>
+        <div
+          className={`leading-[1.08] font-black tracking-tight text-slate-100 uppercase select-none ${
+            compact ? "text-[8px] sm:text-[9px]" : "text-[11px] sm:text-xs"
+          }`}
+        >
+          <div>Sant Singaji</div>
+          <div>Educational</div>
+          <div>Society</div>
+        </div>
+      </div>
+    ) : (
+      <img
+        src={logo}
+        alt="SSISM College Logo"
+        className={compact ? "h-7 sm:h-8 w-auto object-contain" : "h-12 sm:h-14 w-auto object-contain"}
+      />
+    );
+
   const SidebarContent = ({ onClose }) => (
     <div className="flex flex-col h-full">
 
       {/* Logo & College Name (Matching Faculty / HOD Sidebar) */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3 min-w-0">
-          <img src={logo} alt="SSISM College Logo" className="h-12 sm:h-14 w-auto object-contain" />
+          {renderBrandLogo(false)}
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-100 cursor-pointer">
@@ -272,11 +315,29 @@ export default function StudentPortalLayout() {
 
           {/* Mobile logo (College Logo matching Faculty/HOD) */}
           <div className="flex items-center gap-2 md:hidden">
-            <img src={logo} alt="SSISM Logo" className="h-7 sm:h-8 w-auto object-contain" />
+            {renderBrandLogo(true)}
           </div>
 
-          {/* Right side — notifications & student profile */}
+          {/* Right side — theme toggle, notifications & student profile */}
           <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-pressed={isDark}
+              aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:text-orange-500 hover:border-orange-300 transition bg-white cursor-pointer shadow-2xs active:scale-95"
+            >
+              {isDark ? (
+                <Sun size={17} className="text-amber-400" aria-hidden="true" />
+              ) : (
+                <Moon size={17} aria-hidden="true" />
+              )}
+              <span className="sr-only">
+                {isDark ? "Switch to light theme" : "Switch to dark theme"}
+              </span>
+            </button>
+
             <NotificationBell title="My Notifications" subtitle="Live academic & task updates" />
 
             {/* Student Profile Avatar Button (Name removed as requested) */}

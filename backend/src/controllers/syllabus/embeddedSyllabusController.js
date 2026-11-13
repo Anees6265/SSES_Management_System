@@ -158,9 +158,9 @@ exports.createSyllabusVersion = async (req, res) => {
     let resolvedVersion = versionInput?.trim();
 
     if (!resolvedVersion) {
-      // Auto-detect: find latest existing version for this subLevel
+      // Auto-detect: find latest existing version for this session + subLevel
       const existing = await SyllabusVersion.findOne(
-        { subLevelId, isActive: true },
+        { subLevelId, ...(sessionId ? { sessionId } : {}), isActive: true },
         { version: 1 },
         { sort: { createdAt: -1 } }
       );
@@ -545,25 +545,25 @@ exports.deleteSubjectFromSyllabusVersion = async (req, res) => {
       });
     }
 
-    // 3. Permanently delete associated student tasks so they disappear completely from student side
+    // 3. Permanently delete associated student tasks so they disappear completely from student side (session-scoped)
     await StudentTask.deleteMany({
       $or: [
         { taskId: { $in: taskIds } },
         { syllabusVersionId: sv._id, subjectId },
         { syllabusVersionId: sv._id, subjectName },
         { subjectId },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName }] : [])
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : [])
       ]
     });
 
-    // 4. Clean up any progress snapshots for this deleted subject
+    // 4. Clean up any progress snapshots for this deleted subject (session-scoped)
     try {
       const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
       await StudentProgressSnapshot.deleteMany({
         $or: [
           { subjectId },
           { syllabusVersionId: sv._id, subjectName },
-          ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName }] : [])
+          ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, subjectName, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : [])
         ]
       });
     } catch (_) {}
@@ -755,7 +755,7 @@ exports.deleteTopicFromSyllabusVersion = async (req, res) => {
       $or: [
         { syllabusVersionId: sv._id, topicId },
         { syllabusVersionId: sv._id, topicName },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
       ]
     };
@@ -767,7 +767,7 @@ exports.deleteTopicFromSyllabusVersion = async (req, res) => {
         { _id: { $in: taskIds } },
         { syllabusVersionId: sv._id, topicId },
         { syllabusVersionId: sv._id, topicName },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
       ]
     });
@@ -779,7 +779,7 @@ exports.deleteTopicFromSyllabusVersion = async (req, res) => {
         { syllabusVersionId: sv._id, topicId },
         { syllabusVersionId: sv._id, topicName },
         { topicId },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [
           { syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } },
           { subTopicId: { $in: subTopicIds } }
@@ -862,7 +862,7 @@ exports.bulkDeleteTopicsFromSyllabusVersion = async (req, res) => {
       $or: [
         { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
         { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames }, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
       ]
     };
@@ -874,7 +874,7 @@ exports.bulkDeleteTopicsFromSyllabusVersion = async (req, res) => {
         { _id: { $in: taskIds } },
         { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
         { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames }, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [{ syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } }] : [])
       ]
     });
@@ -885,7 +885,7 @@ exports.bulkDeleteTopicsFromSyllabusVersion = async (req, res) => {
         { syllabusVersionId: sv._id, topicId: { $in: deletedTopicIds } },
         { syllabusVersionId: sv._id, topicName: { $in: deletedTopicNames } },
         { topicId: { $in: deletedTopicIds } },
-        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames } }] : []),
+        ...(sv.subLevelId ? [{ subLevelId: sv.subLevelId, topicName: { $in: deletedTopicNames }, ...(sv.sessionId ? { sessionId: sv.sessionId } : {}) }] : []),
         ...(subTopicIds.length > 0 ? [
           { syllabusVersionId: sv._id, subTopicId: { $in: subTopicIds } },
           { subTopicId: { $in: subTopicIds } }

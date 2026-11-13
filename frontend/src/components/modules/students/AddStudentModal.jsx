@@ -487,6 +487,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           const fullName = String(normalized.fullName || `${firstName} ${lastName}`).trim();
           const fatherName = String(normalized.fatherName || "").trim();
           const motherName = String(normalized.motherName || "").trim();
+          const studentMobile = String(normalized.studentMobile || "").trim();
           const course = String(normalized.course || normalized.branch || "").trim() || "General";
 
           const missing = [];

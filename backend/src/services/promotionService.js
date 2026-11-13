@@ -4,6 +4,7 @@ const Level = require("../models/department/Level");
 const SubLevel = require("../models/department/SubLevel");
 const StudentTask = require("../models/syllabus/StudentTask");
 const SyllabusVersion = require("../models/syllabus/SyllabusVersion");
+const Task = require("../models/syllabus/Task");
 const Session = require("../models/Session");
 const StudentEventLog = require("../models/student/StudentEventLog");
 const StudentProgressSnapshot = require("../models/student/StudentProgressSnapshot");
@@ -32,6 +33,34 @@ const markPlacementReady = async (studentId, subDepartmentId) => {
   );
 
   return placement;
+};
+
+// Verify a SyllabusVersion actually has active academic content (not an empty placeholder doc)
+const syllabusHasContent = async (sv) => {
+  if (!sv || sv.isActive === false || sv.status !== "active") return false;
+  const activeSubjects = (sv.subjects || []).filter((sub) => sub && sub.isActive !== false);
+  if (activeSubjects.length === 0) return false;
+
+  const hasActiveTopics = activeSubjects.some(
+    (sub) => Array.isArray(sub.topics) && sub.topics.some((t) => t && t.isActive !== false)
+  );
+  if (hasActiveTopics) return true;
+
+  const hasActiveTask = await Task.exists({ syllabusVersionId: sv._id, isActive: true });
+  return Boolean(hasActiveTask);
+};
+
+// Pick an active, non-empty SyllabusVersion matching student's course (never falls back to an unrelated course)
+const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
+  const { matchesCourse, selectBestSyllabusForStudent } = require("./taskAssignmentService");
+  const courseMatched = (candidates || []).filter(
+    (sv) => !studentCourse || matchesCourse(studentCourse, sv.courses, sv.course)
+  );
+  const usable = [];
+  for (const sv of courseMatched) {
+    if (await syllabusHasContent(sv)) usable.push(sv);
+  }
+  return selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true });
 };
 
 // Called after every task status update.
@@ -93,6 +122,16 @@ const syncStudentReadiness = async (studentId) => {
         description: "Student has completed all levels and is ready for placement",
         meta: {},
       });
+
+      const { createNotification } = require("./notificationService");
+      createNotification({
+        title: "All Levels Completed — Ready for Placement",
+        message: "Congratulations! You have completed all academic levels and are now ready for placement.",
+        type: "success",
+        category: "level",
+        studentId,
+        recipientRole: "student",
+      }).catch((notifErr) => console.error("All-levels notification error:", notifErr));
     }
     // All other errors are silently swallowed - promotion is best-effort on auto-trigger
   } finally {
@@ -178,30 +217,6 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   const currentSubLevel = await SubLevel.findById(student.currentSubLevelId);
   if (!currentSubLevel) throw toClientError("Current sub-level not found");
 
-  // Automatic "Ready for Drive" transition upon completing Level 2B
-  const currentSubName = (currentSubLevel.name || "").toUpperCase();
-  if (currentSubName.includes("2B")) {
-    await StudentPlacement.findOneAndUpdate(
-      { studentId },
-      {
-        $set: { readinessStatus: "Ready for Drive" },
-        $setOnInsert: { studentId, subDepartmentId: student.subDepartmentId }
-      },
-      { new: true, upsert: true }
-    );
-
-    await StudentEventLog.create({
-      studentId,
-      type: "promotion",
-      action: "auto_ready_for_drive",
-      title: "Moved to Ready for Drive",
-      description: "Student successfully completed Level 2B and was automatically moved to Ready for Drive stage",
-      createdBy: actorId,
-      createdByName: actorUser?.name || "System",
-      createdByRole: actorUser?.role || "system",
-    }).catch(() => {});
-  }
-
   let nextSubLevel = await SubLevel.findOne({
     levelId: student.currentLevelId,
     order: { $gt: currentSubLevel.order },
@@ -269,12 +284,15 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
 
   const targetLevelId = promotedToNewLevel ? nextLevel._id : student.currentLevelId;
 
-  // Step 3: Find active SyllabusVersion for new position
-  const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
-  if (!latestSession) throw toClientError("No active session found");
-  const targetSessionId = student.sessionId || latestSession._id;
+  // Step 3: Find active, non-empty SyllabusVersion for new position (strictly scoped to student's session & course)
+  let targetSessionId = student.sessionId;
+  if (!targetSessionId) {
+    const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
+    if (!latestSession) throw toClientError("No active session found");
+    targetSessionId = latestSession._id;
+  }
 
-  const newSyllabus = await SyllabusVersion.findOne({
+  const sessionSyllabi = await SyllabusVersion.find({
     sessionId: targetSessionId,
     levelId: targetLevelId,
     subLevelId: nextSubLevel._id,
@@ -282,7 +300,51 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     isActive: true,
   }).sort({ createdAt: -1 });
 
-  if (!newSyllabus) throw toClientError("No active syllabus found for the next sub-level");
+  let newSyllabus = await selectUsablePromotionSyllabus(sessionSyllabi, student.course);
+
+  if (!newSyllabus && student.isUIUX) {
+    const uiuxSyllabi = await SyllabusVersion.find({
+      levelId: targetLevelId,
+      subLevelId: nextSubLevel._id,
+      status: "active",
+      isActive: true,
+    }).sort({ createdAt: -1 });
+    newSyllabus = await selectUsablePromotionSyllabus(uiuxSyllabi, student.course);
+  }
+
+  if (!newSyllabus) {
+    const targetLabel = promotedToNewLevel
+      ? `${nextLevel?.name || "Next Level"} (${nextSubLevel?.name || ""})`
+      : `Sub-Level ${nextSubLevel?.name || ""}`;
+    throw toClientError(
+      `Promotion blocked: No active syllabus found for ${targetLabel}. Please add a syllabus before promoting.`,
+      400
+    );
+  }
+
+  // Automatic "Ready for Drive" transition upon completing Level 2B (only after verifying promotion target & syllabus)
+  const currentSubName = (currentSubLevel.name || "").toUpperCase();
+  if (currentSubName.includes("2B")) {
+    await StudentPlacement.findOneAndUpdate(
+      { studentId },
+      {
+        $set: { readinessStatus: "Ready for Drive" },
+        $setOnInsert: { studentId, subDepartmentId: student.subDepartmentId }
+      },
+      { new: true, upsert: true }
+    );
+
+    await StudentEventLog.create({
+      studentId,
+      type: "promotion",
+      action: "auto_ready_for_drive",
+      title: "Moved to Ready for Drive",
+      description: "Student successfully completed Level 2B and was automatically moved to Ready for Drive stage",
+      createdBy: actorId,
+      createdByName: actorUser?.name || "System",
+      createdByRole: actorUser?.role || "system",
+    }).catch(() => {});
+  }
 
   const prevLevelId = student.currentLevelId;
   const prevSubLevelId = student.currentSubLevelId;
@@ -534,7 +596,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   let tasksAssigned = 0;
   try {
     const { assignTasksToStudent } = require("./taskAssignmentService");
-    const result = await assignTasksToStudent(student._id, newSyllabus._id);
+    const result = await assignTasksToStudent(student._id, newSyllabus._id, { skipTaskNotification: true });
     tasksAssigned = result.totalTasks;
   } catch (err) {
     // Task assignment failure must never block promotion
@@ -622,6 +684,35 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     createdByRole: actorUser?.role || "",
   });
 
+  try {
+    const { createNotification } = require("./notificationService");
+    const taskNote = tasksAssigned > 0 ? ` ${tasksAssigned} task${tasksAssigned > 1 ? "s" : ""} assigned.` : "";
+    createNotification({
+      title: promoTitle,
+      message: promotedToNewLevel
+        ? `Congratulations! You have been promoted from ${fromLevelName} (${fromSubLevelName}) to ${toLevelName} (${toSubLevelName}).${taskNote}`
+        : `Congratulations! You have moved from SubLevel ${fromSubLevelName} to ${toSubLevelName}.${taskNote}`,
+      type: "success",
+      category: "level",
+      studentId: student._id,
+      recipientRole: "student",
+      actorId,
+      actorName: actorUser?.name || (isAuto ? "System" : "Faculty"),
+      actorRole: actorUser?.role || (isAuto ? "system" : "faculty"),
+      metadata: {
+        prevLevelName: fromLevelName,
+        prevSubLevelName: fromSubLevelName,
+        newLevelName: toLevelName,
+        newSubLevelName: toSubLevelName,
+        promotedToNewLevel,
+        tasksAssigned,
+        isAuto,
+      },
+    }).catch((notifErr) => console.error("Promotion notification error:", notifErr));
+  } catch (notifErr) {
+    console.error("Failed to trigger promotion notification:", notifErr);
+  }
+
   return {
     promotedToNewLevel,
     newLevelId: targetLevelId,
@@ -694,8 +785,9 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
     }
   }
 
-  // Step 3: Find active SyllabusVersion for the target previous SubLevel
+  // Step 3: Find active SyllabusVersion for the target previous SubLevel (scoped to student's session)
   const targetSessionId = student.sessionId || (await Session.findOne({ isActive: true }).sort({ createdAt: -1 }))?._id;
+  const { selectBestSyllabusForStudent } = require("./taskAssignmentService");
 
   const lastPromotionLog = await StudentEventLog.findOne({
     studentId,
@@ -705,28 +797,36 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
 
   let targetSyllabus = null;
   if (lastPromotionLog?.meta?.prevSyllabusVersionId && String(lastPromotionLog.meta.prevSubLevelId) === String(prevSubLevel._id)) {
-    targetSyllabus = await SyllabusVersion.findOne({
+    const prevSv = await SyllabusVersion.findOne({
       _id: lastPromotionLog.meta.prevSyllabusVersionId,
       isActive: true
     });
+    if (
+      prevSv &&
+      (student.isUIUX || !targetSessionId || !prevSv.sessionId || String(prevSv.sessionId) === String(targetSessionId))
+    ) {
+      targetSyllabus = prevSv;
+    }
   }
 
   if (!targetSyllabus) {
-    targetSyllabus = await SyllabusVersion.findOne({
+    const sessionSyllabi = await SyllabusVersion.find({
       sessionId: targetSessionId,
       levelId: targetLevel._id,
       subLevelId: prevSubLevel._id,
       status: "active",
       isActive: true
     }).sort({ createdAt: -1 });
+    targetSyllabus = selectBestSyllabusForStudent(sessionSyllabi, student.course);
   }
 
-  if (!targetSyllabus) {
-    targetSyllabus = await SyllabusVersion.findOne({
+  if (!targetSyllabus && student.isUIUX) {
+    const fallbackSyllabi = await SyllabusVersion.find({
       levelId: targetLevel._id,
       subLevelId: prevSubLevel._id,
       isActive: true
     }).sort({ createdAt: -1 });
+    targetSyllabus = selectBestSyllabusForStudent(fallbackSyllabi, student.course);
   }
 
   if (!targetSyllabus) {
@@ -758,15 +858,7 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
     { $set: { isActive: true } }
   );
 
-  // Populate any missing tasks for the previous sublevel without overwriting existing tasks
-  try {
-    const { assignTasksToStudent } = require("./taskAssignmentService");
-    await assignTasksToStudent(student._id, targetSyllabus._id);
-  } catch (err) {
-    console.warn("Task assignment on demote warning:", err.message);
-  }
-
-  // Step 6: Atomically update student position
+  // Step 5: Atomically update student position
   await withTransaction(async (session) => {
     student.currentLevelId = targetLevel._id;
     student.currentSubLevelId = prevSubLevel._id;
@@ -774,6 +866,14 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
     student.sessionId = targetSessionId;
     await student.save({ session });
   });
+
+  // Step 6: Populate any missing session-matched tasks for the previous sublevel without overwriting existing tasks
+  try {
+    const { assignTasksToStudent } = require("./taskAssignmentService");
+    await assignTasksToStudent(student._id, targetSyllabus._id);
+  } catch (err) {
+    console.warn("Task assignment on demote warning:", err.message);
+  }
 
   // Step 7: Reset StudentLevelProgress
   try {
@@ -960,12 +1060,14 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     .sort({ createdAt: 1 })
     .lean();
 
-  // 2. Fetch all student tasks across all levels
-  const allTasks = await StudentTask.find({ studentId, isActive: true })
+  // 2. Fetch all student tasks across all levels (filtered to student's session)
+  const { filterStudentTasksBySession } = require("./taskAssignmentService");
+  const rawAllTasks = await StudentTask.find({ studentId, isActive: true })
     .populate("levelId", "name order")
     .populate("subLevelId", "name order levelId")
     .sort({ createdAt: 1 })
     .lean();
+  const allTasks = await filterStudentTasksBySession(rawAllTasks, student);
 
   // 3. Fetch all promotion & level change logs from StudentEventLog
   const promotionLogs = await StudentEventLog.find({
@@ -1088,18 +1190,28 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
       return taskSubId === subLevelIdStr;
     });
 
-    // B. Match exact syllabus version for this student and sublevel
+    // B. Match exact syllabus version for this student and sublevel (scoped to student's session)
+    const allowCrossSessionHistory = Boolean(student.isUIUX || student.isFTP || !studentSessionId);
+    const svMatchesStudentSession = (sv) =>
+      allowCrossSessionHistory || !sv?.sessionId || String(sv.sessionId) === String(studentSessionId);
+
     let activeSyllabus = null;
     const taskSvId = subTasks.find(t => t.syllabusVersionId)?.syllabusVersionId;
     if (taskSvId) {
-      activeSyllabus = await SyllabusVersion.findById(taskSvId).select("subjects version title").lean();
+      const candidate = await SyllabusVersion.findById(taskSvId).select("subjects version title sessionId").lean();
+      if (candidate && svMatchesStudentSession(candidate)) {
+        activeSyllabus = candidate;
+      }
     }
     if (!activeSyllabus && item.syllabusVersionSnapshot?.versionId) {
-      activeSyllabus = await SyllabusVersion.findById(item.syllabusVersionSnapshot.versionId).select("subjects version title").lean();
+      const candidate = await SyllabusVersion.findById(item.syllabusVersionSnapshot.versionId).select("subjects version title sessionId").lean();
+      if (candidate && svMatchesStudentSession(candidate)) {
+        activeSyllabus = candidate;
+      }
     }
     if (!activeSyllabus && item.isCurrent && student.syllabusVersionId) {
-      const curSv = await SyllabusVersion.findById(student.syllabusVersionId).select("subjects version title subLevelId").lean();
-      if (curSv && curSv.subLevelId?.toString() === subLevelIdStr) {
+      const curSv = await SyllabusVersion.findById(student.syllabusVersionId).select("subjects version title subLevelId sessionId").lean();
+      if (curSv && curSv.subLevelId?.toString() === subLevelIdStr && svMatchesStudentSession(curSv)) {
         activeSyllabus = curSv;
       }
     }
@@ -1113,7 +1225,7 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
         isActive: { $ne: false },
         status: { $ne: "archived" },
         ...(courseConds.length > 0 ? { $or: courseConds } : {})
-      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
+      }).select("subjects version title sessionId").sort({ versionNumber: -1, createdAt: -1 }).lean();
     }
     if (!activeSyllabus && subLevelIdStr) {
       activeSyllabus = await SyllabusVersion.findOne({
@@ -1121,14 +1233,14 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
         ...(studentSessionId ? { sessionId: studentSessionId } : {}),
         isActive: { $ne: false },
         status: { $ne: "archived" }
-      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
+      }).select("subjects version title sessionId").sort({ versionNumber: -1, createdAt: -1 }).lean();
     }
-    if (!activeSyllabus && subLevelIdStr) {
+    if (!activeSyllabus && subLevelIdStr && allowCrossSessionHistory) {
       activeSyllabus = await SyllabusVersion.findOne({
         subLevelId: subLevelIdStr,
         isActive: { $ne: false },
         status: { $ne: "archived" }
-      }).select("subjects version title").sort({ versionNumber: -1, createdAt: -1 }).lean();
+      }).select("subjects version title sessionId").sort({ versionNumber: -1, createdAt: -1 }).lean();
     }
 
     // C. Snapshots in this sublevel

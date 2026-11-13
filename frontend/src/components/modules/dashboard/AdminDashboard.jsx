@@ -657,12 +657,12 @@ const AdminDashboard = () => {
                   onClick={() => navigate("/readiness-status?status=Placed")}
                 />
                 <CleanStatCard
-                  title="On Leave / Permission"
-                  value={s.onPermission ?? 0}
-                  icon={Clock}
-                  badgeText={s.onPermission > 0 ? "Pending Review" : "Clear"}
-                  badgeType={s.onPermission > 0 ? "warning" : "success"}
-                  subtitle="active passes"
+                  title="Dummy Students"
+                  value={s.dummy ?? 0}
+                  icon={UserX}
+                  badgeText={(s.dummy ?? 0) > 0 ? "Marked Dummy" : "Clear"}
+                  badgeType={(s.dummy ?? 0) > 0 ? "warning" : "success"}
+                  subtitle="dummy status"
                   onClick={() => navigate("/student-permission")}
                 />
                 <CleanStatCard
@@ -1054,12 +1054,12 @@ const AdminDashboard = () => {
                 onClick={() => navigate("/readiness-status?status=Placed")}
               />
               <CleanStatCard
-                title="On Leave / Permission"
-                value={s.onPermission ?? 0}
-                icon={Clock}
-                badgeText={s.onPermission > 0 ? "Review Needed" : "Clear"}
-                badgeType={s.onPermission > 0 ? "warning" : "success"}
-                subtitle="active passes"
+                title="Dummy Students"
+                value={s.dummy ?? 0}
+                icon={UserX}
+                badgeText={(s.dummy ?? 0) > 0 ? "Marked Dummy" : "Clear"}
+                badgeType={(s.dummy ?? 0) > 0 ? "warning" : "success"}
+                subtitle="dummy status"
                 onClick={() => navigate("/student-permission")}
               />
               <CleanStatCard

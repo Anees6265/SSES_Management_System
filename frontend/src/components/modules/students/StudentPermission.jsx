@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useGetDummyStudentsQuery } from "../../../redux/api/authApi";
+import { useGetDummyStudentsQuery, useUpdateDummyDetailsMutation } from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
 import Header from "../../shared/sidebar/Header";
@@ -22,7 +22,11 @@ import {
   Calendar,
   Eye,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Pencil,
+  Upload,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 const STATUS_STYLES = {
@@ -194,10 +198,407 @@ const DummyReasonCell = ({ row }) => {
   );
 };
 
+const MAX_APPLICATION_FILE_SIZE = 5 * 1024 * 1024;
+
+const EditDummyModal = ({ student, onClose, onSaved }) => {
+  const dialogRef = useRef(null);
+  const reasonInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const [reason, setReason] = useState(student?.dummyDetails?.reason || "");
+  const [remark, setRemark] = useState(student?.dummyDetails?.remark || "");
+  const [fileData, setFileData] = useState(null);
+  const [fileType, setFileType] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [removeDocument, setRemoveDocument] = useState(false);
+  const [reasonError, setReasonError] = useState("");
+  const [hasReasonBlurred, setHasReasonBlurred] = useState(false);
+
+  const [updateDummyDetails, { isLoading: isSaving }] = useUpdateDummyDetailsMutation();
+
+  const existingDocUrl = student?.dummyDetails?.applicationURL || "";
+  const existingDocType = student?.dummyDetails?.applicationType || "";
+  const isExistingImage =
+    existingDocType === "image" || Boolean(existingDocUrl.match(/\.(jpeg|jpg|png|webp|gif)$/i));
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+  }, [student?._id]);
+
+  const validateReasonValue = (val) => {
+    if (!val || !val.trim()) {
+      return "Please enter the reason for marking this student as dummy.";
+    }
+    return "";
+  };
+
+  const handleReasonChange = (event) => {
+    const nextValue = event.target.value;
+    setReason(nextValue);
+    if (hasReasonBlurred || reasonError) {
+      setReasonError(validateReasonValue(nextValue));
+    }
+  };
+
+  const handleReasonBlur = () => {
+    setHasReasonBlurred(true);
+    setReasonError(validateReasonValue(reason));
+  };
+
+  const handleReasonInvalid = (event) => {
+    event.preventDefault();
+    setHasReasonBlurred(true);
+    setReasonError(validateReasonValue(reason));
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_APPLICATION_FILE_SIZE) {
+      toast.error("File size must be under 5 MB");
+      event.target.value = "";
+      return;
+    }
+
+    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      toast.error("Only image or PDF files are allowed");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFileData(reader.result);
+      setFileType(isPdf ? "pdf" : "image");
+      setFileName(file.name);
+      setRemoveDocument(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearSelectedFile = () => {
+    setFileData(null);
+    setFileType("");
+    setFileName("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDialogCancel = (event) => {
+    if (isSaving) {
+      event.preventDefault();
+      return;
+    }
+    onClose();
+  };
+
+  const handleDialogBackdropClick = (event) => {
+    if (isSaving) return;
+    const dialog = dialogRef.current;
+    if (!dialog || event.target !== dialog) return;
+    if (!("closedBy" in HTMLDialogElement.prototype)) {
+      const rect = dialog.getBoundingClientRect();
+      const clickedInside =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+      if (!clickedInside) {
+        dialog.close();
+      }
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isSaving) return;
+
+    const validationMsg = validateReasonValue(reason);
+    if (validationMsg) {
+      setHasReasonBlurred(true);
+      setReasonError(validationMsg);
+      reasonInputRef.current?.focus();
+      return;
+    }
+
+    try {
+      await updateDummyDetails({
+        id: student._id,
+        reason: reason.trim(),
+        remark: remark.trim(),
+        ...(fileData ? { fileData, fileType } : {}),
+        ...(removeDocument && !fileData ? { removeDocument: true } : {}),
+      }).unwrap();
+      toast.success("Dummy student details updated successfully");
+      onSaved();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update dummy student details");
+    }
+  };
+
+  const studentFullName = toTitleCase(`${student?.firstName || ""} ${student?.lastName || ""}`.trim());
+
+  return (
+    <dialog
+      ref={dialogRef}
+      closedby="any"
+      aria-labelledby="edit-dummy-dialog-title"
+      onCancel={handleDialogCancel}
+      onClose={onClose}
+      onClick={handleDialogBackdropClick}
+      className="dummy-edit-dialog"
+    >
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90dvh]">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-orange-50/40 shrink-0">
+          <div className="min-w-0">
+            <h2
+              id="edit-dummy-dialog-title"
+              className="text-base font-bold text-gray-900 flex items-center gap-2"
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-orange-100 text-orange-600 shrink-0">
+                <Pencil size={15} aria-hidden="true" />
+              </span>
+              <span>Edit Dummy Student Details</span>
+            </h2>
+            {studentFullName && (
+              <p className="text-xs text-gray-500 mt-0.5 ml-10 truncate">
+                {studentFullName}
+                {student?.currentLevelId?.name ? ` · ${student.currentLevelId.name}` : ""}
+                {student?.currentSubLevelId?.name ? ` (${student.currentSubLevelId.name})` : ""}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => !isSaving && onClose()}
+            disabled={isSaving}
+            aria-label="Close edit dialog"
+            className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer disabled:opacity-40"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
+          {/* Reason Field */}
+          <div>
+            <label
+              htmlFor="edit-dummy-reason"
+              className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5"
+            >
+              Reason <span className="text-red-500" aria-hidden="true">*</span>
+              <span className="sr-only"> (required)</span>
+            </label>
+            <input
+              ref={reasonInputRef}
+              id="edit-dummy-reason"
+              name="reason"
+              type="text"
+              required
+              value={reason}
+              onChange={handleReasonChange}
+              onBlur={handleReasonBlur}
+              onInvalid={handleReasonInvalid}
+              aria-invalid={reasonError ? "true" : "false"}
+              aria-errormessage={reasonError ? "edit-dummy-reason-error" : undefined}
+              placeholder="e.g., Health issue, exam preparation, personal reason"
+              className={`dummy-required-field w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition ${
+                reasonError ? "user-invalid-fallback" : ""
+              }`}
+            />
+            {reasonError && (
+              <p
+                id="edit-dummy-reason-error"
+                role="alert"
+                className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-600"
+              >
+                <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
+                <span>{reasonError}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Remark Field */}
+          <div>
+            <label
+              htmlFor="edit-dummy-remark"
+              className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5"
+            >
+              Remark <span className="text-gray-400 font-medium normal-case">(optional)</span>
+            </label>
+            <textarea
+              id="edit-dummy-remark"
+              name="remark"
+              rows={3}
+              value={remark}
+              onChange={(event) => setRemark(event.target.value)}
+              placeholder="Add additional faculty note or clarification..."
+              className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition resize-y min-h-[84px]"
+            />
+          </div>
+
+          {/* Application Document Section */}
+          <div>
+            <label
+              htmlFor="edit-dummy-application-file"
+              className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5"
+            >
+              Application Document <span className="text-gray-400 font-medium normal-case">(Image or PDF, max 5 MB)</span>
+            </label>
+
+            {/* Current saved document preview (if any, and not marked for removal / replacement) */}
+            {existingDocUrl && !fileData && !removeDocument && (
+              <div className="mb-2.5 rounded-xl border border-gray-200 bg-gray-50/80 p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {isExistingImage ? (
+                    <img
+                      src={existingDocUrl}
+                      alt="Current application document"
+                      className="h-10 w-10 rounded-lg object-cover border border-gray-200 shrink-0 bg-white"
+                    />
+                  ) : (
+                    <span className="h-10 w-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                      <FileText size={18} aria-hidden="true" />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate">Current Document Attached</p>
+                    <p className="text-[11px] text-gray-500 uppercase font-medium">
+                      {isExistingImage ? "Image" : "PDF / Document"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={existingDocUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition"
+                  >
+                    <Eye size={13} aria-hidden="true" />
+                    <span>View</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setRemoveDocument(true)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition cursor-pointer"
+                  >
+                    <Trash2 size={13} aria-hidden="true" />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pending document removal notice */}
+            {existingDocUrl && removeDocument && !fileData && (
+              <div className="mb-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 flex items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-amber-800">
+                  Existing document will be removed when you save.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setRemoveDocument(false)}
+                  className="font-bold text-amber-900 underline hover:no-underline cursor-pointer shrink-0"
+                >
+                  Undo
+                </button>
+              </div>
+            )}
+
+            {/* Newly chosen replacement / upload preview */}
+            {fileData ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {fileType === "image" ? (
+                    <img
+                      src={fileData}
+                      alt="Selected replacement preview"
+                      className="h-10 w-10 rounded-lg object-cover border border-emerald-200 shrink-0 bg-white"
+                    />
+                  ) : (
+                    <span className="h-10 w-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <FileText size={18} aria-hidden="true" />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-emerald-900 truncate">{fileName}</p>
+                    <p className="text-[11px] text-emerald-700 font-medium">Ready to upload</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearSelectedFile}
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white px-2.5 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer shrink-0"
+                >
+                  <X size={13} aria-hidden="true" />
+                  <span>Clear</span>
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="edit-dummy-application-file"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/60 px-4 py-4 text-center hover:border-orange-400 hover:bg-orange-50/30 transition cursor-pointer"
+              >
+                <Upload size={18} className="text-orange-500" aria-hidden="true" />
+                <span className="text-xs font-bold text-gray-700">
+                  {existingDocUrl ? "Click to replace document" : "Click to upload image or PDF"}
+                </span>
+                <span className="text-[11px] text-gray-400">PNG, JPG, WEBP, or PDF up to 5 MB</span>
+              </label>
+            )}
+
+            <input
+              ref={fileInputRef}
+              id="edit-dummy-application-file"
+              name="applicationFile"
+              type="file"
+              accept="image/*,.pdf,application/pdf"
+              onChange={handleFileChange}
+              className="sr-only"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => !isSaving && onClose()}
+              disabled={isSaving}
+              className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              aria-busy={isSaving}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-xs font-bold text-white shadow-xs transition cursor-pointer"
+            >
+              {isSaving && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+              <span>{isSaving ? "Saving..." : "Save Changes"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  );
+};
+
 const StudentPermission = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = usePersistentState("student_permission_search", "");
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
 
@@ -338,6 +739,25 @@ const StudentPermission = () => {
         ) : (
           <span className="text-xs text-gray-400 italic">No Doc</span>
         ),
+    },
+    {
+      key: "actions",
+      label: "Action",
+      enableSorting: false,
+      render: (row) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setEditingStudent(row);
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 hover:border-orange-300 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+          aria-label={`Edit dummy details for ${row.firstName || "student"}`}
+        >
+          <Pencil size={13} aria-hidden="true" />
+          <span>Edit</span>
+        </button>
+      ),
     },
   ];
 
@@ -577,6 +997,18 @@ const StudentPermission = () => {
 
                       <button
                         type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setEditingStudent(student);
+                        }}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 transition active:scale-95 cursor-pointer shadow-2xs"
+                      >
+                        <Pencil size={13} aria-hidden="true" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => navigate(`/student-profile/${student._id}`)}
                         className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition active:scale-95 cursor-pointer shadow-2xs"
                       >
@@ -665,6 +1097,17 @@ const StudentPermission = () => {
           </div>
         </div>
       )}
+      {/* Edit Dummy Student Details Dialog */}
+      {editingStudent &&
+        createPortal(
+          <EditDummyModal
+            key={editingStudent._id}
+            student={editingStudent}
+            onClose={() => setEditingStudent(null)}
+            onSaved={() => setEditingStudent(null)}
+          />,
+          document.body
+        )}
     </div>
   );
 };

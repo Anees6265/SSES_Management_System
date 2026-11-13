@@ -1,5 +1,5 @@
+const mongoose = require("mongoose");
 const Notification = require("../../models/notification/Notification");
-const { seedInitialNotificationsIfNeeded } = require("../../services/notificationService");
 
 const formatTimeAgo = (date) => {
   if (!date) return "";
@@ -36,11 +36,22 @@ const buildUserFilter = (req) => {
   }
 
   if (role === "student") {
+    const studentObjId = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
     baseFilter.$or = [
-      { studentId: userId },
-      { recipientId: userId },
-      { recipientRole: { $in: ["all", "student"] } },
+      { studentId: studentObjId },
+      { recipientId: studentObjId },
+      {
+        studentId: null,
+        recipientId: null,
+        recipientRole: { $in: ["all", "student"] },
+      },
     ];
+    // Exclude task completion/started alerts (already visible in Student Activity Log) and legacy seed alerts
+    baseFilter.title = {
+      $nin: ["Task Completed", "Task Status Updated", "System Ready"],
+    };
   } else if (["superadmin", "admin"].includes(role)) {
     baseFilter.$or = [
       { recipientRole: { $in: ["all", "superadmin", "admin", "staff", "faculty"] } },
@@ -71,9 +82,6 @@ exports.getNotifications = async (req, res) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
-
-    // Seed on first run if DB is empty
-    await seedInitialNotificationsIfNeeded();
 
     const filter = buildUserFilter(req);
     const limit = Math.min(Number(req.query?.limit) || 50, 100);

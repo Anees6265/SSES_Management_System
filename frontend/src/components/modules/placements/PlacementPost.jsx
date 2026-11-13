@@ -12,14 +12,13 @@ import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
 import PlacementPostPDF from "./PlacementPostPDF";
+import PlacementPosterCard from "./PlacementPosterCard";
+import { toTitleCase, smartCapitalize } from "./placementPosterUtils";
 import Avatar from "../../shared/Avatar";
-import profile from "../../../assets/images/profileImgDummy.jpeg";
-import iteg from "../../../assets/images/logo.png";
-import ssism from "../../../assets/images/logo-ssism.png";
 import { 
   MdSchool, MdBusiness, MdFileDownload, 
   MdSearch, MdGridView, MdViewList, MdEdit, MdTrendingUp,
-  MdClose, MdWork, MdStars, MdLocationOn, MdRefresh
+  MdClose, MdWork, MdStars, MdRefresh, MdVisibility
 } from "react-icons/md";
 
 /* ─── Metric Card Component ───────────────────────────────── */
@@ -83,23 +82,11 @@ const CompanyLogo = ({ companyName, logoUrl, size = "w-10 h-10" }) => {
   );
 };
 
-/* ─── Helpers ─────────────────────────────────────────────── */
-const toTitleCase = (str) =>
-  str
-    ?.toLowerCase()
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ") || "";
-
-const smartCapitalize = (str) => {
-  if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
 /* ─── Main Placed Students Component ──────────────────────── */
 const PlacementPost = () => {
   const [isCreatePostModalOpen, setCreatePostModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [previewStudent, setPreviewStudent] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
   const defaultPlacementPostFilters = useMemo(() => ({
     searchTerm: "",
@@ -345,13 +332,33 @@ const PlacementPost = () => {
     return chips;
   }, [companyFilter, courseFilter, packageFilter, searchTerm, packageOptions]);
 
-  // PDF Download Handler with Toast Feedback
+  // PDF Download Handler with Toast Feedback & CORS fallback for remote logos/photos
   const downloadPost = async (student) => {
     const sId = student._id || `${student.firstName}_${student.lastName}`;
     try {
       setDownloadingId(sId);
       toast.info(`Generating poster for ${student.firstName}...`, { autoClose: 1500 });
-      const blob = await pdf(<PlacementPostPDF student={student} />).toBlob();
+      let blob;
+      try {
+        blob = await pdf(
+          <PlacementPostPDF student={student} companyMap={companyMap} />
+        ).toBlob();
+      } catch {
+        try {
+          blob = await pdf(
+            <PlacementPostPDF student={student} companyMap={companyMap} disableCompanyLogo />
+          ).toBlob();
+        } catch {
+          blob = await pdf(
+            <PlacementPostPDF
+              student={student}
+              companyMap={companyMap}
+              disableCompanyLogo
+              disableRemoteStudentImage
+            />
+          ).toBlob();
+        }
+      }
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `${student.firstName}_${student.lastName}_placement_post.pdf`;
@@ -602,92 +609,51 @@ const PlacementPost = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {paginatedStudents.map((student, idx) => {
-                  const companyName = student.placedInfo?.companyName || "Hiring Partner";
-                  const compObj =
-                    student.placedInfo?.companyRef ||
-                    companyMap[companyName.toLowerCase().trim()];
-                  const logoUrl = compObj?.companyLogo;
                   const isDownloading =
                     downloadingId === (student._id || `${student.firstName}_${student.lastName}`);
-
-                  const salaryLpa = student.placedInfo?.salary
-                    ? (Number(student.placedInfo.salary) / 100000).toFixed(1)
-                    : null;
 
                   return (
                     <div
                       key={student._id || idx}
                       className="bg-white rounded-3xl shadow-2xs hover:shadow-xl transition-all duration-300 border border-slate-200/90 flex flex-col justify-between overflow-hidden relative group"
                     >
-                      {/* Card Header: Logos & Pill */}
-                      <div className="p-4 sm:p-5 bg-gradient-to-b from-orange-50/60 via-slate-50/30 to-white border-b border-slate-100">
-                        <div className="flex items-center justify-between gap-2">
-                          <img src={iteg} alt="ITEG" className="h-8 sm:h-9 object-contain" />
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-                            Placement Offer
+                      {/* Redesigned Visual Placement Poster Canvas */}
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setPreviewStudent(student)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setPreviewStudent(student);
+                          }
+                        }}
+                        className="cursor-pointer relative focus:outline-none"
+                        title="Click to preview full poster"
+                      >
+                        <PlacementPosterCard
+                          student={student}
+                          companyMap={companyMap}
+                          size="card"
+                        />
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/75 text-white text-[10px] font-bold backdrop-blur-xs shadow-sm">
+                            <MdVisibility size={12} />
+                            Preview
                           </span>
-                          <img src={ssism} alt="SSISM" className="h-8 sm:h-9 object-contain" />
-                        </div>
-                      </div>
-
-                      {/* Card Body: Student Photo & Details */}
-                      <div className="p-5 flex flex-col items-center text-center flex-1">
-                        {/* Student Image with Gold-Orange Ring */}
-                        <div className="relative mb-3">
-                          <div className="w-24 h-24 sm:w-26 sm:h-26 rounded-full p-1 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 shadow-md">
-                            <img
-                              src={student.image || profile}
-                              alt={`${student.firstName} ${student.lastName}`}
-                              className="w-full h-full rounded-full object-cover bg-white"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = profile;
-                              }}
-                            />
-                          </div>
-                          {salaryLpa && (
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                              ₹{salaryLpa} LPA
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Student Name & Academic Stream */}
-                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                          {toTitleCase(student.firstName)} {toTitleCase(student.lastName)}
-                        </h3>
-                        <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                          {student.course || "Degree Stream"}
-                        </p>
-                        {student.village && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                            <MdLocationOn size={12} className="text-slate-400" /> {student.village}
-                          </span>
-                        )}
-
-                        {/* Placed Company & Role Banner */}
-                        <div className="w-full mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3 text-left">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <CompanyLogo companyName={companyName} logoUrl={logoUrl} size="w-10 h-10" />
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-                                Placed at
-                              </p>
-                              <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">
-                                {smartCapitalize(companyName)}
-                              </h4>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-bold border border-blue-100/80 block truncate max-w-[120px]">
-                              {toTitleCase(student.placedInfo?.jobProfile || "Designation")}
-                            </span>
-                          </div>
                         </div>
                       </div>
 
                       {/* Card Footer: Action Buttons */}
-                      <div className="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center gap-2">
+                      <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center gap-2">
+                        <button
+                          onClick={() => setPreviewStudent(student)}
+                          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold py-2 px-3 rounded-xl transition shadow-2xs hover:shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-98"
+                          title="Preview Poster"
+                        >
+                          <MdVisibility size={15} className="text-slate-600" />
+                          <span className="hidden sm:inline">View</span>
+                        </button>
                         <button
                           onClick={() => downloadPost(student)}
                           disabled={isDownloading}
@@ -702,7 +668,7 @@ const PlacementPost = () => {
                             setSelectedStudent(student);
                             setCreatePostModalOpen(true);
                           }}
-                          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold py-2 px-3.5 rounded-xl transition shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold py-2 px-3 rounded-xl transition shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                           title="Edit Placement Details"
                         >
                           <MdEdit size={14} className="text-orange-500" />
@@ -823,6 +789,14 @@ const PlacementPost = () => {
                             <td className="py-3.5 px-5 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <button
+                                  onClick={() => setPreviewStudent(student)}
+                                  className="border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold px-2.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                                  title="Preview Placement Poster"
+                                >
+                                  <MdVisibility size={14} className="text-slate-600" />
+                                  <span>View</span>
+                                </button>
+                                <button
                                   onClick={() => downloadPost(student)}
                                   disabled={isDownloading}
                                   className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
@@ -942,6 +916,71 @@ const PlacementPost = () => {
             </div>
           )}
         </div>
+
+        {/* Modal: Full Poster Preview */}
+        {previewStudent && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setPreviewStudent(null)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Placement Poster Preview
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {toTitleCase(previewStudent.firstName)} {toTitleCase(previewStudent.lastName)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPreviewStudent(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  aria-label="Close Preview"
+                >
+                  <MdClose size={20} />
+                </button>
+              </div>
+
+              <PlacementPosterCard
+                student={previewStudent}
+                companyMap={companyMap}
+                size="preview"
+                className="rounded-2xl border border-slate-200 shadow-sm"
+              />
+
+              <div className="flex items-center justify-end gap-2.5 pt-1">
+                <button
+                  onClick={() => {
+                    const target = previewStudent;
+                    setPreviewStudent(null);
+                    setSelectedStudent(target);
+                    setCreatePostModalOpen(true);
+                  }}
+                  className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <MdEdit size={15} className="text-orange-500" />
+                  <span>Edit Details</span>
+                </button>
+                <button
+                  onClick={() => downloadPost(previewStudent)}
+                  disabled={
+                    downloadingId ===
+                    (previewStudent._id ||
+                      `${previewStudent.firstName}_${previewStudent.lastName}`)
+                  }
+                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <MdFileDownload size={16} />
+                  <span>Download Poster PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal: Update Placement Post */}
         <CreatePostModal

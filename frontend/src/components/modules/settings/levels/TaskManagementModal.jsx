@@ -166,7 +166,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   }, [topics, selectedTopicId]);
 
   const { data: tasksData, refetch: refetchTasks } = useGetTasksByLevelQuery(
-    { subLevelId: subLevel?._id, syllabusVersionId: effectiveVersionId },
+    {
+      subLevelId: subLevel?._id,
+      syllabusVersionId: effectiveVersionId,
+      sessionId: selectedSessionId || undefined,
+    },
     { skip: !subLevel?._id || (Boolean(selectedSessionId) && !effectiveVersionId) }
   );
   const allTasks = useMemo(() => {
@@ -260,6 +264,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
       } else {
         payload.levelId = level?._id;
         payload.subLevelId = subLevel?._id;
+        payload.sessionId = selectedSessionId || null;
         payload.isGeneralTask = true;
       }
 

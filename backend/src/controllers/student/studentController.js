@@ -9,7 +9,12 @@ const SubLevel = require("../../models/department/SubLevel");
 const Session = require("../../models/Session");
 const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
 const Task = require("../../models/syllabus/Task");
-const { assignTasksToStudent, assignTasksToMultipleStudents } = require("../../services/taskAssignmentService");
+const {
+  assignTasksToStudent,
+  assignTasksToMultipleStudents,
+  selectBestSyllabusForStudent,
+  filterStudentTasksBySession
+} = require("../../services/taskAssignmentService");
 const { promoteToNextSubLevel, demoteToPreviousSubLevel } = require("../../services/studentService");
 const { findOrCreateSessionByName, findOrCreateSessionFromBatch } = require("../../utils/sessionHelper");
 const { calculateBatchYear, resolveCourseDuration } = require("../../utils/batchHelper");
@@ -113,23 +118,15 @@ exports.createStudent = async (req, res) => {
     });
     const targetSession = await Session.findById(targetSessionId);
 
-    // 4️⃣ Latest active SyllabusVersion for this session + level + sublevel (or fallback to any active for level+sublevel)
-    let latestSyllabus = await SyllabusVersion.findOne({
+    // 4️⃣ Latest active SyllabusVersion strictly for this session + level + sublevel (course-matched)
+    const sessionSyllabi = await SyllabusVersion.find({
       sessionId: targetSessionId,
       levelId: firstLevel._id,
       subLevelId: firstSubLevel._id,
       status: "active",
       isActive: true
     }).sort({ createdAt: -1 });
-
-    if (!latestSyllabus) {
-      latestSyllabus = await SyllabusVersion.findOne({
-        levelId: firstLevel._id,
-        subLevelId: firstSubLevel._id,
-        status: "active",
-        isActive: true
-      }).sort({ createdAt: -1 });
-    }
+    const latestSyllabus = selectBestSyllabusForStudent(sessionSyllabi, resolvedCourse);
 
     // Names resolution
     const firstName = String(req.body.firstName || "").trim();
@@ -693,14 +690,38 @@ exports.importStudentsExcel = async (req, res) => {
     if (validStudentsToInsert.length > 0) {
       insertedStudents = await Student.insertMany(validStudentsToInsert, { ordered: false });
 
-      // Auto-assign tasks if syllabus exists
-      if (typeof latestSyllabus !== "undefined" && latestSyllabus) {
-        try {
-          const studentIds = insertedStudents.map(s => s._id);
-          await assignTasksToMultipleStudents(studentIds, latestSyllabus._id);
-        } catch (taskErr) {
-          console.error("Bulk task assignment warning:", taskErr.message);
+      // Auto-assign session-matched syllabus tasks per student group (sessionId + levelId + subLevelId)
+      try {
+        const svCache = new Map();
+        const svStudentGroupMap = new Map();
+
+        for (const st of insertedStudents) {
+          const cacheKey = `${st.sessionId}_${st.currentLevelId}_${st.currentSubLevelId}`;
+          if (!svCache.has(cacheKey)) {
+            const versions = await SyllabusVersion.find({
+              sessionId: st.sessionId,
+              levelId: st.currentLevelId,
+              subLevelId: st.currentSubLevelId,
+              status: "active",
+              isActive: true
+            }).sort({ createdAt: -1 });
+            svCache.set(cacheKey, versions);
+          }
+          const matchedSv = selectBestSyllabusForStudent(svCache.get(cacheKey), st.course);
+          if (matchedSv) {
+            const svKey = matchedSv._id.toString();
+            if (!svStudentGroupMap.has(svKey)) {
+              svStudentGroupMap.set(svKey, []);
+            }
+            svStudentGroupMap.get(svKey).push(st._id);
+          }
         }
+
+        for (const [svId, studentIds] of svStudentGroupMap.entries()) {
+          await assignTasksToMultipleStudents(studentIds, svId);
+        }
+      } catch (taskErr) {
+        console.error("Bulk task assignment warning:", taskErr.message);
       }
     }
 
@@ -1703,7 +1724,7 @@ exports.updateStudent = async (req, res) => {
           type: "info",
           category: "level",
           studentId: student._id,
-          recipientRole: "all",
+          recipientRole: "student",
           actorId: req.user?.id || req.user?._id,
           actorName: req.user?.name || "",
           actorRole: req.user?.role || "",
@@ -1989,10 +2010,11 @@ exports.getStudentTasks = async (req, res) => {
     if (status) filter.status = status;
 
 
-    const tasks = await StudentTask.find(filter)
+    const rawTasks = await StudentTask.find(filter)
       .populate("subLevelId", "name order")
       .populate("levelId", "name order")
       .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, student);
 
 
     // Group by subject
@@ -2031,12 +2053,13 @@ exports.getStudentTasksBySubLevel = async (req, res) => {
     if (!student) return res.status(404).json({ message: "Student not found" });
 
 
-    const tasks = await StudentTask.find({
+    const rawTasks = await StudentTask.find({
       studentId: id,
       subLevelId,
       isActive: { $ne: false },
       isArchived: { $ne: true }
     }).sort({ subjectName: 1, topicName: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, student);
 
 
     const stats = {
@@ -2608,19 +2631,35 @@ exports.assignExtraTask = async (req, res) => {
       } catch (_) {}
     }
 
-    // Auto-resolve syllabusVersionId for the target sublevel
-    let resolvedSyllabusVersionId = (targetSubLevelId && student.currentSubLevelId && targetSubLevelId.toString() === student.currentSubLevelId.toString())
-      ? (student.syllabusVersionId || null)
-      : null;
+    // Auto-resolve syllabusVersionId for the target sublevel strictly matching student's session
+    let resolvedSyllabusVersionId = null;
+    if (
+      targetSubLevelId &&
+      student.currentSubLevelId &&
+      targetSubLevelId.toString() === student.currentSubLevelId.toString() &&
+      student.syllabusVersionId
+    ) {
+      const currentSv = await SyllabusVersion.findById(student.syllabusVersionId).select("_id sessionId").lean();
+      if (
+        currentSv &&
+        (student.isUIUX || student.isFTP || !student.sessionId || !currentSv.sessionId || currentSv.sessionId.toString() === student.sessionId.toString())
+      ) {
+        resolvedSyllabusVersionId = currentSv._id;
+      }
+    }
 
     if (!resolvedSyllabusVersionId && targetSubLevelId) {
       try {
-        const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
-        const activeSv = await SyllabusVersion.findOne({
+        const svQuery = {
           subLevelId: targetSubLevelId,
           status: "active",
           isActive: true
-        }).select("_id");
+        };
+        if (student.sessionId && !student.isUIUX && !student.isFTP) {
+          svQuery.sessionId = student.sessionId;
+        }
+        const candidateSvs = await SyllabusVersion.find(svQuery).sort({ createdAt: -1 }).lean();
+        const activeSv = selectBestSyllabusForStudent(candidateSvs, student.course);
         if (activeSv) {
           resolvedSyllabusVersionId = activeSv._id;
           if (targetSubLevelId.toString() === student.currentSubLevelId?.toString()) {
@@ -2700,7 +2739,7 @@ exports.assignExtraTask = async (req, res) => {
         type: "info",
         category: "task",
         studentId: student._id,
-        recipientRole: "all",
+        recipientRole: "student",
         actorId: req.user?.id || req.user?._id,
         actorName: req.user?.name || "",
         actorRole: req.user?.role || "",
@@ -2942,6 +2981,29 @@ exports.resolvePermission = async (req, res) => {
       createdByRole: req.user?.role || "",
     });
 
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      const reasonSnippet = permission.reason ? ` ("${permission.reason}")` : "";
+      const remarkSnippet = remark ? ` Note: ${remark}` : "";
+      createNotification({
+        title: status === "approved" ? "Leave Request Approved" : "Leave Request Rejected",
+        message:
+          status === "approved"
+            ? `Your leave request${reasonSnippet} has been approved.${remarkSnippet}`
+            : `Your leave request${reasonSnippet} has been rejected.${remarkSnippet}`,
+        type: status === "approved" ? "success" : "warning",
+        category: "permission",
+        studentId: student._id,
+        recipientRole: "student",
+        actorId: req.user?.id || req.user?._id || null,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { permissionId: permission._id, status, fromDate: permission.fromDate, toDate: permission.toDate },
+      }).catch((err) => console.error("Leave notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger leave notification:", notifErr);
+    }
+
     return res.status(200).json({ message: `Permission ${status}`, data: permission });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -3001,13 +3063,29 @@ exports.markDropped = async (req, res) => {
 };
 
 // ✅ Get Student Dashboard Stats (department-aware)
+const uploadDummyApplicationFile = async (studentId, fileData, fileType) => {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  return cloudinary.uploader.upload(fileData, {
+    folder: "dummy_applications",
+    resource_type: fileType === "pdf" ? "raw" : "image",
+    public_id: `dummy_${studentId}_${Date.now()}`,
+  });
+};
+
 // ✅ Mark Student as Dummy (separate from dropped and leave permission)
 exports.markDummy = async (req, res) => {
   try {
     const { reason, remark, fileData, fileType } = req.body;
-    if (!reason) return res.status(400).json({ message: "reason is required" });
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ message: "reason is required" });
+    }
 
-    if (fileData && fileType && !["image", "pdf"].includes(fileType)) {
+    if (fileData && !["image", "pdf"].includes(fileType)) {
       return res.status(400).json({ message: "fileType must be image or pdf" });
     }
 
@@ -3017,19 +3095,11 @@ exports.markDummy = async (req, res) => {
 
     let applicationURL = "";
     let applicationType = "";
+    const trimmedReason = String(reason).trim();
+    const trimmedRemark = remark ? String(remark).trim() : "";
 
     if (fileData && fileType) {
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-      });
-
-      const uploadResponse = await cloudinary.uploader.upload(fileData, {
-        folder: "dummy_applications",
-        resource_type: fileType === "pdf" ? "raw" : "image",
-        public_id: `dummy_${req.params.id}_${Date.now()}`,
-      });
+      const uploadResponse = await uploadDummyApplicationFile(req.params.id, fileData, fileType);
 
       applicationURL = uploadResponse.secure_url;
       applicationType = fileType;
@@ -3038,7 +3108,7 @@ exports.markDummy = async (req, res) => {
         title: "Dummy Student Application",
         fileURL: uploadResponse.secure_url,
         fileType,
-        remark: remark || reason,
+        remark: trimmedRemark || trimmedReason,
         isExtra: false,
         uploadedBy: req.user?._id || null,
         uploadedByName: req.user?.name || "",
@@ -3047,8 +3117,8 @@ exports.markDummy = async (req, res) => {
     }
 
     student.dummyDetails = {
-      reason,
-      remark: remark || "",
+      reason: trimmedReason,
+      remark: trimmedRemark,
       applicationURL,
       applicationType,
       markedBy: req.user?._id || null,
@@ -3062,6 +3132,94 @@ exports.markDummy = async (req, res) => {
     return res.status(200).json({
       message: "Student marked as Dummy",
       data: { studentId: student._id, status: student.status, dummyDetails: student.dummyDetails },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ✅ Update Dummy Student Reason, Remark, or Application Document
+exports.updateDummyDetails = async (req, res) => {
+  try {
+    const { reason, remark, fileData, fileType, removeDocument } = req.body;
+    const trimmedReason = reason !== undefined ? String(reason).trim() : "";
+    if (!trimmedReason) {
+      return res.status(400).json({ message: "reason is required" });
+    }
+
+    if (fileData && !["image", "pdf"].includes(fileType)) {
+      return res.status(400).json({ message: "fileType must be image or pdf" });
+    }
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (!["Dummy", "Dropped"].includes(student.status)) {
+      return res.status(400).json({ message: "Only Dummy or Dropped student details can be edited here" });
+    }
+
+    const trimmedRemark = remark !== undefined ? String(remark).trim() : "";
+    const existingDetails = student.dummyDetails || {};
+    const appDocIndex = student.documents.findIndex(
+      (doc) => !doc.isExtra && (doc.title === "Dummy Student Application" || doc.title === "Drop Application")
+    );
+
+    let applicationURL =
+      existingDetails.applicationURL || (appDocIndex !== -1 ? student.documents[appDocIndex].fileURL : "");
+    let applicationType =
+      existingDetails.applicationType || (appDocIndex !== -1 ? student.documents[appDocIndex].fileType : "");
+
+    if (fileData && fileType) {
+      const uploadResponse = await uploadDummyApplicationFile(req.params.id, fileData, fileType);
+      applicationURL = uploadResponse.secure_url;
+      applicationType = fileType;
+
+      const updatedDocEntry = {
+        title: student.status === "Dropped" && appDocIndex !== -1 && student.documents[appDocIndex].title === "Drop Application"
+          ? "Drop Application"
+          : "Dummy Student Application",
+        fileURL: uploadResponse.secure_url,
+        fileType,
+        remark: trimmedRemark || trimmedReason,
+        isExtra: false,
+        uploadedBy: req.user?._id || null,
+        uploadedByName: req.user?.name || "",
+        uploadedAt: new Date(),
+      };
+
+      if (appDocIndex !== -1) {
+        Object.assign(student.documents[appDocIndex], updatedDocEntry);
+      } else {
+        student.documents.push(updatedDocEntry);
+      }
+    } else if (removeDocument) {
+      applicationURL = "";
+      applicationType = "";
+      student.documents = student.documents.filter(
+        (doc) => doc.isExtra || !["Dummy Student Application", "Drop Application"].includes(doc.title)
+      );
+    } else if (appDocIndex !== -1) {
+      student.documents[appDocIndex].remark = trimmedRemark || trimmedReason;
+    }
+
+    student.dummyDetails = {
+      reason: trimmedReason,
+      remark: trimmedRemark,
+      applicationURL,
+      applicationType,
+      markedBy: existingDetails.markedBy || req.user?._id || null,
+      markedByName: existingDetails.markedByName || req.user?.name || "",
+      markedAt: existingDetails.markedAt || new Date(),
+    };
+
+    await student.save();
+
+    return res.status(200).json({
+      message: "Dummy student details updated successfully",
+      data: {
+        studentId: student._id,
+        status: student.status,
+        dummyDetails: student.dummyDetails,
+      },
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

@@ -5,6 +5,23 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="./src//assets/images/logo-ssism.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <script>
+    (function () {
+      try {
+        if (!window.location.pathname.startsWith("/student-portal")) return;
+        var root = document.documentElement;
+        root.dataset.studentPortal = "true";
+        var saved = localStorage.getItem("student_color_scheme");
+        var valid = saved === "light" || saved === "dark" ? saved : null;
+        var meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.setAttribute("content", valid || "light dark");
+        var resolved = valid || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        root.dataset.studentTheme = resolved;
+        if (resolved === "dark") root.classList.add("student-dark");
+      } catch (_) {}
+    })();
+  </script>
   <link href="https://fonts.googleapis.com/css?family=Poppins" rel="stylesheet">
   <title>SSES Management System</title>
   <script>

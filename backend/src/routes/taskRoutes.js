@@ -5,7 +5,13 @@ const { verifyToken, checkRole } = require("../middlewares/authMiddleware");
 const Task = require("../models/syllabus/Task");
 const StudentTask = require("../models/syllabus/StudentTask");
 const Student = require("../models/student/Student");
-const { syncTasksToSubLevelStudents, updateStudentTaskStatus, syncTaskToStudents } = require("../services/taskAssignmentService");
+const {
+  syncTasksToSubLevelStudents,
+  updateStudentTaskStatus,
+  syncTaskToStudents,
+  filterStudentTasksBySession,
+  selectBestSyllabusForStudent
+} = require("../services/taskAssignmentService");
 const { getDepartmentScopeForUser } = require("../utils/departmentHelper");
 
 const writeRoles = ["superadmin", "admin", "faculty", "hod", "placement_officer", "coordinator"];
@@ -378,11 +384,11 @@ router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =
         syllabusVersionId: task.syllabusVersionId,
         title: task.title
       });
-    }
-    if (task.subLevelId && task.title) {
+    } else if (task.subLevelId && task.title) {
       studentTaskCriteria.push({
         subLevelId: task.subLevelId,
-        title: task.title
+        title: task.title,
+        ...(task.sessionId ? { sessionId: task.sessionId } : { sessionId: null })
       });
     }
 
@@ -418,19 +424,20 @@ router.delete("/:taskId", verifyToken, checkRole(writeRoles), async (req, res) =
 router.get("/level/:subLevelId", verifyToken, checkRole([...writeRoles, "placement_officer"]), async (req, res) => {
   try {
     const { subLevelId } = req.params;
-    const { syllabusVersionId } = req.query;
+    const { syllabusVersionId, sessionId } = req.query;
 
-    let filter = { 
-      $or: [
-        { subLevelId, isGeneralTask: true },
-        { syllabusVersionId }
-      ],
-      isActive: true 
+    const generalTaskClause = {
+      subLevelId,
+      isGeneralTask: true,
+      ...(sessionId ? { $or: [{ sessionId }, { sessionId: null }] } : {})
     };
 
-    if (!syllabusVersionId) {
-      filter = { subLevelId, isGeneralTask: true, isActive: true };
-    }
+    const filter = syllabusVersionId
+      ? {
+          $or: [generalTaskClause, { syllabusVersionId }],
+          isActive: true
+        }
+      : { ...generalTaskClause, isActive: true };
 
     const tasks = await Task.find(filter).sort({ createdAt: 1, _id: 1 });
 
@@ -467,9 +474,17 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
       return res.status(400).json({ success: false, message: "Invalid student ID" });
     }
 
-    const tasks = await StudentTask.find({ studentId, isActive: true })
+    const studentDoc = await Student.findById(studentId)
+      .select("sessionId isUIUX isFTP syllabusVersionId currentSubLevelId course")
+      .lean();
+    if (!studentDoc) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const rawTasks = await StudentTask.find({ studentId, isActive: true })
       .populate("subLevelId", "name")
       .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, studentDoc);
 
     const grouped = {};
     tasks.forEach(t => {
@@ -628,13 +643,28 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
       };
     } else {
       // Check if student has a syllabus with soft skills topics even if no tasks completed yet
-      const studentDoc = await Student.findById(studentId).select("syllabusVersionId currentSubLevelId").lean();
       let sv = null;
-      if (studentDoc?.syllabusVersionId) {
-        sv = await SyllabusVersion.findById(studentDoc.syllabusVersionId).lean();
+      const allowCrossSession = Boolean(studentDoc.isUIUX || studentDoc.isFTP || !studentDoc.sessionId);
+      if (studentDoc.syllabusVersionId) {
+        const candidateSv = await SyllabusVersion.findById(studentDoc.syllabusVersionId).lean();
+        if (
+          candidateSv &&
+          (allowCrossSession || !candidateSv.sessionId || candidateSv.sessionId.toString() === studentDoc.sessionId.toString())
+        ) {
+          sv = candidateSv;
+        }
       }
-      if (!sv && studentDoc?.currentSubLevelId) {
-        sv = await SyllabusVersion.findOne({ subLevelId: studentDoc.currentSubLevelId, status: "active" }).lean();
+      if (!sv && studentDoc.currentSubLevelId) {
+        const svQuery = {
+          subLevelId: studentDoc.currentSubLevelId,
+          status: "active",
+          isActive: true
+        };
+        if (!allowCrossSession) {
+          svQuery.sessionId = studentDoc.sessionId;
+        }
+        const candidates = await SyllabusVersion.find(svQuery).sort({ createdAt: -1 }).lean();
+        sv = selectBestSyllabusForStudent(candidates, studentDoc.course);
       }
       if (sv?.subjects) {
         const softSub = sv.subjects.find(s => isSoftSkillSubject(s.name));
@@ -727,10 +757,11 @@ router.get("/student/:studentId", verifyToken, checkRole([...writeRoles, "placem
       ];
     }
 
-    const tasks = await StudentTask.find(filter)
+    const rawTasks = await StudentTask.find(filter)
       .populate("subLevelId", "name")
       .populate("levelId", "name")
       .sort({ assignedAt: 1, createdAt: 1, _id: 1 });
+    const tasks = await filterStudentTasksBySession(rawTasks, student);
 
     res.status(200).json({
       success: true,
@@ -809,7 +840,7 @@ router.post("/student/:studentId/create", verifyToken, checkRole(writeRoles), as
         type: "info",
         category: "task",
         studentId: student._id,
-        recipientRole: "all",
+        recipientRole: "student",
         actorId: req.user?._id || req.user?.id,
         actorName: req.user?.name || "Faculty",
         actorRole: req.user?.role || "faculty",

@@ -5,13 +5,15 @@ import {
     User, GraduationCap, Lock, ShieldCheck, CheckCircle2,
     Phone, Mail, MapPin, Calendar, Building,
     X, Eye, EyeOff, RefreshCw, Award, Layers, BookOpen,
-    Clock, HeartHandshake, Sparkles, ChevronRight, AlertCircle
+    Clock, HeartHandshake, Sparkles, ChevronRight, AlertCircle,
+    Sun, Moon, Monitor
 } from "lucide-react";
 import {
     useGetMyStudentProfileQuery,
     useChangeMyStudentPasswordMutation,
     useGetMyStudentLevelHistoryQuery,
 } from "../../../redux/api/studentApi";
+import { useStudentTheme } from "../../../utils/studentTheme";
 
 const formatDate = (d) =>
     d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -193,6 +195,7 @@ export default function StudentProfile() {
     const navigate = useNavigate();
     const [pwdModal, setPwdModal] = useState(false);
     const [activeTab, setActiveTab] = useState("all"); // "all" | "academic" | "personal" | "prior" | "leaves"
+    const { preference, systemScheme, setThemePreference } = useStudentTheme();
 
     const { data, isLoading } = useGetMyStudentProfileQuery();
     const { data: levelHistoryResponse } = useGetMyStudentLevelHistoryQuery();
@@ -431,6 +434,58 @@ export default function StudentProfile() {
                                     </span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Portal Appearance Theme Switcher */}
+                    <div className="mt-3.5 sm:mt-4 pt-3.5 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                {preference === "dark" || (preference === "system" && systemScheme === "dark") ? (
+                                    <Moon size={14} />
+                                ) : (
+                                    <Sun size={14} />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-800">Portal Appearance</p>
+                                <p className="text-[11px] text-gray-500">
+                                    {preference === "system"
+                                        ? `Following device theme (Currently ${systemScheme === "dark" ? "Dark" : "Light"})`
+                                        : `Using ${preference === "dark" ? "Dark" : "Light"} mode`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            role="group"
+                            aria-label="Portal color scheme"
+                            className="inline-flex items-center p-1 rounded-xl bg-gray-100/90 border border-gray-200/70 gap-1 self-start sm:self-auto"
+                        >
+                            {[
+                                { id: "light", label: "Light", icon: Sun },
+                                { id: "dark", label: "Dark", icon: Moon },
+                                { id: "system", label: `System (${systemScheme === "dark" ? "Dark" : "Light"})`, icon: Monitor },
+                            ].map((opt) => {
+                                const Icon = opt.icon;
+                                const active = preference === opt.id;
+                                return (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setThemePreference(opt.id)}
+                                        aria-pressed={active}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                                            active
+                                                ? "bg-orange-500 text-white shadow-xs"
+                                                : "text-gray-600 hover:text-gray-900 hover:bg-white/70"
+                                        }`}
+                                    >
+                                        <Icon size={13} aria-hidden="true" />
+                                        <span>{opt.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

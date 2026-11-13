@@ -1,10 +1,64 @@
 import { useState, useEffect, useCallback } from "react";
 
 /**
+ * Clear all persistent filter states from sessionStorage
+ */
+export const clearAllPersistentFilters = () => {
+  try {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const keysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (
+          key &&
+          (key.startsWith("filter_state_") ||
+            key.startsWith("filter_val_") ||
+            key.startsWith("filter_") ||
+            key.startsWith("student_progress_filters_") ||
+            key.includes("_filter") ||
+            key.includes("_search"))
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+    }
+  } catch (e) {
+    console.warn("[clearAllPersistentFilters] Error:", e);
+  }
+};
+
+/**
+ * On page reload / refresh, immediately clear persistent filters
+ * so the page starts clean with no leftover search or filters.
+ */
+let isReloadPurged = false;
+export const purgeFiltersOnPageReload = () => {
+  if (isReloadPurged) return;
+  isReloadPurged = true;
+  try {
+    if (typeof window === "undefined") return;
+    const navEntries = performance.getEntriesByType?.("navigation");
+    const isReloadLevel2 = navEntries && navEntries.length > 0 && navEntries[0].type === "reload";
+    const isReloadLevel1 = window.performance?.navigation?.type === 1;
+
+    if (isReloadLevel2 || isReloadLevel1) {
+      clearAllPersistentFilters();
+    }
+  } catch (e) {
+    // ignore
+  }
+};
+
+// Run immediately upon script import
+purgeFiltersOnPageReload();
+
+/**
  * usePersistentFilters
  * 
  * Manages an object of filter values persisted in sessionStorage.
- * Restores state on remount / navigating back to the page.
+ * Restores state on in-app route transitions.
+ * Automatically clears when page is refreshed or user logs out.
  * 
  * @param {string} storageKey - Unique storage key for the page/section
  * @param {object} defaultFilters - Default filter values

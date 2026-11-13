@@ -124,6 +124,10 @@ const LoginPage = () => {
       // If user is staff (faculty, hod, superadmin, admin, placement_officer, coordinator),
       // redirect them to their respective portal (/ dashboard).
       // Any other registered email (or non-staff role) defaults to the student portal.
+      try {
+        sessionStorage.clear();
+      } catch (_) {}
+
       if (isStaff && !isStudentResponse) {
         const userData = {
           ...response.user,

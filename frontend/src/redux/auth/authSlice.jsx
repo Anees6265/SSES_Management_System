@@ -53,6 +53,13 @@ const authSlice = createSlice({
       state.permissions = user?.permissions || [];
       state.role = user?.role || null;
       state.isAuthenticated = true;
+      try {
+        if (typeof window !== "undefined" && window.sessionStorage) {
+          sessionStorage.clear();
+        }
+      } catch (e) {
+        console.warn("Error clearing sessionStorage on login:", e);
+      }
     },
     setRole: (state, action) => {
       state.role = action.payload;
@@ -63,10 +70,17 @@ const authSlice = createSlice({
       state.permissions = [];
       state.role = null;
       state.isAuthenticated = false;
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("role");
-      localStorage.clear();
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("role");
+        localStorage.clear();
+        if (typeof window !== "undefined" && window.sessionStorage) {
+          sessionStorage.clear();
+        }
+      } catch (e) {
+        console.warn("Error clearing storage on logout:", e);
+      }
     },
   },
 });

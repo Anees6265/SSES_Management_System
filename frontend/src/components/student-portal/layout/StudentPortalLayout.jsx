@@ -125,6 +125,9 @@ export default function StudentPortalLayout() {
     localStorage.removeItem("studentRefreshToken");
     localStorage.removeItem("studentData");
     localStorage.removeItem("role");
+    try {
+      sessionStorage.clear();
+    } catch (_) {}
     toast.success("Logged out successfully");
     navigate("/login");
   };

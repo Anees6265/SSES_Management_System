@@ -37,20 +37,25 @@ const markPlacementReady = async (studentId, subDepartmentId) => {
 
 // Verify a SyllabusVersion actually has active academic content (not an empty placeholder doc)
 const syllabusHasContent = async (sv) => {
-  if (!sv || sv.isActive === false || sv.status !== "active") return false;
-  const activeSubjects = (sv.subjects || []).filter((sub) => sub && sub.isActive !== false);
-  if (activeSubjects.length === 0) return false;
-
-  const hasActiveTopics = activeSubjects.some(
-    (sub) => Array.isArray(sub.topics) && sub.topics.some((t) => t && t.isActive !== false)
-  );
-  if (hasActiveTopics) return true;
+  if (!sv || sv.isActive === false) return false;
+  if (sv.status && !["active", "draft"].includes(sv.status)) return false;
 
   const hasActiveTask = await Task.exists({ syllabusVersionId: sv._id, isActive: true });
-  return Boolean(hasActiveTask);
+  if (hasActiveTask) return true;
+
+  const activeSubjects = (sv.subjects || []).filter((sub) => sub && sub.isActive !== false);
+  if (activeSubjects.length > 0) {
+    const hasActiveTopics = activeSubjects.some(
+      (sub) => Array.isArray(sub.topics) && sub.topics.some((t) => t && t.isActive !== false)
+    );
+    if (hasActiveTopics) return true;
+    return true;
+  }
+
+  return false;
 };
 
-// Pick an active, non-empty SyllabusVersion matching student's course (never falls back to an unrelated course)
+// Pick an active or draft SyllabusVersion matching student's course
 const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
   const { matchesCourse, selectBestSyllabusForStudent } = require("./taskAssignmentService");
   const courseMatched = (candidates || []).filter(
@@ -60,7 +65,11 @@ const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
   for (const sv of courseMatched) {
     if (await syllabusHasContent(sv)) usable.push(sv);
   }
-  return selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true });
+  let best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true });
+  if (!best && usable.length > 0) {
+    best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: false });
+  }
+  return best;
 };
 
 // Called after every task status update.
@@ -81,19 +90,30 @@ const syncStudentReadiness = async (studentId) => {
   if (!locked) return;
 
   try {
-    const tasks = await StudentTask.find({
+    const { filterStudentTasksBySession, matchesCourse } = require("./taskAssignmentService");
+
+    const rawTasks = await StudentTask.find({
       studentId,
-      syllabusVersionId: student.syllabusVersionId,
       subLevelId: student.currentSubLevelId,
-      isActive: true,
-    }).select("status mandatory");
+      isActive: { $ne: false },
+      isArchived: { $ne: true },
+    }).select("status mandatory courses course syllabusVersionId taskId");
+
+    const sessionTasks = await filterStudentTasksBySession(rawTasks, student);
+    const tasks = sessionTasks.filter((t) => {
+      if (!t) return false;
+      if (student.course && (t.courses?.length || t.course)) {
+        return matchesCourse(student.course, t.courses, t.course);
+      }
+      return true;
+    });
 
     if (tasks.length === 0) return;
 
     const mandatoryTasks = tasks.filter((t) => t.mandatory);
     if (mandatoryTasks.length === 0) return;
 
-    const allMandatoryDone = mandatoryTasks.every((t) => t.status === "completed");
+    const allMandatoryDone = mandatoryTasks.every((t) => (t.status || "").toLowerCase().trim() === "completed");
     if (!allMandatoryDone) return;
 
     await promoteToNextSubLevel(studentId, null, { isAuto: true });
@@ -158,23 +178,49 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   if (!student) throw toClientError("Student not found", 404);
   if (student.status !== "Active") throw toClientError("Only active students can be promoted");
 
-  // Validate that the student has completed at least 85% of tasks per subject in the current sublevel
-  const currentTasks = await StudentTask.find({
+  // Validate that the student has completed at least 85% of tasks per subject in their active current sublevel
+  const { filterStudentTasksBySession, matchesCourse } = require("./taskAssignmentService");
+
+  const taskQuery = {
     studentId,
-    syllabusVersionId: student.syllabusVersionId,
     subLevelId: student.currentSubLevelId,
-    isActive: true,
+    isActive: { $ne: false },
+    isArchived: { $ne: true },
+  };
+
+  let rawCurrentTasks = await StudentTask.find(taskQuery);
+
+  if (rawCurrentTasks.length === 0 && student.syllabusVersionId) {
+    rawCurrentTasks = await StudentTask.find({
+      studentId,
+      syllabusVersionId: student.syllabusVersionId,
+      isActive: { $ne: false },
+      isArchived: { $ne: true },
+    });
+  }
+
+  // Filter tasks belonging to student session (ignore cross-session tasks)
+  const sessionFilteredTasks = await filterStudentTasksBySession(rawCurrentTasks, student);
+
+  // Filter tasks matching student course (exclude tasks belonging only to other courses)
+  const currentTasks = sessionFilteredTasks.filter((task) => {
+    if (!task) return false;
+    if (student.course && (task.courses?.length || task.course)) {
+      return matchesCourse(student.course, task.courses, task.course);
+    }
+    return true;
   });
 
   if (currentTasks.length > 0) {
     const subjectTasks = {};
     currentTasks.forEach((task) => {
-      const subName = task.subjectName || "General";
+      const subName = (task.subjectName || "General").trim();
       if (!subjectTasks[subName]) {
         subjectTasks[subName] = { total: 0, completed: 0 };
       }
       subjectTasks[subName].total++;
-      if (task.status === "completed") {
+      const isCompleted = (task.status || "").toLowerCase().trim() === "completed";
+      if (isCompleted) {
         subjectTasks[subName].completed++;
       }
     });
@@ -284,7 +330,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
 
   const targetLevelId = promotedToNewLevel ? nextLevel._id : student.currentLevelId;
 
-  // Step 3: Find active, non-empty SyllabusVersion for new position (strictly scoped to student's session & course)
+  // Step 3: Find active/draft SyllabusVersion for new position (scoped to student's session & course with fallback)
   let targetSessionId = student.sessionId;
   if (!targetSessionId) {
     const latestSession = await Session.findOne({ isActive: true }).sort({ createdAt: -1 });
@@ -292,24 +338,36 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     targetSessionId = latestSession._id;
   }
 
-  const sessionSyllabi = await SyllabusVersion.find({
+  // 3a: Try exact session match first
+  let sessionSyllabi = await SyllabusVersion.find({
     sessionId: targetSessionId,
     levelId: targetLevelId,
     subLevelId: nextSubLevel._id,
-    status: "active",
+    status: { $in: ["active", "draft"] },
     isActive: true,
   }).sort({ createdAt: -1 });
 
   let newSyllabus = await selectUsablePromotionSyllabus(sessionSyllabi, student.course);
 
-  if (!newSyllabus && student.isUIUX) {
-    const uiuxSyllabi = await SyllabusVersion.find({
+  // 3b: Fallback across any session for this sublevel (prevents blocking when syllabus was added in adjacent session)
+  if (!newSyllabus) {
+    const fallbackSyllabi = await SyllabusVersion.find({
       levelId: targetLevelId,
       subLevelId: nextSubLevel._id,
-      status: "active",
+      status: { $in: ["active", "draft"] },
       isActive: true,
     }).sort({ createdAt: -1 });
-    newSyllabus = await selectUsablePromotionSyllabus(uiuxSyllabi, student.course);
+    newSyllabus = await selectUsablePromotionSyllabus(fallbackSyllabi, student.course);
+  }
+
+  // 3c: Fallback across sublevel (e.g. UI/UX or custom configurations)
+  if (!newSyllabus) {
+    const anySyllabi = await SyllabusVersion.find({
+      subLevelId: nextSubLevel._id,
+      status: { $in: ["active", "draft"] },
+      isActive: true,
+    }).sort({ createdAt: -1 });
+    newSyllabus = await selectUsablePromotionSyllabus(anySyllabi, student.course);
   }
 
   if (!newSyllabus) {
@@ -320,6 +378,12 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       `Promotion blocked: No active syllabus found for ${targetLabel}. Please add a syllabus before promoting.`,
       400
     );
+  }
+
+  // Auto-activate draft syllabus version now that students are promoted into it
+  if (newSyllabus.status === "draft") {
+    await SyllabusVersion.updateOne({ _id: newSyllabus._id }, { $set: { status: "active" } });
+    newSyllabus.status = "active";
   }
 
   // Automatic "Ready for Drive" transition upon completing Level 2B (only after verifying promotion target & syllabus)
@@ -352,12 +416,14 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
 
   // Step 4: Save exit snapshot of previous sublevel
   try {
-    const prevTasks = await StudentTask.find({
-      studentId,
-      syllabusVersionId: prevSyllabusVersionId,
-      subLevelId: prevSubLevelId,
-      isActive: true,
-    }).select("status marks subjectId subjectName");
+    const prevTasks = currentTasks && currentTasks.length > 0
+      ? currentTasks
+      : await StudentTask.find({
+          studentId,
+          subLevelId: prevSubLevelId,
+          isActive: { $ne: false },
+          isArchived: { $ne: true },
+        }).select("status marks subjectId subjectName");
 
     const [prevSession, prevLevel, prevSubLevel, prevSyllabus] = await Promise.all([
       Session.findById(student.sessionId).select("name"),
@@ -596,10 +662,13 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   let tasksAssigned = 0;
   try {
     const { assignTasksToStudent } = require("./taskAssignmentService");
-    const result = await assignTasksToStudent(student._id, newSyllabus._id, { skipTaskNotification: true });
+    const result = await assignTasksToStudent(student._id, newSyllabus._id, {
+      allowSessionMismatch: true,
+      skipTaskNotification: true,
+    });
     tasksAssigned = result.totalTasks;
   } catch (err) {
-    // Task assignment failure must never block promotion
+    console.warn("Task auto-assignment warning on promotion:", err.message);
   }
 
   // Step 7: Save promotion entry snapshot

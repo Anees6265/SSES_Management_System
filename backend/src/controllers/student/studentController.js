@@ -2034,6 +2034,7 @@ exports.getStudentTasks = async (req, res) => {
       pendingTasks: tasks.filter(t => t.status === "pending").length,
       inProgressTasks: tasks.filter(t => t.status === "inProgress").length,
       groupedBySubject: grouped,
+      tasks,
       subLevelId: subLevelId || student.currentSubLevelId,
       currentSubLevelId: student.currentSubLevelId,
       currentLevelId: student.currentLevelId,

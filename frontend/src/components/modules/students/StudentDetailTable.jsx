@@ -15,7 +15,7 @@ import Header from "../../shared/sidebar/Header";
 import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
-import { getFtpDomainsForStudent } from "../../../utils/ftpConfig";
+import { getFtpDomainsForStudent, getStudentDepartmentKey, FTP_DOMAINS_BY_DEPARTMENT } from "../../../utils/ftpConfig";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 import { MdTableChart } from "react-icons/md";
 import { Search, X, ChevronRight, Phone, RotateCcw, Filter, FileSpreadsheet, FileText } from "lucide-react";
@@ -188,15 +188,55 @@ const StudentDetailTable = () => {
     return ["All", ...new Set(names), "Others", "FTP Students"];
   }, [departmentSubLevels, isUiUxPage]);
 
+  const currentDeptKey = useMemo(() => {
+    if (isUiUxPage) return "UIUX";
+    if (currentSubDept) {
+      const deptObj = {
+        subDepartmentId: currentSubDept,
+        departmentId: currentSubDept.departmentId,
+        course: (currentSubDept.allowedCourses && currentSubDept.allowedCourses[0]) || currentSubDept.name,
+      };
+      return getStudentDepartmentKey(deptObj);
+    }
+    const sample = students.find((s) => s.subDepartmentId || s.departmentId || s.course || s.ssismGroup) || students[0];
+    if (sample) {
+      return getStudentDepartmentKey(sample);
+    }
+    const norm = String(deptName || "").toUpperCase();
+    if (norm.includes("UI/UX") || norm.includes("UIUX")) return "UIUX";
+    if (norm.includes("B.TECH") || norm.includes("BTECH") || norm.includes("ENGINEERING")) return "BTECH";
+    if (norm.includes("MEG") || norm.includes("MANAGEMENT") || norm.includes("COMMERCE") || norm.includes("BBA") || norm.includes("MBA")) return "MEG";
+    if (norm.includes("BEG") || norm.includes("SCIENCE") || norm.includes("BIO") || norm.includes("MICRO") || norm.includes("PHARM")) return "BEG";
+    return "ITEG";
+  }, [currentSubDept, students, deptName, isUiUxPage]);
+
   const availableDomains = useMemo(() => {
-    const set = new Set();
+    const officialDomains = FTP_DOMAINS_BY_DEPARTMENT[currentDeptKey] || FTP_DOMAINS_BY_DEPARTMENT.ITEG;
+    const domainSet = new Set(officialDomains);
+
+    // Collect other departments' domains so we strictly exclude cross-department leakage
+    const otherDeptDomains = new Set(
+      Object.entries(FTP_DOMAINS_BY_DEPARTMENT)
+        .filter(([key]) => key !== currentDeptKey && !( (key === "ITEG" && currentDeptKey === "BTECH") || (key === "BTECH" && currentDeptKey === "ITEG") ))
+        .flatMap(([, domains]) => domains)
+    );
+
+    // If any student in this department has a custom FTP domain (and it does not belong to another department), include it
     students.forEach((s) => {
-      if (s.ftpDomain) set.add(s.ftpDomain);
+      const d = String(s.ftpDomain || "").trim();
+      if (d && !otherDeptDomains.has(d)) {
+        domainSet.add(d);
+      }
     });
-    const sample = students[0] || {};
-    getFtpDomainsForStudent(sample).forEach((d) => set.add(d));
-    return Array.from(set);
-  }, [students]);
+
+    return Array.from(domainSet);
+  }, [currentDeptKey, students]);
+
+  useEffect(() => {
+    if (selectedDomain !== "All" && !availableDomains.includes(selectedDomain)) {
+      setSelectedDomain("All");
+    }
+  }, [availableDomains, selectedDomain]);
 
   const filteredData = useMemo(() => {
     const rawSearch = String(searchTerm || "").trim().toLowerCase();
@@ -224,10 +264,13 @@ const StudentDetailTable = () => {
         }
       }
 
+      const isUiUx2ATab = isUiUxPage && (activeTab === "2A" || activeTab.includes("2A"));
       const matchDomain =
-        activeTab !== "FTP Students" ||
+        (activeTab !== "FTP Students" && !isUiUx2ATab) ||
         selectedDomain === "All" ||
-        s.ftpDomain === selectedDomain;
+        s.ftpDomain === selectedDomain ||
+        s.domain === selectedDomain ||
+        s.track === selectedDomain;
       const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(s.status);
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
@@ -328,9 +371,10 @@ const StudentDetailTable = () => {
     if (selectedStatus.length > 0) count++;
     if (selectedSessionId) count++;
     if (selectedYear !== "All") count++;
-    if (activeTab === "FTP Students" && selectedDomain !== "All") count++;
+    const isUiUx2ATab = isUiUxPage && (activeTab === "2A" || activeTab.includes("2A"));
+    if ((activeTab === "FTP Students" || isUiUx2ATab) && selectedDomain !== "All") count++;
     return count;
-  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear, activeTab, selectedDomain]);
+  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear, activeTab, selectedDomain, isUiUxPage]);
 
   const hasActiveFilters = activeFilterCount > 0 || Boolean(searchTerm);
 
@@ -389,7 +433,8 @@ const StudentDetailTable = () => {
         onRemove: () => setSelectedTech("All"),
       });
     }
-    if (activeTab === "FTP Students" && selectedDomain && selectedDomain !== "All") {
+    const isUiUx2ATab = isUiUxPage && (activeTab === "2A" || activeTab.includes("2A"));
+    if ((activeTab === "FTP Students" || isUiUx2ATab) && selectedDomain && selectedDomain !== "All") {
       chips.push({
         key: "domain",
         label: "Domain",
@@ -801,17 +846,18 @@ const StudentDetailTable = () => {
                 buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
               />
 
-              {/* FTP Domain Filter (active when in FTP Students tab) */}
-              {activeTab === "FTP Students" && (
+              {/* Domain Filter (active in FTP Students tab OR 2A tab for UI/UX) */}
+              {(activeTab === "FTP Students" || (isUiUxPage && (activeTab === "2A" || activeTab.includes("2A")))) && (
                 <SelectDropdown
                   value={selectedDomain}
                   onChange={(val) => setSelectedDomain(val)}
+                  placeholder="All Domains"
                   options={[
                     { value: "All", label: "All Domains" },
                     ...availableDomains.map((d) => ({ value: d, label: d }))
                   ]}
                   className="w-full md:w-auto md:min-w-[155px]"
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-orange-200 bg-orange-50/70 rounded-xl text-xs sm:text-sm text-orange-950 font-bold transition-colors cursor-pointer hover:border-orange-400 focus:outline-none shadow-2xs"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
                 />
               )}
 
@@ -897,7 +943,7 @@ const StudentDetailTable = () => {
                 selected: selectedYear === "All" ? [] : [selectedYear],
                 setter: (vals) => setSelectedYear(vals.length > 0 ? vals[0] : "All"),
               },
-              ...(activeTab === "FTP Students" && availableDomains.length > 0
+              ...(((activeTab === "FTP Students" || (isUiUxPage && (activeTab === "2A" || activeTab.includes("2A")))) && availableDomains.length > 0)
                 ? [
                     {
                       title: "Domain",

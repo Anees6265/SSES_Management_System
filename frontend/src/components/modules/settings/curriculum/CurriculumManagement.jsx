@@ -338,8 +338,12 @@ const CurriculumUploadDrawerContent = ({
   }, [selectedLevel, selectedSubLevel]);
 
   const departmentDomains = useMemo(() => {
-    return getDomainsForDepartment(selectedDept?.name || "");
-  }, [selectedDept]);
+    const subName = selectedSubDept?.name || "";
+    if (subName.toUpperCase().includes("UI/UX") || subName.toUpperCase().includes("UIUX")) {
+      return getDomainsForDepartment("UI/UX");
+    }
+    return getDomainsForDepartment(selectedDept?.name || subName);
+  }, [selectedDept, selectedSubDept]);
 
   const filteredSessions = useMemo(() => {
     return filterSessionsByDepartment(sessions, selectedDept?.name || selectedDept);

@@ -1345,7 +1345,7 @@ exports.updateStudent = async (req, res) => {
     let targetFtpSyllabus = null;
     let targetFtpTasks = [];
 
-    const isMarkingFtp = updateData.isFTP === true || (updateData.ftpDomain !== undefined && updateData.ftpDomain !== "" && updateData.isFTP !== false);
+    const isMarkingFtp = updateData.isFTP === true || (Boolean(existingStudent.isFTP) && updateData.isFTP !== false && Boolean(updateData.ftpDomain));
     const domainCandidate = String(updateData.ftpDomain || updateData.domain || req.body.ftpDomain || req.body.domain || "").trim();
 
     if (isMarkingFtp && domainCandidate) {

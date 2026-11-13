@@ -56,6 +56,13 @@ const checkIsLevel2B = (level, subLevel) => {
 };
 
 const resolveDeptIdentifier = (departmentName, level, subLevel, subdepartment) => {
+  const subName = subdepartment?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId?.name : "");
+  if (subName && (subName.toUpperCase().includes("UI/UX") || subName.toUpperCase().includes("UIUX"))) {
+    return "UI/UX";
+  }
+  if (departmentName && (departmentName.toUpperCase().includes("UI/UX") || departmentName.toUpperCase().includes("UIUX"))) {
+    return "UI/UX";
+  }
   if (departmentName && departmentName !== "Department") return departmentName;
   if (subdepartment?.departmentId?.name) return subdepartment.departmentId.name;
   if (typeof level?.subDepartmentId === "object" && level.subDepartmentId?.departmentId?.name) {

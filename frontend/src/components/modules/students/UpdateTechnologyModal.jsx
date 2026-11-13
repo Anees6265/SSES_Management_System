@@ -11,19 +11,29 @@ import CustomDropdown from "../../shared/form-fields/CustomDropdown";
 import { buttonStyles } from "../../../styles/buttonStyles";
 import OrangeButton from "../../shared/sidebar/OrangeButton";
 
-const UpdateTechnologyModal = ({ isOpen, onClose, studentId }) => {
+const UpdateTechnologyModal = ({ isOpen, onClose, studentId, student }) => {
     const [updateTechnology, { isLoading }] = useUpdateTechnologyMutation();
     const [showCustomInput, setShowCustomInput] = useState(false);
 
-    const techOptions = [
-        { value: "Python (AI/ML)", label: "Python (AI/ML)" },
-        { value: "UI/UX Design", label: "UI/UX Design" },
-        { value: "Mern Developer", label: "Mern Developer" },
-        { value: "Full Stack Developer", label: "Full Stack Developer" },
-        { value: "DevOps Engineer", label: "DevOps Engineer" },
-        { value: "Digital Marketing", label: "Digital Marketing" },
-        { value: "Others", label: "Others" }
-    ];
+    const isUiUx = Boolean(student?.isUIUX) || 
+      (student?.subDepartmentId?.name || "").toUpperCase().includes("UI/UX") ||
+      (student?.subDepartmentId?.name || "").toUpperCase().includes("UIUX");
+
+    const techOptions = isUiUx
+      ? [
+          { value: "UI/UX", label: "UI/UX" },
+          { value: "Graphic Design", label: "Graphic Design" },
+          { value: "Others", label: "Others" }
+        ]
+      : [
+          { value: "Python (AI/ML)", label: "Python (AI/ML)" },
+          { value: "UI/UX Design", label: "UI/UX Design" },
+          { value: "Mern Developer", label: "Mern Developer" },
+          { value: "Full Stack Developer", label: "Full Stack Developer" },
+          { value: "DevOps Engineer", label: "DevOps Engineer" },
+          { value: "Digital Marketing", label: "Digital Marketing" },
+          { value: "Others", label: "Others" }
+        ];
 
     const techSchema = Yup.object().shape({
         techno: Yup.string().required("Technology is required"),

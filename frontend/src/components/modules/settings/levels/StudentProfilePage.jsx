@@ -1928,12 +1928,19 @@ const StudentProfilePage = () => {
         return curSubName.includes("2A") || curSubName.includes("2B");
     }, [raw?.currentSubLevelId?.name]);
 
-    // Eligible to choose Domain: Either marked as FTP OR cleared Level 1C & currently on Level 2A / 2B
+    const isUiUxStudent = useMemo(() => {
+        if (Boolean(raw?.isUIUX)) return true;
+        const subDeptName = (raw?.subDepartmentId?.name || "").toUpperCase();
+        return subDeptName.includes("UI/UX") || subDeptName.includes("UIUX");
+    }, [raw?.isUIUX, raw?.subDepartmentId]);
+
+    // Eligible to choose Domain: Either marked as FTP, UI/UX student currently on 2A/2B, OR cleared Level 1C & currently on Level 2A / 2B
     const isDomainOptionEligible = useMemo(() => {
         if (Boolean(raw?.isFTP)) return true;
+        if (isUiUxStudent && isCurrentLevel2Aor2B) return true;
         if (isLevel1CCleared && isCurrentLevel2Aor2B) return true;
         return false;
-    }, [raw?.isFTP, isLevel1CCleared, isCurrentLevel2Aor2B]);
+    }, [raw?.isFTP, isUiUxStudent, isLevel1CCleared, isCurrentLevel2Aor2B]);
 
     const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
 
@@ -2126,15 +2133,18 @@ const StudentProfilePage = () => {
         }
         setFtpLoading(true);
         try {
+            const payload = {
+                domain: inlineFtpDomain,
+                track: inlineFtpDomain,
+                techno: inlineFtpDomain,
+                technology: inlineFtpDomain,
+            };
+            if (raw.isFTP) {
+                payload.ftpDomain = inlineFtpDomain;
+            }
             await updateStudent({
                 id: raw._id,
-                data: {
-                    ftpDomain: inlineFtpDomain,
-                    domain: inlineFtpDomain,
-                    track: inlineFtpDomain,
-                    techno: inlineFtpDomain,
-                    technology: inlineFtpDomain,
-                }
+                data: payload
             }).unwrap();
             toast.success(`Domain updated to ${inlineFtpDomain}`);
             if (refetchStudentFull) {

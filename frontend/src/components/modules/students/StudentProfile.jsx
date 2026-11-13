@@ -1151,6 +1151,7 @@ export default function StudentProfile() {
         isOpen={isTechModalOpen}
         onClose={() => setTechModalOpen(false)}
         studentId={studentData._id}
+        student={studentData}
       />
       <UpdateEmailModal
         isOpen={isEmailModalOpen}

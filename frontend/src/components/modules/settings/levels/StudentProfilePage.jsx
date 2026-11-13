@@ -1982,6 +1982,12 @@ const StudentProfilePage = () => {
     const documents = Array.isArray(raw.documents) ? raw.documents : [];
     const regularDocs = documents.filter(doc => !doc.isExtra);
     const extraDocs = documents.filter(doc => doc.isExtra);
+    const studentUploadedDocs = useMemo(() => {
+        return documents.filter(doc => {
+            const title = (doc.title || "").toLowerCase();
+            return !title.includes("resume");
+        });
+    }, [documents]);
     const permissionHistory = Array.isArray(raw.permissions) && raw.permissions.length > 0 
         ? raw.permissions 
         : (raw.permissionDetails?.status ? [raw.permissionDetails] : []);
@@ -2371,12 +2377,16 @@ const StudentProfilePage = () => {
             <ProfileSectionModal
                 isOpen={sectionModal === "documents"}
                 onClose={() => setSectionModal(null)}
-                title="Core Documents"
+                title="Documents"
                 subtitle={name}
-                countLabel={`${regularDocs.length} Documents`}
+                countLabel={`${studentUploadedDocs.length} Documents`}
             >
                 <DocumentUploadPanel type="document" loading={uploadingDocument} onUpload={handleDocumentUpload} />
-                {regularDocs.map(doc => <DocumentRow key={doc._id || doc.fileURL} doc={doc} />)}
+                {studentUploadedDocs.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-slate-400 font-medium">No documents uploaded yet</div>
+                ) : (
+                    studentUploadedDocs.map(doc => <DocumentRow key={doc._id || doc.fileURL} doc={doc} />)
+                )}
             </ProfileSectionModal>
             <ProfileSectionModal
                 isOpen={sectionModal === "extraDocuments"}
@@ -3531,110 +3541,81 @@ const StudentProfilePage = () => {
                             <PlacementHistorySection raw={raw} readinessStatus={readinessStatus} isDummy={isDummy} />
                         </div>
 
-                        {/* BOTTOM QUICK ACCESS MODULE CARDS */}
-                        <div className={`${mobileTab === "overview" || mobileTab === "documents" || mobileTab === "all" ? "grid" : "hidden lg:grid"} grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 pt-2 pb-6`}>
-                            <div
-                                onClick={() => setSectionModal("documents")}
-                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center font-bold">
-                                        <MdBadge size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Core Documents</p>
-                                        <p className="text-[11px] font-semibold text-slate-400">{regularDocs.length} files uploaded</p>
-                                    </div>
-                                </div>
-                                <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
-                            </div>
-
-                            <div
-                                onClick={() => setSectionModal("extraDocuments")}
-                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
-                                        <MdFolderSpecial size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Extra Documents</p>
-                                        <p className="text-[11px] font-semibold text-slate-400">{extraDocs.length} supporting files</p>
-                                    </div>
-                                </div>
-                                <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
-                            </div>
-
-                            {isDummy ? (
-                                <div
-                                    onClick={() => setDummyDetailsModal(true)}
-                                    className="bg-amber-50/60 rounded-2xl sm:rounded-3xl border border-amber-200 p-4 sm:p-5 shadow-sm hover:border-amber-300 transition cursor-pointer flex items-center justify-between group"
-                                >
+                        {/* DEDICATED STUDENT DOCUMENTS SECTION */}
+                        <div className={`${mobileTab === "overview" || mobileTab === "documents" || mobileTab === "all" ? "block" : "hidden lg:block"} pt-2 pb-6`}>
+                            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-6 shadow-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-100 pb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center font-bold">
-                                            <MdNotInterested size={20} />
+                                        <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center font-bold shrink-0">
+                                            <MdFolderSpecial size={20} />
                                         </div>
                                         <div>
-                                            <div className="flex items-center gap-1.5">
-                                                <p className="text-xs font-extrabold text-amber-900 group-hover:text-amber-700 transition">Dummy Status</p>
-                                                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">Active</span>
+                                            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                                                Documents
+                                            </h3>
+                                            <p className="text-xs font-medium text-slate-400 mt-0.5">
+                                                Uploaded student documents (marksheet, ID proofs, certificates)
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border ${
+                                            studentUploadedDocs.length > 0
+                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                : "bg-slate-50 text-slate-600 border-slate-200"
+                                        }`}>
+                                            {studentUploadedDocs.length} {studentUploadedDocs.length === 1 ? "file uploaded" : "files uploaded"}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSectionModal("documents")}
+                                            className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition shadow-2xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                        >
+                                            <MdFileUpload size={15} /> Upload / Manage
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {studentUploadedDocs.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {studentUploadedDocs.map((doc, idx) => (
+                                            <div
+                                                key={doc._id || doc.fileURL || idx}
+                                                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-orange-200 hover:bg-white transition group"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold ${
+                                                        doc.fileType === "pdf" ? "bg-red-50 text-red-500 border border-red-100" : "bg-blue-50 text-blue-600 border border-blue-100"
+                                                    }`}>
+                                                        <MdBadge size={20} />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-slate-900 truncate group-hover:text-orange-600 transition" title={doc.title || "Document"}>
+                                                            {doc.title || "Document"}
+                                                        </p>
+                                                        <p className="text-[11px] font-medium text-slate-400 mt-0.5 truncate">
+                                                            {(doc.fileType || "File").toUpperCase()}{doc.uploadedAt ? ` • ${formatShortDate(doc.uploadedAt)}` : ""}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openFile(doc.fileURL)}
+                                                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer shrink-0"
+                                                    title="Open Document"
+                                                >
+                                                    <MdOpenInNew size={13} />
+                                                    <span>Open</span>
+                                                </button>
                                             </div>
-                                            <p className="text-[11px] font-semibold text-amber-700 truncate max-w-[130px]">
-                                                {(raw.dummyDetails?.reason || raw.dummyDetails?.remark) ? `Reason: ${raw.dummyDetails.reason || raw.dummyDetails.remark}` : "Non-attending / Out of Placement"}
-                                            </p>
-                                        </div>
+                                        ))}
                                     </div>
-                                    <MdArrowForward size={16} className="text-amber-500 group-hover:text-amber-700 group-hover:translate-x-1 transition" />
-                                </div>
-                            ) : (
-                                <div
-                                    onClick={() => setReadyModal(true)}
-                                    className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center font-bold">
-                                            <MdWork size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">Placement Status</p>
-                                            <p className="text-[11px] font-semibold text-slate-400">{readinessStatus}</p>
-                                        </div>
+                                ) : (
+                                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                                        <p className="text-xs font-semibold text-slate-500">No documents uploaded yet by the student</p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">Documents uploaded by student or staff will appear here.</p>
                                     </div>
-                                    <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition" />
-                                </div>
-                            )}
-
-                            <div
-                                onClick={() => setSectionModal("leavePermissions")}
-                                className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:border-orange-200 transition cursor-pointer flex flex-col justify-between gap-2.5 group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold shrink-0">
-                                            <MdCalendarToday size={20} />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-extrabold text-slate-900 group-hover:text-orange-500 transition">
-                                                {isDummy ? "Dummy / Permissions" : "Leave Permissions"}
-                                            </p>
-                                            <p className="text-[11px] font-semibold text-slate-500">
-                                                Total: <strong className="text-slate-800">{totalLeaves} applied</strong>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <MdArrowForward size={16} className="text-slate-400 group-hover:text-orange-500 group-hover:translate-x-1 transition shrink-0" />
-                                </div>
-
-                                <div className="flex items-center gap-2 text-[10px] font-bold flex-wrap pt-1 border-t border-slate-100">
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        {approvedLeaves} Approved
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                        {rejectedLeaves} Rejected
-                                    </span>
-                                </div>
+                                )}
                             </div>
                         </div>
 

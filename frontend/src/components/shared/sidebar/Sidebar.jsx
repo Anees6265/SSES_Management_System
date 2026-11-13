@@ -286,7 +286,7 @@ const Sidebar = ({ children }) => {
         { name: "Department", path: "/department-management", permission: "Page_Department" },
         { name: "Student Progress", path: "/student-detail-table", permission: "Page_AdmittedStudents" },
         { name: "Leave Requests", path: "/leave-requests", permission: "Page_LeaveRequests" },
-        { name: "Dummy Students", path: "/student-permission", permission: "Page_DummyStudents" },
+        { name: "Dummy & Dropped", path: "/student-permission", permission: "Page_DummyStudents" },
         { name: "Task Management", path: "/task-management", permission: "Page_TaskManagement" },
         { name: "Curriculum Management", path: "/curriculum-management", permission: "Page_CurriculumManagement" },
       ],

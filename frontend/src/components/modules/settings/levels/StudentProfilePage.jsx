@@ -953,11 +953,15 @@ const MarkDroppedModal = ({ name, onConfirm, onCancel, loading, variant = "dropp
     };
 
     const handleSubmit = () => {
-        if (isDummy && !reason.trim()) { toast.error("Reason is required"); return; }
-        if (!isDummy && !remark.trim()) { toast.error("Reason is required"); return; }
+        const trimmedReason = reason.trim();
+        const trimmedRemark = remark.trim();
+        if (isDummy && !trimmedReason) { toast.error("Reason is required"); return; }
+        if (!isDummy && !trimmedRemark && !trimmedReason) { toast.error("Reason is required"); return; }
+        const finalReason = isDummy ? trimmedReason : (trimmedReason || trimmedRemark);
+        const finalRemark = isDummy ? trimmedRemark : (trimmedRemark || trimmedReason);
         onConfirm({
-            reason,
-            remark,
+            reason: finalReason,
+            remark: finalRemark,
             fileData: fileData || null,
             fileType: fileType || null,
             fileName: fileName || ""
@@ -1179,7 +1183,7 @@ const DummyDetailsModal = ({ raw, name, onCancel, onMarkActive }) => {
                     <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs">
                         <div className="flex items-start justify-between gap-2">
                             <span className="text-slate-400 font-bold uppercase text-[10px]">Reason:</span>
-                            <span className="font-bold text-slate-800 text-right">{dummy.reason || "Not specified"}</span>
+                            <span className="font-bold text-slate-800 text-right">{dummy.reason || dummy.remark || "Not specified"}</span>
                         </div>
                         {dummy.remark && (
                             <div className="flex items-start justify-between gap-2 border-t border-slate-100 pt-2">
@@ -1662,7 +1666,10 @@ const StudentProfilePage = () => {
     });
 
     const raw = baseStudent || {};
-    const isDummy = (raw.status || "").toLowerCase() === "dummy";
+    const studentStatus = (raw.status || "").toLowerCase();
+    const isDummy = studentStatus === "dummy";
+    const isDropped = studentStatus === "dropped";
+    const isInactive = isDummy || isDropped;
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = (name.split(" ").map(n => n[0]).filter(Boolean).join("").slice(0, 2) || "ST").toUpperCase();
     const readinessStatus = (typeof raw.placement === "object" ? raw.placement?.readinessStatus : null) || raw.readinessStatus || "Not Ready";
@@ -2013,8 +2020,8 @@ const StudentProfilePage = () => {
     }, [origin, stateDeptId, stateDeptName, subdepartment, level, name, stateFrom, stateFromState]);
 
     const goToTaskBoard = () => {
-        if (isDummy) {
-            toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+        if (isInactive) {
+            toast.warning(`Task board is disabled for ${isDropped ? "dropped" : "dummy"} students. Reactivate student to access task board.`);
             return;
         }
         navigate("/student/task-board", {
@@ -2227,10 +2234,17 @@ const StudentProfilePage = () => {
         }
     };
 
-    const handleMarkDropped = async ({ remark, fileData, fileType }) => {
+    const handleMarkDropped = async ({ reason, remark, fileData, fileType }) => {
         setDropLoading(true);
         try {
-            await markStudentDropped({ id: raw._id, remark, fileData, fileType }).unwrap();
+            const dropReason = reason || remark || "";
+            await markStudentDropped({
+                id: raw._id,
+                reason: dropReason,
+                remark: remark || dropReason,
+                fileData,
+                fileType
+            }).unwrap();
             toast.success(`${name} marked as Dropped`);
             setDropModal(false);
             navigate(-1);
@@ -2563,9 +2577,9 @@ const StudentProfilePage = () => {
                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                                                 Out of Placement
                                             </span>
-                                            {raw.dummyDetails?.reason && (
+                                            {(raw.dummyDetails?.reason || raw.dummyDetails?.remark) && (
                                                 <span className="text-[11px] font-medium text-slate-500 hidden md:inline">
-                                                    • Reason: {raw.dummyDetails.reason}
+                                                    • Reason: {raw.dummyDetails.reason || raw.dummyDetails.remark}
                                                 </span>
                                             )}
                                         </div>
@@ -2615,13 +2629,13 @@ const StudentProfilePage = () => {
 
                             <button
                                 onClick={goToTaskBoard}
-                                disabled={isDummy}
+                                disabled={isInactive}
                                 className={`flex items-center justify-center gap-1.5 sm:gap-2 border-2 font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm active:scale-[0.98] ${
-                                    isDummy
+                                    isInactive
                                         ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
                                         : "border-orange-400 text-orange-500 hover:bg-orange-50 cursor-pointer"
                                 }`}
-                                title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                                title={isInactive ? `Task board is disabled for ${isDropped ? "dropped" : "dummy"} students` : "Open Task Board"}
                             >
                                 <MdAssignment size={16} /> Task Board
                             </button>
@@ -3556,7 +3570,7 @@ const StudentProfilePage = () => {
                                                 <span className="text-[9px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">Active</span>
                                             </div>
                                             <p className="text-[11px] font-semibold text-amber-700 truncate max-w-[130px]">
-                                                {raw.dummyDetails?.reason ? `Reason: ${raw.dummyDetails.reason}` : "Non-attending / Out of Placement"}
+                                                {(raw.dummyDetails?.reason || raw.dummyDetails?.remark) ? `Reason: ${raw.dummyDetails.reason || raw.dummyDetails.remark}` : "Non-attending / Out of Placement"}
                                             </p>
                                         </div>
                                     </div>

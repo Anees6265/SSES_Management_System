@@ -45,11 +45,11 @@ exports.getDashboardOverview = async (req, res) => {
 
     const [total, active, placed, dropped, completed, dummy, onPermission, facultyCount] = await Promise.all([
       Student.countDocuments(base),
-      Student.countDocuments({ ...base, status: "Active" }),
-      Student.countDocuments({ ...base, status: "Placed" }),
-      Student.countDocuments({ ...base, status: "Dropped" }),
-      Student.countDocuments({ ...base, status: "Completed" }),
-      Student.countDocuments({ ...base, status: "Dummy" }),
+      Student.countDocuments({ ...base, status: { $in: ["Active", "active"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Placed", "placed"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Dropped", "dropped"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Completed", "completed"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Dummy", "dummy"] } }),
       Student.countDocuments({ ...base, permissionDetails: { $ne: null } }),
       User.countDocuments({ ...userFilter, role: { $in: ["faculty", "hod"] } })
     ]);
@@ -274,7 +274,18 @@ exports.getDashboardOverview = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        studentStats: { total, active, placed, dropped, completed, dummy, onPermission, facultyCount, admissionsCount },
+        studentStats: {
+          total,
+          active,
+          placed,
+          dropped,
+          completed,
+          dummy,
+          dummyAndDropped: dummy + dropped,
+          onPermission,
+          facultyCount,
+          admissionsCount
+        },
         genderBreakdown: {
           male:   genderMap["male"]   || 0,
           female: genderMap["female"] || 0,

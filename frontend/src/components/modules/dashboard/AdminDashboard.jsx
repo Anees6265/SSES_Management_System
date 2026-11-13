@@ -472,6 +472,10 @@ const AdminDashboard = () => {
   const g = data?.genderBreakdown || {};
   const p = data?.placementSummary || {};
 
+  const dummyCount = s.dummy ?? 0;
+  const droppedCount = s.dropped ?? 0;
+  const dummyAndDroppedCount = s.dummyAndDropped ?? (dummyCount + droppedCount);
+
   const totalGender = (g.male || 0) + (g.female || 0);
   const malePct = totalGender > 0 ? Math.round((g.male / totalGender) * 100) : 0;
   const femalePct = totalGender > 0 ? Math.round((g.female / totalGender) * 100) : 0;
@@ -657,12 +661,12 @@ const AdminDashboard = () => {
                   onClick={() => navigate("/readiness-status?status=Placed")}
                 />
                 <CleanStatCard
-                  title="Dummy Students"
-                  value={s.dummy ?? 0}
+                  title="Dummy & Dropped"
+                  value={dummyAndDroppedCount}
                   icon={UserX}
-                  badgeText={(s.dummy ?? 0) > 0 ? "Marked Dummy" : "Clear"}
-                  badgeType={(s.dummy ?? 0) > 0 ? "warning" : "success"}
-                  subtitle="dummy status"
+                  badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
+                  badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
+                  subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
                   onClick={() => navigate("/student-permission")}
                 />
                 <CleanStatCard
@@ -1054,12 +1058,12 @@ const AdminDashboard = () => {
                 onClick={() => navigate("/readiness-status?status=Placed")}
               />
               <CleanStatCard
-                title="Dummy Students"
-                value={s.dummy ?? 0}
+                title="Dummy & Dropped"
+                value={dummyAndDroppedCount}
                 icon={UserX}
-                badgeText={(s.dummy ?? 0) > 0 ? "Marked Dummy" : "Clear"}
-                badgeType={(s.dummy ?? 0) > 0 ? "warning" : "success"}
-                subtitle="dummy status"
+                badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
+                badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
+                subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
                 onClick={() => navigate("/student-permission")}
               />
               <CleanStatCard

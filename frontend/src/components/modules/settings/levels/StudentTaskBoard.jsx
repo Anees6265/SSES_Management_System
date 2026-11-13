@@ -634,16 +634,19 @@ const StudentTaskBoard = () => {
         setSelectedSubLevelId(null);
     }, [student?._id]);
 
-    const isDummy = (student?.status || "").toLowerCase() === "dummy";
+    const studentStatus = (student?.status || "").toLowerCase();
+    const isDummy = studentStatus === "dummy";
+    const isDropped = studentStatus === "dropped";
+    const isInactive = isDummy || isDropped;
 
     const { data: levelHistoryData } = useGetStudentLevelHistoryQuery(
         student?._id,
-        { skip: !student?._id || isDummy }
+        { skip: !student?._id || isInactive }
     );
 
     const { data, isLoading, refetch } = useGetNewStudentTasksQuery(
         { id: student?._id, subLevelId: selectedSubLevelId || undefined },
-        { skip: !student?._id || isDummy }
+        { skip: !student?._id || isInactive }
     );
 
     const levelHistory = levelHistoryData?.data || [];
@@ -896,18 +899,21 @@ const StudentTaskBoard = () => {
         );
     }
 
-    if (isDummy) {
+    if (isInactive) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
-                <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-amber-200 shadow-xl space-y-4">
-                    <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-black">
+                <div className={`bg-white rounded-3xl p-8 max-w-md w-full border shadow-xl space-y-4 ${isDropped ? "border-rose-200" : "border-amber-200"}`}>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-2xl font-black ${isDropped ? "bg-rose-50 text-rose-500" : "bg-amber-50 text-amber-500"}`}>
                         ⚠️
                     </div>
                     <div>
                         <h3 className="text-lg font-extrabold text-slate-800">Task Board Disabled</h3>
                         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                            <strong className="text-slate-800">{studentName}</strong> is currently marked as <strong className="text-amber-600">Dummy (Non-Attending)</strong>.
-                            Task Board is not accessible for dummy students. Reactivate or return student to an active level to enable the task board.
+                            <strong className="text-slate-800">{studentName}</strong> is currently marked as{" "}
+                            <strong className={isDropped ? "text-rose-600 font-black" : "text-amber-600 font-black"}>
+                                {isDropped ? "Dropped" : "Dummy (Non-Attending)"}
+                            </strong>.
+                            Task Board is not accessible for {isDropped ? "dropped" : "dummy"} students. Reactivate or return student to an active level to enable the task board.
                         </p>
                     </div>
                     <div className="pt-2">

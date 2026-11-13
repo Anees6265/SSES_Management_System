@@ -4,6 +4,10 @@
  */
 
 export const FTP_DOMAINS_BY_DEPARTMENT = {
+  UIUX: [
+    "UI/UX",
+    "Graphic Design",
+  ],
   ITEG: [
     "MERN Stack",
     "Python Full Stack",
@@ -40,6 +44,7 @@ export const FTP_DOMAINS_BY_DEPARTMENT = {
 };
 
 export const DEPARTMENT_FTP_LABELS = {
+  UIUX: "UI/UX & Design",
   ITEG: "Tech (ITEG)",
   MEG: "Management (MEG)",
   BEG: "Science (BEG)",
@@ -47,10 +52,20 @@ export const DEPARTMENT_FTP_LABELS = {
 };
 
 /**
- * Detects the FTP department key (ITEG, MEG, BEG, BTECH) for a student
- * based on subdepartment, department, course, or ssismGroup.
+ * Detects the FTP department key (UIUX, ITEG, MEG, BEG, BTECH) for a student
+ * based on UI/UX flag, subdepartment, department, course, or ssismGroup.
  */
 export const getStudentDepartmentKey = (student = {}) => {
+  const isMarkedUiUx = Boolean(student?.isUIUX);
+  const subDeptName = (
+    student?.subDepartmentId?.name ||
+    student?.subDepartmentName ||
+    ""
+  ).toUpperCase();
+  const subDeptCode = (
+    student?.subDepartmentId?.code ||
+    ""
+  ).toUpperCase();
   const deptCode = (
     student?.subDepartmentId?.departmentId?.code ||
     student?.subDepartmentId?.code ||
@@ -69,7 +84,22 @@ export const getStudentDepartmentKey = (student = {}) => {
 
   const courseUpper = (student?.course || student?.subDepartmentId?.name || "").toUpperCase();
 
-  // 1. Check B.Tech (Engineering / SSEC / CSE / B.Tech)
+  // 1. Check UI/UX: Marked as UI/UX student OR belongs to UI/UX subdepartment/course
+  if (
+    isMarkedUiUx ||
+    subDeptName.includes("UI/UX") ||
+    subDeptName.includes("UIUX") ||
+    subDeptCode.includes("UIUX") ||
+    deptName.includes("UI/UX") ||
+    deptName.includes("UIUX") ||
+    deptCode.includes("UIUX") ||
+    courseUpper.includes("UI/UX") ||
+    courseUpper.includes("UIUX")
+  ) {
+    return "UIUX";
+  }
+
+  // 2. Check B.Tech (Engineering / SSEC / CSE / B.Tech)
   if (
     deptCode.includes("BTECH") ||
     deptCode.includes("B.TECH") ||
@@ -128,6 +158,9 @@ export const getFtpDomainsForStudent = (student = {}) => {
  */
 export const getDomainsForDepartment = (deptNameOrKey = "") => {
   const norm = String(deptNameOrKey || "").trim().toUpperCase();
+  if (norm.includes("UI/UX") || norm.includes("UIUX") || norm.includes("GRAPHIC") || norm.includes("DESIGN")) {
+    return FTP_DOMAINS_BY_DEPARTMENT.UIUX || [];
+  }
   if (norm.includes("B.TECH") || norm.includes("BTECH") || norm.includes("ENGINEERING")) {
     return FTP_DOMAINS_BY_DEPARTMENT.BTECH || [];
   }

@@ -103,7 +103,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
 
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const rawSessions = sessionsData?.data || [];
-  const deptIdentifier = departmentName || subdepartment?.departmentId?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId.departmentId?.name : "") || "";
+  const subName = subdepartment?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId?.name : "");
+  const isUiUx = subName && (subName.toUpperCase().includes("UI/UX") || subName.toUpperCase().includes("UIUX"));
+  const deptIdentifier = isUiUx
+    ? "UI/UX"
+    : (departmentName || subdepartment?.departmentId?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId.departmentId?.name : "") || "");
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
 
   const isLevel2B = useMemo(() => {

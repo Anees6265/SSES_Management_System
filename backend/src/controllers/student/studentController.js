@@ -4,6 +4,7 @@ const StudentProgressSnapshot = require("../../models/student/StudentProgressSna
 const StudentTaskHistory = require("../../models/student/StudentTaskHistory");
 const StudentEventLog = require("../../models/student/StudentEventLog");
 const SubDepartment = require("../../models/department/SubDepartment");
+const Department = require("../../models/department/Department");
 const Level = require("../../models/department/Level");
 const SubLevel = require("../../models/department/SubLevel");
 const Session = require("../../models/Session");
@@ -1344,7 +1345,7 @@ exports.updateStudent = async (req, res) => {
     let targetFtpSyllabus = null;
     let targetFtpTasks = [];
 
-    const isMarkingFtp = updateData.isFTP === true || (updateData.ftpDomain !== undefined && updateData.ftpDomain !== "" && updateData.isFTP !== false);
+    const isMarkingFtp = updateData.isFTP === true || (Boolean(existingStudent.isFTP) && updateData.isFTP !== false && Boolean(updateData.ftpDomain));
     const domainCandidate = String(updateData.ftpDomain || updateData.domain || req.body.ftpDomain || req.body.domain || "").trim();
 
     if (isMarkingFtp && domainCandidate) {
@@ -1533,7 +1534,7 @@ exports.updateStudent = async (req, res) => {
       updateData.batch = updateData.batchYear;
     }
 
-    if (updateData.status && updateData.status !== "Dummy") {
+    if (updateData.status && updateData.status !== "Dummy" && updateData.status !== "Dropped") {
       updateData.dummyDetails = null;
     }
 
@@ -2033,6 +2034,7 @@ exports.getStudentTasks = async (req, res) => {
       pendingTasks: tasks.filter(t => t.status === "pending").length,
       inProgressTasks: tasks.filter(t => t.status === "inProgress").length,
       groupedBySubject: grouped,
+      tasks,
       subLevelId: subLevelId || student.currentSubLevelId,
       currentSubLevelId: student.currentSubLevelId,
       currentLevelId: student.currentLevelId,
@@ -2375,16 +2377,89 @@ exports.getLeaveRequests = async (req, res) => {
 exports.getDummyStudents = async (req, res) => {
   try {
     const filter = req.subDeptFilter ? { ...req.subDeptFilter } : {};
-    filter.status = { $in: ["Dummy", "Dropped"] };
+    filter.status = { $in: ["Dummy", "Dropped", "dummy", "dropped"] };
+
+    if (req.query.status) {
+      const qStatus = req.query.status.trim().toLowerCase();
+      if (qStatus === "dummy") {
+        filter.status = { $in: ["Dummy", "dummy"] };
+      } else if (qStatus === "dropped") {
+        filter.status = { $in: ["Dropped", "dropped"] };
+      }
+    }
+
+    if (req.query.departmentId && req.query.departmentId !== "all") {
+      const subDepts = await SubDepartment.find({ departmentId: req.query.departmentId }).select("_id");
+      const subDeptIds = subDepts.map((sd) => sd._id);
+      if (filter.subDepartmentId) {
+        const existing = Array.isArray(filter.subDepartmentId.$in)
+          ? filter.subDepartmentId.$in
+          : [filter.subDepartmentId];
+        filter.subDepartmentId = {
+          $in: existing.filter((id) => subDeptIds.some((sid) => sid.toString() === id.toString())),
+        };
+      } else {
+        filter.subDepartmentId = { $in: subDeptIds };
+      }
+    }
 
     const students = await Student.find(filter)
-      .select("prkey firstName lastName email studentMobile course status dummyDetails currentLevelId currentSubLevelId subDepartmentId")
-      .populate("subDepartmentId", "name departmentId")
+      .select("prkey firstName lastName email studentMobile course status dummyDetails documents currentLevelId currentSubLevelId subDepartmentId updatedAt createdAt")
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: {
+          path: "departmentId",
+          select: "name code",
+        },
+      })
       .populate("currentLevelId", "name order")
       .populate("currentSubLevelId", "name order")
       .sort({ "dummyDetails.markedAt": -1, updatedAt: -1 });
 
-    return res.status(200).json({ count: students.length, data: students });
+    const formattedStudents = students.map((s) => {
+      const doc = s.toObject ? s.toObject() : { ...s };
+      const dropDoc = (doc.documents || []).find(
+        (d) => !d.isExtra && (d.title === "Drop Application" || d.title === "Drop" || d.title === "Dummy Student Application")
+      );
+      const existingDetails = doc.dummyDetails || {};
+      const docRemark = (dropDoc?.remark || "").trim();
+      const rawReason = (existingDetails.reason || "").trim();
+      const rawRemark = (existingDetails.remark || "").trim();
+
+      let finalReason = rawReason;
+      if (!finalReason || finalReason.toLowerCase() === "no reason provided" || finalReason.toLowerCase() === "student dropped") {
+        if (rawRemark && rawRemark.toLowerCase() !== "student dropped") {
+          finalReason = rawRemark;
+        } else if (docRemark && docRemark.toLowerCase() !== "student dropped") {
+          finalReason = docRemark;
+        } else if (doc.status === "Dropped" || doc.status === "dropped") {
+          finalReason = rawRemark || docRemark || "Dropped by staff";
+        } else {
+          finalReason = "No reason provided";
+        }
+      }
+
+      let finalRemark = rawRemark;
+      if (!finalRemark && docRemark && docRemark !== finalReason) {
+        finalRemark = docRemark;
+      }
+
+      const markedDate = existingDetails.markedAt || dropDoc?.uploadedAt || doc.updatedAt || doc.createdAt || new Date();
+
+      doc.dummyDetails = {
+        reason: finalReason,
+        remark: finalRemark,
+        applicationURL: existingDetails.applicationURL || dropDoc?.fileURL || "",
+        applicationType: existingDetails.applicationType || dropDoc?.fileType || "",
+        markedBy: existingDetails.markedBy || dropDoc?.uploadedBy || null,
+        markedByName: existingDetails.markedByName || dropDoc?.uploadedByName || (dropDoc ? "Staff" : ""),
+        markedAt: markedDate,
+      };
+      return doc;
+    });
+
+    return res.status(200).json({ count: formattedStudents.length, data: formattedStudents });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -3013,8 +3088,9 @@ exports.resolvePermission = async (req, res) => {
 // ✅ Mark Student as Dropped (with optional application document upload)
 exports.markDropped = async (req, res) => {
   try {
-    const { remark, fileData, fileType } = req.body;
-    if (!remark) return res.status(400).json({ message: "remark is required" });
+    const { remark, reason, fileData, fileType } = req.body;
+    const dropReason = (reason || remark || "").trim();
+    if (!dropReason) return res.status(400).json({ message: "Reason is required" });
 
     if (fileData && fileType && !["image", "pdf"].includes(fileType)) {
       return res.status(400).json({ message: "fileType must be image or pdf" });
@@ -3024,6 +3100,8 @@ exports.markDropped = async (req, res) => {
     if (!student) return res.status(404).json({ message: "Student not found" });
     if (student.status === "Dropped") return res.status(400).json({ message: "Student is already dropped" });
 
+    let applicationURL = "";
+    let applicationType = "";
     if (fileData && fileType) {
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -3037,12 +3115,15 @@ exports.markDropped = async (req, res) => {
         public_id: `drop_${req.params.id}_${Date.now()}`,
       });
 
+      applicationURL = uploadResponse.secure_url;
+      applicationType = fileType;
+
       // Store document in student.documents with isExtra: false
       student.documents.push({
         title: `Drop Application`,
         fileURL: uploadResponse.secure_url,
         fileType,
-        remark,
+        remark: dropReason,
         isExtra: false,
         uploadedBy: req.user?._id || null,
         uploadedByName: req.user?.name || "",
@@ -3050,12 +3131,22 @@ exports.markDropped = async (req, res) => {
       });
     }
 
+    student.dummyDetails = {
+      reason: dropReason,
+      remark: (remark || dropReason || "").trim(),
+      applicationURL,
+      applicationType,
+      markedBy: req.user?._id || null,
+      markedByName: req.user?.name || "",
+      markedAt: new Date(),
+    };
+
     student.status = "Dropped";
     await student.save();
 
     return res.status(200).json({
       message: "Student marked as Dropped",
-      data: { studentId: student._id, status: student.status },
+      data: { studentId: student._id, status: student.status, dummyDetails: student.dummyDetails },
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -3232,12 +3323,12 @@ exports.getStudentStats = async (req, res) => {
 
     const [total, active, placed, dropped, dummy] = await Promise.all([
       Student.countDocuments(base),
-      Student.countDocuments({ ...base, status: "Active" }),
-      Student.countDocuments({ ...base, status: "Placed" }),
-      Student.countDocuments({ ...base, status: "Dropped" }),
-      Student.countDocuments({ ...base, status: "Dummy" }),
+      Student.countDocuments({ ...base, status: { $in: ["Active", "active"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Placed", "placed"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Dropped", "dropped"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Dummy", "dummy"] } }),
     ]);
-    return res.status(200).json({ total, active, placed, dropped, dummy });
+    return res.status(200).json({ total, active, placed, dropped, dummy, dummyAndDropped: dummy + dropped });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
   }

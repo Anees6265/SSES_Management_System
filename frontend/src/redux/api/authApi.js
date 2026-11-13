@@ -627,10 +627,15 @@ export const authApi = createApi({
     }),
 
     markStudentDropped: builder.mutation({
-      query: ({ id, remark, fileData, fileType }) => ({
+      query: ({ id, reason, remark, fileData, fileType }) => ({
         url: `/students/${id}/mark-dropped`,
         method: 'PATCH',
-        body: { remark, fileData, fileType },
+        body: {
+          reason: (reason || remark || '').trim(),
+          remark: (remark || reason || '').trim(),
+          fileData,
+          fileType,
+        },
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student'],
     }),

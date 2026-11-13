@@ -324,8 +324,12 @@ const AddTaskModal = ({
     }, [selectedSubLevelName, selectedLevelName]);
 
     const departmentDomains = useMemo(() => {
-        return getDomainsForDepartment(selectedDeptName || "");
-    }, [selectedDeptName]);
+        const subName = selectedSubDeptName || "";
+        if (subName.toUpperCase().includes("UI/UX") || subName.toUpperCase().includes("UIUX")) {
+            return getDomainsForDepartment("UI/UX");
+        }
+        return getDomainsForDepartment(selectedDeptName || subName);
+    }, [selectedDeptName, selectedSubDeptName]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

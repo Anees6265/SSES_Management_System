@@ -166,24 +166,25 @@ const StudentsTab = ({
         ...STUDENT_COLUMNS,
         {
             label: "Task Board", key: "taskboard", render: (row) => {
-                const isDummy = (row?.status || row?.raw?.status || "").toLowerCase() === "dummy";
+                const status = (row?.status || row?.raw?.status || "").toLowerCase();
+                const isInactive = status === "dummy" || status === "dropped";
                 return (
                     <button
-                        disabled={isDummy}
+                        disabled={isInactive}
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (isDummy) {
-                                toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                            if (isInactive) {
+                                toast.warning(`Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students. Reactivate student to access task board.`);
                                 return;
                             }
                             onTaskBoard(row);
                         }}
                         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
-                            isDummy
+                            isInactive
                                 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
                                 : "bg-orange-50 text-orange-500 hover:bg-orange-100 border-orange-200 cursor-pointer"
                         }`}
-                        title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                        title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                     >
                         <MdTableChart size={14} /> Task Board
                     </button>
@@ -311,25 +312,26 @@ const StudentsTab = ({
                                 <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
                                     <span className="text-[11px] font-medium text-gray-400">View details →</span>
                                     {(() => {
-                                        const isDummy = (st?.status || st?.raw?.status || "").toLowerCase() === "dummy";
+                                        const status = (st?.status || st?.raw?.status || "").toLowerCase();
+                                        const isInactive = status === "dummy" || status === "dropped";
                                         return (
                                             <button
                                                 type="button"
-                                                disabled={isDummy}
+                                                disabled={isInactive}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isDummy) {
-                                                        toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                                                    if (isInactive) {
+                                                        toast.warning(`Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students. Reactivate student to access task board.`);
                                                         return;
                                                     }
                                                     onTaskBoard(st);
                                                 }}
                                                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition ${
-                                                    isDummy
+                                                    isInactive
                                                         ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
                                                         : "bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200 cursor-pointer"
                                                 }`}
-                                                title={isDummy ? "Task board is disabled for dummy students" : "Open Task Board"}
+                                                title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                                             >
                                                 <MdTableChart size={13} /> Task Board
                                             </button>

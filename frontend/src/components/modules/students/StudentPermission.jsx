@@ -1,8 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { useGetDummyStudentsQuery, useUpdateDummyDetailsMutation } from "../../../redux/api/authApi";
+import {
+  useGetDummyStudentsQuery,
+  useUpdateDummyDetailsMutation,
+  useGetAllDepartmentsQuery,
+} from "../../../redux/api/authApi";
 import Loader from "../../shared/loader/Loader";
 import CommonTable from "../../shared/table/CommonTable";
 import Header from "../../shared/sidebar/Header";
@@ -10,6 +15,7 @@ import Avatar from "../../shared/Avatar";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 import { usePersistentState } from "../../../hooks/usePersistentFilters";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
@@ -27,10 +33,14 @@ import {
   Upload,
   Trash2,
   Loader2,
+  Filter,
 } from "lucide-react";
 
 const STATUS_STYLES = {
   Dummy: "bg-amber-50 text-amber-700 border-amber-200",
+  dummy: "bg-amber-50 text-amber-700 border-amber-200",
+  Dropped: "bg-rose-50 text-rose-700 border-rose-200",
+  dropped: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
 const toTitleCase = (str = "") =>
@@ -54,9 +64,10 @@ const formatDate = (dateStr) =>
 const DUMMY_EXPORT_COLUMNS = [
   { key: "studentName", label: "Student Name" },
   { key: "mobile", label: "Mobile" },
+  { key: "department", label: "Department" },
   { key: "course", label: "Course" },
   { key: "level", label: "Level / Class" },
-  { key: "reason", label: "Dummy Reason" },
+  { key: "reason", label: "Dummy / Drop Reason" },
   { key: "remark", label: "Remark" },
   { key: "markedAt", label: "Marked On" },
   { key: "status", label: "Status" },
@@ -67,11 +78,12 @@ const formatDummyForExport = (list) => {
     sno: idx + 1,
     studentName: toTitleCase(`${s.firstName || ""} ${s.lastName || ""}`.trim()) || "—",
     mobile: s.studentMobile || "—",
+    department: s.subDepartmentId?.departmentId?.name || s.subDepartmentId?.name || "—",
     course: s.course || "—",
     level: `${s.currentLevelId?.name || "—"} ${s.currentSubLevelId?.name ? `/ ${s.currentSubLevelId.name}` : ""}`.trim(),
-    reason: s.dummyDetails?.reason?.trim() || "No reason provided",
+    reason: s.dummyDetails?.reason?.trim() || s.dummyDetails?.remark?.trim() || (s.status === "Dropped" || s.status === "dropped" ? "Dropped by staff" : "No reason provided"),
     remark: s.dummyDetails?.remark?.trim() || "—",
-    markedAt: formatDate(s.dummyDetails?.markedAt),
+    markedAt: formatDate(s.dummyDetails?.markedAt || s.updatedAt || s.createdAt),
     status: s.status || "Dummy",
   }));
 };
@@ -106,15 +118,19 @@ const DummyReasonCell = ({ row }) => {
     return () => window.removeEventListener("scroll", handleScroll, true);
   }, [showTooltip]);
 
-  const rawReason = row.dummyDetails?.reason?.trim() || "No reason provided";
+  const rawReason =
+    row.dummyDetails?.reason?.trim() ||
+    row.dummyDetails?.remark?.trim() ||
+    (row.status === "Dropped" || row.status === "dropped" ? "Dropped by staff" : "No reason provided");
   const singleLineReason = rawReason.replace(/\s+/g, " ");
   const studentName = toTitleCase(`${row.firstName || ""} ${row.lastName || ""}`);
   const remark = row.dummyDetails?.remark?.trim() || "";
-  const markedAt = row.dummyDetails?.markedAt;
+  const markedAt = row.dummyDetails?.markedAt || row.updatedAt || row.createdAt;
   const markedByName = row.dummyDetails?.markedByName;
+  const isDropped = row.status === "Dropped" || row.status === "dropped";
 
   return (
-    <div className="max-w-[220px] lg:max-w-[260px] xl:max-w-[300px]">
+    <div className="w-[130px] sm:w-[150px] max-w-[165px]">
       {/* Truncated single-line reason with ellipsis (...) */}
       <div
         ref={textRef}
@@ -122,19 +138,19 @@ const DummyReasonCell = ({ row }) => {
         onMouseLeave={handleMouseLeave}
         className="group/reason inline-flex items-center gap-1.5 max-w-full cursor-help py-0.5"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 group-hover/reason:scale-125 transition-transform" />
-        <span className="text-xs font-semibold text-gray-800 italic truncate group-hover/reason:text-orange-600 transition-colors block">
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 group-hover/reason:scale-125 transition-transform ${isDropped ? "bg-rose-400" : "bg-orange-400"}`} />
+        <span className={`text-xs font-semibold italic truncate transition-colors block ${isDropped ? "text-rose-950 group-hover/reason:text-rose-700" : "text-gray-800 group-hover/reason:text-orange-600"}`}>
           "{singleLineReason}"
         </span>
       </div>
 
-      {/* Remark (compact, 1-line truncate if present) */}
-      {remark && (
+      {/* Remark (compact, 1-line truncate if present and distinct) */}
+      {remark && remark.toLowerCase() !== rawReason.toLowerCase() && (
         <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500 font-medium">
           <span className="font-extrabold text-[9px] uppercase tracking-wider text-gray-400 shrink-0">
             Remark:
           </span>
-          <span className="truncate max-w-[190px] text-gray-600 font-semibold">
+          <span className="truncate max-w-[110px] text-gray-600 font-semibold">
             {remark}
           </span>
         </div>
@@ -155,9 +171,9 @@ const DummyReasonCell = ({ row }) => {
             {/* Header */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-orange-400" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">
-                  Dummy Status Reason
+                <span className={`w-2 h-2 rounded-full ${isDropped ? "bg-rose-400" : "bg-orange-400"}`} />
+                <span className={`text-[10px] font-black uppercase tracking-wider ${isDropped ? "text-rose-400" : "text-orange-400"}`}>
+                  {isDropped ? "Drop Status Reason" : "Dummy Status Reason"}
                 </span>
               </div>
               {studentName && (
@@ -172,8 +188,8 @@ const DummyReasonCell = ({ row }) => {
               "{rawReason}"
             </p>
 
-            {/* Remark if present */}
-            {remark && (
+            {/* Remark if present and different */}
+            {remark && remark.toLowerCase() !== rawReason.toLowerCase() && (
               <div className="mt-2.5 pt-2 border-t border-slate-800/80">
                 <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block mb-0.5">
                   Faculty Remark:
@@ -205,7 +221,7 @@ const EditDummyModal = ({ student, onClose, onSaved }) => {
   const reasonInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const [reason, setReason] = useState(student?.dummyDetails?.reason || "");
+  const [reason, setReason] = useState(student?.dummyDetails?.reason || student?.dummyDetails?.remark || "");
   const [remark, setRemark] = useState(student?.dummyDetails?.remark || "");
   const [fileData, setFileData] = useState(null);
   const [fileType, setFileType] = useState("");
@@ -596,26 +612,104 @@ const EditDummyModal = ({ student, onClose, onSaved }) => {
 
 const StudentPermission = () => {
   const navigate = useNavigate();
+
+  // Role detection
+  const { user, role: authRole } = useSelector((state) => state.auth || {});
+  const role = (
+    authRole ||
+    user?.role ||
+    localStorage.getItem("role") ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("user") || "{}")?.role;
+      } catch {
+        return "";
+      }
+    })() ||
+    ""
+  ).toLowerCase().trim();
+
+  const isSuperAdminOrAdmin = ["superadmin", "admin"].includes(role);
+
+  // Persistent filter states
   const [searchTerm, setSearchTerm] = usePersistentState("student_permission_search", "");
+  const [selectedDept, setSelectedDept] = usePersistentState("student_permission_dept", "");
+  const [selectedStatus, setSelectedStatus] = usePersistentState("student_permission_status", "");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   const [previewDoc, setPreviewDoc] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
 
+  // Fetch departments only for superadmin / admin
+  const { data: deptRes } = useGetAllDepartmentsQuery(undefined, {
+    skip: !isSuperAdminOrAdmin,
+  });
+  const departments = deptRes?.data || [];
+
+  const departmentOptions = useMemo(() => {
+    return [
+      { value: "", label: "All Departments" },
+      ...departments.map((d) => ({
+        value: String(d._id),
+        label: d.name,
+      })),
+    ];
+  }, [departments]);
+
+  const statusOptions = [
+    { value: "", label: "All Status" },
+    { value: "Dummy", label: "Dummy" },
+    { value: "Dropped", label: "Dropped" },
+  ];
+
   const { data, isLoading, isError, error } = useGetDummyStudentsQuery();
   const students = data?.data || [];
 
   const filteredData = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return students;
-    const tokens = q.split(/\s+/).filter(Boolean);
     return students.filter((student) => {
+      // 1. Status Filter - applies to all roles
+      if (selectedStatus && selectedStatus !== "all" && selectedStatus !== "") {
+        const studentStatus = (student.status || "Dummy").toLowerCase();
+        if (studentStatus !== selectedStatus.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 2. Department Filter - applies ONLY to superadmin & admin
+      if (isSuperAdminOrAdmin && selectedDept && selectedDept !== "all" && selectedDept !== "") {
+        const deptId =
+          student.subDepartmentId?.departmentId?._id
+            ? String(student.subDepartmentId.departmentId._id)
+            : student.subDepartmentId?.departmentId
+            ? String(student.subDepartmentId.departmentId)
+            : student.departmentId?._id
+            ? String(student.departmentId._id)
+            : student.departmentId
+            ? String(student.departmentId)
+            : "";
+
+        if (deptId !== String(selectedDept)) {
+          return false;
+        }
+      }
+
+      // 3. Search query filter
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const deptName = student.subDepartmentId?.departmentId?.name || "";
+      const subDeptName = student.subDepartmentId?.name || "";
       const targetStr = [
         student.firstName,
         student.lastName,
         student.studentMobile,
         student.course,
         student.prkey,
+        student.status,
+        deptName,
+        subDeptName,
         student.currentLevelId?.name,
         student.currentSubLevelId?.name,
         student.dummyDetails?.reason,
@@ -628,40 +722,92 @@ const StudentPermission = () => {
 
       return tokens.every((token) => targetStr.includes(token));
     });
-  }, [students, searchTerm]);
+  }, [students, selectedStatus, selectedDept, isSuperAdminOrAdmin, searchTerm]);
 
-  // Reset mobile page whenever search changes
+  // Reset mobile page whenever filters change
   useEffect(() => {
     setMobilePage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedDept, selectedStatus]);
 
   const paginatedMobileData = useMemo(() => {
     const start = (mobilePage - 1) * mobilePageSize;
     return filteredData.slice(start, start + mobilePageSize);
   }, [filteredData, mobilePage]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (isSuperAdminOrAdmin && selectedDept && selectedDept !== "all" && selectedDept !== "") count += 1;
+    if (selectedStatus && selectedStatus !== "all" && selectedStatus !== "") count += 1;
+    return count;
+  }, [isSuperAdminOrAdmin, selectedDept, selectedStatus]);
+
+  const hasActiveFilters = Boolean(
+    searchTerm ||
+    (isSuperAdminOrAdmin && selectedDept && selectedDept !== "all" && selectedDept !== "") ||
+    (selectedStatus && selectedStatus !== "all" && selectedStatus !== "")
+  );
+
+  const handleClearAllFilters = () => {
+    setSearchTerm("");
+    if (isSuperAdminOrAdmin) setSelectedDept("");
+    setSelectedStatus("");
+  };
+
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (searchTerm) {
+      chips.push({
+        key: "search",
+        label: "Search",
+        value: searchTerm,
+        displayValue: `"${searchTerm}"`,
+        onRemove: () => setSearchTerm(""),
+      });
+    }
+    if (isSuperAdminOrAdmin && selectedDept && selectedDept !== "all" && selectedDept !== "") {
+      const foundDept = departments.find((d) => String(d._id) === String(selectedDept));
+      chips.push({
+        key: "department",
+        label: "Department",
+        value: selectedDept,
+        displayValue: foundDept ? foundDept.name : "Selected Dept",
+        onRemove: () => setSelectedDept(""),
+      });
+    }
+    if (selectedStatus && selectedStatus !== "all" && selectedStatus !== "") {
+      chips.push({
+        key: "status",
+        label: "Status",
+        value: selectedStatus,
+        displayValue: selectedStatus,
+        onRemove: () => setSelectedStatus(""),
+      });
+    }
+    return chips;
+  }, [searchTerm, isSuperAdminOrAdmin, selectedDept, departments, selectedStatus, setSearchTerm, setSelectedDept, setSelectedStatus]);
+
   const handleDownloadExcel = (customList) => {
     const list = Array.isArray(customList) && customList.length ? customList : filteredData;
     if (!list || list.length === 0) {
-      toast.info("No dummy students to export.");
+      toast.info("No dummy or dropped students to export.");
       return;
     }
     const formatted = formatDummyForExport(list);
     exportGenericToExcel(formatted, DUMMY_EXPORT_COLUMNS, {
-      filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      filename: `Dummy_and_Dropped_Students_${new Date().toISOString().slice(0, 10)}.xlsx`,
     });
   };
 
   const handleDownloadPDF = (customList) => {
     const list = Array.isArray(customList) && customList.length ? customList : filteredData;
     if (!list || list.length === 0) {
-      toast.info("No dummy students to export.");
+      toast.info("No dummy or dropped students to export.");
       return;
     }
     const formatted = formatDummyForExport(list);
     exportGenericToPDF(formatted, DUMMY_EXPORT_COLUMNS, {
-      title: "Dummy Students Report",
-      filename: `Dummy_Students_${new Date().toISOString().slice(0, 10)}.pdf`,
+      title: "Dummy & Dropped Students Report",
+      filename: `Dummy_and_Dropped_Students_${new Date().toISOString().slice(0, 10)}.pdf`,
     });
   };
 
@@ -669,49 +815,85 @@ const StudentPermission = () => {
     {
       key: "student",
       label: "Student",
+      thClassName: "px-3 py-3 sm:py-4 min-w-[160px] max-w-[200px]",
+      cellClassName: "px-3 py-3 sm:py-4 min-w-[160px] max-w-[200px]",
       accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
       render: (row) => (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">
               {toTitleCase(`${row.firstName || ""} ${row.lastName || ""}`)}
             </p>
-            <p className="text-xs text-gray-500">{row.studentMobile || row.course || "Student"}</p>
+            <p className="text-xs text-gray-500 truncate">{row.studentMobile || row.course || "Student"}</p>
           </div>
         </div>
       ),
     },
+    ...(isSuperAdminOrAdmin
+      ? [
+          {
+            key: "department",
+            label: "Department",
+            thClassName: "px-2.5 py-3 sm:py-4 min-w-[110px] max-w-[135px]",
+            cellClassName: "px-2.5 py-3 sm:py-4 min-w-[110px] max-w-[135px]",
+            accessorFn: (row) =>
+              row.subDepartmentId?.departmentId?.name || row.subDepartmentId?.name || "—",
+            render: (row) => {
+              const deptName =
+                row.subDepartmentId?.departmentId?.name || row.subDepartmentId?.name || "—";
+              const subDeptName = row.subDepartmentId?.departmentId?.name
+                ? row.subDepartmentId?.name
+                : "";
+              return (
+                <div className="text-xs min-w-0">
+                  <p className="font-semibold text-gray-800 truncate">{deptName}</p>
+                  {subDeptName && <p className="text-[11px] text-gray-400 truncate">{subDeptName}</p>}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: "level",
       label: "Level",
+      thClassName: "px-2.5 py-3 sm:py-4 min-w-[90px] max-w-[110px]",
+      cellClassName: "px-2.5 py-3 sm:py-4 min-w-[90px] max-w-[110px]",
       accessorFn: (row) => `${row.currentLevelId?.name || ""} ${row.currentSubLevelId?.name || ""}`.trim(),
       render: (row) => (
-        <div className="text-sm text-gray-700">
-          <p className="font-semibold">{row.currentLevelId?.name || "-"}</p>
-          <p className="text-xs text-gray-400">{row.currentSubLevelId?.name || "-"}</p>
+        <div className="text-sm text-gray-700 min-w-0">
+          <p className="font-semibold truncate">{row.currentLevelId?.name || "-"}</p>
+          <p className="text-xs text-gray-400 truncate">{row.currentSubLevelId?.name || "-"}</p>
         </div>
       ),
     },
     {
       key: "reason",
       label: "Reason / Remark",
+      thClassName: "px-2.5 py-3 sm:py-4 w-[150px] max-w-[165px]",
+      cellClassName: "px-2.5 py-3 sm:py-4 w-[150px] max-w-[165px]",
       accessorFn: (row) => `${row.dummyDetails?.reason || ""} ${row.dummyDetails?.remark || ""}`.trim(),
       render: (row) => <DummyReasonCell row={row} />,
     },
     {
       key: "markedAt",
       label: "Marked On",
-      accessorFn: (row) => row.dummyDetails?.markedAt || "",
+      thClassName: "px-2.5 py-3 sm:py-4 whitespace-nowrap min-w-[95px]",
+      cellClassName: "px-2.5 py-3 sm:py-4 whitespace-nowrap min-w-[95px]",
+      accessorFn: (row) => row.dummyDetails?.markedAt || row.updatedAt || row.createdAt || "",
       render: (row) => (
         <span className="text-xs text-gray-600 font-medium">
-          {formatDate(row.dummyDetails?.markedAt)}
+          {formatDate(row.dummyDetails?.markedAt || row.updatedAt || row.createdAt)}
         </span>
       ),
     },
     {
       key: "status",
       label: "Status",
+      align: "center",
+      thClassName: "px-2 py-3 sm:py-4 text-center w-[85px]",
+      cellClassName: "px-2 py-3 sm:py-4 text-center w-[85px]",
       accessorFn: (row) => row.status || "Dummy",
       render: (row) => (
         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[row.status] || STATUS_STYLES.Dummy}`}>
@@ -722,6 +904,9 @@ const StudentPermission = () => {
     {
       key: "application",
       label: "Application",
+      align: "center",
+      thClassName: "px-2 py-3 sm:py-4 text-center w-[85px]",
+      cellClassName: "px-2 py-3 sm:py-4 text-center w-[85px]",
       enableSorting: false,
       render: (row) =>
         row.dummyDetails?.applicationURL ? (
@@ -731,9 +916,9 @@ const StudentPermission = () => {
               event.stopPropagation();
               setPreviewDoc(row.dummyDetails);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
           >
-            <Eye size={13} />
+            <Eye size={12} />
             <span>VIEW</span>
           </button>
         ) : (
@@ -743,6 +928,9 @@ const StudentPermission = () => {
     {
       key: "actions",
       label: "Action",
+      align: "center",
+      thClassName: "px-2 py-3 sm:py-4 text-center w-[75px]",
+      cellClassName: "px-2 py-3 sm:py-4 text-center w-[75px]",
       enableSorting: false,
       render: (row) => (
         <button
@@ -751,10 +939,10 @@ const StudentPermission = () => {
             event.stopPropagation();
             setEditingStudent(row);
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 hover:border-orange-300 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 hover:border-orange-300 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
           aria-label={`Edit dummy details for ${row.firstName || "student"}`}
         >
-          <Pencil size={13} aria-hidden="true" />
+          <Pencil size={12} aria-hidden="true" />
           <span>Edit</span>
         </button>
       ),
@@ -783,22 +971,22 @@ const StudentPermission = () => {
   return (
     <div className="min-h-[calc(100vh-1px)] flex flex-col">
       <Header
-        title="Dummy Students"
+        title="Dummy & Dropped Students"
         showBack={false}
-        badge={`${students.length} dummy students`}
+        badge={`${students.length} dummy & dropped`}
         breadcrumbs={[
           { label: "Academics" },
-          { label: "Dummy Students" },
+          { label: "Dummy & Dropped Students" },
         ]}
       />
 
       <div className="p-3.5 sm:p-5 flex-1 flex flex-col space-y-3.5 sm:space-y-4">
-        {/* Search and Quick Header Bar */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-xs shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Search and Filters Card */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 shrink-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             {/* Search Input */}
-            <div className="relative flex-1 max-w-full sm:max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <div className="relative flex-1 max-w-full md:max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchTerm}
@@ -818,45 +1006,104 @@ const StudentPermission = () => {
               )}
             </div>
 
-            {/* Quick Count & Actions */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 text-xs font-semibold text-gray-500 flex-wrap">
-              {searchTerm && (
+            {/* Mobile Filter Toggle Button */}
+            <div className="flex items-center justify-between md:hidden gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                  showMobileFilters || activeFilterCount > 0
+                    ? "bg-orange-50 border-orange-200 text-orange-600"
+                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Filter size={14} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4.5 h-4.5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center font-extrabold ml-0.5">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Dropdown Filters Container */}
+            <div className={`${showMobileFilters ? "grid" : "hidden"} md:flex grid-cols-1 sm:grid-cols-2 md:items-center gap-2.5 w-full md:w-auto`}>
+              {/* Department Dropdown (Superadmin & Admin only) */}
+              {isSuperAdminOrAdmin && (
+                <SelectDropdown
+                  value={selectedDept === "all" ? "" : selectedDept}
+                  onChange={(val) => setSelectedDept(val || "")}
+                  options={departmentOptions}
+                  placeholder="All Departments"
+                  className="w-full md:w-auto md:min-w-[175px]"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+                />
+              )}
+
+              {/* Status Dropdown */}
+              <SelectDropdown
+                value={selectedStatus === "all" ? "" : selectedStatus}
+                onChange={(val) => setSelectedStatus(val || "")}
+                options={statusOptions}
+                placeholder="All Status"
+                className="w-full md:w-auto md:min-w-[135px]"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+              />
+
+              {/* Desktop Reset Button */}
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
+                  onClick={handleClearAllFilters}
+                  className="hidden md:inline-flex h-10 px-3 items-center justify-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-xl border border-orange-200/80 transition cursor-pointer active:scale-95"
+                  title="Reset all filters"
                 >
-                  <RotateCcw size={12} />
-                  <span>Reset Search</span>
+                  <RotateCcw size={13} />
+                  <span>Reset</span>
                 </button>
               )}
-              <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg font-bold">
-                {filteredData.length} {filteredData.length === 1 ? "student" : "students"}
-              </span>
 
+              {/* Export Dropdown (Matches size="md" of student detail table) */}
               <TableDownloadDropdown
                 total={filteredData.length}
                 onDownloadExcel={() => handleDownloadExcel(filteredData)}
                 onDownloadPDF={() => handleDownloadPDF(filteredData)}
-                size="sm"
+                size="md"
               />
+
+              {/* Mobile Close/Apply Filters Button */}
+              {showMobileFilters && (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(false)}
+                  className="md:hidden w-full h-10 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-xs active:scale-95 transition"
+                >
+                  <span>Apply Filters</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Active Filter Chips */}
-        {searchTerm && (
+        {activeChips.length > 0 && (
           <ActiveFilterChips
-            chips={[
-              {
-                key: "search",
-                label: "Search",
-                value: searchTerm,
-                displayValue: `"${searchTerm}"`,
-                onRemove: () => setSearchTerm(""),
-              },
-            ]}
-            onClearAll={() => setSearchTerm("")}
+            chips={activeChips}
+            onClearAll={handleClearAllFilters}
             className="mb-2"
           />
         )}
@@ -872,13 +1119,13 @@ const StudentPermission = () => {
             minRows={10}
             className="flex-1 flex flex-col h-full"
             wrapperClassName="flex-1 flex flex-col justify-between h-full bg-white"
-            exportTitle="Dummy_Students"
+            exportTitle="Dummy_and_Dropped_Students"
             onExportExcel={handleDownloadExcel}
             onExportPDF={handleDownloadPDF}
             emptyMessage={
-              searchTerm
-                ? `No dummy students matching "${searchTerm}"`
-                : "No students are currently marked as dummy"
+              hasActiveFilters
+                ? "No dummy or dropped students match the selected filters"
+                : "No students are currently marked as dummy or dropped"
             }
           />
         </div>
@@ -887,14 +1134,14 @@ const StudentPermission = () => {
         <div className="md:hidden space-y-3">
           {filteredData.length === 0 ? (
             <EmptyState
-              title="No Dummy Students Found"
+              title="No Dummy or Dropped Students Found"
               subtitle={
-                searchTerm
-                  ? "No students match your search keywords."
-                  : "No students are currently marked as dummy."
+                hasActiveFilters
+                  ? "No students match your filter criteria."
+                  : "No students are currently marked as dummy or dropped."
               }
-              actionText={searchTerm ? "Clear Search" : undefined}
-              onAction={searchTerm ? () => setSearchTerm("") : undefined}
+              actionText={hasActiveFilters ? "Reset Filters" : undefined}
+              onAction={hasActiveFilters ? handleClearAllFilters : undefined}
             />
           ) : (
             <>
@@ -938,6 +1185,15 @@ const StudentPermission = () => {
 
                     {/* Details Box */}
                     <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-150 text-xs space-y-1.5">
+                      {isSuperAdminOrAdmin && (student.subDepartmentId?.departmentId?.name || student.subDepartmentId?.name) && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-gray-400 font-medium">Department:</span>
+                          <span className="font-bold text-gray-700 truncate">
+                            {student.subDepartmentId?.departmentId?.name || student.subDepartmentId?.name}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-gray-400 font-medium">Level / Sub-Level:</span>
                         <span className="font-bold text-gray-700 truncate">
@@ -958,7 +1214,7 @@ const StudentPermission = () => {
                         <span className="text-gray-400 font-medium">Marked On:</span>
                         <span className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
                           <Calendar size={11} className="text-gray-400" />
-                          <span>{formatDate(student.dummyDetails?.markedAt)}</span>
+                          <span>{formatDate(student.dummyDetails?.markedAt || student.updatedAt || student.createdAt)}</span>
                         </span>
                       </div>
                     </div>
@@ -966,12 +1222,12 @@ const StudentPermission = () => {
                     {/* Reason & Remark Box */}
                     <div className="bg-orange-50/30 rounded-xl p-3 border border-orange-100/70 text-xs space-y-1.5">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                        Reason for Dummy:
+                        {student.status === "Dropped" || student.status === "dropped" ? "Reason for Drop:" : "Reason for Dummy:"}
                       </span>
                       <p className="font-semibold text-gray-800 border-l-2 border-orange-400 pl-2.5 py-0.5 italic text-xs leading-relaxed line-clamp-3">
-                        "{student.dummyDetails?.reason || "No reason provided"}"
+                        "{student.dummyDetails?.reason?.trim() || student.dummyDetails?.remark?.trim() || (student.status === "Dropped" || student.status === "dropped" ? "Dropped by staff" : "No reason provided")}"
                       </p>
-                      {student.dummyDetails?.remark && (
+                      {student.dummyDetails?.remark && student.dummyDetails.remark.trim().toLowerCase() !== (student.dummyDetails?.reason || "").trim().toLowerCase() && (
                         <div className="pt-1.5 border-t border-orange-100/80 text-[11px] text-gray-600 line-clamp-2">
                           <span className="font-bold text-gray-500 mr-1">Remark:</span>
                           <span>{student.dummyDetails.remark}</span>

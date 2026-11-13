@@ -390,7 +390,10 @@ export default function StudentProfile() {
   const permissionStatus = studentData?.permissionDetails?.status || (pendingLeaves > 0 ? "pending" : (totalLeaves > 0 ? "Resolved" : "No Request"));
   const hasPlacement = !!(studentData?.status === "Placed");
   const placementStatus = hasPlacement ? "Placed" : "Not Placed";
-  const isDummy = (studentData?.status || "").toLowerCase() === "dummy";
+  const studentStatus = (studentData?.status || "").toLowerCase();
+  const isDummy = studentStatus === "dummy";
+  const isDropped = studentStatus === "dropped";
+  const isInactive = isDummy || isDropped;
 
   const studentSubDeptId = studentData?.subDepartmentId?._id || studentData?.subDepartmentId;
   const progressPath = studentSubDeptId ? `/student-detail-table/${studentSubDeptId}` : '/student-detail-table';
@@ -421,10 +424,10 @@ export default function StudentProfile() {
             }}></div>
             <div className="absolute top-2 sm:top-7 right-2 sm:right-8 flex items-center gap-1.5 sm:gap-3 z-20">
               <button
-                disabled={isDummy}
+                disabled={isInactive}
                 onClick={() => {
-                  if (isDummy) {
-                    toast.warning("Task board is disabled for dummy students. Reactivate student to access task board.");
+                  if (isInactive) {
+                    toast.warning(`Task board is disabled for ${isDropped ? "dropped" : "dummy"} students. Reactivate student to access task board.`);
                     return;
                   }
                   navigate("/student/task-board", {
@@ -435,11 +438,11 @@ export default function StudentProfile() {
                     },
                   });
                 }}
-                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${isDummy
+                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs ${isInactive
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                     : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white cursor-pointer hover:shadow-md'
                   }`}
-                title={isDummy ? "Task board is disabled for dummy students" : "Manage student tasks and assignments"}
+                title={isInactive ? `Task board is disabled for ${isDropped ? "dropped" : "dummy"} students` : "Manage student tasks and assignments"}
               >
                 <span className="hidden sm:inline">Task List</span>
                 <span className="sm:hidden">Tasks</span>
@@ -1148,6 +1151,7 @@ export default function StudentProfile() {
         isOpen={isTechModalOpen}
         onClose={() => setTechModalOpen(false)}
         studentId={studentData._id}
+        student={studentData}
       />
       <UpdateEmailModal
         isOpen={isEmailModalOpen}

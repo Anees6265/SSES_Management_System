@@ -2929,9 +2929,6 @@ const StudentProfilePage = () => {
                                                     <MdWarning size={14} /> View Dummy Details
                                                 </button>
                                             )}
-                                            <button onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/report`); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
-                                                <MdBarChart size={14} /> View Report Card
-                                            </button>
                                             <div className="border-t border-slate-100 my-1" />
                                             {["Dummy", "Dropped"].includes(raw.status) ? (
                                                 <button onClick={handleMarkActive} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-emerald-600 flex items-center gap-2 font-bold">

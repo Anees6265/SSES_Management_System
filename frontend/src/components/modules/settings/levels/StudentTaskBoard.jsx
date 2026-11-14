@@ -1,10 +1,11 @@
+/* eslint-disable react/prop-types, no-unused-vars */
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-    MdCheckCircle, MdRadioButtonUnchecked, MdAccessTime,
+    MdCheckCircle,
     MdCalendarToday, MdArrowBack, MdClose, MdStar, MdStarBorder, MdAdd,
-    MdSearch, MdNotificationsNone, MdFilterList, MdMoreHoriz, MdVerified,
-    MdExpandMore, MdCheck, MdHistory, MdTopic, MdAssignment, MdDeleteOutline, MdDelete
+    MdSearch, MdNotificationsNone, MdFilterList, MdVerified,
+    MdExpandMore, MdCheck, MdHistory, MdDeleteOutline
 } from "react-icons/md";
 import { Menu } from "lucide-react";
 import { toast } from "react-toastify";
@@ -175,7 +176,15 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
 };
 
 // ── Task Card ─────────────────────────────────────────────────────────────────
-const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) => {
+const TaskCard = ({
+    task,
+    index,
+    isSelected = false,
+    onToggleSelect,
+    onDragStart,
+    onStatusChange,
+    onDeleteTask
+}) => {
     const priority = task.priority || "medium";
     const isCompleted = task.status === "completed";
     const isInProgress = task.status === "inProgress";
@@ -192,11 +201,31 @@ const TaskCard = ({ task, index, onDragStart, onStatusChange, onDeleteTask }) =>
         <div
             draggable
             onDragStart={() => onDragStart(task)}
-            className={`bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-grab active:cursor-grabbing select-none space-y-3 ${activeBorderClass}`}
+            className={`bg-white rounded-xl border p-3.5 sm:p-4 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-grab active:cursor-grabbing select-none space-y-3 ${
+                isSelected
+                    ? "ring-2 ring-orange-500 border-orange-400 bg-orange-50/25 shadow-orange-500/10"
+                    : `border-slate-200 ${activeBorderClass}`
+            }`}
         >
-            {/* Header: S.No + Priority Badge + Status Dropdown + Delete Option */}
+            {/* Header: Select Checkbox + S.No + Priority Badge + Status Dropdown + Delete Option */}
             <div className="flex items-center justify-between gap-2 pb-0.5">
                 <div className="flex items-center gap-1.5 min-w-0">
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect?.(task._id);
+                        }}
+                        className={`w-4 h-4 rounded-[5px] flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 border ${
+                            isSelected
+                                ? "bg-orange-500 border-orange-500 text-white shadow-2xs"
+                                : "bg-white border-slate-300 hover:border-orange-400 text-transparent"
+                        }`}
+                        title={isSelected ? "Deselect task" : "Select task"}
+                        aria-label={isSelected ? "Deselect task" : "Select task"}
+                    >
+                        <MdCheck size={12} className={isSelected ? "opacity-100" : "opacity-0"} />
+                    </button>
                     <span
                         className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs"
                         title={`Serial No. ${task.sno || (typeof index === "number" ? index + 1 : 1)}`}
@@ -623,6 +652,14 @@ const StudentTaskBoard = () => {
     const [deleteStudentTaskMutation] = useDeleteStudentTaskMutation();
     const [activeMobileTab, setActiveMobileTab] = useState("all");
     const [showNotifications, setShowNotifications] = useState(false);
+
+    // Multi-select & bulk shift state
+    const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+    const [bulkUpdating, setBulkUpdating] = useState(false);
+    const [showBulkCompleteModal, setShowBulkCompleteModal] = useState(false);
+    const [individualMarks, setIndividualMarks] = useState({});
+    const [bulkNotes, setBulkNotes] = useState("");
+
     const { data: boardNotifsData } = useGetNotificationsQuery(
         studentId ? { studentId } : undefined,
         { skip: !studentId, pollingInterval: 20000, refetchOnMountOrArgChange: true }
@@ -632,6 +669,7 @@ const StudentTaskBoard = () => {
     useEffect(() => {
         setTasks(null);
         setSelectedSubLevelId(null);
+        setSelectedTaskIds([]);
     }, [student?._id]);
 
     const studentStatus = (student?.status || "").toLowerCase();
@@ -681,6 +719,7 @@ const StudentTaskBoard = () => {
     const handleSelectSubLevel = (subId) => {
         setSelectedSubLevelId(subId);
         setTasks(null);
+        setSelectedTaskIds([]);
         setShowPreviousDropdown(false);
         setSubjectFilter("");
     };
@@ -852,6 +891,171 @@ const StudentTaskBoard = () => {
             setTasks(null);
         } finally {
             setSaving(false);
+        }
+    };
+
+    // ── Multi-Select Helpers ───────────────────────────────────────────────────
+    const handleToggleSelectTask = (taskId) => {
+        setSelectedTaskIds(prev =>
+            prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+        );
+    };
+
+    const isColumnFullySelected = (colKey) => {
+        const colTasks = byStatus[colKey] || [];
+        if (colTasks.length === 0) return false;
+        return colTasks.every(t => selectedTaskIds.includes(t._id));
+    };
+
+    const isColumnPartiallySelected = (colKey) => {
+        const colTasks = byStatus[colKey] || [];
+        if (colTasks.length === 0) return false;
+        const selectedCount = colTasks.filter(t => selectedTaskIds.includes(t._id)).length;
+        return selectedCount > 0 && selectedCount < colTasks.length;
+    };
+
+    const handleToggleColumnSelection = (colKey) => {
+        const colTasks = byStatus[colKey] || [];
+        if (colTasks.length === 0) return;
+        const colTaskIds = colTasks.map(t => t._id);
+        const allSelected = colTaskIds.every(id => selectedTaskIds.includes(id));
+
+        if (allSelected) {
+            setSelectedTaskIds(prev => prev.filter(id => !colTaskIds.includes(id)));
+        } else {
+            setSelectedTaskIds(prev => {
+                const next = new Set([...prev, ...colTaskIds]);
+                return Array.from(next);
+            });
+        }
+    };
+
+    const handleSelectAllFiltered = () => {
+        const filteredIds = filtered.map(t => t._id);
+        const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedTaskIds.includes(id));
+        if (allSelected) {
+            setSelectedTaskIds([]);
+        } else {
+            setSelectedTaskIds(filteredIds);
+        }
+    };
+
+    const handleDeselectAll = () => {
+        setSelectedTaskIds([]);
+    };
+
+    const selectedTasksList = useMemo(() => {
+        const list = tasks || allTasks;
+        return list.filter(t => selectedTaskIds.includes(t._id));
+    }, [tasks, allTasks, selectedTaskIds]);
+
+    const unratedTasksCount = useMemo(() => {
+        return selectedTasksList.filter(t => {
+            const mark = individualMarks[t._id] !== undefined ? individualMarks[t._id] : t.marks;
+            return mark === null || mark === undefined || mark <= 0;
+        }).length;
+    }, [selectedTasksList, individualMarks]);
+
+    const allTasksRated = selectedTasksList.length > 0 && unratedTasksCount === 0;
+
+    const handleOpenBulkCompleteModal = () => {
+        const currentList = tasks || allTasks;
+        const initialMarks = {};
+        selectedTaskIds.forEach(id => {
+            const t = currentList.find(x => x._id === id);
+            if (t && t.marks !== null && t.marks !== undefined) {
+                initialMarks[id] = t.marks;
+            }
+        });
+        setIndividualMarks(initialMarks);
+        setShowBulkCompleteModal(true);
+    };
+
+    // ── Bulk Shift Tasks ───────────────────────────────────────────────────────
+    const executeBulkShift = async (targetStatus, marksMapOverride, notes) => {
+        if (!studentId || selectedTaskIds.length === 0) return;
+
+        const count = selectedTaskIds.length;
+        const statusLabel =
+            targetStatus === "inProgress"
+                ? "In Progress"
+                : targetStatus === "completed"
+                ? "Completed"
+                : "Pending";
+
+        const prevTasks = tasks || allTasks;
+
+        // Effective marks map for completed status
+        const effectiveMarksMap = {};
+        if (targetStatus === "completed") {
+            const currentMarksMap = marksMapOverride || individualMarks;
+            for (const id of selectedTaskIds) {
+                const t = prevTasks.find(x => x._id === id);
+                const mark = currentMarksMap[id] !== undefined ? currentMarksMap[id] : t?.marks;
+                if (mark === null || mark === undefined || mark <= 0) {
+                    toast.error("Please assign individual marks to all selected tasks before completing!");
+                    return;
+                }
+                effectiveMarksMap[id] = mark;
+            }
+        }
+
+        setBulkUpdating(true);
+
+        const updated = prevTasks.map(t => {
+            if (!selectedTaskIds.includes(t._id)) return t;
+            let finalMarks;
+            if (targetStatus === "pending") {
+                finalMarks = null;
+            } else if (targetStatus === "completed") {
+                finalMarks = effectiveMarksMap[t._id];
+            } else {
+                finalMarks = t.marks;
+            }
+
+            return {
+                ...t,
+                status: targetStatus,
+                marks: finalMarks,
+                notes: notes !== undefined ? notes : t.notes
+            };
+        });
+        setTasks(updated);
+
+        try {
+            const body = {
+                taskIds: selectedTaskIds,
+                status: targetStatus,
+                taskMarksMap: targetStatus === "completed" ? effectiveMarksMap : undefined,
+                notes
+            };
+            const url = `${API_BASE_URL}/syllabus/versions/students/${studentId}/tasks-bulk`;
+            const r = await fetch(url, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${getToken()}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!r.ok) {
+                const errData = await r.json().catch(() => ({}));
+                throw new Error(errData.message || "Failed to shift tasks in bulk");
+            }
+
+            toast.success(`Successfully shifted ${count} task${count > 1 ? "s" : ""} to ${statusLabel}!`);
+            setSelectedTaskIds([]);
+            setShowBulkCompleteModal(false);
+            setIndividualMarks({});
+            setBulkNotes("");
+            await refetch();
+        } catch (err) {
+            toast.error(err.message || "Bulk status shift failed");
+            setTasks(prevTasks);
+            refetch();
+        } finally {
+            setBulkUpdating(false);
         }
     };
 
@@ -1423,15 +1627,45 @@ const StudentTaskBoard = () => {
                                         {/* Column Header */}
                                         <div className="flex items-center justify-between px-2 py-1">
                                             <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleColumnSelection(col.key)}
+                                                    disabled={byStatus[col.key].length === 0}
+                                                    className={`w-4 h-4 rounded-[5px] flex items-center justify-center transition-all duration-150 shrink-0 border cursor-pointer ${
+                                                        isColumnFullySelected(col.key)
+                                                            ? "bg-orange-500 border-orange-500 text-white shadow-2xs"
+                                                            : isColumnPartiallySelected(col.key)
+                                                            ? "bg-orange-100 border-orange-400 text-orange-600"
+                                                            : "bg-white border-slate-300 hover:border-slate-400 text-transparent"
+                                                    } ${byStatus[col.key].length === 0 ? "opacity-30 cursor-not-allowed" : ""}`}
+                                                    title={
+                                                        isColumnFullySelected(col.key)
+                                                            ? `Deselect all ${col.label} tasks`
+                                                            : `Select all ${col.label} tasks`
+                                                    }
+                                                    aria-label={`Select all ${col.label} tasks`}
+                                                >
+                                                    {isColumnFullySelected(col.key) ? (
+                                                        <MdCheck size={12} />
+                                                    ) : isColumnPartiallySelected(col.key) ? (
+                                                        <span className="w-2 h-0.5 bg-orange-600 rounded-full" />
+                                                    ) : null}
+                                                </button>
                                                 <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
                                                 <h3 className="text-sm font-black text-slate-900">{col.label}</h3>
                                                 <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${col.badgeBg}`}>
                                                     {byStatus[col.key].length}
                                                 </span>
                                             </div>
-                                            <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                                                <MdMoreHoriz size={18} />
-                                            </button>
+                                            {byStatus[col.key].length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleColumnSelection(col.key)}
+                                                    className="text-[10.5px] font-bold text-slate-400 hover:text-orange-600 px-1.5 py-0.5 rounded hover:bg-orange-50/70 transition cursor-pointer"
+                                                >
+                                                    {isColumnFullySelected(col.key) ? "Deselect" : "Select all"}
+                                                </button>
+                                            )}
                                         </div>
 
                                         {/* Task Cards List */}
@@ -1448,6 +1682,8 @@ const StudentTaskBoard = () => {
                                                         key={task._id}
                                                         task={task}
                                                         index={colIdx}
+                                                        isSelected={selectedTaskIds.includes(task._id)}
+                                                        onToggleSelect={handleToggleSelectTask}
                                                         onDragStart={handleDragStart}
                                                         onDeleteTask={(t) => setTaskToDelete(t)}
                                                         onStatusChange={(t, st, extra = {}) => {
@@ -1479,6 +1715,294 @@ const StudentTaskBoard = () => {
                 subtitle={`${studentName} • Practical task alerts & level status`}
             />
 
+            {/* Floating Bulk Shift Action Bar */}
+            {selectedTaskIds.length > 0 && (
+                <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-3xl bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-3 sm:px-5 sm:py-3.5 shadow-2xl border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                        <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-lg bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center shrink-0 font-black text-xs">
+                                {selectedTaskIds.length}
+                            </span>
+                            <div>
+                                <span className="text-xs sm:text-sm font-extrabold text-white">
+                                    {selectedTaskIds.length} Task{selectedTaskIds.length > 1 ? "s" : ""} Selected
+                                </span>
+                                <span className="hidden sm:inline-block text-[11px] text-slate-400 font-medium ml-1.5">
+                                    (of {filtered.length} visible)
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={handleSelectAllFiltered}
+                                className="text-[11px] font-bold text-slate-300 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                            >
+                                {selectedTaskIds.length === filtered.length ? "Deselect All" : "Select All"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeselectAll}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition cursor-pointer"
+                                title="Clear selection"
+                            >
+                                <MdClose size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Shift Buttons */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 hidden sm:inline">
+                            Shift to:
+                        </span>
+
+                        {/* Shift to Pending */}
+                        <button
+                            type="button"
+                            disabled={bulkUpdating}
+                            onClick={() => executeBulkShift("pending", null)}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 transition cursor-pointer disabled:opacity-50 shadow-xs"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-slate-400" />
+                            <span>Pending</span>
+                        </button>
+
+                        {/* Shift to In Progress */}
+                        <button
+                            type="button"
+                            disabled={bulkUpdating}
+                            onClick={() => executeBulkShift("inProgress", undefined)}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer disabled:opacity-50 shadow-xs"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-amber-400" />
+                            <span>In Progress</span>
+                        </button>
+
+                        {/* Shift to Completed */}
+                        <button
+                            type="button"
+                            disabled={bulkUpdating}
+                            onClick={handleOpenBulkCompleteModal}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer disabled:opacity-50 shadow-xs"
+                        >
+                            <MdCheckCircle size={15} />
+                            <span>Completed</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Complete Confirmation & Rating Modal */}
+            {showBulkCompleteModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+                    onClick={() => !bulkUpdating && setShowBulkCompleteModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                <MdVerified size={22} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                                    Complete {selectedTaskIds.length} Task{selectedTaskIds.length > 1 ? "s" : ""} with Individual Marks
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                    Each task must have an individual evaluation score before moving to Completed.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Rating Status & Quick Rate Banner */}
+                        <div className={`flex items-center justify-between gap-2 p-2.5 rounded-xl border flex-wrap text-xs font-bold transition-all ${
+                            allTasksRated
+                                ? "bg-emerald-50/70 border-emerald-200 text-emerald-800"
+                                : "bg-amber-50/70 border-amber-200 text-amber-900"
+                        }`}>
+                            <div className="flex items-center gap-1.5">
+                                {allTasksRated ? (
+                                    <>
+                                        <MdCheckCircle size={16} className="text-emerald-600 shrink-0" />
+                                        <span>All {selectedTasksList.length} tasks have individual marks assigned</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                        <span>{unratedTasksCount} task{unratedTasksCount > 1 ? "s" : ""} require marks before completing</span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Quick Preset for Unrated Tasks */}
+                            {!allTasksRated && (
+                                <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                    <span>Quick rate:</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIndividualMarks(prev => {
+                                                const next = { ...prev };
+                                                selectedTasksList.forEach(t => {
+                                                    const cur = next[t._id] !== undefined ? next[t._id] : t.marks;
+                                                    if (!cur) next[t._id] = 4;
+                                                });
+                                                return next;
+                                            });
+                                        }}
+                                        className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-orange-400 text-slate-700 hover:text-orange-600 transition cursor-pointer font-bold"
+                                    >
+                                        4 ★
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIndividualMarks(prev => {
+                                                const next = { ...prev };
+                                                selectedTasksList.forEach(t => {
+                                                    const cur = next[t._id] !== undefined ? next[t._id] : t.marks;
+                                                    if (!cur) next[t._id] = 5;
+                                                });
+                                                return next;
+                                            });
+                                        }}
+                                        className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:border-orange-400 text-slate-700 hover:text-orange-600 transition cursor-pointer font-bold"
+                                    >
+                                        5 ★
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Individual Tasks List */}
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                            {selectedTasksList.map((t, idx) => {
+                                const mark = individualMarks[t._id] !== undefined ? individualMarks[t._id] : (t.marks || null);
+                                const maxMarks = Math.min(5, t.maxMarks || 5);
+                                const isRated = mark !== null && mark !== undefined && mark > 0;
+
+                                return (
+                                    <div
+                                        key={t._id}
+                                        className={`p-3 rounded-xl border transition-colors duration-150 ${
+                                            isRated
+                                                ? "bg-slate-50/70 border-slate-200"
+                                                : "bg-rose-50/40 border-rose-200/90"
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="inline-flex items-center justify-center min-w-[20px] h-4.5 px-1 rounded bg-slate-900 text-white text-[9.5px] font-black shrink-0">
+                                                        #{t.sno || idx + 1}
+                                                    </span>
+                                                    <h4 className="text-xs font-extrabold text-slate-800 truncate max-w-[280px]" title={t.title}>
+                                                        {t.title}
+                                                    </h4>
+                                                </div>
+                                                {t.subjectName && (
+                                                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
+                                                        {t.subjectName}{t.topicName ? ` › ${t.topicName}` : ""}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border shrink-0 ${
+                                                isRated
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                    : "bg-rose-50 text-rose-600 border-rose-200 animate-pulse"
+                                            }`}>
+                                                {isRated ? `${mark}/${maxMarks} Marks` : "Rating Required"}
+                                            </span>
+                                        </div>
+
+                                        {/* Interactive Star Rating for this specific task */}
+                                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-200/60">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                Individual Marks:
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: maxMarks }, (_, i) => i + 1).map((star) => {
+                                                    const isFilled = star <= (mark || 0);
+                                                    return (
+                                                        <button
+                                                            key={star}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setIndividualMarks(prev => ({ ...prev, [t._id]: star }));
+                                                            }}
+                                                            className="p-0.5 transition hover:scale-125 cursor-pointer"
+                                                            title={`Rate ${star}/${maxMarks} for "${t.title}"`}
+                                                        >
+                                                            {isFilled ? (
+                                                                <MdStar size={20} className="text-amber-400" />
+                                                            ) : (
+                                                                <MdStarBorder size={20} className="text-slate-300 hover:text-amber-300" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Evaluation Notes (optional) */}
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                                Evaluation Notes <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={bulkNotes}
+                                onChange={(e) => setBulkNotes(e.target.value)}
+                                placeholder="e.g. Batch evaluated and verified"
+                                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-800 placeholder:text-slate-400"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+                            <button
+                                type="button"
+                                disabled={bulkUpdating}
+                                onClick={() => setShowBulkCompleteModal(false)}
+                                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={bulkUpdating || !allTasksRated}
+                                onClick={() => executeBulkShift("completed", individualMarks, bulkNotes)}
+                                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer ${
+                                    allTasksRated
+                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                }`}
+                                title={!allTasksRated ? "Assign individual marks to all tasks before completing" : ""}
+                            >
+                                {bulkUpdating ? (
+                                    <>
+                                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        <span>Completing...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <MdCheckCircle size={15} />
+                                        <span>Confirm & Complete ({selectedTaskIds.length})</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Task Confirmation Modal */}
             {taskToDelete && (
                 <div
@@ -1498,7 +2022,7 @@ const StudentTaskBoard = () => {
                                     Delete Task from Board?
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                    Kya aap is task ko <strong className="text-slate-800">{studentName}</strong> ke task board se delete karna chahte hain?
+                                    Are you sure you want to remove this task from <strong className="text-slate-800">{studentName}</strong>&apos;s task board?
                                 </p>
                             </div>
                         </div>
@@ -1532,7 +2056,7 @@ const StudentTaskBoard = () => {
                         <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-3 text-[11.5px] text-amber-900 leading-relaxed font-medium flex items-start gap-2.5">
                             <span className="text-amber-600 text-sm mt-0.5 shrink-0">ℹ️</span>
                             <span>
-                                <strong>Dhyan dein:</strong> Yeh task sirf <span className="font-bold underline">{studentName}</span> ke task board se delete hoga. Dusre students ke task board aur master curriculum par koi farq nahi padega.
+                                <strong>Note:</strong> This task will only be deleted from <span className="font-bold underline">{studentName}</span>&apos;s task board. Other students and the master curriculum will remain unaffected.
                             </span>
                         </div>
 

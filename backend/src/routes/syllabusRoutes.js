@@ -97,6 +97,81 @@ router.get("/students/:studentId/tasks/summary", verifyToken, async (req, res) =
   }
 });
 
+// ── Bulk Student Task Status Update (Must be before :taskId) ──
+router.patch("/students/:studentId/tasks-bulk", verifyToken, checkRole(writeRoles), async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { taskIds, status, marks, taskMarksMap, taskUpdates, notes } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ success: false, message: "taskIds must be a non-empty array" });
+    }
+
+    if (!["pending", "inProgress", "completed"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value. Allowed: pending, inProgress, completed" });
+    }
+
+    // Build per-task marks map if provided
+    const marksMap = {};
+    if (taskMarksMap && typeof taskMarksMap === "object") {
+      Object.assign(marksMap, taskMarksMap);
+    }
+    if (Array.isArray(taskUpdates)) {
+      taskUpdates.forEach(tu => {
+        if (tu && (tu.taskId || tu._id)) {
+          marksMap[tu.taskId || tu._id] = tu.marks;
+        }
+      });
+    }
+
+    const updated = [];
+    const errors = [];
+
+    for (const taskId of taskIds) {
+      try {
+        let taskMark;
+        if (status === "pending") {
+          taskMark = null;
+        } else if (marksMap[taskId] !== undefined) {
+          taskMark = marksMap[taskId];
+        } else if (marks !== undefined) {
+          taskMark = marks;
+        } else {
+          // Keep existing task marks if already rated in progress
+          taskMark = undefined;
+        }
+
+        const result = await updateStudentTaskStatus(studentId, taskId, {
+          status,
+          marks: taskMark,
+          notes,
+          actor: req.user
+        });
+        updated.push(result);
+      } catch (err) {
+        errors.push({ taskId, error: err.message });
+      }
+    }
+
+    if (updated.length === 0 && errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: errors[0]?.error || "Failed to update selected tasks",
+        errors
+      });
+    }
+
+    res.json({
+      success: true,
+      count: updated.length,
+      data: updated,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.patch("/students/:studentId/tasks/:taskId", verifyToken, checkRole(writeRoles), async (req, res) => {
   try {
     const result = await updateStudentTaskStatus(req.params.studentId, req.params.taskId, { ...req.body, actor: req.user });

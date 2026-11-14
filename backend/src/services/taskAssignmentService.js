@@ -32,6 +32,7 @@ const buildTaskEntries = async (syllabusVersionId, expectedSessionId = null) => 
     subTopicName: task.subTopicName || "",
     taskNodeType: task.taskNodeType,
     title: task.title,
+    domain: task.domain || "",
     description: task.description || "",
     type: task.type || "assignment",
     mandatory: task.mandatory !== false,
@@ -41,6 +42,83 @@ const buildTaskEntries = async (syllabusVersionId, expectedSessionId = null) => 
     assignTo: task.assignTo || "all",
     specificStudentIds: task.specificStudentIds || []
   }));
+};
+
+const CANONICAL_DOMAIN_MAP = {
+  mern: "mern",
+  mernstack: "mern",
+  "mern stack": "mern",
+  python: "python",
+  pythonfullstack: "python",
+  "python full stack": "python",
+  pythonstack: "python",
+  java: "java",
+  javafullstack: "java",
+  "java full stack": "java",
+  javastack: "java",
+  mean: "mean",
+  meanstack: "mean",
+  "mean stack": "mean",
+  uiux: "uiux",
+  "ui/ux": "uiux",
+  "ui-ux": "uiux",
+  "ui ux": "uiux",
+  graphicdesign: "graphicdesign",
+  "graphic design": "graphicdesign",
+  appdevelopment: "appdevelopment",
+  "app development": "appdevelopment",
+  appdev: "appdevelopment",
+  testing: "testing",
+  softwaretesting: "testing",
+  qa: "testing",
+  devops: "devops",
+  aiml: "aiml",
+  "ai/ml": "aiml",
+  "ai & ml": "aiml",
+  dataanalytics: "dataanalytics",
+  "data analytics": "dataanalytics",
+  digitalmarketing: "digitalmarketing",
+  "digital marketing": "digitalmarketing",
+  usgaap: "usgaap",
+  "us gaap": "usgaap",
+  ca: "ca",
+  salesforce: "salesforce",
+  pharmaceuticalindustry: "pharma",
+  "pharmaceutical industry": "pharma",
+  pharma: "pharma",
+  hospitaltraining: "hospital",
+  "hospital training": "hospital",
+  hospital: "hospital",
+  teaching: "teaching",
+  academia: "teaching",
+  "teaching / academia": "teaching"
+};
+
+const normalizeDomain = (val) => {
+  if (!val) return "";
+  const clean = String(val).trim().toLowerCase();
+  const noSpace = clean.replace(/[\s\-_/\\()]+/g, "");
+  return CANONICAL_DOMAIN_MAP[noSpace] || CANONICAL_DOMAIN_MAP[clean] || noSpace || clean;
+};
+
+const getStudentDomain = (student) => {
+  if (!student) return "";
+  const rawDomain = student.domain || student.ftpDomain || student.track || student.technology || student.techno || "";
+  if (!rawDomain || rawDomain === "Technology Not Updated" || rawDomain === "Others") return "";
+  return String(rawDomain).trim();
+};
+
+const matchesDomain = (studentDomain, itemDomain) => {
+  const itemTrim = (itemDomain || "").trim();
+  // If item (task or syllabus) has NO domain or is marked as 'All' / 'Common' / 'General', it is common to all students
+  if (!itemTrim || ["all", "common", "general"].includes(itemTrim.toLowerCase())) {
+    return true;
+  }
+  // If item has a specific domain, the student MUST have a matching domain
+  if (!studentDomain) return false;
+  const sNorm = normalizeDomain(studentDomain);
+  const items = itemTrim.split(",").map((d) => normalizeDomain(d));
+  return items.includes(sNorm);
 };
 
 const CANONICAL_COURSE_MAP = {
@@ -142,84 +220,112 @@ const isSessionExempt = (student, options = {}) =>
   Boolean(options.allowSessionMismatch || student?.isUIUX);
 
 const selectBestSyllabusForStudent = (versions, studentCourse, options = {}) => {
-  const { strictCourseMatch = false } = options;
+  const { strictCourseMatch = false, studentDomain = "", student = null } = options;
   if (!Array.isArray(versions) || versions.length === 0) return null;
-  if (!studentCourse) return versions[0];
 
-  const exactMatch = versions.find((v) => matchesCourse(studentCourse, v.courses, v.course));
-  if (exactMatch) return exactMatch;
-  return strictCourseMatch ? null : versions[0];
+  const targetDomain = studentDomain || getStudentDomain(student);
+
+  // 1. If student has a domain, prioritize a syllabus version with matching domain
+  if (targetDomain) {
+    const domainAndCourseMatch = versions.find((v) =>
+      v.domain &&
+      matchesDomain(targetDomain, v.domain) &&
+      (!studentCourse || matchesCourse(studentCourse, v.courses, v.course))
+    );
+    if (domainAndCourseMatch) return domainAndCourseMatch;
+
+    const domainMatch = versions.find((v) =>
+      v.domain && matchesDomain(targetDomain, v.domain)
+    );
+    if (domainMatch) return domainMatch;
+  }
+
+  // 2. Filter versions to those that do NOT conflict with the student's domain
+  const nonConflictingVersions = targetDomain
+    ? versions.filter((v) => !v.domain || matchesDomain(targetDomain, v.domain))
+    : versions.filter((v) => !v.domain || ["all", "common", "general"].includes(v.domain.trim().toLowerCase()));
+
+  const candidates = nonConflictingVersions.length > 0 ? nonConflictingVersions : versions;
+
+  if (studentCourse) {
+    const exactMatch = candidates.find((v) => matchesCourse(studentCourse, v.courses, v.course));
+    if (exactMatch) return exactMatch;
+  }
+
+  if (strictCourseMatch) return null;
+  return candidates[0] || null;
 };
 
 const filterStudentTasksBySession = async (tasks, student) => {
   if (!Array.isArray(tasks) || tasks.length === 0) return [];
+
+  const studentDomain = getStudentDomain(student);
   const studentSessionStr = toIdStr(student?.sessionId);
-  if (!student || student.isUIUX || student.isFTP || !studentSessionStr) {
-    return tasks;
-  }
 
-  // Batch-check syllabusVersionIds (populated or raw ObjectIds) and general Task master docs
+  // Collect all task IDs to look up master tasks (for domain and session checks)
+  const taskIds = tasks
+    .map((t) => toIdStr(t.taskId))
+    .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
+
+  // Collect all syllabusVersion IDs
   const svIdSet = new Set();
-  const nonSvTaskIdSet = new Set();
-
   for (const t of tasks) {
     const rawSv = t.syllabusVersionId;
     if (rawSv) {
-      if (typeof rawSv === "object" && rawSv.sessionId) {
-        continue; // Already populated with sessionId
-      }
+      if (typeof rawSv === "object" && rawSv.sessionId) continue;
       const idStr = toIdStr(rawSv);
-      if (idStr && mongoose.Types.ObjectId.isValid(idStr)) {
-        svIdSet.add(idStr);
-      }
-    } else if (t.taskId) {
-      const tidStr = toIdStr(t.taskId);
-      if (tidStr && mongoose.Types.ObjectId.isValid(tidStr)) {
-        nonSvTaskIdSet.add(tidStr);
-      }
+      if (idStr && mongoose.Types.ObjectId.isValid(idStr)) svIdSet.add(idStr);
     }
   }
 
   const [svDocs, masterTaskDocs] = await Promise.all([
     svIdSet.size > 0
-      ? SyllabusVersion.find({ _id: { $in: Array.from(svIdSet) } }).select("_id sessionId").lean()
+      ? SyllabusVersion.find({ _id: { $in: Array.from(svIdSet) } }).select("_id sessionId domain").lean()
       : [],
-    nonSvTaskIdSet.size > 0
-      ? Task.find({ _id: { $in: Array.from(nonSvTaskIdSet) } }).select("_id sessionId").lean()
+    taskIds.length > 0
+      ? Task.find({ _id: { $in: taskIds } }).select("_id sessionId domain").lean()
       : []
   ]);
 
-  const svSessionMap = new Map(
-    svDocs.map((sv) => [sv._id.toString(), toIdStr(sv.sessionId)])
-  );
-  const taskSessionMap = new Map(
-    masterTaskDocs.map((mt) => [mt._id.toString(), toIdStr(mt.sessionId)])
-  );
+  const svMap = new Map(svDocs.map((sv) => [sv._id.toString(), sv]));
+  const taskMap = new Map(masterTaskDocs.map((mt) => [mt._id.toString(), mt]));
 
   return tasks.filter((t) => {
-    const rawSv = t.syllabusVersionId;
-    if (rawSv) {
-      let svSessionStr = null;
-      if (typeof rawSv === "object" && rawSv.sessionId) {
-        svSessionStr = toIdStr(rawSv.sessionId);
-      } else {
-        const svIdStr = toIdStr(rawSv);
-        svSessionStr = svSessionMap.get(svIdStr) || null;
-      }
-      if (svSessionStr && svSessionStr !== studentSessionStr) {
-        return false;
-      }
-    } else if (t.taskId) {
-      const tidStr = toIdStr(t.taskId);
-      const mtSessionStr = taskSessionMap.get(tidStr) || null;
-      if (mtSessionStr && mtSessionStr !== studentSessionStr) {
+    const mt = t.taskId ? taskMap.get(toIdStr(t.taskId)) : null;
+    const sv = t.syllabusVersionId ? svMap.get(toIdStr(t.syllabusVersionId)) : null;
+
+    // 1. Strict Domain Check:
+    // If student has a domain selected (e.g. MERN Stack), exclude any task belonging to a different domain
+    if (studentDomain) {
+      const taskDomain = (t.domain || mt?.domain || sv?.domain || "").trim();
+      if (taskDomain && !matchesDomain(studentDomain, taskDomain)) {
         return false;
       }
     }
 
-    const taskSessionStr = toIdStr(t.sessionId);
-    if (taskSessionStr && taskSessionStr !== studentSessionStr) {
-      return false;
+    // 2. Session Check (for non-UIUX / non-FTP students):
+    if (student && !student.isUIUX && !student.isFTP && studentSessionStr) {
+      let svSessionStr = null;
+      if (typeof t.syllabusVersionId === "object" && t.syllabusVersionId?.sessionId) {
+        svSessionStr = toIdStr(t.syllabusVersionId.sessionId);
+      } else if (sv) {
+        svSessionStr = toIdStr(sv.sessionId);
+      }
+      if (svSessionStr && svSessionStr !== studentSessionStr) {
+        return false;
+      }
+
+      if (mt && mt.sessionId) {
+        const mtSessionStr = toIdStr(mt.sessionId);
+        if (mtSessionStr && mtSessionStr !== studentSessionStr) {
+          return false;
+        }
+      }
+
+      const taskSessionStr = toIdStr(t.sessionId);
+      if (taskSessionStr && taskSessionStr !== studentSessionStr) {
+        return false;
+      }
     }
 
     return true;
@@ -230,6 +336,7 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId, options 
   const allowFallback = isSessionExempt(student, options);
   const studentSessionId = student.sessionId?._id || student.sessionId || null;
   const studentSessionStr = toIdStr(studentSessionId);
+  const studentDomain = getStudentDomain(student);
 
   if (syllabusVersionId) {
     const version = await SyllabusVersion.findOne({
@@ -267,8 +374,9 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId, options 
       !studentSessionStr ||
       !version?.sessionId ||
       toIdStr(version.sessionId) === studentSessionStr;
+    const matchesDom = !studentDomain || !version?.domain || matchesDomain(studentDomain, version.domain);
 
-    if (version && matchesLevel && matchesSession) {
+    if (version && matchesLevel && matchesSession && matchesDom) {
       return version;
     }
   }
@@ -282,7 +390,7 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId, options 
   };
 
   const sessionVersions = await SyllabusVersion.find(strictFilter).sort({ createdAt: -1 });
-  let activeVersion = selectBestSyllabusForStudent(sessionVersions, student.course);
+  let activeVersion = selectBestSyllabusForStudent(sessionVersions, student.course, { studentDomain, student });
 
   if (!activeVersion && allowFallback) {
     const fallbackVersions = await SyllabusVersion.find({
@@ -291,7 +399,7 @@ const getSyllabusVersionForStudent = async (student, syllabusVersionId, options 
       status: "active",
       isActive: true
     }).sort({ createdAt: -1 });
-    activeVersion = selectBestSyllabusForStudent(fallbackVersions, student.course);
+    activeVersion = selectBestSyllabusForStudent(fallbackVersions, student.course, { studentDomain, student });
   }
 
   if (!activeVersion) {
@@ -325,33 +433,41 @@ const validateStudentVersionMatch = (student, syllabusVersion, options = {}) => 
   }
 };
 
-const buildStudentTaskPayload = (student, syllabusVersion, entry, assignmentMeta = {}) => ({
-  sessionId: student.sessionId,
-  levelId: syllabusVersion.levelId,
-  subLevelId: syllabusVersion.subLevelId,
-  syllabusVersionId: syllabusVersion._id,
-  taskId: entry.taskId,
-  course: entry.course || "All",
-  courses: entry.courses || (entry.course ? [entry.course] : ["All"]),
-  subjectId: entry.subjectId,
-  topicId: entry.topicId,
-  subTopicId: entry.subTopicId,
-  subjectName: entry.subjectName,
-  topicName: entry.topicName,
-  subTopicName: entry.subTopicName,
-  taskNodeType: entry.taskNodeType,
-  title: entry.title,
-  description: entry.description,
-  type: entry.type,
-  mandatory: entry.mandatory,
-  maxMarks: typeof entry.maxMarks === "number" ? Math.min(5, Math.max(1, entry.maxMarks)) : 5,
-  isActive: true,
-  assignedType: assignmentMeta.assignedType || "auto",
-  assignedBy: assignmentMeta.assignedBy || null,
-  assignedByName: assignmentMeta.assignedByName || "",
-  assignedByRole: assignmentMeta.assignedByRole || "",
-  assignedAt: assignmentMeta.assignedAt || new Date()
-});
+const buildStudentTaskPayload = (student, syllabusVersion, entry, assignmentMeta = {}) => {
+  const studentDomain = getStudentDomain(student);
+  const effectiveDomain = entry.domain || (matchesDomain(studentDomain, syllabusVersion.domain) ? (syllabusVersion.domain || "") : "");
+  return {
+    sessionId: student.sessionId,
+    levelId: syllabusVersion.levelId,
+    subLevelId: syllabusVersion.subLevelId,
+    syllabusVersionId: syllabusVersion._id,
+    taskId: entry.taskId,
+    domain: effectiveDomain,
+    course: entry.course || "All",
+    courses: entry.courses || (entry.course ? [entry.course] : ["All"]),
+    subjectId: entry.subjectId,
+    topicId: entry.topicId,
+    subTopicId: entry.subTopicId,
+    subjectName: entry.subjectName,
+    topicName: entry.topicName,
+    subTopicName: entry.subTopicName,
+    taskNodeType: entry.taskNodeType,
+    title: entry.title,
+    description: entry.description,
+    type: entry.type,
+    mandatory: entry.mandatory,
+    maxMarks: typeof entry.maxMarks === "number" ? Math.min(5, Math.max(1, entry.maxMarks)) : 5,
+    isActive: true,
+    isArchived: false,
+    archivedAt: null,
+    archivedReason: null,
+    assignedType: assignmentMeta.assignedType || "auto",
+    assignedBy: assignmentMeta.assignedBy || null,
+    assignedByName: assignmentMeta.assignedByName || "",
+    assignedByRole: assignmentMeta.assignedByRole || "",
+    assignedAt: assignmentMeta.assignedAt || new Date()
+  };
+};
 
 const ensureManualAssignmentState = (studentTask, assignmentMeta) => {
   if (!studentTask) {
@@ -375,6 +491,8 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
   const syllabusVersion = options.syllabusVersion || await getSyllabusVersionForStudent(student, syllabusVersionId, options);
   validateStudentVersionMatch(student, syllabusVersion, options);
 
+  const studentDomain = getStudentDomain(student);
+
   // If syllabus version is targeted to specific course(s), ensure student matches
   if (!matchesCourse(student.course, syllabusVersion.courses, syllabusVersion.course)) {
     return {
@@ -389,6 +507,24 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
 
   const expectedSessionId = isSessionExempt(student, options) ? null : (syllabusVersion.sessionId || student.sessionId);
   const taskEntries = options.taskEntries || await buildTaskEntries(syllabusVersion._id, expectedSessionId);
+
+  // Check if syllabus version matches domain OR if tasks inside match student's domain
+  const svMatchesDomain = !syllabusVersion.domain || matchesDomain(studentDomain, syllabusVersion.domain);
+  const hasMatchingTasks = taskEntries.some((entry) => {
+    const td = entry.domain || (svMatchesDomain ? syllabusVersion.domain : "") || "";
+    return matchesDomain(studentDomain, td);
+  });
+
+  if (studentDomain && !svMatchesDomain && !hasMatchingTasks) {
+    return {
+      studentId: student._id,
+      syllabusVersionId: syllabusVersion._id,
+      createdCount: 0,
+      updatedCount: 0,
+      totalTasks: 0,
+      skippedReason: `Domain mismatch with syllabus version (${syllabusVersion.domain})`
+    };
+  }
 
   if (taskEntries.length === 0) {
     throw new Error("No active tasks found in syllabus");
@@ -423,6 +559,12 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
     // Course-wise task assignment check (e.g. BBA vs B.Com)
     if (!matchesCourse(student.course, entry.courses, entry.course)) {
       continue; // Skip task not matching student's course
+    }
+
+    // Domain-wise task assignment check (e.g. MERN vs Python)
+    const taskDomain = entry.domain || syllabusVersion.domain || "";
+    if (taskDomain && !matchesDomain(studentDomain, taskDomain)) {
+      continue; // Skip task that belongs to a different domain
     }
 
     const payload = buildStudentTaskPayload(student, syllabusVersion, entry, {
@@ -505,6 +647,42 @@ const assignTasksToStudent = async (studentId, syllabusVersionId, options = {}) 
           { $set: { isActive: false } }
         );
       }
+    }
+  }
+
+  // Clean up any stale or mismatched domain tasks previously on this student's board
+  if (studentDomain) {
+    const sNorm = normalizeDomain(studentDomain);
+    const existingActiveTasks = await StudentTask.find({
+      studentId: student._id,
+      isActive: true,
+      isArchived: { $ne: true }
+    }).select("_id taskId domain");
+
+    const taskIds = existingActiveTasks.map((t) => toIdStr(t.taskId)).filter(Boolean);
+    const masterTasks = await Task.find({ _id: { $in: taskIds } }).select("_id domain").lean();
+    const masterDomainMap = new Map(masterTasks.map((m) => [m._id.toString(), (m.domain || "").trim()]));
+
+    const mismatchedIds = existingActiveTasks
+      .filter((t) => {
+        const dom = (t.domain || masterDomainMap.get(toIdStr(t.taskId)) || "").trim();
+        if (!dom || ["all", "common", "general"].includes(dom.toLowerCase())) return false;
+        return normalizeDomain(dom) !== sNorm;
+      })
+      .map((t) => t._id);
+
+    if (mismatchedIds.length > 0) {
+      await StudentTask.updateMany(
+        { _id: { $in: mismatchedIds } },
+        {
+          $set: {
+            isActive: false,
+            isArchived: true,
+            archivedAt: new Date(),
+            archivedReason: `Domain mismatch with student domain (${studentDomain})`
+          }
+        }
+      );
     }
   }
 
@@ -608,6 +786,12 @@ const assignSelectedTasksToStudents = async ({ studentIds, taskIds, syllabusVers
         const entry = taskEntryMap.get(taskId.toString());
         if (!entry) {
           throw new Error(`Task ${taskId} not found in syllabus version`);
+        }
+
+        const taskDomain = entry.domain || syllabusVersion.domain || "";
+        const studentDomain = getStudentDomain(student);
+        if (taskDomain && !matchesDomain(studentDomain, taskDomain)) {
+          continue; // Skip task that doesn't match student domain
         }
 
         const payload = buildStudentTaskPayload(student, syllabusVersion, entry, assignmentMeta);
@@ -1164,13 +1348,13 @@ const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null)
   let syllabusVersion = null;
   if (syllabusVersionId) {
     syllabusVersion = await SyllabusVersion.findById(syllabusVersionId)
-      .select("sessionId levelId subLevelId status courses course");
+      .select("sessionId levelId subLevelId status courses course domain");
   } else if (subLevelId) {
     syllabusVersion = await SyllabusVersion.findOne({
       subLevelId,
       status: "active",
       isActive: true
-    }).sort({ createdAt: -1 }).select("sessionId levelId subLevelId status courses course");
+    }).sort({ createdAt: -1 }).select("sessionId levelId subLevelId status courses course domain");
   }
 
   if (!syllabusVersion) throw new Error("Syllabus version not found");
@@ -1196,14 +1380,20 @@ const syncTasksToSubLevelStudents = async (syllabusVersionId, subLevelId = null)
 
   if (allStudents.length === 0) return [];
 
-  // Filter students who match this syllabus version's course(s)
-  const students = allStudents.filter((s) =>
-    matchesCourse(s.course, syllabusVersion.courses, syllabusVersion.course)
-  );
+  // Filter students who match this syllabus version's course(s) and domain
+  const svDomain = (syllabusVersion.domain || "").trim();
+  const students = allStudents.filter((s) => {
+    const courseOk = matchesCourse(s.course, syllabusVersion.courses, syllabusVersion.course);
+    if (!courseOk) return false;
+    if (svDomain && !matchesDomain(getStudentDomain(s), svDomain)) {
+      return false;
+    }
+    return true;
+  });
 
   if (students.length === 0) return [];
 
-  // Pin syllabusVersionId on students who don't have it set yet
+  // Pin syllabusVersionId on matching students who don't have it set yet
   const unpinned = students.filter(
     (s) => !s.syllabusVersionId || s.syllabusVersionId.toString() !== effectiveVersionId.toString()
   );
@@ -1366,17 +1556,27 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
     studentQuery.course = { $in: courseRegexes };
   }
 
-  const students = await Student.find(studentQuery).select("_id course sessionId currentLevelId currentSubLevelId syllabusVersionId");
+  const students = await Student.find(studentQuery).select("_id course sessionId currentLevelId currentSubLevelId syllabusVersionId domain ftpDomain track technology techno");
   if (students.length === 0) {
     return { success: true, count: 0, message: "No matching active students found" };
   }
 
-  const bulkOps = students.map((student) => {
+  const taskDomain = (taskDoc.domain || "").trim();
+  const filteredStudents = taskDomain && !["all", "common", "general"].includes(taskDomain.toLowerCase())
+    ? students.filter((s) => matchesDomain(getStudentDomain(s), taskDomain))
+    : students;
+
+  if (filteredStudents.length === 0) {
+    return { success: true, count: 0, message: "No matching active students found for this domain/course" };
+  }
+
+  const bulkOps = filteredStudents.map((student) => {
     const payload = {
       sessionId: student.sessionId || taskDoc.sessionId,
       levelId: student.currentLevelId || taskDoc.levelId,
       subLevelId: student.currentSubLevelId || taskDoc.subLevelId,
       syllabusVersionId: taskDoc.syllabusVersionId || student.syllabusVersionId || null,
+      domain: taskDoc.domain || "",
       course: taskDoc.course || student.course || "All",
       courses: taskCourses,
       subjectId: taskDoc.subjectId || null,
@@ -1420,7 +1620,7 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
   if (bulkOps.length > 0) {
     const bulkRes = await StudentTask.bulkWrite(bulkOps, { ordered: false });
     const upsertedMap = bulkRes?.upsertedIds || {};
-    const newlyAssignedIndices = Object.keys(upsertedMap).map(Number).filter((idx) => !Number.isNaN(idx) && students[idx]);
+    const newlyAssignedIndices = Object.keys(upsertedMap).map(Number).filter((idx) => !Number.isNaN(idx) && filteredStudents[idx]);
     if (newlyAssignedIndices.length > 0 && taskDoc.isActive !== false) {
       const { createBulkNotifications } = require("./notificationService");
       createBulkNotifications(
@@ -1429,7 +1629,7 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
           message: `Task "${taskDoc.title}" has been added to your task board.`,
           type: "info",
           category: "task",
-          studentId: students[idx]._id,
+          studentId: filteredStudents[idx]._id,
           recipientRole: "student",
           actorName: taskDoc.assignedByName || "Faculty",
           metadata: { taskId: taskDoc._id, title: taskDoc.title },
@@ -1440,12 +1640,12 @@ const syncTaskToStudents = async (task, targetStudentIds = null) => {
 
   // Update progress stats for affected students asynchronously
   setImmediate(() => {
-    students.forEach((s) => {
+    filteredStudents.forEach((s) => {
       syncStudentLevelProgressStats(s._id).catch(() => {});
     });
   });
 
-  return { success: true, count: students.length };
+  return { success: true, count: filteredStudents.length };
 };
 
 module.exports = {
@@ -1466,4 +1666,8 @@ module.exports = {
   syncSyllabusTasksToStudents,
   syncTasksToSubLevelStudents,
   syncTaskToStudents,
+  normalizeDomain,
+  getStudentDomain,
+  matchesDomain,
+  syncStudentLevelProgressStats,
 };

@@ -1339,36 +1339,100 @@ exports.updateStudent = async (req, res) => {
     }
 
     // ----------------------------------------------------
-    // FTP Domain Handling & Archival Logic
+    // Domain Handling & Task Assignment Logic (FTP & Level 2A/2B+)
     // ----------------------------------------------------
-    let shouldAutoAssignFtpTasks = false;
-    let targetFtpSyllabus = null;
-    let targetFtpTasks = [];
+    let shouldAutoAssignDomainTasks = false;
+    let targetDomainSyllabus = null;
+    let targetDomainTasks = [];
 
     const isMarkingFtp = updateData.isFTP === true || (Boolean(existingStudent.isFTP) && updateData.isFTP !== false && Boolean(updateData.ftpDomain));
-    const domainCandidate = String(updateData.ftpDomain || updateData.domain || req.body.ftpDomain || req.body.domain || "").trim();
+    const domainCandidate = String(
+      updateData.domain || updateData.ftpDomain || updateData.track || updateData.technology || updateData.techno ||
+      req.body.domain || req.body.ftpDomain || req.body.track || req.body.technology || req.body.techno || ""
+    ).trim();
 
-    if (isMarkingFtp && domainCandidate) {
+    const isDomainUpdated = Boolean(
+      domainCandidate &&
+      domainCandidate !== "Technology Not Updated" &&
+      (
+        updateData.domain !== undefined ||
+        updateData.ftpDomain !== undefined ||
+        updateData.track !== undefined ||
+        updateData.technology !== undefined ||
+        updateData.techno !== undefined ||
+        req.body.domain !== undefined ||
+        req.body.ftpDomain !== undefined ||
+        isMarkingFtp
+      )
+    );
+
+    if (isDomainUpdated) {
       if (domainCandidate.toLowerCase() === "others") {
-        // "Others" option: mark student as FTP, keep current level syllabus and tasks as is
-        updateData.isFTP = true;
-        updateData.ftpDomain = "Others";
+        if (isMarkingFtp) {
+          updateData.isFTP = true;
+          updateData.ftpDomain = "Others";
+        }
         updateData.domain = "Others";
         updateData.track = "Others";
         updateData.techno = "Others";
         updateData.technology = "Others";
       } else {
-        // Specific Domain selected: validate that syllabus or tasks are uploaded for this domain
+        const { normalizeDomain } = require("../../services/taskAssignmentService");
+        const normCand = normalizeDomain(domainCandidate);
         const domainRegex = new RegExp(`^${domainCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
 
-        // 1. Look for SyllabusVersion with this domain
+        // 1. Look for SyllabusVersion for this domain:
+        // Priority 1: Current SubLevel + Session + Domain
         let domainSyllabus = await SyllabusVersion.findOne({
-          domain: domainRegex,
+          subLevelId: existingStudent.currentSubLevelId,
           sessionId: existingStudent.sessionId,
+          domain: domainRegex,
           status: "active",
           isActive: true
         }).sort({ createdAt: -1 });
 
+        // Priority 2: Current SubLevel + Domain (cross-session)
+        if (!domainSyllabus && existingStudent.currentSubLevelId) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            subLevelId: existingStudent.currentSubLevelId,
+            domain: domainRegex,
+            status: "active",
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        // Priority 3: Current Level + Session + Domain
+        if (!domainSyllabus && existingStudent.currentLevelId) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            levelId: existingStudent.currentLevelId,
+            sessionId: existingStudent.sessionId,
+            domain: domainRegex,
+            status: "active",
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        // Priority 4: Current Level + Domain
+        if (!domainSyllabus && existingStudent.currentLevelId) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            levelId: existingStudent.currentLevelId,
+            domain: domainRegex,
+            status: "active",
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        // Priority 5: Active session syllabus with domain
+        if (!domainSyllabus && existingStudent.sessionId) {
+          domainSyllabus = await SyllabusVersion.findOne({
+            domain: domainRegex,
+            sessionId: existingStudent.sessionId,
+            status: "active",
+            isActive: true
+          }).sort({ createdAt: -1 });
+        }
+
+        // Priority 6: Any active syllabus with domain
         if (!domainSyllabus) {
           domainSyllabus = await SyllabusVersion.findOne({
             domain: domainRegex,
@@ -1377,62 +1441,123 @@ exports.updateStudent = async (req, res) => {
           }).sort({ createdAt: -1 });
         }
 
-        if (!domainSyllabus) {
-          domainSyllabus = await SyllabusVersion.findOne({
-            domain: domainRegex,
+        // If exact regex didn't find, search all active and match by normalizeDomain
+        if (!domainSyllabus && normCand) {
+          const candidates = await SyllabusVersion.find({
+            domain: { $nin: ["", null] },
+            status: "active",
             isActive: true
-          }).sort({ createdAt: -1 });
+          }).sort({ createdAt: -1 }).lean();
+          domainSyllabus = candidates.find((c) => normalizeDomain(c.domain) === normCand) || null;
         }
 
         // 2. Look for Task entries with this domain
-        const domainTasks = await Task.find({
-          domain: domainRegex,
+        let domainTasks = await Task.find({
+          $or: [
+            { domain: domainRegex },
+            ...(normCand ? [{ domain: { $regex: normCand, $options: "i" } }] : [])
+          ],
           isActive: true
         }).lean();
 
+        // Also prioritize tasks matching student's sublevel/level if present
+        if (domainTasks.length > 0 && existingStudent.currentSubLevelId) {
+          const subLevelTasks = domainTasks.filter((t) => t.subLevelId && String(t.subLevelId) === String(existingStudent.currentSubLevelId));
+          if (subLevelTasks.length > 0) {
+            domainTasks = subLevelTasks;
+          }
+        }
+
+        // If domain syllabus not found by header domain, resolve parent syllabus from domain tasks
+        if (!domainSyllabus && domainTasks.length > 0) {
+          const svIdFromTasks = domainTasks.find((t) => t.syllabusVersionId && t.subLevelId && String(t.subLevelId) === String(existingStudent.currentSubLevelId))?.syllabusVersionId
+            || domainTasks.find((t) => t.syllabusVersionId)?.syllabusVersionId;
+          if (svIdFromTasks) {
+            domainSyllabus = await SyllabusVersion.findById(svIdFromTasks);
+          }
+        }
+
         const hasUploadedDomainContent = Boolean(domainSyllabus) || (domainTasks && domainTasks.length > 0);
 
-        if (!hasUploadedDomainContent) {
+        if (isMarkingFtp && !hasUploadedDomainContent) {
           return res.status(400).json({
             success: false,
             message: `Cannot mark to FTP: No syllabus or tasks uploaded for domain "${domainCandidate}". Please upload syllabus or tasks for this domain first.`
           });
         }
 
-        // Valid domain content exists -> Proceed with FTP marking & task archival
-        if (!existingStudent.isFTP) {
+        if (isMarkingFtp && !existingStudent.isFTP) {
           updateData.ftpPreviousLevelId = existingStudent.currentLevelId;
           updateData.ftpPreviousSubLevelId = existingStudent.currentSubLevelId;
           updateData.ftpPreviousSyllabusVersionId = existingStudent.syllabusVersionId;
         }
 
-        // Archive all previous active non-archived student tasks
-        await StudentTask.updateMany(
-          {
-            studentId: existingStudent._id,
-            isArchived: { $ne: true }
-          },
-          {
-            $set: {
-              isArchived: true,
-              archivedAt: new Date(),
-              archivedReason: `FTP Domain: ${domainCandidate}`
+        // Archive / deactivate tasks that belong to a DIFFERENT domain
+        if (isMarkingFtp) {
+          await StudentTask.updateMany(
+            {
+              studentId: existingStudent._id,
+              isArchived: { $ne: true }
+            },
+            {
+              $set: {
+                isArchived: true,
+                archivedAt: new Date(),
+                archivedReason: `FTP Domain: ${domainCandidate}`
+              }
             }
-          }
-        );
+          );
+        } else {
+          // Regular student (e.g. Level 2A/2B): archive tasks from different domains
+          const existingTasks = await StudentTask.find({
+            studentId: existingStudent._id,
+            isActive: true,
+            isArchived: { $ne: true }
+          }).select("_id taskId domain");
 
-        updateData.isFTP = true;
-        updateData.ftpDomain = domainCandidate;
+          const toIdStr = (val) => val ? (val._id || val).toString() : "";
+          const taskIds = existingTasks.map((t) => toIdStr(t.taskId)).filter(Boolean);
+          const masterTasks = await Task.find({ _id: { $in: taskIds } }).select("_id domain").lean();
+          const masterDomainMap = new Map(masterTasks.map((m) => [m._id.toString(), (m.domain || "").trim()]));
+
+          const mismatchedIds = existingTasks
+            .filter((t) => {
+              const dom = (t.domain || masterDomainMap.get(toIdStr(t.taskId)) || "").trim();
+              if (!dom || ["all", "common", "general"].includes(dom.toLowerCase())) return false;
+              return normalizeDomain(dom) !== normCand;
+            })
+            .map((t) => t._id);
+
+          if (mismatchedIds.length > 0) {
+            await StudentTask.updateMany(
+              { _id: { $in: mismatchedIds } },
+              {
+                $set: {
+                  isActive: false,
+                  isArchived: true,
+                  archivedAt: new Date(),
+                  archivedReason: `Domain updated to: ${domainCandidate}`
+                }
+              }
+            );
+          }
+        }
+
+        if (isMarkingFtp) {
+          updateData.isFTP = true;
+          updateData.ftpDomain = domainCandidate;
+        }
         updateData.domain = domainCandidate;
         updateData.track = domainCandidate;
         updateData.techno = domainCandidate;
         updateData.technology = domainCandidate;
+
         if (domainSyllabus) {
           updateData.syllabusVersionId = domainSyllabus._id;
-          targetFtpSyllabus = domainSyllabus;
+          targetDomainSyllabus = domainSyllabus;
         }
-        targetFtpTasks = domainTasks || [];
-        shouldAutoAssignFtpTasks = true;
+        targetDomainTasks = domainTasks || [];
+        shouldAutoAssignDomainTasks = Boolean(domainSyllabus || (domainTasks && domainTasks.length > 0));
       }
     } else if (updateData.isFTP === false && existingStudent.isFTP === true) {
       updateData.ftpDomain = "";
@@ -1618,21 +1743,21 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
-    // Auto-assign FTP domain syllabus & tasks
-    if (shouldAutoAssignFtpTasks) {
-      if (targetFtpSyllabus) {
+    // Auto-assign Domain syllabus & tasks
+    if (shouldAutoAssignDomainTasks) {
+      if (targetDomainSyllabus) {
         try {
-          await assignTasksToStudent(student._id, targetFtpSyllabus._id, {
+          await assignTasksToStudent(student._id, targetDomainSyllabus._id, {
             student,
             allowSessionMismatch: true,
             allowLevelMismatch: true
           });
         } catch (assignErr) {
-          console.error("Error auto-assigning FTP domain syllabus tasks:", assignErr.message);
+          console.error("Error auto-assigning domain syllabus tasks:", assignErr.message);
         }
       }
 
-      if (targetFtpTasks && targetFtpTasks.length > 0) {
+      if (targetDomainTasks && targetDomainTasks.length > 0) {
         try {
           const existingSTs = await StudentTask.find({
             studentId: student._id,
@@ -1640,19 +1765,20 @@ exports.updateStudent = async (req, res) => {
           }).select("taskId");
           const existingTaskIds = new Set(existingSTs.map((t) => String(t.taskId)));
 
-          const newTasksToInsert = targetFtpTasks.filter((t) => !existingTaskIds.has(String(t._id)));
+          const newTasksToInsert = targetDomainTasks.filter((t) => !existingTaskIds.has(String(t._id)));
           if (newTasksToInsert.length > 0) {
             const docs = newTasksToInsert.map((t) => ({
               studentId: student._id,
               sessionId: student.sessionId || t.sessionId,
               levelId: student.currentLevelId || t.levelId,
               subLevelId: student.currentSubLevelId || t.subLevelId,
-              syllabusVersionId: t.syllabusVersionId || targetFtpSyllabus?._id || student.syllabusVersionId || null,
+              syllabusVersionId: t.syllabusVersionId || targetDomainSyllabus?._id || student.syllabusVersionId || null,
               taskId: t._id,
+              domain: t.domain || domainCandidate || "",
               subjectId: t.subjectId || null,
               topicId: t.topicId || null,
               subTopicId: t.subTopicId || null,
-              subjectName: t.subjectName || student.ftpDomain || "FTP",
+              subjectName: t.subjectName || domainCandidate || student.domain || "Domain",
               topicName: t.topicName || "General",
               subTopicName: t.subTopicName || null,
               taskNodeType: t.taskNodeType || "general",
@@ -1670,14 +1796,17 @@ exports.updateStudent = async (req, res) => {
               isActive: true,
               isArchived: false,
               assignedType: "auto",
-              assignedByName: "System (FTP Domain Assign)"
+              assignedByName: "System (Domain Assign)"
             }));
             await StudentTask.insertMany(docs, { ordered: false });
           }
         } catch (taskErr) {
-          console.error("Error auto-assigning FTP domain tasks:", taskErr.message);
+          console.error("Error auto-assigning domain tasks:", taskErr.message);
         }
       }
+
+      const { syncStudentLevelProgressStats } = require("../../services/taskAssignmentService");
+      await syncStudentLevelProgressStats(student._id).catch(() => {});
     }
 
     if (updateData.status === "Placed") {

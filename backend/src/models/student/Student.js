@@ -198,6 +198,7 @@ const studentSchema = new mongoose.Schema({
   },
   isFTP: { type: Boolean, default: false },
   ftpDomain: { type: String, default: "", trim: true },
+  domain: { type: String, default: "", trim: true, index: true },
   withITEG: { type: Boolean, default: false },
   isUIUX: { type: Boolean, default: false },
   uiuxPreviousLevelId: {

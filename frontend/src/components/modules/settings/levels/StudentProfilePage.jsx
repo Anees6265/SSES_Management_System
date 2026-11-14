@@ -1950,15 +1950,19 @@ const StudentProfilePage = () => {
         return subDeptName.includes("UI/UX") || subDeptName.includes("UIUX");
     }, [raw?.isUIUX, raw?.subDepartmentId]);
 
-    // Eligible to choose Domain: Either marked as FTP, UI/UX student currently on 2A/2B, OR cleared Level 1C & currently on Level 2A / 2B
+    const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
+
+    // Eligible to choose Domain: Either marked as FTP, already has domain set, UI/UX student currently on 2A/2B, Level 2 or higher, OR cleared Level 1C
     const isDomainOptionEligible = useMemo(() => {
         if (Boolean(raw?.isFTP)) return true;
+        if (Boolean(currentDomain)) return true;
+        const curLevelOrder = raw?.currentLevelId?.order || 0;
+        const curSubName = (raw?.currentSubLevelId?.name || "").toUpperCase();
+        if (curLevelOrder >= 2 || curSubName.includes("2A") || curSubName.includes("2B") || curSubName.includes("2C") || curSubName.includes("3")) return true;
         if (isUiUxStudent && isCurrentLevel2Aor2B) return true;
         if (isLevel1CCleared && isCurrentLevel2Aor2B) return true;
         return false;
-    }, [raw?.isFTP, isUiUxStudent, isLevel1CCleared, isCurrentLevel2Aor2B]);
-
-    const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
+    }, [raw?.isFTP, currentDomain, raw?.currentLevelId?.order, raw?.currentSubLevelId?.name, isUiUxStudent, isLevel1CCleared, isCurrentLevel2Aor2B]);
 
     // Auto-sync inlineFtpDomain with currentDomain on load
     useEffect(() => {

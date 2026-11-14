@@ -253,19 +253,26 @@ const resolveStudentSubLevelSyllabus = async ({
 }) => {
   const SyllabusVersion = require("../../models/syllabus/SyllabusVersion");
   const StudentTask = require("../../models/syllabus/StudentTask");
-  const { selectBestSyllabusForStudent } = require("../../services/taskAssignmentService");
+  const { selectBestSyllabusForStudent, normalizeDomain, getStudentDomain } = require("../../services/taskAssignmentService");
 
   const allowCrossSession = Boolean(student?.isUIUX || student?.isFTP || !sessionId);
   const sessionStr = sessionId ? sessionId.toString() : null;
   const subLevelStr = subLevelId ? subLevelId.toString() : null;
   const studentCourse = (course || student?.course || "").trim();
+  const studentDomain = getStudentDomain(student);
 
   const isSessionCompatible = (sv) =>
     allowCrossSession || !sessionStr || !sv?.sessionId || sv.sessionId.toString() === sessionStr;
 
+  const isDomainCompatible = (sv) => {
+    if (!sv?.domain) return true;
+    if (!studentDomain) return true;
+    return normalizeDomain(sv.domain) === normalizeDomain(studentDomain);
+  };
+
   if (checkStudentPreferred && student?.syllabusVersionId) {
     const sv = await SyllabusVersion.findById(student.syllabusVersionId).lean();
-    if (sv && (!subLevelStr || sv.subLevelId?.toString() === subLevelStr) && isSessionCompatible(sv)) {
+    if (sv && (!subLevelStr || sv.subLevelId?.toString() === subLevelStr) && isSessionCompatible(sv) && isDomainCompatible(sv)) {
       return sv;
     }
   }
@@ -284,7 +291,7 @@ const resolveStudentSubLevelSyllabus = async ({
         .sort({ createdAt: -1, versionNumber: -1 })
         .lean();
       const validSv = candidateSvs.find(
-        (sv) => sv.subLevelId?.toString() === subLevelStr && isSessionCompatible(sv)
+        (sv) => sv.subLevelId?.toString() === subLevelStr && isSessionCompatible(sv) && isDomainCompatible(sv)
       );
       if (validSv) return validSv;
     }
@@ -294,7 +301,7 @@ const resolveStudentSubLevelSyllabus = async ({
     const list = await SyllabusVersion.find(query)
       .sort({ createdAt: -1, versionNumber: -1 })
       .lean();
-    return selectBestSyllabusForStudent(list, studentCourse);
+    return selectBestSyllabusForStudent(list, studentCourse, { studentDomain, student });
   };
 
   if (subLevelId) {

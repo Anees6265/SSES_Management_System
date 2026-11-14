@@ -665,8 +665,17 @@ exports.confirmPlacement = async (req, res) => {
     }
 
     // Pre-flight checks before opening transaction
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
-    if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      const student = await Student.findById(studentId);
+      if (!student) return res.status(404).json({ message: "Student not found" });
+      placement = new StudentPlacement({
+        studentId,
+        subDepartmentId: student.subDepartmentId,
+        readinessStatus: "Placed",
+      });
+      await placement.save();
+    }
     if (placement.placedInfo) return res.status(400).json({ message: "Student is already placed" });
 
     // Upload documents to Cloudinary BEFORE transaction — Cloudinary is external,
@@ -675,7 +684,19 @@ exports.confirmPlacement = async (req, res) => {
     let offerLetterURL = null;
     let applicationURL = null;
 
-    if (offerLetter) {
+    const offerLetterFile = req.files?.offerLetterFile?.[0];
+    const applicationFile = req.files?.applicationFile?.[0];
+
+    if (offerLetterFile) {
+      const b64 = Buffer.from(offerLetterFile.buffer).toString("base64");
+      const dataURI = `data:${offerLetterFile.mimetype};base64,${b64}`;
+      const r = await cloudinary.uploader.upload(dataURI, {
+        folder: "placement-documents/offer-letters",
+        resource_type: "auto",
+        public_id: `${studentId}_offer_${Date.now()}`,
+      });
+      offerLetterURL = r.secure_url;
+    } else if (offerLetter) {
       const r = await cloudinary.uploader.upload(offerLetter, {
         folder: "placement-documents/offer-letters",
         resource_type: "auto",
@@ -684,7 +705,16 @@ exports.confirmPlacement = async (req, res) => {
       offerLetterURL = r.secure_url;
     }
 
-    if (commitmentApplication) {
+    if (applicationFile) {
+      const b64 = Buffer.from(applicationFile.buffer).toString("base64");
+      const dataURI = `data:${applicationFile.mimetype};base64,${b64}`;
+      const r = await cloudinary.uploader.upload(dataURI, {
+        folder: "placement-documents/applications",
+        resource_type: "auto",
+        public_id: `${studentId}_application_${Date.now()}`,
+      });
+      applicationURL = r.secure_url;
+    } else if (commitmentApplication) {
       const r = await cloudinary.uploader.upload(commitmentApplication, {
         folder: "placement-documents/applications",
         resource_type: "auto",

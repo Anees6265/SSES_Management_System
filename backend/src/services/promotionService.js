@@ -55,8 +55,8 @@ const syllabusHasContent = async (sv) => {
   return false;
 };
 
-// Pick an active or draft SyllabusVersion matching student's course
-const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
+// Pick an active or draft SyllabusVersion matching student's course and domain
+const selectUsablePromotionSyllabus = async (candidates, studentCourse, student = null) => {
   const { matchesCourse, selectBestSyllabusForStudent } = require("./taskAssignmentService");
   const courseMatched = (candidates || []).filter(
     (sv) => !studentCourse || matchesCourse(studentCourse, sv.courses, sv.course)
@@ -65,9 +65,9 @@ const selectUsablePromotionSyllabus = async (candidates, studentCourse) => {
   for (const sv of courseMatched) {
     if (await syllabusHasContent(sv)) usable.push(sv);
   }
-  let best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true });
+  let best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: true, student });
   if (!best && usable.length > 0) {
-    best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: false });
+    best = selectBestSyllabusForStudent(usable, studentCourse, { strictCourseMatch: false, student });
   }
   return best;
 };
@@ -347,7 +347,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
     isActive: true,
   }).sort({ createdAt: -1 });
 
-  let newSyllabus = await selectUsablePromotionSyllabus(sessionSyllabi, student.course);
+  let newSyllabus = await selectUsablePromotionSyllabus(sessionSyllabi, student.course, student);
 
   // 3b: Fallback across any session for this sublevel (prevents blocking when syllabus was added in adjacent session)
   if (!newSyllabus) {
@@ -357,7 +357,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       status: { $in: ["active", "draft"] },
       isActive: true,
     }).sort({ createdAt: -1 });
-    newSyllabus = await selectUsablePromotionSyllabus(fallbackSyllabi, student.course);
+    newSyllabus = await selectUsablePromotionSyllabus(fallbackSyllabi, student.course, student);
   }
 
   // 3c: Fallback across sublevel (e.g. UI/UX or custom configurations)
@@ -367,7 +367,7 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
       status: { $in: ["active", "draft"] },
       isActive: true,
     }).sort({ createdAt: -1 });
-    newSyllabus = await selectUsablePromotionSyllabus(anySyllabi, student.course);
+    newSyllabus = await selectUsablePromotionSyllabus(anySyllabi, student.course, student);
   }
 
   if (!newSyllabus) {

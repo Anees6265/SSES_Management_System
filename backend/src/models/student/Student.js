@@ -47,12 +47,33 @@ const dummyDetailsSchema = new mongoose.Schema({
   markedAt: { type: Date, default: null }
 }, { _id: false });
 
+const internshipDetailsSchema = new mongoose.Schema({
+  companyName: { type: String, required: true, trim: true },
+  position: { type: String, required: true, trim: true },
+  location: { type: String, required: true, trim: true },
+  internshipType: {
+    type: String,
+    enum: ["Paid", "Unpaid"],
+    default: "Paid"
+  },
+  stipend: { type: String, default: "", trim: true },
+  startDate: { type: Date, default: null },
+  endDate: { type: Date, default: null },
+  markedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  markedByName: { type: String, default: "" },
+  markedAt: { type: Date, default: Date.now },
+  fromLevelId: { type: mongoose.Schema.Types.ObjectId, ref: "Level", default: null },
+  fromSubLevelId: { type: mongoose.Schema.Types.ObjectId, ref: "SubLevel", default: null },
+  fromSyllabusVersionId: { type: mongoose.Schema.Types.ObjectId, ref: "SyllabusVersion", default: null },
+}, { _id: false });
+
 const studentSchema = new mongoose.Schema({
   // 🎓 Personal & Identification Details (Supports External Integrations)
   prkey: { type: String, required: true, unique: true, trim: true },
   studentId: { type: String, trim: true, default: "" },
   registrationNo: { type: String, trim: true, default: "" },
   enrollmentNo: { type: String, trim: true, default: "" },
+  abcId: { type: String, trim: true, default: "" },
   image: { type: String, default: "" },
   googleId: { type: String, default: "" },
 
@@ -157,11 +178,28 @@ const studentSchema = new mongoose.Schema({
   // 🚦 Status
   status: {
     type: String,
-    enum: ["Active", "Completed", "Dropped", "Placed", "Dummy"],
+    enum: ["Active", "Completed", "Dropped", "Placed", "Dummy", "Internship"],
     default: "Active"
+  },
+  internshipDetails: { type: internshipDetailsSchema, default: null },
+  internshipFromLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Level",
+    default: null
+  },
+  internshipFromSubLevelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubLevel",
+    default: null
+  },
+  internshipFromSyllabusVersionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SyllabusVersion",
+    default: null
   },
   isFTP: { type: Boolean, default: false },
   ftpDomain: { type: String, default: "", trim: true },
+  domain: { type: String, default: "", trim: true, index: true },
   withITEG: { type: Boolean, default: false },
   isUIUX: { type: Boolean, default: false },
   uiuxPreviousLevelId: {
@@ -231,6 +269,7 @@ studentSchema.index({ isUIUX: 1 });
 studentSchema.index({ studentId: 1 });
 studentSchema.index({ registrationNo: 1 });
 studentSchema.index({ enrollmentNo: 1 });
+studentSchema.index({ abcId: 1 });
 studentSchema.index({ aadharNo: 1 });
 
 module.exports = mongoose.model("Student", studentSchema);

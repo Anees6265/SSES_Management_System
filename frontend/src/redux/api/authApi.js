@@ -658,6 +658,31 @@ export const authApi = createApi({
       invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student'],
     }),
 
+    markStudentInternship: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/students/${id}/mark-internship`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student', 'PlacementStudent'],
+    }),
+
+    revertStudentInternship: builder.mutation({
+      query: ({ id }) => ({
+        url: `/students/${id}/revert-internship`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Student', id }, 'Student', 'PlacementStudent'],
+    }),
+
+    getInternshipStudents: builder.query({
+      query: (params = '') => ({
+        url: `/students/internship/list${params ? `?${params}` : ''}`,
+        method: 'GET',
+      }),
+      providesTags: ['Student', 'PlacementStudent'],
+    }),
+
     getNewReadyStudents: builder.query({
       query: () => ({ url: '/students/Ready_Students', method: 'GET' }),
       providesTags: ['PlacementStudent'],
@@ -2255,6 +2280,9 @@ export const {
   useMarkStudentDroppedMutation,
   useMarkStudentDummyMutation,
   useUpdateDummyDetailsMutation,
+  useMarkStudentInternshipMutation,
+  useRevertStudentInternshipMutation,
+  useGetInternshipStudentsQuery,
   useGetNewReadyStudentsQuery,
   useGetNewPlacedStudentsQuery,
   useGetNewSelectedStudentsQuery,

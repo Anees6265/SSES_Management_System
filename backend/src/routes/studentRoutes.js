@@ -55,6 +55,9 @@ router.get("/leave-requests", ...auth, studentController.getLeaveRequests);
 // Dummy Students
 router.get("/dummy/list", ...auth, studentController.getDummyStudents);
 
+// Internship Students
+router.get("/internship/list", ...auth, studentController.getInternshipStudents);
+
 // SubLevel progress
 router.get("/sublevel/:subLevelId/progress", ...auth, studentController.getSubLevelStudentsProgress);
 
@@ -147,6 +150,10 @@ router.post("/:id/move-ready-for-placement", ...auth, studentController.moveToRe
 router.patch("/:id/mark-dropped", ...auth, studentController.markDropped);
 router.patch("/:id/mark-dummy", ...auth, studentController.markDummy);
 router.patch("/:id/dummy", ...auth, studentController.updateDummyDetails);
+
+// Internship Actions
+router.patch("/:id/mark-internship", ...auth, studentController.markInternship);
+router.patch("/:id/revert-internship", ...auth, studentController.revertInternship);
 
 // Syllabus Tasks
 router.get("/:id/tasks", ...auth, studentController.getStudentTasks);

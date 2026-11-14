@@ -137,6 +137,11 @@ const studentTaskSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  domain: {
+    type: String,
+    default: "",
+    trim: true
+  },
   course: {
     type: String,
     default: "All",
@@ -183,6 +188,7 @@ studentTaskSchema.index({ studentId: 1, sessionId: 1, levelId: 1, subLevelId: 1,
 studentTaskSchema.index({ studentId: 1, isExtra: 1 });
 studentTaskSchema.index({ course: 1 });
 studentTaskSchema.index({ courses: 1 });
+studentTaskSchema.index({ domain: 1 });
 
 
 module.exports = mongoose.model("StudentTask", studentTaskSchema);

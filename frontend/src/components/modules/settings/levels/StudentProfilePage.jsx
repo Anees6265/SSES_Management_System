@@ -28,6 +28,7 @@ import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import StudentPlacementTimeline from "../../placements/StudentPlacementTimeline";
 import OfferJoiningModal from "../../placements/OfferJoiningModal";
+import InternshipModal from "../../students/InternshipModal";
 import Loader from "../../../shared/loader/Loader";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import NotificationDrawer from "../../../shared/notifications/NotificationDrawer";
@@ -59,6 +60,7 @@ import {
     useUploadExtraDocumentMutation,
     useMarkStudentDroppedMutation,
     useMarkStudentDummyMutation,
+    useRevertStudentInternshipMutation,
     useGetStudentArchivedTasksQuery
 } from "../../../../redux/api/authApi";
 
@@ -551,6 +553,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
         gender: raw.gender || "",
         image: raw.image || "",
         year: raw.year || "1st Year",
+        abcId: raw.abcId || "",
         withITEG: isNaturallyITEG(raw.course) ? true : Boolean(raw.withITEG),
     });
     const ic = "w-full !h-10 !border !border-gray-200 !rounded-xl !px-3 !py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
@@ -567,7 +570,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
             leftBtnText="Cancel"
             rightBtnText={loading ? "Saving..." : "Save Changes"}
             onLeftClick={onCancel}
-            onRightClick={() => onConfirm({ ...form, withITEG: isNaturallyITEG(form.course) ? true : Boolean(form.withITEG) })}
+            onRightClick={() => onConfirm({ ...form, abcId: (form.abcId || "").trim(), withITEG: isNaturallyITEG(form.course) ? true : Boolean(form.withITEG) })}
             maxWidth="sm:max-w-lg"
             drawerContent={
                 <div className="space-y-4">
@@ -677,7 +680,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "motherName", l: "Mother Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }].map(({ k, l }) => (
+                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "motherName", l: "Mother Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }, { k: "abcId", l: "ABC ID" }].map(({ k, l }) => (
                             <div key={k}>
                                 <label className={lc}>{l}</label>
                                 <input className={ic} value={form[k]} onChange={set(k)} placeholder={l} />
@@ -1553,6 +1556,7 @@ const StudentProfilePage = () => {
     const [dropModal, setDropModal] = useState(false);
     const [dummyModal, setDummyModal] = useState(false);
     const [dummyDetailsModal, setDummyDetailsModal] = useState(false);
+    const [internshipModalOpen, setInternshipModalOpen] = useState(false);
     const [activityModal, setActivityModal] = useState(false);
     const [sectionModal, setSectionModal] = useState(null);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -1584,6 +1588,7 @@ const StudentProfilePage = () => {
     const [uploadExtraDocument, { isLoading: uploadingExtraDocument }] = useUploadExtraDocumentMutation();
     const [markStudentDropped] = useMarkStudentDroppedMutation();
     const [markStudentDummy] = useMarkStudentDummyMutation();
+    const [revertInternship, { isLoading: revertInternshipLoading }] = useRevertStudentInternshipMutation();
 
     const { data: taskData } = useGetNewStudentTasksQuery(
         { id: studentId },
@@ -1946,15 +1951,19 @@ const StudentProfilePage = () => {
         return subDeptName.includes("UI/UX") || subDeptName.includes("UIUX");
     }, [raw?.isUIUX, raw?.subDepartmentId]);
 
-    // Eligible to choose Domain: Either marked as FTP, UI/UX student currently on 2A/2B, OR cleared Level 1C & currently on Level 2A / 2B
+    const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
+
+    // Eligible to choose Domain: Either marked as FTP, already has domain set, UI/UX student currently on 2A/2B, Level 2 or higher, OR cleared Level 1C
     const isDomainOptionEligible = useMemo(() => {
         if (Boolean(raw?.isFTP)) return true;
+        if (Boolean(currentDomain)) return true;
+        const curLevelOrder = raw?.currentLevelId?.order || 0;
+        const curSubName = (raw?.currentSubLevelId?.name || "").toUpperCase();
+        if (curLevelOrder >= 2 || curSubName.includes("2A") || curSubName.includes("2B") || curSubName.includes("2C") || curSubName.includes("3")) return true;
         if (isUiUxStudent && isCurrentLevel2Aor2B) return true;
         if (isLevel1CCleared && isCurrentLevel2Aor2B) return true;
         return false;
-    }, [raw?.isFTP, isUiUxStudent, isLevel1CCleared, isCurrentLevel2Aor2B]);
-
-    const currentDomain = raw?.ftpDomain || raw?.domain || (raw?.track && raw.track !== "Technology Not Updated" ? raw.track : "");
+    }, [raw?.isFTP, currentDomain, raw?.currentLevelId?.order, raw?.currentSubLevelId?.name, isUiUxStudent, isLevel1CCleared, isCurrentLevel2Aor2B]);
 
     // Auto-sync inlineFtpDomain with currentDomain on load
     useEffect(() => {
@@ -2339,6 +2348,17 @@ const StudentProfilePage = () => {
         }
     };
 
+    const handleRevertInternship = async () => {
+        try {
+            await revertInternship({ id: raw._id }).unwrap();
+            const fromLevel = raw.internshipFromLevelId?.name || "previous level";
+            toast.success(`${name} shifted back to ${fromLevel} successfully`);
+            navigate(0);
+        } catch (err) {
+            toast.error(err?.data?.message || "Failed to shift student back to level");
+        }
+    };
+
     const handleDocumentUpload = async (payload) => {
         try {
             await uploadDocument({ id: raw._id, ...payload }).unwrap();
@@ -2412,6 +2432,14 @@ const StudentProfilePage = () => {
                     onMarkActive={handleMarkActive}
                 />
             )}
+            <InternshipModal
+                isOpen={internshipModalOpen}
+                onClose={() => setInternshipModalOpen(false)}
+                student={raw}
+                onSuccess={() => {
+                    navigate(0);
+                }}
+            />
             <FullStudentActivityModal
                 isOpen={activityModal}
                 onClose={() => setActivityModal(false)}
@@ -2711,6 +2739,7 @@ const StudentProfilePage = () => {
                                     isDummy ? "bg-amber-500 ring-2 ring-amber-200" :
                                     raw.status === "Dropped" ? "bg-rose-500 ring-2 ring-rose-200" :
                                     raw.status === "Placed" ? "bg-purple-500 ring-2 ring-purple-200" :
+                                    raw.status === "Internship" ? "bg-sky-500 ring-2 ring-sky-200" :
                                     "bg-emerald-500"
                                 } border-2 border-white rounded-full`} title={`Status: ${isDummy ? "Dummy" : (raw.status || "Active")}`} />
                             </div>
@@ -2728,6 +2757,11 @@ const StudentProfilePage = () => {
                                     {raw.status === "Dropped" && (
                                         <span className="text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
                                             Dropped
+                                        </span>
+                                    )}
+                                    {raw.status === "Internship" && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300 shrink-0">
+                                            <MdWork size={12} className="text-sky-600" /> Internship{raw.internshipDetails?.companyName ? ` • ${raw.internshipDetails.companyName}` : ""}
                                         </span>
                                     )}
                                     {raw.isFTP && (
@@ -2762,6 +2796,11 @@ const StudentProfilePage = () => {
                                     {raw.isUIUX && (
                                         <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md border border-purple-200 text-[11px] font-bold inline-flex items-center gap-1">
                                             <MdDesignServices size={12} /> UI/UX Student
+                                        </span>
+                                    )}
+                                    {raw.abcId && (
+                                        <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-200 text-[11px] font-bold inline-flex items-center gap-1 font-mono">
+                                            <MdBadge size={12} className="text-orange-600" /> ABC ID: {raw.abcId}
                                         </span>
                                     )}
                                 </div>
@@ -2929,9 +2968,22 @@ const StudentProfilePage = () => {
                                                     <MdWarning size={14} /> View Dummy Details
                                                 </button>
                                             )}
-                                            <button onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/report`); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
-                                                <MdBarChart size={14} /> View Report Card
-                                            </button>
+                                            {raw.status === "Internship" ? (
+                                                <button 
+                                                    onClick={() => { setMoreOpen(false); handleRevertInternship(); }} 
+                                                    disabled={revertInternshipLoading}
+                                                    className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 flex items-center gap-2 font-medium disabled:opacity-50"
+                                                >
+                                                    <MdArrowBack size={14} /> Revert to Level
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => { setMoreOpen(false); setInternshipModalOpen(true); }} 
+                                                    className="w-full text-left px-4 py-2 hover:bg-sky-50 text-sky-600 flex items-center gap-2 font-medium"
+                                                >
+                                                    <MdWork size={14} /> Internship
+                                                </button>
+                                            )}
                                             <div className="border-t border-slate-100 my-1" />
                                             {["Dummy", "Dropped"].includes(raw.status) ? (
                                                 <button onClick={handleMarkActive} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-emerald-600 flex items-center gap-2 font-bold">
@@ -3210,6 +3262,26 @@ const StudentProfilePage = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* 7. ABC ID */}
+                        <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                <MdBadge size={17} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                    ABC ID
+                                </span>
+                                <p
+                                    className={`text-xs sm:text-[13px] font-bold truncate mt-0.5 transition-colors ${
+                                        raw.abcId ? "text-slate-800 group-hover:text-orange-600 font-mono tracking-wide" : "text-slate-400 font-normal italic"
+                                    }`}
+                                    title={raw.abcId || "Not Provided"}
+                                >
+                                    {raw.abcId || "Not Provided"}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

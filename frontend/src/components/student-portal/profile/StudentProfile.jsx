@@ -582,6 +582,7 @@ export default function StudentProfile() {
                     <div className="p-3 sm:p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                         <DetailTile icon={User} label="First Name" value={raw.firstName} />
                         <DetailTile icon={User} label="Last Name" value={raw.lastName} />
+                        <DetailTile icon={ShieldCheck} label="ABC ID" value={raw.abcId} />
                         <DetailTile icon={User} label="Gender" value={raw.gender} />
                         <DetailTile icon={HeartHandshake} label="Father Name" value={raw.fatherName} />
                         <DetailTile icon={HeartHandshake} label="Mother Name" value={raw.motherName} />

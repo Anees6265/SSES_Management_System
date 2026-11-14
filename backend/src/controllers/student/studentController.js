@@ -194,6 +194,7 @@ exports.createStudent = async (req, res) => {
       studentId,
       registrationNo: req.body.registrationNo || "",
       enrollmentNo: req.body.enrollmentNo || "",
+      abcId: req.body.abcId ? String(req.body.abcId).trim() : "",
       firstName,
       lastName,
       fullName,
@@ -416,6 +417,8 @@ exports.importStudentsExcel = async (req, res) => {
           normalizedRow.registrationNo = cleanVal;
         } else if (["enrollmentno", "enrollmentnumber", "enrno", "prn"].includes(nk)) {
           normalizedRow.enrollmentNo = cleanVal;
+        } else if (["abcid", "abc_id", "abc", "academicbankofcredits", "abcidnumber"].includes(nk)) {
+          normalizedRow.abcId = cleanVal;
         } else if (["firstname", "first", "fname"].includes(nk)) {
           normalizedRow.firstName = cleanVal;
         } else if (["lastname", "last", "lname", "surname"].includes(nk)) {
@@ -638,6 +641,7 @@ exports.importStudentsExcel = async (req, res) => {
         studentId,
         registrationNo: normalizedRow.registrationNo || "",
         enrollmentNo: normalizedRow.enrollmentNo || "",
+        abcId: normalizedRow.abcId || "",
         password: hashedPassword,
         firstName,
         lastName,
@@ -779,6 +783,7 @@ exports.downloadSampleExcel = async (req, res) => {
       { header: "Student ID", key: "studentId", width: 18 },
       { header: "Registration No.", key: "registrationNo", width: 20 },
       { header: "Enrollment no.", key: "enrollmentNo", width: 20 },
+      { header: "ABC ID", key: "abcId", width: 20 },
       { header: "First Name", key: "firstName", width: 16 },
       { header: "Last Name", key: "lastName", width: 16 },
       { header: "Full Name", key: "fullName", width: 22 },
@@ -824,6 +829,7 @@ exports.downloadSampleExcel = async (req, res) => {
       studentId: "STU2025001",
       registrationNo: "REG20250101",
       enrollmentNo: "ENR20250045",
+      abcId: "123456789012",
       firstName: "Rahul",
       lastName: "Sharma",
       fullName: "Rahul Sharma",
@@ -1217,7 +1223,7 @@ exports.updateStudent = async (req, res) => {
     if (!existingStudent) return res.status(404).json({ message: "Student not found" });
 
     const allowedFields = [
-      "studentId", "registrationNo", "enrollmentNo", "firstName", "lastName", "fullName",
+      "studentId", "registrationNo", "enrollmentNo", "abcId", "firstName", "lastName", "fullName",
       "branch", "course", "currentYear", "year", "currentSemester", "batch", "batchYear",
       "studentMobile", "fatherContactNumber", "parentMobile", "email", "fatherName", "motherName",
       "gender", "category", "dob", "dobString", "aadharNo", "aadharCard",
@@ -1232,6 +1238,9 @@ exports.updateStudent = async (req, res) => {
     // Sync names
     if (updateData.firstName && updateData.lastName && !updateData.fullName) {
       updateData.fullName = `${updateData.firstName} ${updateData.lastName}`.trim();
+    }
+    if (updateData.abcId !== undefined) {
+      updateData.abcId = String(updateData.abcId || "").trim();
     }
 
     let shouldAutoAssignUIUXTasks = false;

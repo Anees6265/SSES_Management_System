@@ -678,6 +678,14 @@ export default function StudentProfile() {
                     </span>
                     <span>•</span>
                     <span>Session: <strong className="text-white font-semibold">{studentData.sessionId?.name || "N/A"}</strong></span>
+                    {studentData.abcId && (
+                      <>
+                        <span>•</span>
+                        <span className="bg-orange-500/20 text-orange-200 border border-orange-400/30 px-2 py-0.5 rounded-full text-[11px] font-bold">
+                          ABC ID: {studentData.abcId}
+                        </span>
+                      </>
+                    )}
                     {studentData.batchYear && (
                       <>
                         <span>•</span>

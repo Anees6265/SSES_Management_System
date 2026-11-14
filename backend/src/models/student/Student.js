@@ -73,6 +73,7 @@ const studentSchema = new mongoose.Schema({
   studentId: { type: String, trim: true, default: "" },
   registrationNo: { type: String, trim: true, default: "" },
   enrollmentNo: { type: String, trim: true, default: "" },
+  abcId: { type: String, trim: true, default: "" },
   image: { type: String, default: "" },
   googleId: { type: String, default: "" },
 
@@ -268,6 +269,7 @@ studentSchema.index({ isUIUX: 1 });
 studentSchema.index({ studentId: 1 });
 studentSchema.index({ registrationNo: 1 });
 studentSchema.index({ enrollmentNo: 1 });
+studentSchema.index({ abcId: 1 });
 studentSchema.index({ aadharNo: 1 });
 
 module.exports = mongoose.model("Student", studentSchema);

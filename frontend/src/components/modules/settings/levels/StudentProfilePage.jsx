@@ -553,6 +553,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
         gender: raw.gender || "",
         image: raw.image || "",
         year: raw.year || "1st Year",
+        abcId: raw.abcId || "",
         withITEG: isNaturallyITEG(raw.course) ? true : Boolean(raw.withITEG),
     });
     const ic = "w-full !h-10 !border !border-gray-200 !rounded-xl !px-3 !py-2 text-xs focus:outline-none focus:border-orange-400 bg-white";
@@ -569,7 +570,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
             leftBtnText="Cancel"
             rightBtnText={loading ? "Saving..." : "Save Changes"}
             onLeftClick={onCancel}
-            onRightClick={() => onConfirm({ ...form, withITEG: isNaturallyITEG(form.course) ? true : Boolean(form.withITEG) })}
+            onRightClick={() => onConfirm({ ...form, abcId: (form.abcId || "").trim(), withITEG: isNaturallyITEG(form.course) ? true : Boolean(form.withITEG) })}
             maxWidth="sm:max-w-lg"
             drawerContent={
                 <div className="space-y-4">
@@ -679,7 +680,7 @@ const EditProfileModal = ({ raw, onConfirm, onCancel, loading }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "motherName", l: "Mother Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }].map(({ k, l }) => (
+                        {[{ k: "firstName", l: "First Name" }, { k: "lastName", l: "Last Name" }, { k: "fatherName", l: "Father Name" }, { k: "motherName", l: "Mother Name" }, { k: "email", l: "Email" }, { k: "studentMobile", l: "Student Mobile" }, { k: "parentMobile", l: "Parent Mobile" }, { k: "village", l: "Village" }, { k: "course", l: "Course" }, { k: "abcId", l: "ABC ID" }].map(({ k, l }) => (
                             <div key={k}>
                                 <label className={lc}>{l}</label>
                                 <input className={ic} value={form[k]} onChange={set(k)} placeholder={l} />
@@ -2797,6 +2798,11 @@ const StudentProfilePage = () => {
                                             <MdDesignServices size={12} /> UI/UX Student
                                         </span>
                                     )}
+                                    {raw.abcId && (
+                                        <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-200 text-[11px] font-bold inline-flex items-center gap-1 font-mono">
+                                            <MdBadge size={12} className="text-orange-600" /> ABC ID: {raw.abcId}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Placement Badge / Dummy Status */}
@@ -3256,6 +3262,26 @@ const StudentProfilePage = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* 7. ABC ID */}
+                        <div className="col-span-1 group bg-slate-50/70 hover:bg-orange-50/40 border border-slate-200/80 hover:border-orange-300 rounded-xl sm:rounded-2xl p-3 transition-all shadow-2xs hover:shadow-xs flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 border border-orange-100/80 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                                <MdBadge size={17} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block leading-tight">
+                                    ABC ID
+                                </span>
+                                <p
+                                    className={`text-xs sm:text-[13px] font-bold truncate mt-0.5 transition-colors ${
+                                        raw.abcId ? "text-slate-800 group-hover:text-orange-600 font-mono tracking-wide" : "text-slate-400 font-normal italic"
+                                    }`}
+                                    title={raw.abcId || "Not Provided"}
+                                >
+                                    {raw.abcId || "Not Provided"}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

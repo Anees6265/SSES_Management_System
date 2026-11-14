@@ -20,6 +20,7 @@ import PlacementReadyStudents from "../placements/PlacementReadyStudents";
 import StudentPermission from "../students/StudentPermission";
 import PlacementRecords from "../placements/PlacementRecords";
 import PlacementPost from "../placements/PlacementPost";
+import InternshipStudents from "../placements/InternshipStudents";
 import CompanyDetail from "../placements/CompanyDetail";
 import PlacedStudents from "../placements/PlacedStudents";
 import InterviewHistory from "../placements/InterviewHistory";
@@ -86,6 +87,7 @@ const Dashboard = () => {
       {hasPermission('Page_Placement') && (
         <>
           <Route path="/readiness-status" element={<PlacementReadyStudents />} />
+          <Route path="/placements/internship" element={<InternshipStudents />} />
           <Route path="/placement-interview-record" element={<PlacementRecords />} />
           <Route path="/placement-post" element={<PlacementPost />} />
           <Route path="/interview-history/:id" element={<InterviewHistory />} />

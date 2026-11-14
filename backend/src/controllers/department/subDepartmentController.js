@@ -115,7 +115,7 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
         const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
         const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
-        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } };
 
         const totalStudents = await Student.countDocuments(
           isUiUx
@@ -248,7 +248,7 @@ exports.getAllSubDepartments = async (req, res) => {
         const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
         const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
-        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+        const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } };
 
         const totalStudents = await Student.countDocuments(
           isUiUx
@@ -391,7 +391,7 @@ exports.getSubDepartmentById = async (req, res) => {
     const isUiUx = subDeptNameUpper.includes("UI/UX") || subDeptNameUpper.includes("UIUX");
     const isIteg = !isUiUx && (String(subDepartment.departmentId?.name || "").toUpperCase().includes("ITEG") || subDeptNameUpper.includes("ITEG"));
 
-    const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed"] } };
+    const activeStatusFilter = { status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } };
 
     const totalStudents = await Student.countDocuments(
       isUiUx

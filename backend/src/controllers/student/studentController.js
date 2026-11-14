@@ -1058,13 +1058,13 @@ exports.getAllStudents = async (req, res) => {
     if (status) {
       if (status === "all") {
         if (currentLevelId || currentSubLevelId) {
-          andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed"] } });
+          andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } });
         }
       } else {
         andConditions.push({ status });
       }
     } else {
-      andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed"] } });
+      andConditions.push({ status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } });
     }
 
     const filter = andConditions.length > 0 ? { $and: andConditions } : {};
@@ -3354,7 +3354,7 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
       ...(isUiUx1A
         ? { $or: [{ currentSubLevelId: subLevelId }, { isUIUX: true }] }
         : { currentSubLevelId: subLevelId }),
-      status: { $nin: ["Dummy", "Dropped", "Placed"] },
+      status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] },
     })
       .populate("currentSubLevelId", "name")
       .select("firstName lastName prkey status currentSubLevelId image attendanceRate isUIUX");
@@ -3455,5 +3455,170 @@ exports.deleteStudentTask = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// =============================================================
+// INTERNSHIP WORKFLOW
+// =============================================================
+
+// ✅ Mark Student to Internship
+exports.markInternship = async (req, res) => {
+  try {
+    const { companyName, position, location, internshipType = "Paid", stipend, startDate, endDate } = req.body;
+
+    if (!companyName || !companyName.trim()) {
+      return res.status(400).json({ success: false, message: "Company name is required" });
+    }
+    if (!position || !position.trim()) {
+      return res.status(400).json({ success: false, message: "Position / Role is required" });
+    }
+    if (!location || !location.trim()) {
+      return res.status(400).json({ success: false, message: "Location is required" });
+    }
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    if (student.status === "Internship") {
+      return res.status(400).json({ success: false, message: "Student is already in Internship" });
+    }
+
+    // Preserve exact level details so student can be reverted later
+    student.internshipFromLevelId = student.currentLevelId;
+    student.internshipFromSubLevelId = student.currentSubLevelId;
+    student.internshipFromSyllabusVersionId = student.syllabusVersionId;
+
+    student.internshipDetails = {
+      companyName: companyName.trim(),
+      position: position.trim(),
+      location: location.trim(),
+      internshipType: internshipType === "Unpaid" ? "Unpaid" : "Paid",
+      stipend: stipend ? String(stipend).trim() : "",
+      startDate: startDate ? new Date(startDate) : new Date(),
+      endDate: endDate ? new Date(endDate) : null,
+      markedBy: req.user?._id || null,
+      markedByName: req.user?.name || "",
+      markedAt: new Date(),
+      fromLevelId: student.currentLevelId,
+      fromSubLevelId: student.currentSubLevelId,
+      fromSyllabusVersionId: student.syllabusVersionId,
+    };
+
+    student.status = "Internship";
+    await student.save();
+
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      createNotification({
+        title: "Internship Started",
+        message: `Student ${student.firstName} ${student.lastName} has started an internship at ${companyName.trim()} as ${position.trim()}.`,
+        type: "info",
+        category: "placement",
+        studentId: student._id,
+        recipientRole: "student",
+        actorId: req.user?._id || null,
+        actorName: req.user?.name || "",
+        actorRole: req.user?.role || "",
+        metadata: { companyName: companyName.trim(), position: position.trim(), location: location.trim() },
+      }).catch((err) => console.error("Internship notification error:", err));
+    } catch (notifErr) {
+      console.error("Failed to trigger internship notification:", notifErr);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Student moved to Internship successfully",
+      data: student,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// ✅ Revert Student from Internship back to Academic Level
+exports.revertInternship = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    if (student.status !== "Internship") {
+      return res.status(400).json({ success: false, message: "Student is not in Internship status" });
+    }
+
+    // Restore to the exact level from which student went to internship
+    if (student.internshipFromLevelId) {
+      student.currentLevelId = student.internshipFromLevelId;
+    }
+    if (student.internshipFromSubLevelId) {
+      student.currentSubLevelId = student.internshipFromSubLevelId;
+    }
+    if (student.internshipFromSyllabusVersionId) {
+      student.syllabusVersionId = student.internshipFromSyllabusVersionId;
+    }
+
+    student.status = "Active";
+    student.internshipDetails = null;
+    await student.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Student shifted back to previous level successfully",
+      data: student,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+// ✅ Get All Internship Students
+exports.getInternshipStudents = async (req, res) => {
+  try {
+    const filter = req.subDeptFilter ? { ...req.subDeptFilter } : {};
+    filter.status = "Internship";
+
+    if (req.query.departmentId && req.query.departmentId !== "all") {
+      const subDepts = await SubDepartment.find({ departmentId: req.query.departmentId }).select("_id");
+      const subDeptIds = subDepts.map((sd) => sd._id);
+      if (filter.subDepartmentId) {
+        const existing = Array.isArray(filter.subDepartmentId.$in)
+          ? filter.subDepartmentId.$in
+          : [filter.subDepartmentId];
+        filter.subDepartmentId = {
+          $in: existing.filter((id) => subDeptIds.some((sid) => sid.toString() === id.toString())),
+        };
+      } else {
+        filter.subDepartmentId = { $in: subDeptIds };
+      }
+    }
+
+    if (req.query.internshipType && req.query.internshipType !== "All") {
+      filter["internshipDetails.internshipType"] = req.query.internshipType;
+    }
+
+    const students = await Student.find(filter)
+      .populate({
+        path: "subDepartmentId",
+        select: "name departmentId",
+        populate: {
+          path: "departmentId",
+          select: "name code logo",
+        },
+      })
+      .populate("currentLevelId", "name order")
+      .populate("currentSubLevelId", "name order")
+      .populate("internshipFromLevelId", "name order")
+      .populate("internshipFromSubLevelId", "name order")
+      .populate("sessionId", "name")
+      .sort({ "internshipDetails.markedAt": -1, updatedAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: students,
+      count: students.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };

@@ -16,6 +16,7 @@ const SIDEBAR_ROOT_PATHS = [
   "/placements/dashboard",
   "/placements/drives",
   "/placements/resume-sharing",
+  "/placements/internship",
   "/placement-interview-record",
   "/readiness-status",
   "/company-details",

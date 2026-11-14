@@ -304,6 +304,7 @@ const Sidebar = ({ children }) => {
             ]
           : []),
         { name: "Placement Candidates", path: "/readiness-status", permission: "Page_PlacementCandidates" },
+        { name: "Internship", path: "/placements/internship", permission: "Page_Placement" },
         { name: "Company Details", path: "/company-details", permission: "Page_CompanyDetails" },
         { name: "Placed Students", path: "/placement-post", permission: "Page_PlacedStudents" },
       ],

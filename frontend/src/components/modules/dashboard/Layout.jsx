@@ -19,6 +19,7 @@ import PlacementRecords from "../placements/PlacementRecords";
 import PlacementPost from "../placements/PlacementPost";
 import CompanyDetail from "../placements/CompanyDetail";
 import PlacedStudents from "../placements/PlacedStudents";
+import InternshipStudents from "../placements/InternshipStudents";
 import InterviewHistory from "../placements/InterviewHistory";
 import InterviewRoundsHistory from "../placements/InterviewRoundsHistory";
 import PageNotFound from "../../shared/error-pages/PageNotFound";
@@ -65,6 +66,7 @@ const routeTitleMap = {
     "/placements/dashboard": "Placement Dashboard",
     "/placements/drives": "Placement Drives",
     "/placements/resume-sharing": "Resume Sharing",
+    "/placements/internship": "Internship Students",
     "/placement-interview-record": "Placement Interview Records",
     "/company-details": "Company Details",
     "/placement-post": "Placement Posts",
@@ -127,6 +129,7 @@ const Layout = () => {
                     <Route path="/placements/dashboard" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><RoleBasedPlacementDashboard /></ProtectedRoute>} />
                     <Route path="/placements/drives" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementDriveManagement /></ProtectedRoute>} />
                     <Route path="/placements/resume-sharing" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ResumeSharingScreen /></ProtectedRoute>} />
+                    <Route path="/placements/internship" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><InternshipStudents /></ProtectedRoute>} />
                     <Route path="/placements/department/:subDepartmentId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DepartmentPlacementDetail /></ProtectedRoute>} />
                     <Route path="/placement-interview-record" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><PlacementRecords /></ProtectedRoute>} />
                     <Route path="/company-details" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><CompanyDetail /></ProtectedRoute>} />

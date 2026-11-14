@@ -35,6 +35,17 @@ export const getFacultyCategory = (fac) => {
       scopeLabel: "College Leadership"
     };
   }
+  if (role === "superadmin") {
+    return {
+      key: "superadmin",
+      roleKey: "superadmin",
+      label: fac.position || "Super Administrator",
+      badgeLabel: "SUPER ADMIN",
+      color: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
+      accentBg: "from-indigo-500 to-violet-600",
+      scopeLabel: fac.departmentId?.name ? `${fac.departmentId.name} Department` : "Central Administration / ITEG"
+    };
+  }
   if (role === "hod" || pos.includes("head of department") || pos.includes("hod")) {
     return {
       key: "hod",
@@ -82,6 +93,7 @@ export const getFacultyCategory = (fac) => {
 const TAB_LABELS = {
   all: "All",
   leadership: "Leadership (CEO & Chairman)",
+  superadmin: "Super Admin",
   hod: "HODs",
   coordinator: "Coordinators",
   faculty: "Faculty",
@@ -110,10 +122,14 @@ export default function StudentFaculty() {
 
   // Metrics
   const leadershipCount = faculties.filter(f => getFacultyCategory(f).key === "leadership").length;
+  const superadminCount = faculties.filter(f => getFacultyCategory(f).key === "superadmin").length;
   const hodCount = faculties.filter(f => getFacultyCategory(f).key === "hod").length;
   const coordinatorCount = faculties.filter(f => getFacultyCategory(f).key === "coordinator").length;
   const placementCount = faculties.filter(f => getFacultyCategory(f).key === "placement").length;
-  const facultyCount = faculties.filter(f => getFacultyCategory(f).key === "faculty").length;
+  const facultyCount = faculties.filter(f => {
+    const cat = getFacultyCategory(f);
+    return cat.key === "faculty" || (f.role === "superadmin" && (f.position || "").toLowerCase().includes("professor"));
+  }).length;
 
   const activeFacultyChips = useMemo(() => {
     const chips = [];
@@ -133,7 +149,11 @@ export default function StudentFaculty() {
   const filteredFaculties = useMemo(() => {
     return faculties.filter((fac) => {
       const cat = getFacultyCategory(fac);
-      return activeTab === "all" || cat.key === activeTab;
+      if (activeTab === "all") return true;
+      if (activeTab === "faculty") {
+        return cat.key === "faculty" || (fac.role === "superadmin" && (fac.position || "").toLowerCase().includes("professor"));
+      }
+      return cat.key === activeTab;
     });
   }, [faculties, activeTab]);
 
@@ -180,6 +200,13 @@ export default function StudentFaculty() {
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50/80 border border-rose-100">
                   <Crown size={13} className="text-rose-500 shrink-0" />
                   <span className="text-[11px] sm:text-xs font-bold text-rose-700 truncate">{leadershipCount} Leadership (CEO / Chairman)</span>
+                </div>
+              )}
+
+              {superadminCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50/80 border border-indigo-100">
+                  <ShieldCheck size={13} className="text-indigo-500 shrink-0" />
+                  <span className="text-[11px] sm:text-xs font-bold text-indigo-700 truncate">{superadminCount} Super Admin</span>
                 </div>
               )}
 
@@ -249,6 +276,21 @@ export default function StudentFaculty() {
             <span>Leadership (CEO / Chairman)</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
               {leadershipCount}
+            </span>
+          </button>
+        )}
+
+        {superadminCount > 0 && (
+          <button
+            onClick={() => setActiveTab("superadmin")}
+            className={`py-1.5 px-3 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === "superadmin" ? "bg-white text-indigo-700 shadow-xs" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <ShieldCheck size={12} className={activeTab === "superadmin" ? "text-indigo-500" : "text-gray-400"} />
+            <span>Super Admin</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800">
+              {superadminCount}
             </span>
           </button>
         )}
@@ -343,17 +385,25 @@ export default function StudentFaculty() {
 
             const gradientClass = getAvatarGradient(fac.name);
             const isLeadership = cat.key === "leadership";
+            const isSuperAdmin = cat.key === "superadmin";
 
             return (
               <div
                 key={fac._id}
                 className={`bg-white border ${
-                  isLeadership ? "border-rose-200/90 shadow-xs ring-1 ring-rose-100" : "border-gray-200/80 shadow-xs"
+                  isLeadership
+                    ? "border-rose-200/90 shadow-xs ring-1 ring-rose-100"
+                    : isSuperAdmin
+                    ? "border-indigo-200/90 shadow-xs ring-1 ring-indigo-100"
+                    : "border-gray-200/80 shadow-xs"
                 } rounded-2xl hover:border-orange-300 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col p-4 sm:p-5 group justify-between relative`}
               >
-                {/* Top Subtle Accent Strip for Leadership */}
+                {/* Top Subtle Accent Strip for Leadership & Super Admin */}
                 {isLeadership && (
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-purple-500 to-amber-500" />
+                )}
+                {isSuperAdmin && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500" />
                 )}
 
                 <div>
@@ -378,6 +428,9 @@ export default function StudentFaculty() {
                         </h3>
                         {isLeadership && (
                           <Crown size={13} className="text-amber-500 shrink-0" title="College Leadership" />
+                        )}
+                        {isSuperAdmin && (
+                          <ShieldCheck size={13} className="text-indigo-500 shrink-0" title="Super Administrator" />
                         )}
                       </div>
 

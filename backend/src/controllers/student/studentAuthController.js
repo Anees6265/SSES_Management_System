@@ -5,6 +5,7 @@ const StudentEventLog = require("../../models/student/StudentEventLog");
 const cloudinary = require("../../config/cloudinaryConfig");
 const User = require("../../models/user/user");
 const SubDepartment = require("../../models/department/SubDepartment");
+const Department = require("../../models/department/Department");
 const { logActivity } = require("../../services/activityLoggerService");
 
 // ✅ Student Login (Only Student Email + Password)
@@ -1331,16 +1332,28 @@ exports.getMyEventLog = async (req, res) => {
 // ✅ Get Active Faculties / Leadership / Placement / Admin Staff list for Student
 exports.getFaculties = async (req, res) => {
   try {
-    const student = await Student.findById(req.user.id).select("subDepartmentId");
+    const student = await Student.findById(req.user.id).select("subDepartmentId withITEG");
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
     let departmentId = null;
+    let isItegStudent = Boolean(student.withITEG);
+
     if (student.subDepartmentId) {
-      const subDept = await SubDepartment.findById(student.subDepartmentId).select("departmentId");
+      const subDept = await SubDepartment.findById(student.subDepartmentId)
+        .select("departmentId name")
+        .populate("departmentId", "name code");
       if (subDept?.departmentId) {
-        departmentId = subDept.departmentId;
+        departmentId = subDept.departmentId._id || subDept.departmentId;
+        const deptName = subDept.departmentId.name || "";
+        const deptCode = subDept.departmentId.code || "";
+        if (/iteg/i.test(deptName) || /i-001/i.test(deptCode)) {
+          isItegStudent = true;
+        }
+      }
+      if (/iteg/i.test(subDept?.name || "")) {
+        isItegStudent = true;
       }
     }
 
@@ -1348,6 +1361,7 @@ exports.getFaculties = async (req, res) => {
     // 1. College Leadership: Chairman, CEO, or users with leadership position/role
     // 2. Department staff: HOD, Faculty, Coordinator, Placement Officer of student's department
     // 3. College-wide Placement Officers & Coordinators
+    // 4. For ITEG students: All users with role: "superadmin"
     const orConditions = [
       { position: { $regex: /chairman|ceo/i } },
       { role: { $in: ["chairman", "ceo"] } },
@@ -1356,6 +1370,10 @@ exports.getFaculties = async (req, res) => {
         role: { $in: ["placement_officer", "coordinator", "cordinator"] }
       }
     ];
+
+    if (isItegStudent) {
+      orConditions.push({ role: "superadmin" });
+    }
 
     if (departmentId) {
       orConditions.push({
@@ -1381,11 +1399,12 @@ exports.getFaculties = async (req, res) => {
       const role = (user.role || "").toLowerCase();
       if (pos.includes("chairman") || role === "chairman") return 1;
       if (pos.includes("ceo") || role === "ceo") return 2;
-      if (role === "hod" || pos.includes("head of department") || pos.includes("hod")) return 3;
-      if (role === "coordinator" || role === "cordinator" || pos.includes("coordinator")) return 4;
-      if (role === "placement_officer" || pos.includes("placement")) return 5;
-      if (role === "faculty" || pos.includes("professor")) return 6;
-      return 7;
+      if (role === "superadmin") return 3;
+      if (role === "hod" || pos.includes("head of department") || pos.includes("hod")) return 4;
+      if (role === "coordinator" || role === "cordinator" || pos.includes("coordinator")) return 5;
+      if (role === "placement_officer" || pos.includes("placement")) return 6;
+      if (role === "faculty" || pos.includes("professor")) return 7;
+      return 8;
     };
 
     faculties.sort((a, b) => {

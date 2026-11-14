@@ -255,7 +255,7 @@ const resolveStudentSubLevelSyllabus = async ({
   const StudentTask = require("../../models/syllabus/StudentTask");
   const { selectBestSyllabusForStudent, normalizeDomain, getStudentDomain } = require("../../services/taskAssignmentService");
 
-  const allowCrossSession = Boolean(student?.isUIUX || student?.isFTP || !sessionId);
+  const allowCrossSession = Boolean(student?.isFTP || !sessionId);
   const sessionStr = sessionId ? sessionId.toString() : null;
   const subLevelStr = subLevelId ? subLevelId.toString() : null;
   const studentCourse = (course || student?.course || "").trim();
@@ -433,7 +433,7 @@ exports.getMyTasks = async (req, res) => {
 
       if (currentTasksCount === 0) {
         try {
-          const allowCrossSession = Boolean(student.isUIUX || student.isFTP);
+          const allowCrossSession = Boolean(student.isFTP);
           await assignTasksToStudent(student._id, currentSyllabusId, {
             student,
             ...(allowCrossSession ? { allowSessionMismatch: true, allowLevelMismatch: true } : {})
@@ -944,7 +944,7 @@ exports.getMySnapshots = async (req, res) => {
       isActive: true,
       status: { $ne: "archived" }
     };
-    if (studentInfo?.sessionId && !studentInfo.isUIUX && !studentInfo.isFTP) {
+    if (studentInfo?.sessionId && !studentInfo.isFTP) {
       svFilter.sessionId = studentInfo.sessionId;
     }
     const activeSyllabi = await SyllabusVersion.find(svFilter).select("subLevelId subjects").lean();

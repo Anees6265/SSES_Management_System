@@ -872,7 +872,7 @@ const demoteToPreviousSubLevel = async (studentId, actorUser = null, options = {
     });
     if (
       prevSv &&
-      (student.isUIUX || !targetSessionId || !prevSv.sessionId || String(prevSv.sessionId) === String(targetSessionId))
+      (!targetSessionId || !prevSv.sessionId || String(prevSv.sessionId) === String(targetSessionId))
     ) {
       targetSyllabus = prevSv;
     }

@@ -1278,7 +1278,7 @@ exports.updateStudent = async (req, res) => {
               await StudentTask.deleteMany({ studentId: existingStudent._id });
               await StudentProgressSnapshot.deleteMany({ studentId: existingStudent._id });
 
-              // 4. Find active SyllabusVersion for UI/UX SubLevel 1A
+              // 4. Find active SyllabusVersion for UI/UX SubLevel 1A matching student's session
               let uiuxSyllabus = await SyllabusVersion.findOne({
                 subLevelId: uiuxSubLevel1A._id,
                 sessionId: existingStudent.sessionId,
@@ -1289,14 +1289,8 @@ exports.updateStudent = async (req, res) => {
               if (!uiuxSyllabus) {
                 uiuxSyllabus = await SyllabusVersion.findOne({
                   subLevelId: uiuxSubLevel1A._id,
+                  $or: [{ sessionId: null }, { sessionId: { $exists: false } }],
                   status: "active",
-                  isActive: true
-                }).sort({ versionNumber: -1, createdAt: -1 });
-              }
-
-              if (!uiuxSyllabus) {
-                uiuxSyllabus = await SyllabusVersion.findOne({
-                  subLevelId: uiuxSubLevel1A._id,
                   isActive: true
                 }).sort({ versionNumber: -1, createdAt: -1 });
               }
@@ -1678,8 +1672,7 @@ exports.updateStudent = async (req, res) => {
     if (shouldAutoAssignUIUXTasks && targetUIUXSyllabusId) {
       try {
         await assignTasksToStudent(student._id, targetUIUXSyllabusId, {
-          student,
-          allowSessionMismatch: true
+          student
         });
       } catch (assignErr) {
         console.error("Error auto-assigning UI/UX syllabus tasks to student:", assignErr.message);
@@ -2855,7 +2848,7 @@ exports.assignExtraTask = async (req, res) => {
       const currentSv = await SyllabusVersion.findById(student.syllabusVersionId).select("_id sessionId").lean();
       if (
         currentSv &&
-        (student.isUIUX || student.isFTP || !student.sessionId || !currentSv.sessionId || currentSv.sessionId.toString() === student.sessionId.toString())
+        (student.isFTP || !student.sessionId || !currentSv.sessionId || currentSv.sessionId.toString() === student.sessionId.toString())
       ) {
         resolvedSyllabusVersionId = currentSv._id;
       }
@@ -2868,7 +2861,7 @@ exports.assignExtraTask = async (req, res) => {
           status: "active",
           isActive: true
         };
-        if (student.sessionId && !student.isUIUX && !student.isFTP) {
+        if (student.sessionId && !student.isFTP) {
           svQuery.sessionId = student.sessionId;
         }
         const candidateSvs = await SyllabusVersion.find(svQuery).sort({ createdAt: -1 }).lean();

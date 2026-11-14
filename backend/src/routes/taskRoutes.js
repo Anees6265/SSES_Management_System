@@ -644,7 +644,7 @@ router.get("/student/:studentId/performance", verifyToken, checkRole([...writeRo
     } else {
       // Check if student has a syllabus with soft skills topics even if no tasks completed yet
       let sv = null;
-      const allowCrossSession = Boolean(studentDoc.isUIUX || studentDoc.isFTP || !studentDoc.sessionId);
+      const allowCrossSession = Boolean(studentDoc.isFTP || !studentDoc.sessionId);
       if (studentDoc.syllabusVersionId) {
         const candidateSv = await SyllabusVersion.findById(studentDoc.syllabusVersionId).lean();
         if (

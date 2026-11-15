@@ -6,6 +6,7 @@ import {
   MdCheckCircle,
   MdSchool,
   MdWork,
+  MdBusiness,
   MdLocationOn,
   MdAttachMoney,
   MdCalendarToday,
@@ -56,19 +57,28 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
   if (!isOpen) return null;
 
   const studentName = student
-    ? `${student.firstName || ""} ${student.lastName || ""}`.trim()
+    ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Student"
     : "Student";
   const studentLevel =
     student?.currentLevelName ||
     student?.currentLevelId?.name ||
-    student?.level ||
+    student?.level?.name ||
+    (typeof student?.level === "string" ? student?.level : "") ||
     student?.levelName ||
+    student?.currentLevel ||
     "—";
   const departmentName =
+    student?.departmentName ||
     student?.subDepartmentId?.departmentId?.name ||
     student?.subDepartmentId?.name ||
-    student?.departmentName ||
-    student?.department ||
+    student?.departmentId?.name ||
+    (typeof student?.department === "string" ? student?.department : student?.department?.name) ||
+    student?.subdepartment?.name ||
+    "—";
+  const courseName =
+    student?.course ||
+    student?.courseName ||
+    student?.technology ||
     "—";
 
   const validate = () => {
@@ -121,30 +131,32 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-black/50 backdrop-blur-xs"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-sky-50 text-sky-600 border border-sky-100">
-                <MdWork size={18} />
-              </span>
-              Mark Student to Internship
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {studentName} • {student?.prkey || student?.studentId || "Student"}
-            </p>
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-orange-50/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
+              <MdWork size={20} />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">
+                Mark Student to Internship
+              </h2>
+              <p className="text-xs text-slate-500">
+                Assign internship details and shift student to internship status
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition shrink-0 cursor-pointer"
+            className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
             title="Close"
           >
             <MdClose size={20} />
@@ -153,48 +165,54 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
 
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
-          {/* Pre-filled Student Info Card */}
-          <div className="p-3.5 bg-gradient-to-br from-sky-50 via-slate-50 to-blue-50/50 rounded-2xl border border-sky-100/80 shadow-2xs">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center font-bold text-xs">
+          {/* Pre-filled Student Info Card (Name, Course, Department, Current Level ONLY - No PR/Key or Roll) */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-50/40 via-amber-50/20 to-slate-50 border border-orange-100/80 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0">
                 <MdSchool size={16} />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-900">{studentName}</h4>
-                <p className="text-[10px] text-slate-500">Student Profile Summary</p>
+                <h4 className="text-xs font-bold text-slate-900">Student Profile Summary</h4>
+                <p className="text-[10px] text-slate-500">Academic & Profile Details</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-[11px] pt-1.5 border-t border-sky-100/60">
-              <div>
-                <span className="text-slate-400 block text-[10px] font-semibold uppercase tracking-wider">
-                  PR Key / Roll
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-3 border-t border-orange-100/70">
+              <div className="min-w-0">
+                <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">
+                  Name
                 </span>
-                <span className="font-bold text-slate-800">
-                  {student?.prkey || student?.studentId || "—"}
+                <span className="font-extrabold text-slate-800 text-xs sm:text-sm truncate block mt-0.5">
+                  {studentName}
                 </span>
               </div>
-              <div>
-                <span className="text-slate-400 block text-[10px] font-semibold uppercase tracking-wider">
+              <div className="min-w-0">
+                <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">
                   Course
                 </span>
-                <span className="font-bold text-slate-800 truncate block">
-                  {student?.course || "—"} {student?.branch ? `(${student.branch})` : ""}
+                <span className="font-bold text-slate-800 text-xs sm:text-sm truncate block mt-0.5" title={courseName}>
+                  {courseName}
                 </span>
               </div>
-              <div>
-                <span className="text-slate-400 block text-[10px] font-semibold uppercase tracking-wider">
+              <div className="min-w-0">
+                <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">
                   Department
                 </span>
-                <span className="font-bold text-slate-800 truncate block">{departmentName}</span>
+                <span className="font-bold text-slate-800 text-xs sm:text-sm truncate block mt-0.5" title={departmentName}>
+                  {departmentName}
+                </span>
               </div>
-              <div className="col-span-2 sm:col-span-3">
-                <span className="text-slate-400 block text-[10px] font-semibold uppercase tracking-wider">
-                  Current Level (Will restore here if reverted)
+              <div className="min-w-0">
+                <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">
+                  Current Level
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  {studentLevel}
-                </span>
+                <div className="mt-0.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-100/80 text-orange-800 border border-orange-200 text-[11px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                    <span className="truncate max-w-[150px]" title={studentLevel}>
+                      {studentLevel}
+                    </span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -206,18 +224,25 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Company Name <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. TCS, Infosys, TechCorp"
-                  value={companyName}
-                  onChange={(e) => {
-                    setCompanyName(e.target.value);
-                    if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: "" }));
-                  }}
-                  className={`w-full h-11 px-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
-                    errors.companyName ? "border-rose-400 focus:border-rose-500 bg-rose-50/30" : "border-slate-200 focus:border-orange-500"
-                  }`}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdBusiness size={17} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. TCS, Infosys, TechCorp"
+                    value={companyName}
+                    onChange={(e) => {
+                      setCompanyName(e.target.value);
+                      if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: "" }));
+                    }}
+                    className={`w-full h-11 pl-9 pr-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
+                      errors.companyName
+                        ? "border-rose-400 focus:border-rose-500 bg-rose-50/30"
+                        : "border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                    }`}
+                  />
+                </div>
                 {errors.companyName && (
                   <p className="text-rose-500 text-[11px] mt-1">{errors.companyName}</p>
                 )}
@@ -227,18 +252,25 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Position / Role <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Web Dev Intern, UI/UX Intern"
-                  value={position}
-                  onChange={(e) => {
-                    setPosition(e.target.value);
-                    if (errors.position) setErrors((prev) => ({ ...prev, position: "" }));
-                  }}
-                  className={`w-full h-11 px-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
-                    errors.position ? "border-rose-400 focus:border-rose-500 bg-rose-50/30" : "border-slate-200 focus:border-orange-500"
-                  }`}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdWork size={17} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Web Dev Intern, UI/UX Intern"
+                    value={position}
+                    onChange={(e) => {
+                      setPosition(e.target.value);
+                      if (errors.position) setErrors((prev) => ({ ...prev, position: "" }));
+                    }}
+                    className={`w-full h-11 pl-9 pr-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
+                      errors.position
+                        ? "border-rose-400 focus:border-rose-500 bg-rose-50/30"
+                        : "border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                    }`}
+                  />
+                </div>
                 {errors.position && (
                   <p className="text-rose-500 text-[11px] mt-1">{errors.position}</p>
                 )}
@@ -252,7 +284,9 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                   Location <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <MdLocationOn className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdLocationOn size={17} />
+                  </div>
                   <input
                     type="text"
                     placeholder="e.g. Indore, Bhopal, Remote"
@@ -262,7 +296,9 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                       if (errors.location) setErrors((prev) => ({ ...prev, location: "" }));
                     }}
                     className={`w-full h-11 pl-9 pr-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
-                      errors.location ? "border-rose-400 focus:border-rose-500 bg-rose-50/30" : "border-slate-200 focus:border-orange-500"
+                      errors.location
+                        ? "border-rose-400 focus:border-rose-500 bg-rose-50/30"
+                        : "border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                     }`}
                   />
                 </div>
@@ -289,7 +325,7 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                     options={INTERNSHIP_TYPE_OPTIONS}
                     placeholder="Select Internship Type"
                     className="w-full"
-                    buttonClassName="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 hover:border-orange-500 bg-slate-50 hover:bg-white text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between transition shadow-2xs cursor-pointer"
+                    buttonClassName="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 hover:border-orange-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 bg-slate-50 hover:bg-white text-xs sm:text-sm font-semibold text-slate-800 flex items-center justify-between transition shadow-2xs cursor-pointer"
                     menuClassName="w-full min-w-full z-50 shadow-xl border border-slate-100 rounded-xl"
                   />
                 </div>
@@ -303,7 +339,9 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                   Stipend Amount (per month) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <MdAttachMoney className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdAttachMoney size={17} />
+                  </div>
                   <input
                     type="text"
                     placeholder="e.g. ₹10,000 / month or 15000"
@@ -313,7 +351,9 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                       if (errors.stipend) setErrors((prev) => ({ ...prev, stipend: "" }));
                     }}
                     className={`w-full h-11 pl-9 pr-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
-                      errors.stipend ? "border-rose-400 focus:border-rose-500 bg-rose-50/30" : "border-slate-200 focus:border-orange-500"
+                      errors.stipend
+                        ? "border-rose-400 focus:border-rose-500 bg-rose-50/30"
+                        : "border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                     }`}
                   />
                 </div>
@@ -330,6 +370,9 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                   Start / Joining Date <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdCalendarToday size={16} />
+                  </div>
                   <input
                     type="date"
                     value={startDate}
@@ -337,8 +380,10 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                       setStartDate(e.target.value);
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: "" }));
                     }}
-                    className={`w-full h-11 px-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
-                      errors.startDate ? "border-rose-400 focus:border-rose-500" : "border-slate-200 focus:border-orange-500"
+                    className={`w-full h-11 pl-9 pr-3 rounded-xl border bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:bg-white transition ${
+                      errors.startDate
+                        ? "border-rose-400 focus:border-rose-500"
+                        : "border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                     }`}
                   />
                 </div>
@@ -352,29 +397,32 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
                   Expected End Date (Optional)
                 </label>
                 <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MdCalendarToday size={16} />
+                  </div>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                    className="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition"
                   />
                 </div>
               </div>
             </div>
 
             {/* Note */}
-            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-[11px] text-amber-800 leading-relaxed">
-              <span className="font-bold">Note:</span> Student ko Internship me shift karne per wo current academic level se remove hokar <strong>Placements → Internship</strong> page par dikhega. In case student wapas aata hai to use previous level me revert kiya ja sakta hai, ya permanent hone par <strong>Shift to Placed</strong> kiya ja sakta hai.
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-[11px] text-amber-900 leading-relaxed">
+              <span className="font-bold">Note:</span> Student ko Internship me shift karne par wo current academic level se move hokar <strong>Placements → Internship</strong> page par dikhega. In case student wapas aata hai to use previous level me revert kiya ja sakta hai, ya permanent hone par <strong>Shift to Placed</strong> kiya ja sakta hai.
             </div>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-white shrink-0">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold uppercase text-xs rounded-xl transition cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 font-bold uppercase text-xs rounded-xl transition-all active:scale-[0.98] shadow-2xs cursor-pointer"
           >
             Cancel
           </button>
@@ -382,7 +430,7 @@ const InternshipModal = ({ isOpen, onClose, student, onSuccess }) => {
             type="submit"
             form="internship-form"
             disabled={isLoading}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold uppercase text-xs text-white bg-orange-500 hover:bg-orange-600 transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold uppercase text-xs text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 transition-all active:scale-[0.98] shadow-xs hover:shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
           >
             <MdCheckCircle size={16} />
             <span>{isLoading ? "Saving..." : "Confirm & Move to Internship"}</span>

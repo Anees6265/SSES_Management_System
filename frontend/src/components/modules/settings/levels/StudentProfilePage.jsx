@@ -1686,6 +1686,7 @@ const StudentProfilePage = () => {
     const studentStatus = (raw.status || "").toLowerCase();
     const isDummy = studentStatus === "dummy";
     const isDropped = studentStatus === "dropped";
+    const isInternship = studentStatus === "internship" || raw.status === "Internship";
     const isInactive = isDummy || isDropped;
     const name = `${raw.firstName || ""} ${raw.lastName || ""}`.trim() || "Student";
     const initials = (name.split(" ").map(n => n[0]).filter(Boolean).join("").slice(0, 2) || "ST").toUpperCase();
@@ -2435,7 +2436,20 @@ const StudentProfilePage = () => {
             <InternshipModal
                 isOpen={internshipModalOpen}
                 onClose={() => setInternshipModalOpen(false)}
-                student={raw}
+                student={{
+                    ...raw,
+                    name,
+                    course: raw?.course || student?.course || "—",
+                    departmentName:
+                        stateDeptName ||
+                        raw?.departmentName ||
+                        raw?.subDepartmentId?.departmentId?.name ||
+                        subdepartment?.name ||
+                        raw?.subDepartmentId?.name ||
+                        (typeof raw?.department === "string" ? raw.department : raw?.department?.name) ||
+                        "—",
+                    currentLevelName: currentLevelLabel || raw?.currentLevelId?.name || level?.name || "—",
+                }}
                 onSuccess={() => {
                     navigate(0);
                 }}
@@ -2739,7 +2753,7 @@ const StudentProfilePage = () => {
                                     isDummy ? "bg-amber-500 ring-2 ring-amber-200" :
                                     raw.status === "Dropped" ? "bg-rose-500 ring-2 ring-rose-200" :
                                     raw.status === "Placed" ? "bg-purple-500 ring-2 ring-purple-200" :
-                                    raw.status === "Internship" ? "bg-sky-500 ring-2 ring-sky-200" :
+                                    isInternship ? "bg-sky-500 ring-2 ring-sky-200" :
                                     "bg-emerald-500"
                                 } border-2 border-white rounded-full`} title={`Status: ${isDummy ? "Dummy" : (raw.status || "Active")}`} />
                             </div>
@@ -2757,11 +2771,6 @@ const StudentProfilePage = () => {
                                     {raw.status === "Dropped" && (
                                         <span className="text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
                                             Dropped
-                                        </span>
-                                    )}
-                                    {raw.status === "Internship" && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300 shrink-0">
-                                            <MdWork size={12} className="text-sky-600" /> Internship{raw.internshipDetails?.companyName ? ` • ${raw.internshipDetails.companyName}` : ""}
                                         </span>
                                     )}
                                     {raw.isFTP && (
@@ -2805,7 +2814,7 @@ const StudentProfilePage = () => {
                                     )}
                                 </div>
 
-                                {/* Placement Badge / Dummy Status */}
+                                {/* Placement Badge / Dummy Status / Internship Status */}
                                 <div className="pt-1 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                                     {isDummy ? (
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -2827,6 +2836,11 @@ const StudentProfilePage = () => {
                                                 </span>
                                             )}
                                         </div>
+                                    ) : isInternship ? (
+                                        <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-black px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 shrink-0 shadow-2xs">
+                                            <MdWork size={14} className="text-sky-600 shrink-0" />
+                                            Internship{raw.internshipDetails?.companyName ? ` • ${raw.internshipDetails.companyName}` : ""}
+                                        </span>
                                     ) : (
                                         (() => {
                                             let label = readinessStatus;
@@ -2861,7 +2875,7 @@ const StudentProfilePage = () => {
 
                         {/* Right Buttons: 2-column grid on mobile, flex on desktop */}
                         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
-                            {isLevel2ACompleted && !isDummy && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
+                            {isLevel2ACompleted && !isDummy && !isInternship && !["Ready for Placement", "Ready for Drive", "Placed"].includes(readinessStatus) && (
                                 <button
                                     onClick={handleMoveToReadyForPlacement}
                                     disabled={movingToReady}

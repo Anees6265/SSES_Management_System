@@ -17,6 +17,7 @@ export const FTP_DOMAINS_BY_DEPARTMENT = {
     "Devops",
     "MEAN Stack",
     "AI/ML",
+    "ABAP",
   ],
   MEG: [
     "Data Analytics",
@@ -40,6 +41,7 @@ export const FTP_DOMAINS_BY_DEPARTMENT = {
     "Devops",
     "MEAN Stack",
     "AI/ML",
+    "ABAP",
   ],
 };
 

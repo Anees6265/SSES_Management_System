@@ -122,9 +122,12 @@ const CandidateQuickViewDrawer = ({
 
   const details = candidate.internshipDetails || {};
   const fromLevelName =
-    candidate.internshipFromLevelId?.name || candidate.currentLevelId?.name || "—";
+    candidate.internshipFromLevelId?.name || candidate.currentLevelId?.name || candidate.levelName || candidate.currentLevelName || "—";
   const fromSubLevelName =
-    candidate.internshipFromSubLevelId?.name || candidate.currentSubLevelId?.name || "";
+    candidate.internshipFromSubLevelId?.name || candidate.currentSubLevelId?.name || candidate.subLevelName || candidate.currentSubLevelName || "";
+  const levelDisplay = fromLevelName !== "—"
+    ? `${fromLevelName}${fromSubLevelName ? ` (${fromSubLevelName})` : ""}`
+    : (candidate.levelName || candidate.currentLevelName || "");
   const deptName =
     candidate.subDepartmentId?.departmentId?.name ||
     candidate.subDepartmentId?.name ||
@@ -147,8 +150,8 @@ const CandidateQuickViewDrawer = ({
               <h3 className="font-black text-base text-slate-900 tracking-tight">
                 {candidate.firstName} {candidate.lastName}
               </h3>
-              <p className="text-xs text-slate-500 font-medium">
-                {candidate.prkey || candidate.studentId || "—"} • {candidate.course}
+              <p className="text-xs text-slate-500 font-medium truncate">
+                {levelDisplay ? `${levelDisplay} • ` : ""}{candidate.course || "—"}
               </p>
             </div>
           </div>
@@ -658,7 +661,7 @@ const InternshipStudents = () => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                placeholder="Search by student name, company, position, course, PR key..."
+                placeholder="Search by student name, company, position, course..."
                 className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
               />
               {searchTerm && (
@@ -748,13 +751,12 @@ const InternshipStudents = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="py-3.5 px-4">Student</th>
-                        <th className="py-3.5 px-3">Academic Level</th>
-                        <th className="py-3.5 px-4">Company & Role</th>
-                        <th className="py-3.5 px-3">Location</th>
-                        <th className="py-3.5 px-3">Type & Stipend</th>
-                        <th className="py-3.5 px-3">Start Date</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4 text-left">Student</th>
+                        <th className="py-3.5 px-4 text-left">Company & Role</th>
+                        <th className="py-3.5 px-4 text-center">Location</th>
+                        <th className="py-3.5 px-4 text-center">Type & Stipend</th>
+                        <th className="py-3.5 px-4 text-center">Start Date</th>
+                        <th className="py-3.5 px-6 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
@@ -763,11 +765,18 @@ const InternshipStudents = () => {
                         const fromLevelName =
                           student.internshipFromLevelId?.name ||
                           student.currentLevelId?.name ||
+                          student.levelName ||
+                          student.currentLevelName ||
                           "—";
                         const fromSubLevelName =
                           student.internshipFromSubLevelId?.name ||
                           student.currentSubLevelId?.name ||
+                          student.subLevelName ||
+                          student.currentSubLevelName ||
                           "";
+                        const levelDisplay = fromLevelName !== "—"
+                          ? `${fromLevelName}${fromSubLevelName ? ` (${fromSubLevelName})` : ""}`
+                          : (student.levelName || student.currentLevelName || "");
 
                         return (
                           <tr
@@ -776,7 +785,7 @@ const InternshipStudents = () => {
                             onClick={() => setQuickViewCandidate(student)}
                           >
                             {/* Student */}
-                            <td className="py-3.5 px-4">
+                            <td className="py-3.5 px-4 text-left align-middle">
                               <div className="flex items-center gap-3">
                                 <Avatar
                                   firstName={student.firstName}
@@ -795,25 +804,14 @@ const InternshipStudents = () => {
                                     {student.firstName} {student.lastName}
                                   </p>
                                   <p className="text-[11px] text-slate-400 font-medium truncate">
-                                    {student.prkey || student.studentId || "—"} • {student.course}
+                                    {levelDisplay ? `${levelDisplay} • ` : ""}{student.course || "—"}
                                   </p>
                                 </div>
                               </div>
                             </td>
 
-                            {/* Academic Level */}
-                            <td className="py-3.5 px-3">
-                              <span
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px]"
-                                title="Reverting will restore student to this level"
-                              >
-                                <MdUndo size={13} className="text-emerald-600" />
-                                {fromLevelName} {fromSubLevelName ? `(${fromSubLevelName})` : ""}
-                              </span>
-                            </td>
-
                             {/* Company & Role */}
-                            <td className="py-3.5 px-4">
+                            <td className="py-3.5 px-4 text-left align-middle">
                               <div className="flex items-center gap-2.5">
                                 <CompanyLogo companyName={details.companyName} size="w-8 h-8" />
                                 <div className="min-w-0">
@@ -828,47 +826,53 @@ const InternshipStudents = () => {
                             </td>
 
                             {/* Location */}
-                            <td className="py-3.5 px-3">
-                              <span className="inline-flex items-center gap-1 text-slate-600 font-medium">
+                            <td className="py-3.5 px-4 text-center align-middle">
+                              <div className="flex items-center justify-center gap-1 text-slate-600 font-medium">
                                 <MdLocationOn size={14} className="text-slate-400 shrink-0" />
-                                <span className="truncate max-w-[120px]">{details.location || "—"}</span>
-                              </span>
+                                <span className="truncate max-w-[130px]">{details.location || "—"}</span>
+                              </div>
                             </td>
 
                             {/* Type & Stipend */}
-                            <td className="py-3.5 px-3">
-                              {details.internshipType === "Paid" ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                  Paid {details.stipend ? `• ${details.stipend}` : ""}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                  Unpaid
-                                </span>
-                              )}
+                            <td className="py-3.5 px-4 text-center align-middle">
+                              <div className="flex items-center justify-center">
+                                {details.internshipType === "Paid" ? (
+                                  <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Paid {details.stipend ? `• ${details.stipend}` : ""}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    Unpaid
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             {/* Start Date */}
-                            <td className="py-3.5 px-3 text-slate-500 text-[11px]">
-                              {details.startDate ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <MdCalendarToday size={12} className="text-slate-400" />
-                                  {new Date(details.startDate).toLocaleDateString("en-IN", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                </span>
-                              ) : (
-                                "—"
-                              )}
+                            <td className="py-3.5 px-4 text-center text-slate-500 text-[11px] align-middle">
+                              <div className="flex items-center justify-center gap-1">
+                                {details.startDate ? (
+                                  <>
+                                    <MdCalendarToday size={12} className="text-slate-400 shrink-0" />
+                                    <span>
+                                      {new Date(details.startDate).toLocaleDateString("en-IN", {
+                                        day: "2-digit",
+                                        month: "short",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
+                              </div>
                             </td>
 
                             {/* Actions */}
-                            <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="inline-flex items-center gap-1.5 justify-end">
+                            <td className="py-3.5 px-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-1.5 justify-center">
                                 {/* Shift to Placed */}
                                 <button
                                   onClick={() => {
@@ -917,11 +921,18 @@ const InternshipStudents = () => {
                   const fromLevelName =
                     student.internshipFromLevelId?.name ||
                     student.currentLevelId?.name ||
+                    student.levelName ||
+                    student.currentLevelName ||
                     "—";
                   const fromSubLevelName =
                     student.internshipFromSubLevelId?.name ||
                     student.currentSubLevelId?.name ||
+                    student.subLevelName ||
+                    student.currentSubLevelName ||
                     "";
+                  const levelDisplay = fromLevelName !== "—"
+                    ? `${fromLevelName}${fromSubLevelName ? ` (${fromSubLevelName})` : ""}`
+                    : (student.levelName || student.currentLevelName || "");
 
                   return (
                     <div
@@ -938,7 +949,7 @@ const InternshipStudents = () => {
                               {student.firstName} {student.lastName}
                             </h4>
                             <p className="text-[11px] text-slate-400 font-medium truncate">
-                              {student.prkey || student.studentId || "—"} • {student.course}
+                              {levelDisplay ? `${levelDisplay} • ` : ""}{student.course || "—"}
                             </p>
                           </div>
                         </div>
@@ -1022,7 +1033,12 @@ const InternshipStudents = () => {
               {paginatedStudents.map((student) => {
                 const details = student.internshipDetails || {};
                 const fromLevelName =
-                  student.internshipFromLevelId?.name || student.currentLevelId?.name || "—";
+                  student.internshipFromLevelId?.name || student.currentLevelId?.name || student.levelName || student.currentLevelName || "—";
+                const fromSubLevelName =
+                  student.internshipFromSubLevelId?.name || student.currentSubLevelId?.name || student.subLevelName || student.currentSubLevelName || "";
+                const levelDisplay = fromLevelName !== "—"
+                  ? `${fromLevelName}${fromSubLevelName ? ` (${fromSubLevelName})` : ""}`
+                  : (student.levelName || student.currentLevelName || "");
 
                 return (
                   <div
@@ -1038,7 +1054,7 @@ const InternshipStudents = () => {
                             {student.firstName} {student.lastName}
                           </h4>
                           <p className="text-[10px] text-slate-400 truncate">
-                            {student.prkey || student.studentId || "—"} • {student.course}
+                            {levelDisplay ? `${levelDisplay} • ` : ""}{student.course || "—"}
                           </p>
                         </div>
                       </div>

@@ -753,7 +753,6 @@ const InternshipStudents = () => {
                       <tr>
                         <th className="py-4 px-3 text-center w-14">S.No.</th>
                         <th className="py-4 px-4 text-left">Student</th>
-                        <th className="py-4 px-4 text-left">Academic Level</th>
                         <th className="py-4 px-4 text-left">Company & Role</th>
                         <th className="py-4 px-4 text-left">Location</th>
                         <th className="py-4 px-4 text-left">Type & Stipend</th>
@@ -784,7 +783,7 @@ const InternshipStudents = () => {
                           <tr
                             key={student._id}
                             className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                            onClick={() => setQuickViewCandidate(student)}
+                            onClick={() => navigate(`/student-profile/${student._id}`)}
                           >
                             {/* S.No. */}
                             <td className="py-4 px-3 text-center align-middle font-semibold text-slate-500 text-xs">
@@ -814,22 +813,15 @@ const InternshipStudents = () => {
                                     <span className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
                                       {student.course || "—"}
                                     </span>
-                                    {student.studentMobile && (
-                                      <span className="text-[10px] text-slate-400 font-normal">
-                                        • {student.studentMobile}
+                                    {levelDisplay && levelDisplay !== "—" && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+                                        <MdUndo size={11} className="text-indigo-500" />
+                                        {levelDisplay}
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               </div>
-                            </td>
-
-                            {/* Academic Level */}
-                            <td className="py-4 px-4 text-left align-middle">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 shadow-2xs whitespace-nowrap">
-                                <MdUndo size={12} className="text-indigo-500" />
-                                {levelDisplay || "—"}
-                              </span>
                             </td>
 
                             {/* Company & Role */}
@@ -917,15 +909,6 @@ const InternshipStudents = () => {
                                   <MdUndo size={14} />
                                   <span>Revert</span>
                                 </button>
-
-                                {/* View Profile */}
-                                <button
-                                  onClick={() => navigate(`/student-profile/${student._id}`)}
-                                  className="p-1.5 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer active:scale-95"
-                                  title="View Profile"
-                                >
-                                  <MdVisibility size={16} />
-                                </button>
                               </div>
                             </td>
                           </tr>
@@ -959,7 +942,7 @@ const InternshipStudents = () => {
                   return (
                     <div
                       key={student._id}
-                      onClick={() => setQuickViewCandidate(student)}
+                      onClick={() => navigate(`/student-profile/${student._id}`)}
                       className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-xs hover:border-slate-300 transition cursor-pointer space-y-3.5 flex flex-col justify-between"
                     >
                       {/* Top Row: Avatar, Student Info, Type Pill */}
@@ -1036,13 +1019,6 @@ const InternshipStudents = () => {
                         >
                           <MdUndo size={14} /> Revert
                         </button>
-                        <button
-                          onClick={() => navigate(`/student-profile/${student._id}`)}
-                          className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
-                          title="View Profile"
-                        >
-                          <MdVisibility size={16} />
-                        </button>
                       </div>
                     </div>
                   );
@@ -1065,8 +1041,8 @@ const InternshipStudents = () => {
                 return (
                   <div
                     key={student._id}
-                    onClick={() => setQuickViewCandidate(student)}
-                    className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3"
+                    onClick={() => navigate(`/student-profile/${student._id}`)}
+                    className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3 cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">

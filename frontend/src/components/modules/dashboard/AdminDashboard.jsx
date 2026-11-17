@@ -63,9 +63,8 @@ const CleanStatCard = ({
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={(e) => onClick && e.key === "Enter" && onClick()}
-      className={`relative overflow-hidden rounded-2xl bg-white border border-gray-200/90 p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-orange-300 ${
-        onClick ? "cursor-pointer group" : ""
-      } ${className}`}
+      className={`relative overflow-hidden rounded-2xl bg-white border border-gray-200/90 p-4 sm:p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-orange-300 ${onClick ? "cursor-pointer group" : ""
+        } ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -257,21 +256,19 @@ const CourseYearMatrixTable = ({ matrix }) => {
           <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
               onClick={() => setViewMode("level")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === "level"
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "level"
                   ? "bg-white text-gray-800 shadow-2xs"
                   : "text-gray-500 hover:text-gray-800"
-              }`}
+                }`}
             >
               By Year
             </button>
             <button
               onClick={() => setViewMode("session")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === "session"
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "session"
                   ? "bg-white text-gray-800 shadow-2xs"
                   : "text-gray-500 hover:text-gray-800"
-              }`}
+                }`}
             >
               By Batch
             </button>
@@ -536,8 +533,8 @@ const AdminDashboard = () => {
                   const statusText = s.status
                     ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
                     : s.isActive
-                    ? "Active"
-                    : "Inactive";
+                      ? "Active"
+                      : "Inactive";
                   return { value: s._id, label: `${label} (${statusText})` };
                 }),
               ]}
@@ -564,380 +561,380 @@ const AdminDashboard = () => {
 
         <div className="bg-slate-50 min-h-screen">
 
-        <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
-          <ActiveFilterChips
-            chips={activeChips}
-            onClearAll={() => {
-              setSelectedSessionId("all");
-              setSelectedLevel("All");
-            }}
-          />
+          <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
+            <ActiveFilterChips
+              chips={activeChips}
+              onClearAll={() => {
+                setSelectedSessionId("all");
+                setSelectedLevel("All");
+              }}
+            />
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-              <UserX className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* ── Clean, Elegant Welcome Banner (White Card) ── */}
-          <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-orange-50 text-orange-700 border border-orange-200/60 text-[11px] font-bold mb-2">
-                <Building2 className="w-3.5 h-3.5" />
-                <span>{departmentName} Operations</span>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+                <UserX className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                Welcome back, {userObj.name || "Professor"}!
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-xl">
-                Track student attendance, approve pending permissions, review task progress, and monitor placement readiness.
-              </p>
-            </div>
+            )}
 
-            {/* Quick Jump Buttons inside Banner */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {/* <button
+            {/* ── Clean, Elegant Welcome Banner (White Card) ── */}
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-orange-50 text-orange-700 border border-orange-200/60 text-[11px] font-bold mb-2">
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>{departmentName} Operations</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  Welcome back, {userObj.name || "Professor"}!
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-xl">
+                  Track student attendance, approve pending permissions, review task progress, and monitor placement readiness.
+                </p>
+              </div>
+
+              {/* Quick Jump Buttons inside Banner */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* <button
                 onClick={() => navigate("/attendance-details")}
                 className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <ClipboardList className="w-3.5 h-3.5" />
                 Take Attendance
               </button> */}
-              <button
-                onClick={() => navigate("/student-detail-table")}
-                className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs border border-gray-200 transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Users className="w-3.5 h-3.5 text-gray-500" />
-                Students
-              </button>
-              <button
-                onClick={() => navigate("/student-permission")}
-                className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs border border-gray-200 transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Clock className="w-3.5 h-3.5 text-gray-500" />
-                Permissions
-              </button>
-            </div>
-          </div>
-
-          {/* ── 1. KPI Stat Cards (Clean & Consistent Theme) ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-            {loading ? (
-              Array(5)
-                .fill(0)
-                .map((_, i) => (
-                  <SkeletonLoader
-                    key={i}
-                    className={i === 4 ? "col-span-2 sm:col-span-1" : ""}
-                  />
-                ))
-            ) : (
-              <>
-                <CleanStatCard
-                  title="Dept Students"
-                  value={s.total ?? 0}
-                  icon={Users}
-                  badgeText={`${s.active ?? 0} active`}
-                  subtitle="enrolled"
+                <button
                   onClick={() => navigate("/student-detail-table")}
-                />
-                <CleanStatCard
-                  title="Active Strength"
-                  value={s.active ?? 0}
-                  icon={UserCheck}
-                  badgeText={s.total ? `${Math.round(((s.active ?? 0) / s.total) * 100)}%` : "100%"}
-                  badgeType="success"
-                  subtitle="regular status"
-                  onClick={() => navigate("/student-detail-table")}
-                />
-                <CleanStatCard
-                  title="Placed in Dept"
-                  value={p.totalPlaced ?? s.placed ?? 0}
-                  icon={Briefcase}
-                  badgeText={`${p.placementRate ?? 0}%`}
-                  badgeType="neutral"
-                  subtitle="success rate"
-                  onClick={() => navigate("/readiness-status?status=Placed")}
-                />
-                <CleanStatCard
-                  title="Dummy & Dropped"
-                  value={dummyAndDroppedCount}
-                  icon={UserX}
-                  badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
-                  badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
-                  subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
+                  className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs border border-gray-200 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5 text-gray-500" />
+                  Students
+                </button>
+                <button
                   onClick={() => navigate("/student-permission")}
-                />
-                <CleanStatCard
-                  title="Faculty & Staff"
-                  value={s.facultyCount ?? 0}
-                  icon={GraduationCap}
-                  badgeText="Registered"
-                  subtitle="instructors"
-                  onClick={() => navigate("/user-management")}
-                  className="col-span-2 sm:col-span-1"
-                />
-              </>
-            )}
-          </div>
+                  className="px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs border border-gray-200 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5 text-gray-500" />
+                  Permissions
+                </button>
+              </div>
+            </div>
 
-          {/* ── 2. Middle Row: Student Academic Progression & Placement Funnel ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Left Col: Student Level Distribution (Col span 2) */}
-            <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
+            {/* ── 1. KPI Stat Cards (Clean & Consistent Theme) ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+              {loading ? (
+                Array(5)
+                  .fill(0)
+                  .map((_, i) => (
+                    <SkeletonLoader
+                      key={i}
+                      className={i === 4 ? "col-span-2 sm:col-span-1" : ""}
+                    />
+                  ))
+              ) : (
+                <>
+                  <CleanStatCard
+                    title="Dept Students"
+                    value={s.total ?? 0}
+                    icon={Users}
+                    badgeText={`${s.active ?? 0} active`}
+                    subtitle="enrolled"
+                    onClick={() => navigate("/student-detail-table")}
+                  />
+                  <CleanStatCard
+                    title="Internship"
+                    value={s.internship ?? 0}
+                    icon={Building2}
+                    badgeText={s.internship > 0 ? `${s.internship} Interns` : "0 Interns"}
+                    badgeType={s.internship > 0 ? "success" : "neutral"}
+                    subtitle="industrial training"
+                    onClick={() => navigate("/placements/internship")}
+                  />
+                  <CleanStatCard
+                    title="Placed in Dept"
+                    value={p.totalPlaced ?? s.placed ?? 0}
+                    icon={Briefcase}
+                    badgeText={`${p.placementRate ?? 0}%`}
+                    badgeType="neutral"
+                    subtitle="success rate"
+                    onClick={() => navigate("/readiness-status?status=Placed")}
+                  />
+                  <CleanStatCard
+                    title="Dummy & Dropped"
+                    value={dummyAndDroppedCount}
+                    icon={UserX}
+                    badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
+                    badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
+                    subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
+                    onClick={() => navigate("/student-permission")}
+                  />
+                  <CleanStatCard
+                    title="Faculty & Staff"
+                    value={s.facultyCount ?? 0}
+                    icon={GraduationCap}
+                    badgeText="Registered"
+                    subtitle="instructors"
+                    onClick={() => navigate("/user-management")}
+                    className="col-span-2 sm:col-span-1"
+                  />
+                </>
+              )}
+            </div>
+
+            {/* ── 2. Middle Row: Student Academic Progression & Placement Funnel ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              {/* Left Col: Student Level Distribution (Col span 2) */}
+              <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                        <Layers className="w-4 h-4" />
+                      </span>
+                      <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                        Student Academic Distribution by Level
+                      </h3>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Student counts currently enrolled across academic levels
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                    Total: {s.total ?? 0} Students
+                  </span>
+                </div>
+
+                <div className="w-full h-60 sm:h-64">
+                  {loading ? (
+                    <SkeletonLoader h="h-full" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={distributionData}
+                        margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="name"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          allowDecimals={false}
+                          tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "#f8fafc" }}
+                          contentStyle={{
+                            backgroundColor: "#1e293b",
+                            borderRadius: "10px",
+                            border: "none",
+                            color: "#fff",
+                            fontSize: "12px",
+                          }}
+                          itemStyle={{ color: "#fff" }}
+                          formatter={(val) => [`${val} Students`, "Enrolled"]}
+                        />
+                        {/* Clean, Uniform Institutional Orange Bars */}
+                        <Bar dataKey="students" fill="#f97316" radius={[6, 6, 0, 0]} barSize={34} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                {/* Level Summary Pills */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 mt-2 border-t border-gray-100">
+                  {distributionData.slice(0, 4).map((lvl, idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
+                      <span className="text-[10px] font-bold text-gray-400 block uppercase">
+                        {lvl.name}
+                      </span>
+                      <span className="text-sm font-extrabold text-gray-800">
+                        {lvl.students} <span className="text-[11px] font-normal text-gray-400">students</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Col: Placement & Readiness Funnel (Col span 1) */}
+              <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                      <Layers className="w-4 h-4" />
+                      <Award className="w-4 h-4" />
                     </span>
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                      Student Academic Distribution by Level
+                      Placement & Drive Funnel
                     </h3>
                   </div>
+                  <p className="text-xs text-gray-400 mb-4 sm:mb-5">
+                    Drive readiness status for {departmentName}
+                  </p>
+
+                  {loading ? (
+                    <SkeletonLoader h="h-44" />
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Ready for Placement */}
+                      <div
+                        onClick={() => navigate("/readiness-status?status=Ready for Placement")}
+                        className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-800">Drive Ready</p>
+                            <p className="text-[11px] text-gray-400">Eligible for interview drives</p>
+                          </div>
+                        </div>
+                        <span className="text-base font-extrabold text-gray-900">
+                          {p.readyForPlacement ?? 0}
+                        </span>
+                      </div>
+
+                      {/* Interview Ongoing */}
+                      <div
+                        onClick={() => navigate("/readiness-status?status=Ongoing Interview")}
+                        className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-800">Interviews Active</p>
+                            <p className="text-[11px] text-gray-400">Currently in rounds</p>
+                          </div>
+                        </div>
+                        <span className="text-base font-extrabold text-gray-900">
+                          {p.interviewRunning ?? 0}
+                        </span>
+                      </div>
+
+                      {/* Total Placed */}
+                      <div
+                        onClick={() => navigate("/readiness-status?status=Placed")}
+                        className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
+                            <Briefcase className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-800">Placed Candidates</p>
+                            <p className="text-[11px] text-gray-400">Offer letter accepted</p>
+                          </div>
+                        </div>
+                        <span className="text-base font-extrabold text-orange-600">
+                          {p.totalPlaced ?? s.placed ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500">Placement Success Rate</span>
+                  <span className="text-sm font-black text-gray-900">{p.placementRate ?? 0}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 3. Quick Action Hub for Department Users ── */}
+            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                    Department Quick Actions & Workflows
+                  </h3>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Student counts currently enrolled across academic levels
+                    Frequently used modules for instructors and department administrators
                   </p>
                 </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                  Total: {s.total ?? 0} Students
+                <span className="hidden sm:inline-flex text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
+                  Shortcuts
                 </span>
               </div>
 
-              <div className="w-full h-60 sm:h-64">
-                {loading ? (
-                  <SkeletonLoader h="h-full" />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={distributionData}
-                      margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        allowDecimals={false}
-                        tick={{ fill: "#94a3b8", fontSize: 11 }}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "#f8fafc" }}
-                        contentStyle={{
-                          backgroundColor: "#1e293b",
-                          borderRadius: "10px",
-                          border: "none",
-                          color: "#fff",
-                          fontSize: "12px",
-                        }}
-                        itemStyle={{ color: "#fff" }}
-                        formatter={(val) => [`${val} Students`, "Enrolled"]}
-                      />
-                      {/* Clean, Uniform Institutional Orange Bars */}
-                      <Bar dataKey="students" fill="#f97316" radius={[6, 6, 0, 0]} barSize={34} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              {/* Level Summary Pills */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 mt-2 border-t border-gray-100">
-                {distributionData.slice(0, 4).map((lvl, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center">
-                    <span className="text-[10px] font-bold text-gray-400 block uppercase">
-                      {lvl.name}
-                    </span>
-                    <span className="text-sm font-extrabold text-gray-800">
-                      {lvl.students} <span className="text-[11px] font-normal text-gray-400">students</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Col: Placement & Readiness Funnel (Col span 1) */}
-            <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                    <Award className="w-4 h-4" />
-                  </span>
-                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                    Placement & Drive Funnel
-                  </h3>
-                </div>
-                <p className="text-xs text-gray-400 mb-4 sm:mb-5">
-                  Drive readiness status for {departmentName}
-                </p>
-
-                {loading ? (
-                  <SkeletonLoader h="h-44" />
-                ) : (
-                  <div className="space-y-3">
-                    {/* Ready for Placement */}
-                    <div
-                      onClick={() => navigate("/readiness-status?status=Ready for Placement")}
-                      className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
-                          <CheckCircle2 className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800">Drive Ready</p>
-                          <p className="text-[11px] text-gray-400">Eligible for interview drives</p>
-                        </div>
-                      </div>
-                      <span className="text-base font-extrabold text-gray-900">
-                        {p.readyForPlacement ?? 0}
-                      </span>
-                    </div>
-
-                    {/* Interview Ongoing */}
-                    <div
-                      onClick={() => navigate("/readiness-status?status=Ongoing Interview")}
-                      className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
-                          <Clock className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800">Interviews Active</p>
-                          <p className="text-[11px] text-gray-400">Currently in rounds</p>
-                        </div>
-                      </div>
-                      <span className="text-base font-extrabold text-gray-900">
-                        {p.interviewRunning ?? 0}
-                      </span>
-                    </div>
-
-                    {/* Total Placed */}
-                    <div
-                      onClick={() => navigate("/readiness-status?status=Placed")}
-                      className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-orange-300 transition cursor-pointer flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors flex items-center justify-center font-bold text-xs">
-                          <Briefcase className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800">Placed Candidates</p>
-                          <p className="text-[11px] text-gray-400">Offer letter accepted</p>
-                        </div>
-                      </div>
-                      <span className="text-base font-extrabold text-orange-600">
-                        {p.totalPlaced ?? s.placed ?? 0}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500">Placement Success Rate</span>
-                <span className="text-sm font-black text-gray-900">{p.placementRate ?? 0}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── 3. Quick Action Hub for Department Users ── */}
-          <div className="bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                  Department Quick Actions & Workflows
-                </h3>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Frequently used modules for instructors and department administrators
-                </p>
-              </div>
-              <span className="hidden sm:inline-flex text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
-                Shortcuts
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* <CleanQuickActionButton
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* <CleanQuickActionButton
                 icon={ClipboardList}
                 title="Mark / View Attendance"
                 description="Daily logs, punch-ins, and subject attendance"
                 badge="Daily"
                 onClick={() => navigate("/attendance-details")}
               /> */}
-              <CleanQuickActionButton
-                icon={Users}
-                title="Student Roster"
-                description="Detailed student records, marks, and profiles"
-                badge="Directory"
-                onClick={() => navigate("/student-detail-table")}
-              />
-              <CleanQuickActionButton
-                icon={Clock}
-                title="Permissions & Leaves"
-                description="Review student gate passes and leave requests"
-                badge={s.onPermission ? `${s.onPermission} Pending` : "Approvals"}
-                onClick={() => navigate("/student-permission")}
-              />
-              <CleanQuickActionButton
-                icon={Layers}
-                title="Task Management & Board"
-                description="Assign syllabus tasks and monitor completion"
-                badge="Syllabus"
-                onClick={() => navigate("/task-management")}
-              />
-              <CleanQuickActionButton
-                icon={Award}
-                title="Placement Readiness"
-                description="Evaluate mock interviews and drive status"
-                badge="Placements"
-                onClick={() => navigate("/readiness-status")}
-              />
-              <CleanQuickActionButton
-                icon={BookOpen}
-                title="Sub-Level Management"
-                description="Curriculum sub-levels and subject mapping"
-                badge="Academic"
-                onClick={() => navigate("/show-sublevel-tables")}
-              />
-            </div>
-          </div>
-
-          {/* ── 4. Course & Year Strength Matrix ── */}
-          <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
-
-          {/* ── 5. Bottom Report Download Card ── */}
-          <div className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center shrink-0">
-                <Printer className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-800 text-sm">Download Academic Report</h4>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Print or save a formatted overview report for {departmentName} ({academicYearLabel}).
-                </p>
+                <CleanQuickActionButton
+                  icon={Users}
+                  title="Student Roster"
+                  description="Detailed student records, marks, and profiles"
+                  badge="Directory"
+                  onClick={() => navigate("/student-detail-table")}
+                />
+                <CleanQuickActionButton
+                  icon={Clock}
+                  title="Permissions & Leaves"
+                  description="Review student gate passes and leave requests"
+                  badge={s.onPermission ? `${s.onPermission} Pending` : "Approvals"}
+                  onClick={() => navigate("/student-permission")}
+                />
+                <CleanQuickActionButton
+                  icon={Layers}
+                  title="Task Management & Board"
+                  description="Assign syllabus tasks and monitor completion"
+                  badge="Syllabus"
+                  onClick={() => navigate("/task-management")}
+                />
+                <CleanQuickActionButton
+                  icon={Award}
+                  title="Placement Readiness"
+                  description="Evaluate mock interviews and drive status"
+                  badge="Placements"
+                  onClick={() => navigate("/readiness-status")}
+                />
+                <CleanQuickActionButton
+                  icon={BookOpen}
+                  title="Sub-Level Management"
+                  description="Curriculum sub-levels and subject mapping"
+                  badge="Academic"
+                  onClick={() => navigate("/show-sublevel-tables")}
+                />
               </div>
             </div>
-            <button
-              onClick={handlePrint}
-              className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-2xs cursor-pointer w-full sm:w-auto shrink-0"
-            >
-              <Printer className="w-4 h-4" />
-              Print / Save PDF
-            </button>
+
+            {/* ── 4. Course & Year Strength Matrix ── */}
+            <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
+
+            {/* ── 5. Bottom Report Download Card ── */}
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center shrink-0">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-800 text-sm">Download Academic Report</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Print or save a formatted overview report for {departmentName} ({academicYearLabel}).
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handlePrint}
+                className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-2xs cursor-pointer w-full sm:w-auto shrink-0"
+              >
+                <Printer className="w-4 h-4" />
+                Print / Save PDF
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </>
-  );
-}
+      </>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────
   // ── 2. RENDER SUPER ADMIN / ADMIN GLOBAL DASHBOARD ───────────
@@ -974,8 +971,8 @@ const AdminDashboard = () => {
                 const statusText = s.status
                   ? s.status.charAt(0).toUpperCase() + s.status.slice(1)
                   : s.isActive
-                  ? "Active"
-                  : "Inactive";
+                    ? "Active"
+                    : "Inactive";
                 return { value: s._id, label: `${label} (${statusText})` };
               }),
             ]}
@@ -1002,441 +999,441 @@ const AdminDashboard = () => {
 
       <div className="bg-slate-50 min-h-screen">
 
-      <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
-        <ActiveFilterChips
-          chips={activeChips}
-          onClearAll={() => {
-            setSelectedSessionId("all");
-            setSelectedLevel("All");
-          }}
-        />
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
+          <ActiveFilterChips
+            chips={activeChips}
+            onClearAll={() => {
+              setSelectedSessionId("all");
+              setSelectedLevel("All");
+            }}
+          />
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-            <UserX className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* ── Super Admin Top 5 Stat Cards (Clean & Consistent) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-          {loading ? (
-            Array(5)
-              .fill(0)
-              .map((_, i) => (
-                <SkeletonLoader
-                  key={i}
-                  className={i === 4 ? "col-span-2 sm:col-span-1" : ""}
-                />
-              ))
-          ) : (
-            <>
-              <CleanStatCard
-                title="Total Students"
-                value={s.total ?? 0}
-                icon={Users}
-                badgeText={`${s.active ?? 0} active`}
-                subtitle="system-wide"
-                onClick={() => navigate("/student-detail-table")}
-              />
-              <CleanStatCard
-                title="Active Enrolled"
-                value={s.active ?? 0}
-                icon={UserCheck}
-                badgeText={s.total ? `${Math.round(((s.active ?? 0) / s.total) * 100)}%` : "100%"}
-                badgeType="success"
-                subtitle="regular standing"
-                onClick={() => navigate("/student-detail-table")}
-              />
-              <CleanStatCard
-                title="Placed Candidates"
-                value={p.totalPlaced ?? s.placed ?? 0}
-                icon={Briefcase}
-                badgeText={`${p.placementRate ?? 0}%`}
-                badgeType="neutral"
-                subtitle="placement rate"
-                onClick={() => navigate("/readiness-status?status=Placed")}
-              />
-              <CleanStatCard
-                title="Dummy & Dropped"
-                value={dummyAndDroppedCount}
-                icon={UserX}
-                badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
-                badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
-                subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
-                onClick={() => navigate("/student-permission")}
-              />
-              <CleanStatCard
-                title="Faculty & Staff"
-                value={s.facultyCount ?? 0}
-                icon={GraduationCap}
-                badgeText={`${depts.length} Depts`}
-                subtitle="teaching staff"
-                onClick={() => navigate("/user-management")}
-                className="col-span-2 sm:col-span-1"
-              />
-            </>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+              <UserX className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
-        </div>
 
-        {/* ── Middle Row: Department Statistics & Gender Demographics ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Left Column: Department Student & Placement Comparison (Col span 2) */}
-          <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                    <Building2 className="w-4 h-4" />
-                  </span>
-                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                    Department Student Strength & Placements
-                  </h3>
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Total enrolled students compared to placed candidates
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs font-semibold">
-                <span className="flex items-center gap-1.5 text-gray-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block" />
-                  Total Enrolled
-                </span>
-                <span className="flex items-center gap-1.5 text-gray-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-                  Placed
-                </span>
-              </div>
-            </div>
-
-            <div className="w-full h-60 sm:h-72">
-              {loading ? (
-                <SkeletonLoader h="h-full" />
-              ) : depts.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  No department records found
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={depts.map((d) => ({
-                      name: d.name.length > 18 ? d.name.substring(0, 18) + "..." : d.name,
-                      Total: d.total || 0,
-                      Placed: d.placed || 0,
-                    }))}
-                    margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="name"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                      tick={{ fill: "#94a3b8", fontSize: 11 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "#f8fafc" }}
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        borderRadius: "10px",
-                        border: "none",
-                        color: "#fff",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Bar dataKey="Total" fill="#475569" radius={[6, 6, 0, 0]} barSize={22} />
-                    <Bar dataKey="Placed" fill="#f97316" radius={[6, 6, 0, 0]} barSize={22} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          {/* ── Super Admin Top 5 Stat Cards (Clean & Consistent) ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {loading ? (
+              Array(5)
+                .fill(0)
+                .map((_, i) => (
+                  <SkeletonLoader
+                    key={i}
+                    className={i === 4 ? "col-span-2 sm:col-span-1" : ""}
+                  />
+                ))
+            ) : (
+              <>
+                <CleanStatCard
+                  title="Total Students"
+                  value={s.total ?? 0}
+                  icon={Users}
+                  badgeText={`${s.active ?? 0} active`}
+                  subtitle="system-wide"
+                  onClick={() => navigate("/student-detail-table")}
+                />
+                <CleanStatCard
+                  title="Internship"
+                  value={s.internship ?? 0}
+                  icon={Building2}
+                  badgeText={s.internship > 0 ? `${s.internship} Interns` : "0 Interns"}
+                  badgeType={s.internship > 0 ? "success" : "neutral"}
+                  subtitle="industrial training"
+                  onClick={() => navigate("/placements/internship")}
+                />
+                <CleanStatCard
+                  title="Placed Candidates"
+                  value={p.totalPlaced ?? s.placed ?? 0}
+                  icon={Briefcase}
+                  badgeText={`${p.placementRate ?? 0}%`}
+                  badgeType="neutral"
+                  subtitle="placement rate"
+                  onClick={() => navigate("/readiness-status?status=Placed")}
+                />
+                <CleanStatCard
+                  title="Dummy & Dropped"
+                  value={dummyAndDroppedCount}
+                  icon={UserX}
+                  badgeText={dummyAndDroppedCount > 0 ? `${dummyCount} Dummy · ${droppedCount} Dropped` : "Clear"}
+                  badgeType={dummyAndDroppedCount > 0 ? "warning" : "success"}
+                  subtitle={dummyAndDroppedCount > 0 ? "combined status" : "all active"}
+                  onClick={() => navigate("/student-permission")}
+                />
+                <CleanStatCard
+                  title="Faculty & Staff"
+                  value={s.facultyCount ?? 0}
+                  icon={GraduationCap}
+                  badgeText={`${depts.length} Depts`}
+                  subtitle="teaching staff"
+                  onClick={() => navigate("/user-management")}
+                  className="col-span-2 sm:col-span-1"
+                />
+              </>
+            )}
           </div>
 
-          {/* Right Column: Gender Demographics (Col span 1) */}
-          <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                  <Users className="w-4 h-4" />
-                </span>
-                <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                  Gender Breakdown
-                </h3>
-              </div>
-              <p className="text-xs text-gray-400 mb-4 sm:mb-6">
-                System-wide student ratio
-              </p>
-
-              {loading ? (
-                <SkeletonLoader h="h-48" />
-              ) : (
-                <div className="space-y-4 sm:space-y-5 my-auto">
-                  {/* Male */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs">
-                          M
-                        </div>
-                        <span className="text-xs sm:text-sm font-bold text-gray-800">
-                          Male Students
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-black text-gray-900">{g.male ?? 0}</span>
-                        <span className="text-[11px] text-gray-400 block font-semibold">
-                          {malePct}% of total
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className="bg-slate-700 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${malePct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Female */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-xs text-orange-600">
-                          F
-                        </div>
-                        <span className="text-xs sm:text-sm font-bold text-gray-800">
-                          Female Students
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-black text-orange-600">{g.female ?? 0}</span>
-                        <span className="text-[11px] text-gray-400 block font-semibold">
-                          {femalePct}% of total
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className="bg-orange-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${femalePct}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-gray-100 pt-3 sm:pt-4 mt-4 text-center">
-              <span className="text-xs text-gray-400 font-semibold">
-                Total Profiled: <strong>{totalGender}</strong> students
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Bottom Row: Department Overview Table & Quick Actions ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Department-wise Overview Table (Col span 2) */}
-          <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
-            <div>
-              <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* ── Middle Row: Department Statistics & Gender Demographics ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Left Column: Department Student & Placement Comparison (Col span 2) */}
+            <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
                       <Building2 className="w-4 h-4" />
                     </span>
                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                      Department-wise Performance Table
+                      Department Student Strength & Placements
                     </h3>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Click any department to inspect detailed placement records
+                    Total enrolled students compared to placed candidates
                   </p>
                 </div>
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-gray-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block" />
+                    Total Enrolled
+                  </span>
+                  <span className="flex items-center gap-1.5 text-gray-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                    Placed
+                  </span>
+                </div>
+              </div>
 
-                {/* Table Search */}
-                <div className="relative">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search departments..."
-                    value={deptSearch}
-                    onChange={(e) => setDeptSearch(e.target.value)}
-                    className="pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition w-full sm:w-48"
+              <div className="w-full h-60 sm:h-72">
+                {loading ? (
+                  <SkeletonLoader h="h-full" />
+                ) : depts.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    No department records found
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={depts.map((d) => ({
+                        name: d.name.length > 18 ? d.name.substring(0, 18) + "..." : d.name,
+                        Total: d.total || 0,
+                        Placed: d.placed || 0,
+                      }))}
+                      margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "#f8fafc" }}
+                        contentStyle={{
+                          backgroundColor: "#1e293b",
+                          borderRadius: "10px",
+                          border: "none",
+                          color: "#fff",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Bar dataKey="Total" fill="#475569" radius={[6, 6, 0, 0]} barSize={22} />
+                      <Bar dataKey="Placed" fill="#f97316" radius={[6, 6, 0, 0]} barSize={22} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Gender Demographics (Col span 1) */}
+            <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                    <Users className="w-4 h-4" />
+                  </span>
+                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                    Gender Breakdown
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-4 sm:mb-6">
+                  System-wide student ratio
+                </p>
+
+                {loading ? (
+                  <SkeletonLoader h="h-48" />
+                ) : (
+                  <div className="space-y-4 sm:space-y-5 my-auto">
+                    {/* Male */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-xs">
+                            M
+                          </div>
+                          <span className="text-xs sm:text-sm font-bold text-gray-800">
+                            Male Students
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-black text-gray-900">{g.male ?? 0}</span>
+                          <span className="text-[11px] text-gray-400 block font-semibold">
+                            {malePct}% of total
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div
+                          className="bg-slate-700 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${malePct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Female */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-xs text-orange-600">
+                            F
+                          </div>
+                          <span className="text-xs sm:text-sm font-bold text-gray-800">
+                            Female Students
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-black text-orange-600">{g.female ?? 0}</span>
+                          <span className="text-[11px] text-gray-400 block font-semibold">
+                            {femalePct}% of total
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div
+                          className="bg-orange-500 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${femalePct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 pt-3 sm:pt-4 mt-4 text-center">
+                <span className="text-xs text-gray-400 font-semibold">
+                  Total Profiled: <strong>{totalGender}</strong> students
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Bottom Row: Department Overview Table & Quick Actions ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Department-wise Overview Table (Col span 2) */}
+            <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                        <Building2 className="w-4 h-4" />
+                      </span>
+                      <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                        Department-wise Performance Table
+                      </h3>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Click any department to inspect detailed placement records
+                    </p>
+                  </div>
+
+                  {/* Table Search */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search departments..."
+                      value={deptSearch}
+                      onChange={(e) => setDeptSearch(e.target.value)}
+                      className="pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition w-full sm:w-48"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[620px] text-xs sm:text-sm">
+                    <thead className="bg-gray-50/90 text-gray-500 text-[11px] sm:text-xs uppercase font-bold tracking-wider">
+                      <tr>
+                        <th className="px-4 sm:px-5 py-3.5 text-left">Department</th>
+                        <th className="px-3 sm:px-4 py-3.5 text-center">Total</th>
+                        <th className="px-3 sm:px-4 py-3.5 text-center">Active</th>
+                        <th className="px-3 sm:px-4 py-3.5 text-center">Placed</th>
+                        <th className="px-3 sm:px-4 py-3.5 text-center">Dropped</th>
+                        <th className="px-3 sm:px-5 py-3.5 text-left">Placement Rate</th>
+                        <th className="px-3 py-3.5 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {loading ? (
+                        Array(4)
+                          .fill(0)
+                          .map((_, i) => (
+                            <tr key={i}>
+                              {Array(7)
+                                .fill(0)
+                                .map((_, j) => (
+                                  <td key={j} className="px-4 py-3.5">
+                                    <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                                  </td>
+                                ))}
+                            </tr>
+                          ))
+                      ) : filteredDepts.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-10 text-gray-400 text-xs sm:text-sm">
+                            No department data found.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredDepts.map((d) => {
+                          const pct = d.placementRate;
+                          const barColor =
+                            pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-rose-400";
+                          const textColor =
+                            pct >= 70 ? "text-emerald-700" : pct >= 40 ? "text-amber-700" : "text-rose-700";
+
+                          return (
+                            <tr
+                              key={d.subDepartmentId}
+                              className="transition-colors hover:bg-gray-50/70 cursor-pointer group"
+                              onClick={() => navigate(`/placements/department/${d.subDepartmentId}`)}
+                            >
+                              <td className="px-4 sm:px-5 py-3.5 font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
+                                {d.name}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3.5 text-center text-gray-700 font-semibold">
+                                {d.total}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3.5 text-center text-gray-800 font-bold">
+                                {d.active}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3.5 text-center text-orange-600 font-bold">
+                                {d.placed}
+                              </td>
+                              <td className="px-3 sm:px-4 py-3.5 text-center text-gray-400 font-medium">
+                                {d.dropped}
+                              </td>
+                              <td className="px-3 sm:px-5 py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-gray-100 rounded-full h-2 min-w-[70px]">
+                                    <div
+                                      className={`${barColor} h-2 rounded-full`}
+                                      style={{ width: `${Math.min(pct, 100)}%` }}
+                                    />
+                                  </div>
+                                  <span className={`text-xs font-black w-10 text-right ${textColor}`}>
+                                    {pct}%
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3.5 text-center">
+                                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-orange-600 group-hover:translate-x-1 transition-all mx-auto" />
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="p-3 sm:p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>Showing {filteredDepts.length} departments</span>
+                <button
+                  onClick={() => navigate("/department-management")}
+                  className="font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
+                >
+                  Manage Departments <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Actions (Col span 1) */}
+            <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                    <ShieldCheck className="w-4 h-4" />
+                  </span>
+                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">
+                    Quick Administration
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-4 sm:mb-5">
+                  Fast navigation to core system management
+                </p>
+
+                <div className="space-y-2.5">
+                  <CleanQuickActionButton
+                    icon={Building2}
+                    title="Department Management"
+                    description="Add or edit faculties and courses"
+                    badge="Structure"
+                    onClick={() => navigate("/department-management")}
+                  />
+                  <CleanQuickActionButton
+                    icon={Users}
+                    title="User Accounts & Roles"
+                    description="HOD, Faculty, and Admin permissions"
+                    badge="Security"
+                    onClick={() => navigate("/user-management")}
+                  />
+                  <CleanQuickActionButton
+                    icon={ClipboardList}
+                    title="Student Progress Table"
+                    description="Filterable student roster and reports"
+                    badge="Students"
+                    onClick={() => navigate("/student-detail-table")}
+                  />
+                  <CleanQuickActionButton
+                    icon={Calendar}
+                    title="Session Management"
+                    description="Academic intake years and syllabus"
+                    badge="Sessions"
+                    onClick={() => navigate("/session-management")}
+                  />
+                  <CleanQuickActionButton
+                    icon={Briefcase}
+                    title="Placement Drives"
+                    description="Company registrations and interviews"
+                    badge="Placements"
+                    onClick={() => navigate("/placements/drives")}
                   />
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-xs sm:text-sm">
-                  <thead className="bg-gray-50/90 text-gray-500 text-[11px] sm:text-xs uppercase font-bold tracking-wider">
-                    <tr>
-                      <th className="px-4 sm:px-5 py-3.5 text-left">Department</th>
-                      <th className="px-3 sm:px-4 py-3.5 text-center">Total</th>
-                      <th className="px-3 sm:px-4 py-3.5 text-center">Active</th>
-                      <th className="px-3 sm:px-4 py-3.5 text-center">Placed</th>
-                      <th className="px-3 sm:px-4 py-3.5 text-center">Dropped</th>
-                      <th className="px-3 sm:px-5 py-3.5 text-left">Placement Rate</th>
-                      <th className="px-3 py-3.5 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {loading ? (
-                      Array(4)
-                        .fill(0)
-                        .map((_, i) => (
-                          <tr key={i}>
-                            {Array(7)
-                              .fill(0)
-                              .map((_, j) => (
-                                <td key={j} className="px-4 py-3.5">
-                                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
-                                </td>
-                              ))}
-                          </tr>
-                        ))
-                    ) : filteredDepts.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-10 text-gray-400 text-xs sm:text-sm">
-                          No department data found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredDepts.map((d) => {
-                        const pct = d.placementRate;
-                        const barColor =
-                          pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-rose-400";
-                        const textColor =
-                          pct >= 70 ? "text-emerald-700" : pct >= 40 ? "text-amber-700" : "text-rose-700";
-
-                        return (
-                          <tr
-                            key={d.subDepartmentId}
-                            className="transition-colors hover:bg-gray-50/70 cursor-pointer group"
-                            onClick={() => navigate(`/placements/department/${d.subDepartmentId}`)}
-                          >
-                            <td className="px-4 sm:px-5 py-3.5 font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
-                              {d.name}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3.5 text-center text-gray-700 font-semibold">
-                              {d.total}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3.5 text-center text-gray-800 font-bold">
-                              {d.active}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3.5 text-center text-orange-600 font-bold">
-                              {d.placed}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3.5 text-center text-gray-400 font-medium">
-                              {d.dropped}
-                            </td>
-                            <td className="px-3 sm:px-5 py-3.5">
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-gray-100 rounded-full h-2 min-w-[70px]">
-                                  <div
-                                    className={`${barColor} h-2 rounded-full`}
-                                    style={{ width: `${Math.min(pct, 100)}%` }}
-                                  />
-                                </div>
-                                <span className={`text-xs font-black w-10 text-right ${textColor}`}>
-                                  {pct}%
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3.5 text-center">
-                              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-orange-600 group-hover:translate-x-1 transition-all mx-auto" />
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Showing {filteredDepts.length} departments</span>
-              <button
-                onClick={() => navigate("/department-management")}
-                className="font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
-              >
-                Manage Departments <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Actions (Col span 1) */}
-          <div className="min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-4 sm:p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                  <ShieldCheck className="w-4 h-4" />
+              <div className="border-t border-gray-100 pt-3 mt-4 text-center">
+                <span className="text-[11px] text-gray-400 font-medium">
+                  Advanced settings available in sidebar navigation
                 </span>
-                <h3 className="font-bold text-gray-800 text-sm sm:text-base">
-                  Quick Administration
-                </h3>
               </div>
-              <p className="text-xs text-gray-400 mb-4 sm:mb-5">
-                Fast navigation to core system management
-              </p>
-
-              <div className="space-y-2.5">
-                <CleanQuickActionButton
-                  icon={Building2}
-                  title="Department Management"
-                  description="Add or edit faculties and courses"
-                  badge="Structure"
-                  onClick={() => navigate("/department-management")}
-                />
-                <CleanQuickActionButton
-                  icon={Users}
-                  title="User Accounts & Roles"
-                  description="HOD, Faculty, and Admin permissions"
-                  badge="Security"
-                  onClick={() => navigate("/user-management")}
-                />
-                <CleanQuickActionButton
-                  icon={ClipboardList}
-                  title="Student Progress Table"
-                  description="Filterable student roster and reports"
-                  badge="Students"
-                  onClick={() => navigate("/student-detail-table")}
-                />
-                <CleanQuickActionButton
-                  icon={Calendar}
-                  title="Session Management"
-                  description="Academic intake years and syllabus"
-                  badge="Sessions"
-                  onClick={() => navigate("/session-management")}
-                />
-                <CleanQuickActionButton
-                  icon={Briefcase}
-                  title="Placement Drives"
-                  description="Company registrations and interviews"
-                  badge="Placements"
-                  onClick={() => navigate("/placements/drives")}
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100 pt-3 mt-4 text-center">
-              <span className="text-[11px] text-gray-400 font-medium">
-                Advanced settings available in sidebar navigation
-              </span>
             </div>
           </div>
-        </div>
 
-        {/* ── Course-wise & Year-wise Student Strength Matrix ── */}
-        <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
+          {/* ── Course-wise & Year-wise Student Strength Matrix ── */}
+          <CourseYearMatrixTable matrix={data?.courseYearMatrix} />
+        </div>
       </div>
-    </div>
     </>
   );
 };

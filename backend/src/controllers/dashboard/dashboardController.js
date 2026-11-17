@@ -43,13 +43,14 @@ exports.getDashboardOverview = async (req, res) => {
       }
     }
 
-    const [total, active, placed, dropped, completed, dummy, onPermission, facultyCount] = await Promise.all([
+    const [total, active, placed, dropped, completed, dummy, internship, onPermission, facultyCount] = await Promise.all([
       Student.countDocuments(base),
       Student.countDocuments({ ...base, status: { $in: ["Active", "active"] } }),
       Student.countDocuments({ ...base, status: { $in: ["Placed", "placed"] } }),
       Student.countDocuments({ ...base, status: { $in: ["Dropped", "dropped"] } }),
       Student.countDocuments({ ...base, status: { $in: ["Completed", "completed"] } }),
       Student.countDocuments({ ...base, status: { $in: ["Dummy", "dummy"] } }),
+      Student.countDocuments({ ...base, status: { $in: ["Internship", "internship"] } }),
       Student.countDocuments({ ...base, permissionDetails: { $ne: null } }),
       User.countDocuments({ ...userFilter, role: { $in: ["faculty", "hod"] } })
     ]);
@@ -282,6 +283,7 @@ exports.getDashboardOverview = async (req, res) => {
           completed,
           dummy,
           dummyAndDropped: dummy + dropped,
+          internship: internship || 0,
           onPermission,
           facultyCount,
           admissionsCount

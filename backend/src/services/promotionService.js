@@ -1085,9 +1085,10 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
 
   // Pre-load all SubLevels and Levels for name lookup and note sanitization (eliminates raw ObjectId display)
   const allSubLevels = await SubLevel.find().select("name levelId order").lean();
-  const allLevels = await Level.find().select("name order").lean();
+  const allLevels = await Level.find().select("name order subDepartmentId").lean();
   const subLevelNameMap = new Map(allSubLevels.map(sl => [sl._id.toString(), sl.name]));
   const levelNameMap = new Map(allLevels.map(l => [l._id.toString(), l.name]));
+  const levelSubDeptMap = new Map(allLevels.map(l => [l._id.toString(), (l.subDepartmentId?._id || l.subDepartmentId)?.toString()]));
 
   // Fallback faculty/coordinator for student's department
   const User = require("../models/user/user");
@@ -1123,7 +1124,7 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
 
   // 1. Fetch raw StudentLevelProgress records
   let history = await StudentLevelProgress.find({ studentId })
-    .populate("levelId", "name order")
+    .populate("levelId", "name order subDepartmentId")
     .populate("subLevelId", "name order levelId")
     .populate("sessionId", "name")
     .sort({ createdAt: 1 })
@@ -1137,6 +1138,39 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     .sort({ createdAt: 1 })
     .lean();
   const allTasks = await filterStudentTasksBySession(rawAllTasks, student);
+
+  const taskCountBySubLevelId = new Map();
+  allTasks.forEach(t => {
+    const sId = (t.subLevelId?._id || t.subLevelId)?.toString();
+    if (sId) {
+      taskCountBySubLevelId.set(sId, (taskCountBySubLevelId.get(sId) || 0) + 1);
+    }
+  });
+
+  // UI/UX SubDepartment scoping: If student is marked as UI/UX, filter out orphaned records from previous departments
+  if (student.isUIUX) {
+    const SubDepartment = require("../models/department/SubDepartment");
+    const uiuxSubDept = await SubDepartment.findOne({ name: /UI\/UX|UIUX/i }).select("_id").lean();
+    if (uiuxSubDept) {
+      const uiuxSubDeptIdStr = uiuxSubDept._id.toString();
+      const orphanedProgressIds = [];
+      history = history.filter(item => {
+        const lvlId = (item.levelId?._id || item.levelId)?.toString();
+        const itemSubDeptId = (item.levelId?.subDepartmentId?._id || item.levelId?.subDepartmentId)?.toString() || (lvlId ? levelSubDeptMap.get(lvlId) : null);
+        if (itemSubDeptId && itemSubDeptId !== uiuxSubDeptIdStr) {
+          if (item._id && typeof item._id === "object") {
+            orphanedProgressIds.push(item._id);
+          }
+          return false;
+        }
+        return true;
+      });
+
+      if (orphanedProgressIds.length > 0) {
+        await StudentLevelProgress.deleteMany({ _id: { $in: orphanedProgressIds } }).catch(() => {});
+      }
+    }
+  }
 
   // 3. Fetch all promotion & level change logs from StudentEventLog
   const promotionLogs = await StudentEventLog.find({
@@ -1203,6 +1237,50 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
       });
       recordedSubLevelIds.add(sId);
     }
+  }
+
+  // Deduplicate history entries by SubLevel Key:
+  // If multiple entries exist for the same sublevel name (e.g. duplicate 1A), prioritize the one that is current or has tasks, and drop empty ghost duplicates
+  const ghostIdsToDelete = [];
+  const historyBySubLevelKey = new Map();
+
+  for (const item of history) {
+    const sId = (item.subLevelId?._id || item.subLevelId)?.toString();
+    const sName = (item.subLevelId?.name || (sId ? subLevelNameMap.get(sId) : "") || "").trim().toUpperCase();
+    const lName = (item.levelId?.name || "").trim().toUpperCase();
+    const key = (lName && sName) ? `${lName}__${sName}` : (sName || sId);
+
+    if (!key) continue;
+
+    const taskCount = (sId ? taskCountBySubLevelId.get(sId) : 0) || item.totalTasks || 0;
+    const isCur = Boolean(sId && curSubId && sId === curSubId);
+
+    if (!historyBySubLevelKey.has(key)) {
+      historyBySubLevelKey.set(key, item);
+    } else {
+      const existing = historyBySubLevelKey.get(key);
+      const existingSId = (existing.subLevelId?._id || existing.subLevelId)?.toString();
+      const existingTaskCount = (existingSId ? taskCountBySubLevelId.get(existingSId) : 0) || existing.totalTasks || 0;
+      const existingIsCur = Boolean(existingSId && curSubId && existingSId === curSubId);
+
+      // Prefer current item, or one with more tasks
+      if (isCur || (!existingIsCur && taskCount > existingTaskCount)) {
+        if (existing._id && typeof existing._id === "object") {
+          ghostIdsToDelete.push(existing._id);
+        }
+        historyBySubLevelKey.set(key, item);
+      } else {
+        if (item._id && typeof item._id === "object") {
+          ghostIdsToDelete.push(item._id);
+        }
+      }
+    }
+  }
+
+  history = Array.from(historyBySubLevelKey.values());
+
+  if (ghostIdsToDelete.length > 0) {
+    await StudentLevelProgress.deleteMany({ _id: { $in: ghostIdsToDelete } }).catch(() => {});
   }
 
   // Sort history hierarchically: level.order, then sublevel.order
@@ -1609,7 +1687,23 @@ const getEnrichedStudentLevelHistory = async (studentId) => {
     };
   }));
 
-  return enrichedHistory.filter(Boolean);
+  return enrichedHistory.filter(item => {
+    if (!item) return false;
+    // Current sublevel must always be shown
+    if (item.isCurrent) return true;
+    // Any level where student has tasks assigned or completed
+    if (item.totalTasks > 0) return true;
+    // Any level where topics were studied
+    if (item.totalTopicsCount > 0) return true;
+    // Legitimately completed level with promotion log
+    if (item.status === "completed" && item.completedAt) {
+      if (item.promotion?.title && !item.promotion.title.includes("Evaluated & Promoted")) {
+        return true;
+      }
+    }
+    // Filter out ghost entries with 0 tasks, 0 topics, and no valid completion
+    return false;
+  });
 };
 
 module.exports = { 

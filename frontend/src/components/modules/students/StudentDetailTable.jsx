@@ -247,13 +247,9 @@ const StudentDetailTable = () => {
       } else if (activeTab === "FTP Students") {
         matchTab = Boolean(s.isFTP);
       } else if (isUiUxPage) {
-        // In UI/UX sub-department:
-        // Marked UI/UX students should show in 1A level tab by default!
-        if (activeTab === "1A") {
-          matchTab = (Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A") && !s.isFTP;
-        } else {
-          matchTab = s.currentSubLevelId?.name === activeTab && !s.isFTP;
-        }
+        // In UI/UX sub-department: match the student's active sublevel
+        const studentLevel = s.currentSubLevelId?.name || (s.isUIUX ? "1A" : "");
+        matchTab = studentLevel === activeTab && !s.isFTP;
       } else {
         // In home department:
         // Marked UI/UX students appear only in "Others" tab, excluded from 1A/2A/etc.
@@ -642,12 +638,10 @@ const StudentDetailTable = () => {
       key: "level",
       label: "Year & Level",
       align: "center",
-      accessorFn: (row) => `${row.year || "1st Year"} / ${isUiUxPage && row.isUIUX ? "1A" : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—")}`,
+      accessorFn: (row) => `${row.year || "1st Year"} / ${row.currentSubLevelId?.name || row.currentLevelId?.name || (row.isUIUX ? "1A" : "—")}`,
       render: (row) => {
         const year = row.year || "1st Year";
-        const level = isUiUxPage && row.isUIUX
-          ? "1A"
-          : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—");
+        const level = row.currentSubLevelId?.name || row.currentLevelId?.name || (row.isUIUX ? "1A" : "—");
         return (
           <span className="inline-flex items-center text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap">
             {year} / {level}
@@ -691,11 +685,10 @@ const StudentDetailTable = () => {
           } else if (tab === "FTP Students") {
             tabCount = students.filter((s) => Boolean(s.isFTP)).length;
           } else if (isUiUxPage) {
-            if (tab === "1A") {
-              tabCount = students.filter((s) => (Boolean(s.isUIUX) || s.currentSubLevelId?.name === "1A") && !s.isFTP).length;
-            } else {
-              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isFTP).length;
-            }
+            tabCount = students.filter((s) => {
+              const studentLevel = s.currentSubLevelId?.name || (s.isUIUX ? "1A" : "");
+              return studentLevel === tab && !s.isFTP;
+            }).length;
           } else {
             if (tab === "Others") {
               tabCount = students.filter((s) => Boolean(s.isUIUX) && !s.isFTP).length;
@@ -1080,7 +1073,7 @@ const StudentDetailTable = () => {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-gray-400 font-medium">Year & Level:</span>
                       <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
-                        {(row.year || "1st Year")} / {(isUiUxPage && row.isUIUX ? "1A" : (row.currentSubLevelId?.name || row.currentLevelId?.name || "—"))}
+                        {(row.year || "1st Year")} / {(row.currentSubLevelId?.name || row.currentLevelId?.name || (row.isUIUX ? "1A" : "—"))}
                       </span>
                     </div>
 

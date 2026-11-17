@@ -130,12 +130,41 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
         const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
-            const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
-            const count = await Student.countDocuments(
-              isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-            );
+            let count = 0;
+            if (isUiUx) {
+              const isUiUxLevel1 = lvl.order === 1 || String(lvl.name).includes("1");
+              count = await Student.countDocuments(
+                isUiUxLevel1
+                  ? {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      $and: [
+                        {
+                          $or: [
+                            { currentLevelId: lvl._id },
+                            { currentLevelId: null },
+                            { currentLevelId: { $exists: false } }
+                          ]
+                        }
+                      ],
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+                  : {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      currentLevelId: lvl._id,
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+              );
+            } else {
+              count = await Student.countDocuments({
+                subDepartmentId: subDepartment._id,
+                currentLevelId: lvl._id,
+                isFTP: { $ne: true },
+                isUIUX: { $ne: true },
+                ...activeStatusFilter
+              });
+            }
             return {
               levelId: lvl._id,
               levelName: lvl.name,
@@ -154,12 +183,41 @@ exports.getSubDepartmentsByDepartment = async (req, res) => {
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
-            const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
-            const count = await Student.countDocuments(
-              isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-            );
+            let count = 0;
+            if (isUiUx) {
+              const isUiUxSubLevel1A = String(slvl.name).trim().toUpperCase() === "1A";
+              count = await Student.countDocuments(
+                isUiUxSubLevel1A
+                  ? {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      $and: [
+                        {
+                          $or: [
+                            { currentSubLevelId: slvl._id },
+                            { currentSubLevelId: null },
+                            { currentSubLevelId: { $exists: false } }
+                          ]
+                        }
+                      ],
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+                  : {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      currentSubLevelId: slvl._id,
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+              );
+            } else {
+              count = await Student.countDocuments({
+                subDepartmentId: subDepartment._id,
+                currentSubLevelId: slvl._id,
+                isFTP: { $ne: true },
+                isUIUX: { $ne: true },
+                ...activeStatusFilter
+              });
+            }
             return {
               subLevelId: slvl._id,
               subLevelName: slvl.name,
@@ -263,12 +321,41 @@ exports.getAllSubDepartments = async (req, res) => {
         const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
         const levelCounts = await Promise.all(
           levels.map(async (lvl) => {
-            const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
-            const count = await Student.countDocuments(
-              isUiUxLevel1
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-            );
+            let count = 0;
+            if (isUiUx) {
+              const isUiUxLevel1 = lvl.order === 1 || String(lvl.name).includes("1");
+              count = await Student.countDocuments(
+                isUiUxLevel1
+                  ? {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      $and: [
+                        {
+                          $or: [
+                            { currentLevelId: lvl._id },
+                            { currentLevelId: null },
+                            { currentLevelId: { $exists: false } }
+                          ]
+                        }
+                      ],
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+                  : {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      currentLevelId: lvl._id,
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+              );
+            } else {
+              count = await Student.countDocuments({
+                subDepartmentId: subDepartment._id,
+                currentLevelId: lvl._id,
+                isFTP: { $ne: true },
+                isUIUX: { $ne: true },
+                ...activeStatusFilter
+              });
+            }
             return {
               levelId: lvl._id,
               levelName: lvl.name,
@@ -287,12 +374,41 @@ exports.getAllSubDepartments = async (req, res) => {
 
         const subLevelCounts = await Promise.all(
           subLevels.map(async (slvl) => {
-            const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
-            const count = await Student.countDocuments(
-              isUiUxSubLevel1A
-                ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-                : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-            );
+            let count = 0;
+            if (isUiUx) {
+              const isUiUxSubLevel1A = String(slvl.name).trim().toUpperCase() === "1A";
+              count = await Student.countDocuments(
+                isUiUxSubLevel1A
+                  ? {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      $and: [
+                        {
+                          $or: [
+                            { currentSubLevelId: slvl._id },
+                            { currentSubLevelId: null },
+                            { currentSubLevelId: { $exists: false } }
+                          ]
+                        }
+                      ],
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+                  : {
+                      $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                      currentSubLevelId: slvl._id,
+                      isFTP: { $ne: true },
+                      ...activeStatusFilter
+                    }
+              );
+            } else {
+              count = await Student.countDocuments({
+                subDepartmentId: subDepartment._id,
+                currentSubLevelId: slvl._id,
+                isFTP: { $ne: true },
+                isUIUX: { $ne: true },
+                ...activeStatusFilter
+              });
+            }
             return {
               subLevelId: slvl._id,
               subLevelName: slvl.name,
@@ -406,12 +522,41 @@ exports.getSubDepartmentById = async (req, res) => {
     const levels = allLevels.filter(lvl => String(lvl.name).trim().toUpperCase() !== "FTP");
     const levelCounts = await Promise.all(
       levels.map(async (lvl) => {
-        const isUiUxLevel1 = isUiUx && (lvl.order === 1 || String(lvl.name).includes("1"));
-        const count = await Student.countDocuments(
-          isUiUxLevel1
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentLevelId: lvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-            : { subDepartmentId: subDepartment._id, currentLevelId: lvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-        );
+        let count = 0;
+        if (isUiUx) {
+          const isUiUxLevel1 = lvl.order === 1 || String(lvl.name).includes("1");
+          count = await Student.countDocuments(
+            isUiUxLevel1
+              ? {
+                  $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                  $and: [
+                    {
+                      $or: [
+                        { currentLevelId: lvl._id },
+                        { currentLevelId: null },
+                        { currentLevelId: { $exists: false } }
+                      ]
+                    }
+                  ],
+                  isFTP: { $ne: true },
+                  ...activeStatusFilter
+                }
+              : {
+                  $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                  currentLevelId: lvl._id,
+                  isFTP: { $ne: true },
+                  ...activeStatusFilter
+                }
+          );
+        } else {
+          count = await Student.countDocuments({
+            subDepartmentId: subDepartment._id,
+            currentLevelId: lvl._id,
+            isFTP: { $ne: true },
+            isUIUX: { $ne: true },
+            ...activeStatusFilter
+          });
+        }
         return {
           levelId: lvl._id,
           levelName: lvl.name,
@@ -430,12 +575,41 @@ exports.getSubDepartmentById = async (req, res) => {
 
     const subLevelCounts = await Promise.all(
       subLevels.map(async (slvl) => {
-        const isUiUxSubLevel1A = isUiUx && String(slvl.name).trim().toUpperCase() === "1A";
-        const count = await Student.countDocuments(
-          isUiUxSubLevel1A
-            ? { $or: [{ subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id }, { isUIUX: true }], isFTP: { $ne: true }, ...activeStatusFilter }
-            : { subDepartmentId: subDepartment._id, currentSubLevelId: slvl._id, isFTP: { $ne: true }, ...(isUiUx ? {} : { isUIUX: { $ne: true } }), ...activeStatusFilter }
-        );
+        let count = 0;
+        if (isUiUx) {
+          const isUiUxSubLevel1A = String(slvl.name).trim().toUpperCase() === "1A";
+          count = await Student.countDocuments(
+            isUiUxSubLevel1A
+              ? {
+                  $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                  $and: [
+                    {
+                      $or: [
+                        { currentSubLevelId: slvl._id },
+                        { currentSubLevelId: null },
+                        { currentSubLevelId: { $exists: false } }
+                      ]
+                    }
+                  ],
+                  isFTP: { $ne: true },
+                  ...activeStatusFilter
+                }
+              : {
+                  $or: [{ subDepartmentId: subDepartment._id }, { isUIUX: true }],
+                  currentSubLevelId: slvl._id,
+                  isFTP: { $ne: true },
+                  ...activeStatusFilter
+                }
+          );
+        } else {
+          count = await Student.countDocuments({
+            subDepartmentId: subDepartment._id,
+            currentSubLevelId: slvl._id,
+            isFTP: { $ne: true },
+            isUIUX: { $ne: true },
+            ...activeStatusFilter
+          });
+        }
         return {
           subLevelId: slvl._id,
           subLevelName: slvl.name,

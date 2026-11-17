@@ -122,7 +122,7 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
         : courseUpper;
 
     const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.fullName || "—";
-    const levelName = s.currentSubLevelId?.name || s.currentLevelId?.name || "—";
+    const levelName = s.currentSubLevelId?.name || s.currentLevelId?.name || (s.isUIUX ? "1A" : "—");
     const domain = s.ftpDomain || s.domain || (s.track && s.track !== "Technology Not Updated" ? s.track : "—");
     const motherName = s.motherName || s.mother_name || s.mother || "";
     const email = s.email || s.studentEmail || s.emailId || s.email_id || "";
@@ -239,7 +239,7 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
       !courseUpper.includes("DIPLOMA")
         ? `${courseUpper} (+ITEG)`
         : courseUpper;
-    const yearLevel = `${s.year || "1st Year"} / ${s.currentSubLevelId?.name || s.currentLevelId?.name || "—"}`;
+    const yearLevel = `${s.year || "1st Year"} / ${s.currentSubLevelId?.name || s.currentLevelId?.name || (s.isUIUX ? "1A" : "—")}`;
     const domainText = s.ftpDomain || s.domain || (s.track && s.track !== "Technology Not Updated" ? s.track : "—");
     const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.fullName || "—";
     const motherName = s.motherName || s.mother_name || s.mother || "";

@@ -871,7 +871,39 @@ const LevelHistoryItem = ({ item, student, idx }) => {
 
 // Level History Drawer for Admin/Faculty
 const LevelHistoryDrawer = ({ isOpen, onClose, levelHistory = [], student }) => {
-    const history = levelHistory || [];
+    // Defensive deduplication & ghost cleanup on frontend: filter out any duplicate or 0-task completed ghost levels
+    const history = useMemo(() => {
+        if (!Array.isArray(levelHistory) || levelHistory.length === 0) return [];
+        const seenNames = new Map();
+        levelHistory.forEach(item => {
+            const name = (item.subLevelId?.name || "").trim().toUpperCase();
+            const levelName = (item.levelId?.name || "").trim().toUpperCase();
+            const key = (levelName && name) ? `${levelName}__${name}` : (name || item.subLevelId?._id || item._id);
+
+            if (!seenNames.has(key)) {
+                seenNames.set(key, item);
+            } else {
+                const existing = seenNames.get(key);
+                const isCur = item.status === "in_progress" || item.isCurrent;
+                const existingIsCur = existing.status === "in_progress" || existing.isCurrent;
+                const taskCount = item.totalTasks || 0;
+                const existingTaskCount = existing.totalTasks || 0;
+
+                if (isCur || (!existingIsCur && taskCount > existingTaskCount)) {
+                    seenNames.set(key, item);
+                }
+            }
+        });
+
+        return Array.from(seenNames.values()).filter(item => {
+            if (item.status === "in_progress" || item.isCurrent) return true;
+            if ((item.totalTasks || 0) > 0 || (item.totalTopicsCount || 0) > 0) return true;
+            if (item.status === "completed" && (item.completedTasksCount || 0) > 0) return true;
+            // Drop empty 0-task ghost completed levels
+            return false;
+        });
+    }, [levelHistory]);
+
     const completedLevels = history.filter(h => h.status === "completed").length;
 
     return (

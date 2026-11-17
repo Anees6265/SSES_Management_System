@@ -1,6 +1,7 @@
 const Student = require("../../models/student/Student");
 const StudentTask = require("../../models/syllabus/StudentTask");
 const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
+const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
 const StudentTaskHistory = require("../../models/student/StudentTaskHistory");
 const StudentEventLog = require("../../models/student/StudentEventLog");
 const SubDepartment = require("../../models/department/SubDepartment");
@@ -1040,7 +1041,13 @@ exports.getAllStudents = async (req, res) => {
       } catch (_) {}
 
       if (isUiUx1A) {
-        andConditions.push({ $or: [{ currentSubLevelId }, { isUIUX: true }] });
+        andConditions.push({
+          $or: [
+            { currentSubLevelId },
+            { isUIUX: true, currentSubLevelId: null },
+            { isUIUX: true, currentSubLevelId: { $exists: false } }
+          ]
+        });
       } else if (Array.isArray(currentSubLevelId)) {
         const validIds = currentSubLevelId.filter(id => mongoose.Types.ObjectId.isValid(id));
         if (validIds.length > 0) andConditions.push({ currentSubLevelId: { $in: validIds } });
@@ -1274,9 +1281,10 @@ exports.updateStudent = async (req, res) => {
               updateData.currentLevelId = uiuxLevel1._id;
               updateData.currentSubLevelId = uiuxSubLevel1A._id;
 
-              // 3. Remove all previously assigned tasks & snapshots
+              // 3. Remove all previously assigned tasks, snapshots & level progress
               await StudentTask.deleteMany({ studentId: existingStudent._id });
               await StudentProgressSnapshot.deleteMany({ studentId: existingStudent._id });
+              await StudentLevelProgress.deleteMany({ studentId: existingStudent._id });
 
               // 4. Find active SyllabusVersion for UI/UX SubLevel 1A matching student's session
               let uiuxSyllabus = await SyllabusVersion.findOne({
@@ -1323,6 +1331,7 @@ exports.updateStudent = async (req, res) => {
                 subLevelId: uiuxSubLevel1A._id
               });
             }
+            await StudentLevelProgress.deleteMany({ studentId: existingStudent._id });
           }
         }
 
@@ -3483,7 +3492,13 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
 
     const students = await Student.find({
       ...(isUiUx1A
-        ? { $or: [{ currentSubLevelId: subLevelId }, { isUIUX: true }] }
+        ? {
+            $or: [
+              { currentSubLevelId: subLevelId },
+              { isUIUX: true, currentSubLevelId: null },
+              { isUIUX: true, currentSubLevelId: { $exists: false } }
+            ]
+          }
         : { currentSubLevelId: subLevelId }),
       status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] },
     })

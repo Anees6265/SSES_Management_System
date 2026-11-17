@@ -68,12 +68,27 @@ exports.getSubLevelsByLevel = async (req, res) => {
 
     const data = [];
     for (const subLevel of subLevels) {
-      const isUiUx1A = isUiUx && String(subLevel.name).trim().toUpperCase() === "1A";
-      const studentCount = await Student.countDocuments(
-        isUiUx1A
-          ? { $or: [{ currentSubLevelId: subLevel._id }, { isUIUX: true }], status: 'Active' }
-          : { currentSubLevelId: subLevel._id, status: 'Active' }
-      );
+      let studentCount = 0;
+      if (isUiUx) {
+        const isUiUx1A = String(subLevel.name).trim().toUpperCase() === "1A";
+        studentCount = await Student.countDocuments(
+          isUiUx1A
+            ? {
+                $or: [
+                  { currentSubLevelId: subLevel._id },
+                  { isUIUX: true, currentSubLevelId: null },
+                  { isUIUX: true, currentSubLevelId: { $exists: false } }
+                ],
+                status: 'Active'
+              }
+            : { currentSubLevelId: subLevel._id, status: 'Active' }
+        );
+      } else {
+        studentCount = await Student.countDocuments({
+          currentSubLevelId: subLevel._id,
+          status: 'Active'
+        });
+      }
       const syllabus = await SyllabusVersion.findOne({ subLevelId: subLevel._id, isActive: true }).sort({ versionNumber: -1 });
       const subjects = syllabus ? syllabus.subjects.map(s => s.name) : [];
       data.push({

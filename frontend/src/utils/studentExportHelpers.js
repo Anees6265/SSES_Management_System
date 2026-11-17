@@ -124,12 +124,15 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
     const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.fullName || "—";
     const levelName = s.currentSubLevelId?.name || s.currentLevelId?.name || "—";
     const domain = s.ftpDomain || s.domain || (s.track && s.track !== "Technology Not Updated" ? s.track : "—");
+    const motherName = s.motherName || s.mother_name || s.mother || "";
+    const email = s.email || s.studentEmail || s.emailId || s.email_id || "";
 
     return {
       "S.No.": idx + 1,
       "Student Name": fullName,
       "Father's Name": safeStr(s.fatherName),
-      "Mother's Name": safeStr(s.motherName),
+      "Mother's Name": safeStr(motherName),
+      "Email ID": safeStr(email),
       "Mobile": safeStr(s.studentMobile),
       "Course": safeStr(courseWithIteg),
       "Year": safeStr(s.year, "1st Year"),
@@ -150,6 +153,8 @@ export const exportStudentsToExcel = (students = [], options = {}) => {
     { wch: 7 },  // S.No.
     { wch: 24 }, // Student Name
     { wch: 22 }, // Father's Name
+    { wch: 22 }, // Mother's Name
+    { wch: 28 }, // Email ID
     { wch: 15 }, // Mobile
     { wch: 18 }, // Course
     { wch: 12 }, // Year
@@ -213,6 +218,8 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
       "S.No.",
       "Student Name",
       "Father's Name",
+      "Mother's Name",
+      "Email ID",
       "Mobile",
       "Course",
       "Year / Level",
@@ -235,11 +242,15 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
     const yearLevel = `${s.year || "1st Year"} / ${s.currentSubLevelId?.name || s.currentLevelId?.name || "—"}`;
     const domainText = s.ftpDomain || s.domain || (s.track && s.track !== "Technology Not Updated" ? s.track : "—");
     const fullName = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.fullName || "—";
+    const motherName = s.motherName || s.mother_name || s.mother || "";
+    const email = s.email || s.studentEmail || s.emailId || s.email_id || "";
 
     return [
       idx + 1,
       fullName,
       safeStr(s.fatherName),
+      safeStr(motherName),
+      safeStr(email),
       safeStr(s.studentMobile),
       safeStr(courseText),
       yearLevel,
@@ -257,7 +268,7 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
     margin: { left: 10, right: 10, bottom: 12 },
     theme: "striped",
     styles: {
-      fontSize: 8,
+      fontSize: 7.5,
       cellPadding: 2,
       overflow: "linebreak",
       valign: "middle",
@@ -269,16 +280,18 @@ export const exportStudentsToPDF = (students = [], options = {}) => {
       halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: "center" }, // S.No.
-      1: { cellWidth: 44 }, // Name
-      2: { cellWidth: 34 }, // Father
-      3: { cellWidth: 26, halign: "center" }, // Mobile
-      4: { cellWidth: 28 }, // Course
-      5: { cellWidth: 28, halign: "center" }, // Year/Level
-      6: { cellWidth: 22, halign: "center" }, // Status
-      7: { cellWidth: 16, halign: "center" }, // FTP
-      8: { cellWidth: 38 }, // Domain
-      9: { cellWidth: 30, halign: "center" }, // Session
+      0: { cellWidth: 10, halign: "center" }, // S.No.
+      1: { cellWidth: 32 }, // Student Name
+      2: { cellWidth: 24 }, // Father's Name
+      3: { cellWidth: 24 }, // Mother's Name
+      4: { cellWidth: 38 }, // Email ID
+      5: { cellWidth: 22, halign: "center" }, // Mobile
+      6: { cellWidth: 22 }, // Course
+      7: { cellWidth: 24, halign: "center" }, // Year/Level
+      8: { cellWidth: 18, halign: "center" }, // Status
+      9: { cellWidth: 14, halign: "center" }, // FTP
+      10: { cellWidth: 28 }, // Domain
+      11: { cellWidth: 21, halign: "center" }, // Session
     },
     alternateRowStyles: {
       fillColor: [255, 248, 243], // Very subtle orange-tint background
@@ -322,6 +335,18 @@ const extractCellValue = (row, col) => {
     if (row.firstName || row.lastName) return `${row.firstName || ""} ${row.lastName || ""}`.trim();
     if (row.raw?.firstName || row.raw?.lastName) return `${row.raw.firstName || ""} ${row.raw.lastName || ""}`.trim();
     if (row.student?.firstName || row.student?.lastName) return `${row.student.firstName || ""} ${row.student.lastName || ""}`.trim();
+  }
+
+  // Mother name extraction
+  if (key === "motherName" || key === "mother") {
+    const mVal = val || row.motherName || row.mother_name || row.raw?.motherName || row.raw?.mother_name || row.student?.motherName;
+    if (mVal) return String(mVal).trim();
+  }
+
+  // Email extraction
+  if (key === "email" || key === "emailId" || key === "studentEmail") {
+    const eVal = val || row.email || row.studentEmail || row.emailId || row.raw?.email || row.raw?.studentEmail || row.student?.email;
+    if (eVal) return String(eVal).trim();
   }
 
   // Department name extraction

@@ -288,6 +288,8 @@ const StudentDetailTable = () => {
         s.enrollmentNo?.toLowerCase().includes(searchLower) ||
         s.ftpDomain?.toLowerCase().includes(searchLower) ||
         s.studentMobile?.includes(searchTerm) ||
+        s.motherName?.toLowerCase().includes(searchLower) ||
+        s.email?.toLowerCase().includes(searchLower) ||
         s.district?.toLowerCase().includes(searchLower);
       return matchTab && matchDomain && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
@@ -591,6 +593,11 @@ const StudentDetailTable = () => {
                 </span>
               )}
             </div>
+            {row.email && (
+              <p className="text-[11px] text-gray-400 font-normal truncate max-w-[200px]" title={row.email}>
+                {row.email}
+              </p>
+            )}
           </div>
         </div>
       ),
@@ -600,6 +607,12 @@ const StudentDetailTable = () => {
       label: "Father's Name",
       accessorFn: (row) => row.fatherName || "",
       render: (row) => toTitle(row.fatherName || ""),
+    },
+    {
+      key: "motherName",
+      label: "Mother's Name",
+      accessorFn: (row) => row.motherName || "",
+      render: (row) => toTitle(row.motherName || "—"),
     },
     {
       key: "studentMobile",
@@ -1090,6 +1103,24 @@ const StudentDetailTable = () => {
                         <span className="text-gray-400 font-medium">Father's Name:</span>
                         <span className="font-semibold text-gray-700 truncate">
                           {toTitle(row.fatherName)}
+                        </span>
+                      </div>
+                    )}
+
+                    {row.motherName && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-gray-400 font-medium">Mother's Name:</span>
+                        <span className="font-semibold text-gray-700 truncate">
+                          {toTitle(row.motherName)}
+                        </span>
+                      </div>
+                    )}
+
+                    {row.email && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-gray-400 font-medium">Email:</span>
+                        <span className="font-semibold text-gray-700 truncate" title={row.email}>
+                          {row.email}
                         </span>
                       </div>
                     )}

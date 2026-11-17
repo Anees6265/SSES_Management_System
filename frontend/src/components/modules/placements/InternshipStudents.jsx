@@ -749,18 +749,20 @@ const InternshipStudents = () => {
               <div className="hidden md:block bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="py-3.5 px-4 text-left">Student</th>
-                        <th className="py-3.5 px-4 text-left">Company & Role</th>
-                        <th className="py-3.5 px-4 text-center">Location</th>
-                        <th className="py-3.5 px-4 text-center">Type & Stipend</th>
-                        <th className="py-3.5 px-4 text-center">Start Date</th>
-                        <th className="py-3.5 px-6 text-center">Actions</th>
+                    <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <tr>
+                        <th className="py-4 px-3 text-center w-14">S.No.</th>
+                        <th className="py-4 px-4 text-left">Student</th>
+                        <th className="py-4 px-4 text-left">Academic Level</th>
+                        <th className="py-4 px-4 text-left">Company & Role</th>
+                        <th className="py-4 px-4 text-left">Location</th>
+                        <th className="py-4 px-4 text-left">Type & Stipend</th>
+                        <th className="py-4 px-4 text-left">Start Date</th>
+                        <th className="py-4 px-6 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
-                      {paginatedStudents.map((student) => {
+                      {paginatedStudents.map((student, idx) => {
                         const details = student.internshipDetails || {};
                         const fromLevelName =
                           student.internshipFromLevelId?.name ||
@@ -781,11 +783,16 @@ const InternshipStudents = () => {
                         return (
                           <tr
                             key={student._id}
-                            className="hover:bg-slate-50/60 transition group cursor-pointer"
+                            className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors group cursor-pointer"
                             onClick={() => setQuickViewCandidate(student)}
                           >
+                            {/* S.No. */}
+                            <td className="py-4 px-3 text-center align-middle font-semibold text-slate-500 text-xs">
+                              {(currentPage - 1) * pageSize + idx + 1}
+                            </td>
+
                             {/* Student */}
-                            <td className="py-3.5 px-4 text-left align-middle">
+                            <td className="py-4 px-4 text-left align-middle">
                               <div className="flex items-center gap-3">
                                 <Avatar
                                   firstName={student.firstName}
@@ -799,19 +806,34 @@ const InternshipStudents = () => {
                                       e.stopPropagation();
                                       navigate(`/student-profile/${student._id}`);
                                     }}
-                                    className="font-bold text-slate-900 hover:text-orange-600 truncate transition"
+                                    className="font-bold text-slate-900 hover:text-orange-600 truncate transition text-xs"
                                   >
                                     {student.firstName} {student.lastName}
                                   </p>
-                                  <p className="text-[11px] text-slate-400 font-medium truncate">
-                                    {levelDisplay ? `${levelDisplay} • ` : ""}{student.course || "—"}
-                                  </p>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
+                                      {student.course || "—"}
+                                    </span>
+                                    {student.studentMobile && (
+                                      <span className="text-[10px] text-slate-400 font-normal">
+                                        • {student.studentMobile}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </td>
 
+                            {/* Academic Level */}
+                            <td className="py-4 px-4 text-left align-middle">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 shadow-2xs whitespace-nowrap">
+                                <MdUndo size={12} className="text-indigo-500" />
+                                {levelDisplay || "—"}
+                              </span>
+                            </td>
+
                             {/* Company & Role */}
-                            <td className="py-3.5 px-4 text-left align-middle">
+                            <td className="py-4 px-4 text-left align-middle">
                               <div className="flex items-center gap-2.5">
                                 <CompanyLogo companyName={details.companyName} size="w-8 h-8" />
                                 <div className="min-w-0">
@@ -826,23 +848,23 @@ const InternshipStudents = () => {
                             </td>
 
                             {/* Location */}
-                            <td className="py-3.5 px-4 text-center align-middle">
-                              <div className="flex items-center justify-center gap-1 text-slate-600 font-medium">
+                            <td className="py-4 px-4 text-left align-middle">
+                              <div className="flex items-center gap-1 text-slate-600 font-medium text-xs">
                                 <MdLocationOn size={14} className="text-slate-400 shrink-0" />
                                 <span className="truncate max-w-[130px]">{details.location || "—"}</span>
                               </div>
                             </td>
 
                             {/* Type & Stipend */}
-                            <td className="py-3.5 px-4 text-center align-middle">
-                              <div className="flex items-center justify-center">
+                            <td className="py-4 px-4 text-left align-middle">
+                              <div className="flex items-center">
                                 {details.internshipType === "Paid" ? (
-                                  <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                                  <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     Paid {details.stipend ? `• ${details.stipend}` : ""}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+                                  <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[11px] shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                                     Unpaid
                                   </span>
@@ -851,8 +873,8 @@ const InternshipStudents = () => {
                             </td>
 
                             {/* Start Date */}
-                            <td className="py-3.5 px-4 text-center text-slate-500 text-[11px] align-middle">
-                              <div className="flex items-center justify-center gap-1">
+                            <td className="py-4 px-4 text-left text-slate-500 text-[11px] align-middle font-medium">
+                              <div className="flex items-center gap-1">
                                 {details.startDate ? (
                                   <>
                                     <MdCalendarToday size={12} className="text-slate-400 shrink-0" />
@@ -871,15 +893,15 @@ const InternshipStudents = () => {
                             </td>
 
                             {/* Actions */}
-                            <td className="py-3.5 px-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                              <div className="inline-flex items-center gap-1.5 justify-center">
+                            <td className="py-4 px-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-2 justify-center">
                                 {/* Shift to Placed */}
                                 <button
                                   onClick={() => {
                                     setSelectedForPlacement(student);
                                     setIsConfirmModalOpen(true);
                                   }}
-                                  className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-[11px] shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-2xs transition flex items-center gap-1 cursor-pointer active:scale-95"
                                   title="Shift to Permanent Placement"
                                 >
                                   <MdCheckCircle size={14} />
@@ -889,7 +911,7 @@ const InternshipStudents = () => {
                                 {/* Revert to Level */}
                                 <button
                                   onClick={() => setStudentToRevert(student)}
-                                  className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                                  className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs transition flex items-center gap-1 cursor-pointer active:scale-95"
                                   title={`Shift back to ${fromLevelName}`}
                                 >
                                   <MdUndo size={14} />
@@ -899,10 +921,10 @@ const InternshipStudents = () => {
                                 {/* View Profile */}
                                 <button
                                   onClick={() => navigate(`/student-profile/${student._id}`)}
-                                  className="p-1.5 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+                                  className="p-1.5 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer active:scale-95"
                                   title="View Profile"
                                 >
-                                  <MdVisibility size={15} />
+                                  <MdVisibility size={16} />
                                 </button>
                               </div>
                             </td>

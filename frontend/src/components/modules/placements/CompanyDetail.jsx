@@ -50,11 +50,10 @@ const CompanyStatCard = ({ title, count, subtitle, icon: Icon, isActive, onClick
   return (
     <div
       onClick={onClick}
-      className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between shadow-2xs relative overflow-hidden group ${
-        isActive
+      className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between shadow-2xs relative overflow-hidden group ${isActive
           ? "bg-white border-orange-500 ring-2 ring-orange-500/10 shadow-sm"
           : "bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
-      }`}
+        }`}
     >
       {isActive && (
         <span className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
@@ -336,7 +335,7 @@ const CompanyDetail = () => {
       />
 
       <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
-        
+
         {/* ── 1. Top Metrics Cards (5 Cards) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <CompanyStatCard
@@ -386,7 +385,7 @@ const CompanyDetail = () => {
 
         {/* ── 2. Navigation Tabs & Filter Bar ── */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3.5">
-          
+
           {/* Top Row: Status Tabs & Add Company Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1">
@@ -397,25 +396,23 @@ const CompanyDetail = () => {
                   tab.id === "All"
                     ? companies.length
                     : tab.id === "Active"
-                    ? activeCount
-                    : inactiveCount;
+                      ? activeCount
+                      : inactiveCount;
 
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 ${
-                      isCurrent
+                    className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 ${isCurrent
                         ? "bg-orange-500 text-white shadow-xs"
                         : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
-                    }`}
+                      }`}
                   >
                     <Icon size={15} />
                     <span>{tab.label}</span>
                     <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                        isCurrent ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                      }`}
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${isCurrent ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                        }`}
                     >
                       {count}
                     </span>
@@ -437,7 +434,7 @@ const CompanyDetail = () => {
 
           {/* Bottom Row: Search & Multi-Dropdown Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            
+
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
               <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -461,7 +458,7 @@ const CompanyDetail = () => {
 
             {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2.5">
-              
+
               {/* Industry Dropdown */}
               <div className="w-40 sm:w-44">
                 <SelectDropdown
@@ -553,20 +550,18 @@ const CompanyDetail = () => {
                         {/* Status Toggle & Badge */}
                         <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <span
-                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
-                              isActive
+                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${isActive
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : "bg-slate-100 text-slate-600 border-slate-200"
-                            }`}
+                              }`}
                           >
                             {company.status || "Active"}
                           </span>
                           {isAuthorizedToManage && (
                             <button
                               onClick={() => handleToggleStatus(company)}
-                              className={`transition cursor-pointer ${
-                                isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
-                              }`}
+                              className={`transition cursor-pointer ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
+                                }`}
                               title={isActive ? "Deactivate company" : "Activate company"}
                             >
                               {isActive ? <MdToggleOn size={24} /> : <MdToggleOff size={24} />}
@@ -637,7 +632,7 @@ const CompanyDetail = () => {
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       <th className="py-4 px-5">COMPANY PROFILE</th>
-                      <th className="py-4 px-5">HR / LIAISON CONTACT</th>
+                      <th className="py-4 px-5">HR CONTACT</th>
                       <th className="py-4 px-4">LOCATION</th>
                       <th className="py-4 px-4">STATUS</th>
                       <th className="py-4 px-5 text-right">ACTION</th>
@@ -703,11 +698,10 @@ const CompanyDetail = () => {
                           <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-2">
                               <span
-                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 ${
-                                  isActive
+                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 ${isActive
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : "bg-slate-100 text-slate-600 border-slate-200"
-                                }`}
+                                  }`}
                               >
                                 <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-slate-400"}`} />
                                 {company.status || "Active"}
@@ -716,9 +710,8 @@ const CompanyDetail = () => {
                               {isAuthorizedToManage && (
                                 <button
                                   onClick={() => handleToggleStatus(company)}
-                                  className={`transition cursor-pointer ${
-                                    isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
-                                  }`}
+                                  className={`transition cursor-pointer ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
+                                    }`}
                                   title={isActive ? "Mark company as Inactive" : "Mark company as Active"}
                                 >
                                   {isActive ? <MdToggleOn size={24} /> : <MdToggleOff size={24} />}

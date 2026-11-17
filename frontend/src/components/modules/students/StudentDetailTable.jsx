@@ -37,7 +37,7 @@ const getStoredProgressFilters = (subDeptId) => {
   try {
     const raw = sessionStorage.getItem(`student_progress_filters_${subDeptId || "all"}`);
     if (raw) return JSON.parse(raw);
-  } catch (_) {}
+  } catch (_) { }
   return null;
 };
 
@@ -217,7 +217,7 @@ const StudentDetailTable = () => {
     // Collect other departments' domains so we strictly exclude cross-department leakage
     const otherDeptDomains = new Set(
       Object.entries(FTP_DOMAINS_BY_DEPARTMENT)
-        .filter(([key]) => key !== currentDeptKey && !( (key === "ITEG" && currentDeptKey === "BTECH") || (key === "BTECH" && currentDeptKey === "ITEG") ))
+        .filter(([key]) => key !== currentDeptKey && !((key === "ITEG" && currentDeptKey === "BTECH") || (key === "BTECH" && currentDeptKey === "ITEG")))
         .flatMap(([, domains]) => domains)
     );
 
@@ -330,7 +330,7 @@ const StudentDetailTable = () => {
         `student_progress_filters_${subDepartmentId || "all"}`,
         JSON.stringify(dataToSave)
       );
-    } catch (_) {}
+    } catch (_) { }
   }, [
     subDepartmentId,
     activeTab,
@@ -391,7 +391,7 @@ const StudentDetailTable = () => {
     setMobilePage(1);
     try {
       sessionStorage.removeItem(`student_progress_filters_${subDepartmentId || "all"}`);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const activeChips = useMemo(() => {
@@ -577,7 +577,7 @@ const StudentDetailTable = () => {
       render: (row) => (
         <div className="flex items-center gap-3">
           <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} />
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-medium text-gray-800">{toTitle(row.fullName || `${row.firstName} ${row.lastName}`)}</p>
               {row.isUIUX && (
@@ -591,11 +591,6 @@ const StudentDetailTable = () => {
                 </span>
               )}
             </div>
-            {row.email && (
-              <p className="text-[11px] text-gray-400 font-normal truncate max-w-[200px]" title={row.email}>
-                {row.email}
-              </p>
-            )}
           </div>
         </div>
       ),
@@ -604,7 +599,7 @@ const StudentDetailTable = () => {
       key: "fatherName",
       label: "Father's Name",
       accessorFn: (row) => row.fatherName || "",
-      render: (row) => toTitle(row.fatherName || ""),
+      render: (row) => toTitle(row.fatherName || "—"),
     },
     {
       key: "motherName",
@@ -615,8 +610,8 @@ const StudentDetailTable = () => {
     {
       key: "studentMobile",
       label: "Mobile",
-      align: "center",
-      accessorFn: (row) => String(row.studentMobile || "")
+      accessorFn: (row) => String(row.studentMobile || ""),
+      render: (row) => row.studentMobile || "—",
     },
     {
       key: "course",
@@ -639,7 +634,6 @@ const StudentDetailTable = () => {
     {
       key: "level",
       label: "Year & Level",
-      align: "center",
       accessorFn: (row) => `${row.year || "1st Year"} / ${row.currentSubLevelId?.name || row.currentLevelId?.name || (row.isUIUX ? "1A" : "—")}`,
       render: (row) => {
         const year = row.year || "1st Year";
@@ -650,17 +644,6 @@ const StudentDetailTable = () => {
           </span>
         );
       },
-    },
-    {
-      key: "status",
-      label: "Status",
-      align: "center",
-      accessorFn: (row) => row.status || "",
-      render: (row) => (
-        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[row.status] || "bg-gray-100 text-gray-600"}`}>
-          {row.status}
-        </span>
-      ),
     },
   ];
 
@@ -708,14 +691,14 @@ const StudentDetailTable = () => {
                 setSearchParams({ tab });
               }}
               className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors cursor-pointer flex items-center shrink-0 ${activeTab === tab
-                  ? "border-orange-500 text-orange-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-orange-500 text-orange-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
             >
               <span>{tab}</span>
               <span className={`ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === tab
-                  ? "bg-orange-100 text-orange-700"
-                  : "bg-gray-100 text-gray-500"
+                ? "bg-orange-100 text-orange-700"
+                : "bg-gray-100 text-gray-500"
                 }`}>
                 {tabCount}
               </span>
@@ -756,8 +739,8 @@ const StudentDetailTable = () => {
                 type="button"
                 onClick={() => setShowMobileFilters((prev) => !prev)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${showMobileFilters || activeFilterCount > 0
-                    ? "bg-orange-50 border-orange-200 text-orange-600"
-                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                  ? "bg-orange-50 border-orange-200 text-orange-600"
+                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                   }`}
               >
                 <Filter size={14} />
@@ -922,10 +905,10 @@ const StudentDetailTable = () => {
               activeTab === "All"
                 ? "No data found"
                 : activeTab === "FTP Students"
-                ? "No FTP students found"
-                : activeTab === "Others"
-                ? "No students in Others tab"
-                : `No students in the sub level ${activeTab}`
+                  ? "No FTP students found"
+                  : activeTab === "Others"
+                    ? "No students in Others tab"
+                    : `No students in the sub level ${activeTab}`
             }
             filtersConfig={[
               {
@@ -954,13 +937,13 @@ const StudentDetailTable = () => {
               },
               ...(((activeTab === "FTP Students" || (isUiUxPage && (activeTab === "2A" || activeTab.includes("2A")))) && availableDomains.length > 0)
                 ? [
-                    {
-                      title: "Domain",
-                      options: availableDomains,
-                      selected: selectedDomain === "All" ? [] : [selectedDomain],
-                      setter: (vals) => setSelectedDomain(vals.length > 0 ? vals[0] : "All"),
-                    },
-                  ]
+                  {
+                    title: "Domain",
+                    options: availableDomains,
+                    selected: selectedDomain === "All" ? [] : [selectedDomain],
+                    setter: (vals) => setSelectedDomain(vals.length > 0 ? vals[0] : "All"),
+                  },
+                ]
                 : []),
             ]}
             extraColumn={{
@@ -987,8 +970,8 @@ const StudentDetailTable = () => {
                       });
                     }}
                     className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${isInactive
-                        ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                        : "border-orange-200 bg-orange-50 text-orange-500 hover:bg-orange-100 cursor-pointer"
+                      ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                      : "border-orange-200 bg-orange-50 text-orange-500 hover:bg-orange-100 cursor-pointer"
                       }`}
                     title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                   >
@@ -1009,19 +992,19 @@ const StudentDetailTable = () => {
                 activeTab === "All"
                   ? "No Students Found"
                   : activeTab === "FTP Students"
-                  ? "No FTP Students Found"
-                  : activeTab === "Others"
-                  ? "No Students in Others"
-                  : `No Students in Sub-Level ${activeTab}`
+                    ? "No FTP Students Found"
+                    : activeTab === "Others"
+                      ? "No Students in Others"
+                      : `No Students in Sub-Level ${activeTab}`
               }
               subtitle={
                 searchTerm
                   ? `No students matched "${searchTerm}". Try checking your spelling or reset filters.`
                   : activeTab === "FTP Students"
-                  ? "No students have been marked as FTP yet in this department."
-                  : activeTab === "Others"
-                  ? "No students have been marked as UI/UX yet."
-                  : "Try adjusting your search terms, session, or status filters to view records."
+                    ? "No students have been marked as FTP yet in this department."
+                    : activeTab === "Others"
+                      ? "No students have been marked as UI/UX yet."
+                      : "Try adjusting your search terms, session, or status filters to view records."
               }
               actionText={hasActiveFilters ? "Reset All Filters" : undefined}
               onAction={hasActiveFilters ? handleResetFilters : undefined}
@@ -1160,8 +1143,8 @@ const StudentDetailTable = () => {
                             });
                           }}
                           className={`flex-1 min-h-[42px] inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition shadow-2xs ${isInactive
-                              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
-                              : "border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95 cursor-pointer"
+                            ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                            : "border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95 cursor-pointer"
                             }`}
                           title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                         >

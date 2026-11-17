@@ -154,6 +154,9 @@ const CommonTable = ({
         header: extraColumn.header,
         id: "extra",
         enableSorting: false,
+        align: extraColumn.align || "center",
+        thClassName: extraColumn.thClassName,
+        cellClassName: extraColumn.cellClassName,
         cell: ({ row }) => extraColumn.render?.(row.original),
       });
     }

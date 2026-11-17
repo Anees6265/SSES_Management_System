@@ -2,6 +2,7 @@ const Student = require("../../models/student/Student");
 const StudentTask = require("../../models/syllabus/StudentTask");
 const StudentProgressSnapshot = require("../../models/student/StudentProgressSnapshot");
 const StudentLevelProgress = require("../../models/student/StudentLevelProgress");
+const StudentPlacement = require("../../models/placement/StudentPlacement");
 const StudentTaskHistory = require("../../models/student/StudentTaskHistory");
 const StudentEventLog = require("../../models/student/StudentEventLog");
 const SubDepartment = require("../../models/department/SubDepartment");
@@ -3652,6 +3653,15 @@ exports.markInternship = async (req, res) => {
     };
 
     student.status = "Internship";
+
+    // Also update StudentPlacement so candidate is removed from Placement Candidates
+    const existingPlacement = await StudentPlacement.findOne({ studentId: student._id });
+    if (existingPlacement) {
+      student.internshipFromPlacementReadiness = existingPlacement.readinessStatus;
+      existingPlacement.readinessStatus = "Internship";
+      await existingPlacement.save();
+    }
+
     await student.save();
 
     try {
@@ -3703,9 +3713,22 @@ exports.revertInternship = async (req, res) => {
       student.syllabusVersionId = student.internshipFromSyllabusVersionId;
     }
 
+    const previousReadiness = student.internshipFromPlacementReadiness;
     student.status = "Active";
     student.internshipDetails = null;
+    student.internshipFromLevelId = null;
+    student.internshipFromSubLevelId = null;
+    student.internshipFromSyllabusVersionId = null;
+    student.internshipFromPlacementReadiness = null;
     await student.save();
+
+    // Restore StudentPlacement readinessStatus if it existed
+    if (previousReadiness) {
+      await StudentPlacement.findOneAndUpdate(
+        { studentId: student._id },
+        { $set: { readinessStatus: previousReadiness } }
+      );
+    }
 
     return res.status(200).json({
       success: true,

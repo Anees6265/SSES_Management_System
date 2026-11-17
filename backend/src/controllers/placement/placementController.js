@@ -56,7 +56,7 @@ exports.getReadyStudents = async (req, res) => {
       .lean();
 
     let data = placements
-      .filter((p) => p.studentId)
+      .filter((p) => p.studentId && p.studentId.status !== "Internship" && p.readinessStatus !== "Internship")
       .map((p) => {
         let stdStatus = p.readinessStatus;
         if (p.placedInfo || stdStatus === "Placed") {
@@ -86,6 +86,8 @@ exports.getReadyStudents = async (req, res) => {
           ),
           techno: p.studentId.techno || p.studentId.technology || p.studentId.track || "",
           track: p.studentId.track || "",
+          status: p.studentId.status || "Active",
+          studentStatus: p.studentId.status || "Active",
 
           currentLevel: p.studentId.currentLevelId?.name || "—",
           currentSubLevel: p.studentId.currentSubLevelId?.name || "—",
@@ -629,11 +631,13 @@ exports.getSelectedStudents = async (req, res) => {
     });
 
     const placements = await StudentPlacement.find(filter)
-      .populate("studentId", "firstName lastName prkey course studentMobile image")
+      .populate("studentId", "firstName lastName prkey course studentMobile image status")
       .populate("PlacementinterviewRecord.companyRef", "companyName location")
       .lean();
 
-    const data = placements.map((p) => ({
+    const data = placements
+      .filter((p) => p.studentId && p.studentId.status !== "Internship" && p.readinessStatus !== "Internship")
+      .map((p) => ({
       _id: p.studentId?._id,
       firstName: p.studentId?.firstName,
       lastName: p.studentId?.lastName,
@@ -642,6 +646,8 @@ exports.getSelectedStudents = async (req, res) => {
       course: p.studentId?.course,
       studentMobile: p.studentId?.studentMobile,
       image: p.studentId?.image,
+      status: p.studentId?.status || "Active",
+      studentStatus: p.studentId?.status || "Active",
       readinessStatus: p.readinessStatus,
       selectedInterviews: p.PlacementinterviewRecord.filter((i) => i.status === "Selected"),
       PlacementinterviewRecord: p.PlacementinterviewRecord,
@@ -756,15 +762,45 @@ exports.confirmPlacement = async (req, res) => {
       applicationURL,
     };
 
-    // Atomic write — placement.placedInfo + Student.status = "Placed" together
+    const isInternship = String(jobType || "").trim().toLowerCase() === "internship";
+    const targetStatus = isInternship ? "Internship" : "Placed";
+    const targetReadiness = isInternship ? "Internship" : "Placed";
+
+    const studentToUpdate = await Student.findById(studentId);
+    if (!studentToUpdate) return res.status(404).json({ message: "Student not found" });
+
+    const studentUpdateFields = { status: targetStatus };
+
+    if (isInternship) {
+      studentUpdateFields.internshipFromLevelId = studentToUpdate.currentLevelId;
+      studentUpdateFields.internshipFromSubLevelId = studentToUpdate.currentSubLevelId;
+      studentUpdateFields.internshipFromSyllabusVersionId = studentToUpdate.syllabusVersionId;
+      studentUpdateFields.internshipFromPlacementReadiness = placement.readinessStatus || "Ready for Placement";
+      studentUpdateFields.internshipDetails = {
+        companyName: companyName.trim(),
+        position: jobProfile.trim(),
+        location: location.trim(),
+        internshipType: salary && Number(salary) > 0 ? "Paid" : "Unpaid",
+        stipend: salary ? String(salary).trim() : "",
+        startDate: joiningDate ? new Date(joiningDate) : new Date(),
+        markedBy: req.user?._id || req.user?.id || null,
+        markedByName: req.user?.name || "",
+        markedAt: new Date(),
+        fromLevelId: studentToUpdate.currentLevelId,
+        fromSubLevelId: studentToUpdate.currentSubLevelId,
+        fromSyllabusVersionId: studentToUpdate.syllabusVersionId,
+      };
+    }
+
+    // Atomic write — placement.placedInfo + Student status together
     // If either fails, both are rolled back (on replica set) or both run (standalone)
     await withTransaction(async (session) => {
       placement.placedInfo = placedInfoPayload;
-      placement.readinessStatus = "Placed";
+      placement.readinessStatus = targetReadiness;
       await placement.save({ session });
       await Student.findByIdAndUpdate(
         studentId,
-        { status: "Placed" },
+        studentUpdateFields,
         { session }
       );
     });
@@ -837,7 +873,7 @@ exports.getPlacedStudents = async (req, res) => {
 
     const studentIdSet = new Set();
     const data = placements
-      .filter((p) => p.studentId)
+      .filter((p) => p.studentId && p.studentId.status !== "Internship" && p.readinessStatus !== "Internship")
       .map((p) => {
         studentIdSet.add(p.studentId._id.toString());
         const resolvedSubDept =

@@ -15,6 +15,7 @@ import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
 import CreatePostModal from "./CreatePostModal";
+import InternshipModal from "../students/InternshipModal";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
 import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
@@ -57,7 +58,7 @@ const PIPELINE_TABS = [
 ];
 
 /* ─── Candidate Quick View Drawer ─────────────────────────── */
-const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onConfirmPlacement, onPostBanner }) => {
+const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onConfirmPlacement, onPostBanner, onMarkInternship }) => {
   const navigate = useNavigate();
   if (!candidate) return null;
 
@@ -288,6 +289,18 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
             </button>
           )}
 
+          {!placed && onMarkInternship && (
+            <button
+              onClick={() => {
+                onClose();
+                onMarkInternship(candidate);
+              }}
+              className="px-4 py-2 bg-white hover:bg-sky-50 text-sky-700 border border-sky-200 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+            >
+              <MdWork size={14} className="text-sky-600" /> Move to Internship
+            </button>
+          )}
+
           {!placed && (
             <button
               onClick={() => {
@@ -410,15 +423,23 @@ const PlacementReadyStudents = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedForPost, setSelectedForPost] = useState(null);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [selectedForInternship, setSelectedForInternship] = useState(null);
+  const [isInternshipModalOpen, setIsInternshipModalOpen] = useState(false);
 
   // Queries
   const { data: readyRes = {}, isLoading: loadingReady, refetch: refetchReady } = useGetNewReadyStudentsQuery();
   const { data: selectedRes = {}, isLoading: loadingSelected, refetch: refetchSelected } = useGetNewSelectedStudentsQuery();
   const { data: placedRes = {}, isLoading: loadingPlaced, refetch: refetchPlaced } = useGetNewPlacedStudentsQuery();
 
-  const readyStudents = useMemo(() => readyRes.data || [], [readyRes]);
-  const selectedStudents = useMemo(() => selectedRes.data || [], [selectedRes]);
-  const placedStudents = useMemo(() => placedRes.data || [], [placedRes]);
+  const isInternshipCandidate = (s) =>
+    s?.status === "Internship" ||
+    s?.studentStatus === "Internship" ||
+    s?.readinessStatus === "Internship" ||
+    s?.rawReadinessStatus === "Internship";
+
+  const readyStudents = useMemo(() => (readyRes.data || []).filter(s => !isInternshipCandidate(s)), [readyRes]);
+  const selectedStudents = useMemo(() => (selectedRes.data || []).filter(s => !isInternshipCandidate(s)), [selectedRes]);
+  const placedStudents = useMemo(() => (placedRes.data || []).filter(s => !isInternshipCandidate(s)), [placedRes]);
 
   const isLoading = loadingReady || loadingSelected || loadingPlaced;
 
@@ -997,15 +1018,27 @@ const PlacementReadyStudents = () => {
                         )}
 
                         {!isPlaced && !isSelected && (
-                          <button
-                            onClick={() => {
-                              setSelectedStudentForInterview(candidate);
-                              setIsInterviewModalOpen(true);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
-                          >
-                            Schedule Drive
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedForInternship(candidate);
+                                setIsInternshipModalOpen(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-extrabold text-[11px] shadow-2xs cursor-pointer flex items-center gap-1"
+                            >
+                              <MdWork size={12} className="text-sky-600" /> Internship
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedStudentForInterview(candidate);
+                                setIsInterviewModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
+                            >
+                              Schedule Drive
+                            </button>
+                          </>
                         )}
 
                         {isSelected && (
@@ -1214,17 +1247,31 @@ const PlacementReadyStudents = () => {
                               )}
 
                               {!isPlaced && !isSelected && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedStudentForInterview(candidate);
-                                    setIsInterviewModalOpen(true);
-                                  }}
-                                  className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
-                                  title="Schedule Drive for this candidate"
-                                >
-                                  <MdCalendarToday size={13} />
-                                  <span>Schedule Drive</span>
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedForInternship(candidate);
+                                      setIsInternshipModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 bg-white hover:bg-sky-50 text-sky-700 hover:text-sky-800 border border-sky-200 font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1 active:scale-95"
+                                    title="Mark this candidate to Internship"
+                                  >
+                                    <MdWork size={13} className="text-sky-600" />
+                                    <span>Internship</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setSelectedStudentForInterview(candidate);
+                                      setIsInterviewModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                    title="Schedule Drive for this candidate"
+                                  >
+                                    <MdCalendarToday size={13} />
+                                    <span>Schedule Drive</span>
+                                  </button>
+                                </>
                               )}
 
                               {isSelected && (
@@ -1302,6 +1349,23 @@ const PlacementReadyStudents = () => {
             setSelectedForPost(c);
             setIsPostModalOpen(true);
           }}
+          onMarkInternship={(c) => {
+            setSelectedForInternship(c);
+            setIsInternshipModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* ── Move to Internship Modal ── */}
+      {isInternshipModalOpen && (
+        <InternshipModal
+          isOpen={isInternshipModalOpen}
+          onClose={() => {
+            setIsInternshipModalOpen(false);
+            setSelectedForInternship(null);
+          }}
+          student={selectedForInternship}
+          onSuccess={refetchAll}
         />
       )}
 

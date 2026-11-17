@@ -267,7 +267,9 @@ const StudentDetailTable = () => {
         s.ftpDomain === selectedDomain ||
         s.domain === selectedDomain ||
         s.track === selectedDomain;
-      const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(s.status);
+      const matchStatus = selectedStatus.length === 0
+        ? s.status !== "Internship" && s.status !== "Dropped" && s.status !== "Placed"
+        : selectedStatus.includes(s.status);
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
       const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
@@ -680,20 +682,21 @@ const StudentDetailTable = () => {
       <div className="bg-white border-b px-3 sm:px-6 flex gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth [-webkit-overflow-scrolling:touch]">
         {subLevelTabs.map((tab) => {
           let tabCount = 0;
+          const activeLevelStudents = students.filter(s => s.status !== "Internship" && s.status !== "Dropped" && s.status !== "Placed");
           if (tab === "All") {
-            tabCount = students.length;
+            tabCount = activeLevelStudents.length;
           } else if (tab === "FTP Students") {
-            tabCount = students.filter((s) => Boolean(s.isFTP)).length;
+            tabCount = activeLevelStudents.filter((s) => Boolean(s.isFTP)).length;
           } else if (isUiUxPage) {
-            tabCount = students.filter((s) => {
+            tabCount = activeLevelStudents.filter((s) => {
               const studentLevel = s.currentSubLevelId?.name || (s.isUIUX ? "1A" : "");
               return studentLevel === tab && !s.isFTP;
             }).length;
           } else {
             if (tab === "Others") {
-              tabCount = students.filter((s) => Boolean(s.isUIUX) && !s.isFTP).length;
+              tabCount = activeLevelStudents.filter((s) => Boolean(s.isUIUX) && !s.isFTP).length;
             } else {
-              tabCount = students.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX && !s.isFTP).length;
+              tabCount = activeLevelStudents.filter((s) => s.currentSubLevelId?.name === tab && !s.isUIUX && !s.isFTP).length;
             }
           }
 

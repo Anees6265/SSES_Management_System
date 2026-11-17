@@ -197,6 +197,10 @@ const studentSchema = new mongoose.Schema({
     ref: "SyllabusVersion",
     default: null
   },
+  internshipFromPlacementReadiness: {
+    type: String,
+    default: null
+  },
   isFTP: { type: Boolean, default: false },
   ftpDomain: { type: String, default: "", trim: true },
   domain: { type: String, default: "", trim: true, index: true },

@@ -257,8 +257,8 @@ const CourseYearMatrixTable = ({ matrix }) => {
             <button
               onClick={() => setViewMode("level")}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "level"
-                  ? "bg-white text-gray-800 shadow-2xs"
-                  : "text-gray-500 hover:text-gray-800"
+                ? "bg-white text-gray-800 shadow-2xs"
+                : "text-gray-500 hover:text-gray-800"
                 }`}
             >
               By Year
@@ -266,8 +266,8 @@ const CourseYearMatrixTable = ({ matrix }) => {
             <button
               onClick={() => setViewMode("session")}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "session"
-                  ? "bg-white text-gray-800 shadow-2xs"
-                  : "text-gray-500 hover:text-gray-800"
+                ? "bg-white text-gray-800 shadow-2xs"
+                : "text-gray-500 hover:text-gray-800"
                 }`}
             >
               By Batch

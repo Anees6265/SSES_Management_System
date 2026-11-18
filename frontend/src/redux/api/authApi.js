@@ -424,7 +424,13 @@ export const authApi = createApi({
     }),
 
     getSubLevelProgress: builder.query({
-      query: (subLevelId) => ({ url: `/students/sublevel/${subLevelId}/progress`, method: 'GET' }),
+      query: (arg) => {
+        if (typeof arg === 'object' && arg !== null) {
+          const { subLevelId, params } = arg;
+          return { url: `/students/sublevel/${subLevelId}/progress${params ? `?${params}` : ''}`, method: 'GET' };
+        }
+        return { url: `/students/sublevel/${arg}/progress`, method: 'GET' };
+      },
       providesTags: ['Student'],
     }),
 

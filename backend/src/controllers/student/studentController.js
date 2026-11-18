@@ -3535,6 +3535,7 @@ exports.getStudentStats = async (req, res) => {
 exports.getSubLevelStudentsProgress = async (req, res) => {
   try {
     const { subLevelId } = req.params;
+    const { sessionId, year } = req.query;
 
     let isUiUx1A = false;
     try {
@@ -3548,8 +3549,8 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
       }
     } catch (_) {}
 
-    const students = await Student.find({
-      ...(isUiUx1A
+    const andConditions = [
+      isUiUx1A
         ? {
             $or: [
               { currentSubLevelId: subLevelId },
@@ -3557,11 +3558,29 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
               { isUIUX: true, currentSubLevelId: { $exists: false } }
             ]
           }
-        : { currentSubLevelId: subLevelId }),
-      status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] },
-    })
+        : { currentSubLevelId: subLevelId },
+      { status: { $nin: ["Dummy", "Dropped", "Placed", "Internship"] } }
+    ];
+
+    if (sessionId) {
+      andConditions.push({ sessionId });
+    }
+
+    if (year && year !== "All" && year !== "all") {
+      andConditions.push({
+        $or: [
+          { year: year },
+          { currentYear: year }
+        ]
+      });
+    }
+
+    const studentQuery = { $and: andConditions };
+
+    const students = await Student.find(studentQuery)
       .populate("currentSubLevelId", "name")
-      .select("firstName lastName prkey status currentSubLevelId image attendanceRate isUIUX");
+      .populate("sessionId", "name")
+      .select("firstName lastName prkey status currentSubLevelId sessionId year currentYear batchYear image attendanceRate isUIUX");
 
     const studentIds = students.map(s => s._id);
 
@@ -3627,6 +3646,11 @@ exports.getSubLevelStudentsProgress = async (req, res) => {
         prkey: student.prkey,
         currentStatus: student.status,
         attendanceRate: student.attendanceRate ?? 100,
+        sessionId: student.sessionId?._id || student.sessionId,
+        sessionName: student.sessionId?.name || "",
+        year: student.year || student.currentYear || "1st Year",
+        currentYear: student.currentYear || student.year || "1st Year",
+        batchYear: student.batchYear || "",
         taskProgress: { completed, total, percentage },
         subjectProgress,
         statusCounters: { pending, inProgress, completed }

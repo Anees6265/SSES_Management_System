@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdFilterList, MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck, MdEdit } from "react-icons/md";
+import { MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck, MdEdit } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import {
@@ -31,6 +31,7 @@ import Loader from "../../../shared/loader/Loader";
 import Avatar from "../../../shared/Avatar";
 import EmptyState from "../../../shared/empty-state/EmptyState";
 import SessionSelector from "../../../shared/SessionSelector";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { usePersistentFilters, usePersistentState } from "../../../../hooks/usePersistentFilters";
 
@@ -86,20 +87,35 @@ const StudentsTab = ({
     setSearchTerm,
     selectedSessionId,
     setSelectedSessionId,
+    selectedYear = "All",
+    setSelectedYear,
     sessions = [],
     onRowClick,
     onTaskBoard,
     departmentName
 }) => {
+    const sessionParam = selectedSessionId ? `&sessionId=${selectedSessionId}` : '';
+    const yearParam = selectedYear && selectedYear !== "All" ? `&year=${encodeURIComponent(selectedYear)}` : '';
     const params = subLevel?._id
-        ? `currentSubLevelId=${subLevel._id}${selectedSessionId ? `&sessionId=${selectedSessionId}` : ''}`
+        ? `currentSubLevelId=${subLevel._id}${sessionParam}${yearParam}`
         : "";
     const { data, isLoading, refetch } = useGetNewStudentsQuery(params, { skip: !subLevel?._id });
 
     const rawStudents = data?.data || [];
-    const filteredStudents = selectedSessionId
-        ? rawStudents.filter(s => (s.sessionId?._id || s.sessionId) === selectedSessionId)
-        : rawStudents;
+    const filteredStudents = useMemo(() => {
+        let list = rawStudents;
+        if (selectedSessionId) {
+            list = list.filter(s => (s.sessionId?._id || s.sessionId) === selectedSessionId);
+        }
+        if (selectedYear && selectedYear !== "All") {
+            const yrLower = selectedYear.toLowerCase().trim();
+            list = list.filter(s => {
+                const sYear = String(s.year || s.currentYear || "").toLowerCase().trim();
+                return sYear === yrLower || sYear.startsWith(yrLower.split(" ")[0]);
+            });
+        }
+        return list;
+    }, [rawStudents, selectedSessionId, selectedYear]);
 
     const students = filteredStudents.map((s, i) => ({
         _id: s._id,
@@ -146,6 +162,15 @@ const StudentsTab = ({
                 onRemove: () => setSelectedSessionId(""),
             });
         }
+        if (selectedYear && selectedYear !== "All" && setSelectedYear) {
+            chips.push({
+                key: "year",
+                label: "Year",
+                value: selectedYear,
+                displayValue: selectedYear,
+                onRemove: () => setSelectedYear("All"),
+            });
+        }
         if (searchTerm) {
             chips.push({
                 key: "search",
@@ -156,11 +181,11 @@ const StudentsTab = ({
             });
         }
         return chips;
-    }, [selectedSessionId, searchTerm, sessions, setSelectedSessionId, setSearchTerm]);
+    }, [selectedSessionId, selectedYear, searchTerm, sessions, setSelectedSessionId, setSelectedYear, setSearchTerm]);
 
     useEffect(() => {
         setMobilePage(1);
-    }, [searchTerm, selectedSessionId, subLevel?._id]);
+    }, [searchTerm, selectedSessionId, selectedYear, subLevel?._id]);
 
     const columns = [
         ...STUDENT_COLUMNS,
@@ -214,6 +239,23 @@ const StudentsTab = ({
                             departmentName={departmentName}
                         />
                     </div>
+                    {setSelectedYear && (
+                        <div className="flex-1 sm:flex-initial min-w-[120px] sm:min-w-[130px]">
+                            <SelectDropdown
+                                value={selectedYear}
+                                onChange={setSelectedYear}
+                                options={[
+                                    { value: "All", label: "All Years" },
+                                    { value: "1st Year", label: "1st Year" },
+                                    { value: "2nd Year", label: "2nd Year" },
+                                    { value: "3rd Year", label: "3rd Year" },
+                                    { value: "4th Year", label: "4th Year" },
+                                ]}
+                                className="w-full"
+                                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+                            />
+                        </div>
+                    )}
                     <ExportDropdown data={students} sectionName="students" />
                 </div>
             </div>
@@ -223,6 +265,7 @@ const StudentsTab = ({
                 chips={activeStudentChips}
                 onClearAll={() => {
                     setSelectedSessionId("");
+                    if (setSelectedYear) setSelectedYear("All");
                     setSearchTerm("");
                 }}
                 className="mb-1"
@@ -361,12 +404,11 @@ const StudentsTab = ({
     );
 };
 
-const ProgressTab = ({ subLevel, onRowClick }) => {
+const ProgressTab = ({ subLevel, departmentName = "", sessions = [], onRowClick }) => {
     const defaultProgressFilters = useMemo(() => ({
         progressSearch: "",
-        statusFilter: "all",
-        progressRangeFilter: "all",
-        attendanceFilter: "all",
+        selectedSessionId: "",
+        selectedYear: "All",
     }), []);
 
     const {
@@ -376,42 +418,28 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
     } = usePersistentFilters(`sublevel_progress_${subLevel?._id || "all"}`, defaultProgressFilters);
 
     const progressSearch = progressFilters.progressSearch || "";
-    const statusFilter = progressFilters.statusFilter || "all";
-    const progressRangeFilter = progressFilters.progressRangeFilter || "all";
-    const attendanceFilter = progressFilters.attendanceFilter || "all";
+    const selectedSessionId = progressFilters.selectedSessionId || "";
+    const selectedYear = progressFilters.selectedYear || "All";
 
     const setProgressSearch = (s) => updateProgressFilter("progressSearch", s);
-    const setStatusFilter = (st) => updateProgressFilter("statusFilter", st);
-    const setProgressRangeFilter = (pr) => updateProgressFilter("progressRangeFilter", pr);
-    const setAttendanceFilter = (at) => updateProgressFilter("attendanceFilter", at);
-
-    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-    const filterRef = useRef(null);
+    const setSelectedSessionId = (s) => updateProgressFilter("selectedSessionId", s);
+    const setSelectedYear = (y) => updateProgressFilter("selectedYear", y);
 
     const [mobilePage, setMobilePage] = useState(1);
     const mobilePageSize = 10;
 
-    const { data, isLoading } = useGetSubLevelProgressQuery(subLevel?._id, { skip: !subLevel?._id });
+    const queryParams = useMemo(() => {
+        const p = new URLSearchParams();
+        if (selectedSessionId) p.append("sessionId", selectedSessionId);
+        if (selectedYear && selectedYear !== "All") p.append("year", selectedYear);
+        return p.toString();
+    }, [selectedSessionId, selectedYear]);
+
+    const { data, isLoading } = useGetSubLevelProgressQuery(
+        subLevel?._id ? { subLevelId: subLevel._id, params: queryParams } : undefined,
+        { skip: !subLevel?._id }
+    );
     const progressList = data?.data || [];
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (filterRef.current && !filterRef.current.contains(e.target)) {
-                setShowFilterDropdown(false);
-            }
-        };
-        if (showFilterDropdown) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [showFilterDropdown]);
-
-    const activeFilterCount =
-        (statusFilter !== "all" ? 1 : 0) +
-        (progressRangeFilter !== "all" ? 1 : 0) +
-        (attendanceFilter !== "all" ? 1 : 0);
 
     const handleClearFilters = () => {
         resetAllProgressFilters();
@@ -419,31 +447,23 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     const activeProgressChips = useMemo(() => {
         const chips = [];
-        if (statusFilter !== "all") {
+        if (selectedSessionId) {
+            const matchedSession = sessions.find(s => (s._id || s.id) === selectedSessionId);
             chips.push({
-                key: "status",
-                label: "Status",
-                value: statusFilter,
-                displayValue: statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1),
-                onRemove: () => setStatusFilter("all"),
+                key: "sessionId",
+                label: "Session",
+                value: selectedSessionId,
+                displayValue: matchedSession?.name || "Session Selected",
+                onRemove: () => setSelectedSessionId(""),
             });
         }
-        if (progressRangeFilter !== "all") {
+        if (selectedYear && selectedYear !== "All") {
             chips.push({
-                key: "progress",
-                label: "Task Progress",
-                value: progressRangeFilter,
-                displayValue: progressRangeFilter === "completed" ? "100% Done" : progressRangeFilter === "inProgress" ? "In Progress" : "0% Done",
-                onRemove: () => setProgressRangeFilter("all"),
-            });
-        }
-        if (attendanceFilter !== "all") {
-            chips.push({
-                key: "attendance",
-                label: "Attendance",
-                value: attendanceFilter,
-                displayValue: attendanceFilter,
-                onRemove: () => setAttendanceFilter("all"),
+                key: "year",
+                label: "Year",
+                value: selectedYear,
+                displayValue: selectedYear,
+                onRemove: () => setSelectedYear("All"),
             });
         }
         if (progressSearch) {
@@ -456,39 +476,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
             });
         }
         return chips;
-    }, [statusFilter, progressRangeFilter, attendanceFilter, progressSearch]);
-
-    const statusCounts = useMemo(() => {
-        return {
-            all: progressList.length,
-            active: progressList.filter(s => (s.currentStatus || "Active").toLowerCase() === "active").length,
-            dropped: progressList.filter(s => (s.currentStatus || "").toLowerCase() === "dropped").length,
-        };
-    }, [progressList]);
-
-    const taskCounts = useMemo(() => {
-        return {
-            all: progressList.length,
-            completed: progressList.filter(s => (s.taskProgress?.percentage || 0) === 100).length,
-            inProgress: progressList.filter(s => {
-                const pct = s.taskProgress?.percentage || 0;
-                return pct > 0 && pct < 100;
-            }).length,
-            notStarted: progressList.filter(s => (s.taskProgress?.percentage || 0) === 0).length,
-        };
-    }, [progressList]);
-
-    const attendanceCounts = useMemo(() => {
-        return {
-            all: progressList.length,
-            high: progressList.filter(s => (s.attendanceRate ?? 100) >= 90).length,
-            moderate: progressList.filter(s => {
-                const att = s.attendanceRate ?? 100;
-                return att >= 75 && att < 90;
-            }).length,
-            low: progressList.filter(s => (s.attendanceRate ?? 100) < 75).length,
-        };
-    }, [progressList]);
+    }, [selectedSessionId, selectedYear, progressSearch, sessions]);
 
     const filteredProgress = useMemo(() => {
         let list = progressList;
@@ -501,32 +489,23 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
             );
         }
 
-        if (statusFilter !== "all") {
-            list = list.filter(s => (s.currentStatus || "Active").toLowerCase() === statusFilter.toLowerCase());
-        }
-
-        if (progressRangeFilter !== "all") {
+        if (selectedSessionId) {
             list = list.filter(s => {
-                const pct = s.taskProgress?.percentage || 0;
-                if (progressRangeFilter === "completed") return pct === 100;
-                if (progressRangeFilter === "inProgress") return pct > 0 && pct < 100;
-                if (progressRangeFilter === "notStarted") return pct === 0;
-                return true;
+                const sId = s.sessionId?._id || s.sessionId;
+                return String(sId) === String(selectedSessionId);
             });
         }
 
-        if (attendanceFilter !== "all") {
+        if (selectedYear && selectedYear !== "All") {
+            const yrLower = selectedYear.toLowerCase().trim();
             list = list.filter(s => {
-                const att = s.attendanceRate ?? 100;
-                if (attendanceFilter === "high") return att >= 90;
-                if (attendanceFilter === "moderate") return att >= 75 && att < 90;
-                if (attendanceFilter === "low") return att < 75;
-                return true;
+                const sYear = String(s.year || s.currentYear || "").toLowerCase().trim();
+                return sYear === yrLower || sYear.startsWith(yrLower.split(" ")[0]);
             });
         }
 
         return list;
-    }, [progressList, progressSearch, statusFilter, progressRangeFilter, attendanceFilter]);
+    }, [progressList, progressSearch, selectedSessionId, selectedYear]);
 
     const totalMobilePages = Math.max(1, Math.ceil(filteredProgress.length / mobilePageSize));
     const paginatedMobileProgress = useMemo(() => {
@@ -536,7 +515,7 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     useEffect(() => {
         setMobilePage(1);
-    }, [progressSearch, statusFilter, progressRangeFilter, attendanceFilter, subLevel?._id]);
+    }, [progressSearch, selectedSessionId, selectedYear, subLevel?._id]);
 
     const PROGRESS_COLUMNS = [
         {
@@ -552,22 +531,15 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                         >
                             {row.name}
                         </span>
+                        {(row.year || row.sessionName) && (
+                            <span className="text-[11px] text-gray-400 font-medium">
+                                {[row.year, row.sessionName].filter(Boolean).join(" • ")}
+                            </span>
+                        )}
                     </div>
                 </div>
             )
         },
-        /* {
-            key: "attendance",
-            label: "ATTENDANCE",
-            align: "center",
-            render: (row) => (
-                <div className="flex items-center justify-center">
-                    <span className="text-sm font-semibold text-gray-700">
-                        {row.attendanceRate ?? 100}%
-                    </span>
-                </div>
-            )
-        }, */
         {
             key: "taskProgress",
             label: "TASK PROGRESS",
@@ -634,239 +606,69 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
 
     if (isLoading) return <Loader />;
 
-    if (progressList.length === 0) {
-        return (
-            <EmptyState
-                icon={MdTableChart}
-                title="No Progress Data Found"
-                subtitle="No student progress data is currently available for this sub-level."
-            />
-        );
-    }
-
     return (
-        <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-150 rounded-2xl p-3 sm:p-4 shadow-2xs">
+        <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
                 {/* Search Box */}
-                <div className="relative w-full sm:flex-1 sm:max-w-md">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
-                        <MdSearch size={18} />
-                    </span>
-                    <input
-                        type="text"
-                        value={progressSearch}
-                        onChange={(e) => setProgressSearch(e.target.value)}
-                        placeholder="Search students..."
-                        className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
-                        style={{ paddingLeft: '2.75rem' }}
-                    />
+                <div className="w-full sm:flex-1">
+                    <SearchBox searchTerm={progressSearch} setSearchTerm={setProgressSearch} placeholder="Search students..." />
                 </div>
 
-                {/* Filter and Export Actions */}
-                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div ref={filterRef} className="relative">
-                        <button
-                            type="button"
-                            onClick={() => setShowFilterDropdown((prev) => !prev)}
-                            className={`flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border rounded-xl transition-all cursor-pointer ${activeFilterCount > 0 || showFilterDropdown
-                                ? "border-orange-500 bg-orange-50 text-orange-600 shadow-xs"
-                                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 active:scale-[0.98]"
-                                }`}
-                        >
-                            <MdFilterList size={16} className={activeFilterCount > 0 ? "text-orange-500" : "text-gray-400"} />
-                            <span>Filter</span>
-                            {activeFilterCount > 0 && (
-                                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[11px] font-bold flex items-center justify-center -mr-1">
-                                    {activeFilterCount}
-                                </span>
-                            )}
-                        </button>
-
-                        {/* Filter Popover Dropdown */}
-                        {showFilterDropdown && (
-                            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-150 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                                {/* Dropdown Header */}
-                                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
-                                            <MdFilterList size={16} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xs sm:text-sm font-bold text-gray-800">Filter Progress</h4>
-                                            <p className="text-[10px] text-gray-400">Refine student progress list</p>
-                                        </div>
-                                    </div>
-                                    {activeFilterCount > 0 && (
-                                        <button
-                                            type="button"
-                                            onClick={handleClearFilters}
-                                            className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
-                                        >
-                                            Reset All
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Filter Options */}
-                                <div className="py-3 space-y-3.5 max-h-[60vh] overflow-y-auto">
-                                    {/* 1. Student Status */}
-                                    <div>
-                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                                            Student Status
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {[
-                                                { id: "all", label: "All Status", count: statusCounts.all },
-                                                { id: "active", label: "Active", count: statusCounts.active },
-                                                { id: "dropped", label: "Dropped", count: statusCounts.dropped },
-                                            ].map((opt) => {
-                                                const isSelected = statusFilter === opt.id;
-                                                return (
-                                                    <button
-                                                        key={opt.id}
-                                                        type="button"
-                                                        onClick={() => setStatusFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
-                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                            }`}
-                                                    >
-                                                        <span className="truncate">{opt.label}</span>
-                                                        <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                                }`}
-                                                        >
-                                                            {opt.count}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* 2. Task Completion */}
-                                    <div>
-                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                                            Task Completion
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {[
-                                                { id: "all", label: "All Tasks", count: taskCounts.all },
-                                                { id: "completed", label: "100% Done", count: taskCounts.completed },
-                                                { id: "inProgress", label: "In Progress", count: taskCounts.inProgress },
-                                                { id: "notStarted", label: "0% Done", count: taskCounts.notStarted },
-                                            ].map((opt) => {
-                                                const isSelected = progressRangeFilter === opt.id;
-                                                return (
-                                                    <button
-                                                        key={opt.id}
-                                                        type="button"
-                                                        onClick={() => setProgressRangeFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
-                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                            }`}
-                                                    >
-                                                        <span className="truncate">{opt.label}</span>
-                                                        <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                                }`}
-                                                        >
-                                                            {opt.count}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* 3. Attendance Rate */}
-                                    {/* <div>
-                                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                                            Attendance Rate
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {[
-                                                { id: "all", label: "All Rates", count: attendanceCounts.all },
-                                                { id: "high", label: "≥ 90% (Good)", count: attendanceCounts.high },
-                                                { id: "moderate", label: "75% - 89%", count: attendanceCounts.moderate },
-                                                { id: "low", label: "< 75% (Low)", count: attendanceCounts.low },
-                                            ].map((opt) => {
-                                                const isSelected = attendanceFilter === opt.id;
-                                                return (
-                                                    <button
-                                                        key={opt.id}
-                                                        type="button"
-                                                        onClick={() => setAttendanceFilter(opt.id)}
-                                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${isSelected
-                                                            ? "bg-orange-500 text-white border-orange-500 shadow-2xs"
-                                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                                                            }`}
-                                                    >
-                                                        <span className="truncate">{opt.label}</span>
-                                                        <span
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${isSelected ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
-                                                                }`}
-                                                        >
-                                                            {opt.count}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div> */}
-                                </div>
-
-                                {/* Dropdown Footer */}
-                                <div className="pt-3 border-t border-gray-150 flex items-center justify-between gap-2">
-                                    <span className="text-[11px] text-gray-500">
-                                        Showing <strong className="text-gray-800 font-bold">{filteredProgress.length}</strong> of {progressList.length}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowFilterDropdown(false)}
-                                        className="px-3.5 py-1.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
-                                    >
-                                        Apply Filter
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                {/* Session, Year, and Export Actions */}
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+                    <div className="flex-1 sm:flex-initial min-w-[135px] sm:min-w-[145px]">
+                        <SessionSelector
+                            selectedSessionId={selectedSessionId}
+                            onSessionChange={setSelectedSessionId}
+                            showLabel={false}
+                            required={false}
+                            showAll={true}
+                            includeAllOption={true}
+                            allOptionLabel="All Sessions"
+                            departmentName={departmentName}
+                        />
+                    </div>
+                    <div className="flex-1 sm:flex-initial min-w-[120px] sm:min-w-[130px]">
+                        <SelectDropdown
+                            value={selectedYear}
+                            onChange={setSelectedYear}
+                            options={[
+                                { value: "All", label: "All Years" },
+                                { value: "1st Year", label: "1st Year" },
+                                { value: "2nd Year", label: "2nd Year" },
+                                { value: "3rd Year", label: "3rd Year" },
+                                { value: "4th Year", label: "4th Year" },
+                            ]}
+                            className="w-full"
+                            buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+                        />
                     </div>
                     <ExportDropdown data={filteredProgress} sectionName="progress" />
                 </div>
             </div>
 
             {/* Active Filter Chips */}
-            <ActiveFilterChips chips={activeProgressChips} onClearAll={handleClearFilters} className="mb-2" />
+            <ActiveFilterChips chips={activeProgressChips} onClearAll={handleClearFilters} className="mb-1" />
 
             {/* Empty State when filters/search yield 0 results */}
             {filteredProgress.length === 0 ? (
-                <div className="bg-white border border-gray-150 rounded-2xl p-8 text-center shadow-2xs">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mb-3">
-                        <MdSearch size={24} />
-                    </div>
-                    <h4 className="text-base font-bold text-gray-800">No matching students found</h4>
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                        No students match your active filters or search query. Try clearing filters or search term.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setProgressSearch("");
-                            handleClearFilters();
-                        }}
-                        className="mt-4 px-4 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl shadow-xs transition-colors cursor-pointer"
-                    >
-                        Reset Filters & Search
-                    </button>
-                </div>
+                <EmptyState
+                    icon={MdTableChart}
+                    title="No Students Found"
+                    subtitle={
+                        progressSearch || selectedSessionId || (selectedYear && selectedYear !== "All")
+                            ? `No students found matching your active filter criteria.`
+                            : "No student progress data is currently available for this sub-level."
+                    }
+                    actionText={progressSearch || selectedSessionId || (selectedYear && selectedYear !== "All") ? "Clear Filters" : undefined}
+                    onAction={progressSearch || selectedSessionId || (selectedYear && selectedYear !== "All") ? handleClearFilters : undefined}
+                />
             ) : (
                 <>
                     {/* Desktop Table View */}
                     <div className="hidden md:block">
                         <CommonTable
-                            key={`progress-${subLevel?._id}`}
+                            key={`progress-${subLevel?._id}-${selectedSessionId}-${selectedYear}`}
                             columns={PROGRESS_COLUMNS}
                             data={filteredProgress}
                             editable={false}
@@ -904,15 +706,17 @@ const ProgressTab = ({ subLevel, onRowClick }) => {
                                             <Avatar firstName={row.firstName} lastName={row.lastName} imageUrl={row.image} size="sm" />
                                             <div className="min-w-0 flex-1">
                                                 <h4 className="font-bold text-sm text-gray-900 truncate leading-snug">{row.name}</h4>
+                                                {(row.year || row.sessionName) && (
+                                                    <p className="text-[11px] text-gray-400 truncate">
+                                                        {[row.year, row.sessionName].filter(Boolean).join(" • ")}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0">
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusCls}`}>
                                                 {status}
                                             </span>
-                                            {/* <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                                {row.attendanceRate ?? 100}% Att.
-                                            </span> */}
                                         </div>
                                     </div>
 
@@ -1069,6 +873,7 @@ const ShowSubLevelTablesData = () => {
     const [activeSection, setActiveSection] = useState("Students");
     const [searchTerm, setSearchTerm] = usePersistentState(`sublevel_search_${effectiveLevelId || "all"}`, "");
     const [selectedSessionId, setSelectedSessionId] = usePersistentState(`level_students_session_${effectiveLevelId || "all"}`, "");
+    const [selectedYear, setSelectedYear] = usePersistentState(`level_students_year_${effectiveLevelId || "all"}`, "All");
     const { data: sessionsRes } = useGetAllSessionsQuery(true);
     const sessions = sessionsRes?.data || [];
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
@@ -1381,6 +1186,8 @@ const ShowSubLevelTablesData = () => {
                                 setSearchTerm={setSearchTerm}
                                 selectedSessionId={selectedSessionId}
                                 setSelectedSessionId={setSelectedSessionId}
+                                selectedYear={selectedYear}
+                                setSelectedYear={setSelectedYear}
                                 sessions={sessions}
                                 departmentName={effectiveDepartmentName}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: row.raw, level, subdepartment } })}
@@ -1409,6 +1216,8 @@ const ShowSubLevelTablesData = () => {
                         {activeSection === "Progress" && (
                             <ProgressTab
                                 subLevel={activeTab}
+                                departmentName={effectiveDepartmentName}
+                                sessions={sessions}
                                 onRowClick={(row) => navigate("/setting/student-profile", { state: { student: { _id: row._id }, level, subdepartment } })}
                             />
                         )}

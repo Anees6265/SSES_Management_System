@@ -11,7 +11,8 @@ import {
   Calendar,
   RotateCcw,
   Phone,
-  X
+  X,
+  MoreVertical,
 } from "lucide-react";
 import {
   useGetLeaveRequestsQuery,
@@ -256,19 +257,15 @@ const ReasonCell = ({ row }) => {
         <span className="text-xs font-semibold text-gray-800 italic truncate group-hover/reason:text-orange-600 transition-colors block">
           "{singleLineReason}"
         </span>
+        {row.remark && (
+          <span
+            className="text-[9px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200/80 rounded px-1.5 py-0.2 shrink-0"
+            title="Faculty Remark attached (hover to view)"
+          >
+            Remark
+          </span>
+        )}
       </div>
-
-      {/* Remark (compact, 1-line truncate if present) */}
-      {row.remark && (
-        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-          <span className="font-extrabold text-[9px] uppercase tracking-wider text-gray-400 shrink-0">
-            Remark:
-          </span>
-          <span className="truncate max-w-[190px] text-gray-600 font-semibold">
-            {row.remark}
-          </span>
-        </div>
-      )}
 
       {/* Assigned / Approved tags in a single compact line */}
       {(() => {
@@ -356,6 +353,119 @@ const ReasonCell = ({ row }) => {
                 </span>
               )}
             </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+
+// ── LEAVE ACTION THREE DOTS DROPDOWN ──────────────────────────────────────────
+const LeaveActionDropdown = ({ row, onApprove, onReject, onViewDoc }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, openUpward: false });
+  const buttonRef = useRef(null);
+
+  const isPending = row.status === "pending";
+  const hasDoc = Boolean(row.imageURL);
+
+  const toggleDropdown = (e) => {
+    e.stopPropagation();
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 110;
+    const openUpward = window.innerHeight - rect.bottom < dropdownHeight && rect.top > dropdownHeight;
+    setCoords({
+      top: openUpward ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+      left: Math.max(16, rect.right - 145),
+      openUpward,
+    });
+    setIsOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener("click", handleClose);
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
+    return () => {
+      window.removeEventListener("click", handleClose);
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
+    };
+  }, [isOpen]);
+
+  if (!isPending && !hasDoc) {
+    return <span className="text-gray-350 text-xs">—</span>;
+  }
+
+  return (
+    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggleDropdown}
+        className="w-8 h-8 rounded-xl border border-gray-200 bg-white hover:bg-orange-50/70 hover:border-orange-300 text-gray-500 hover:text-orange-600 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95"
+        title="Leave Actions"
+      >
+        <MoreVertical size={16} />
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              zIndex: 999999,
+            }}
+            className="w-38 rounded-xl bg-white border border-gray-200 shadow-xl p-1 animate-in fade-in zoom-in-95 duration-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isPending && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onApprove(row);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Check size={14} className="text-emerald-600" />
+                  <span>Approve</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onReject(row);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <XCircle size={14} className="text-rose-600" />
+                  <span>Reject</span>
+                </button>
+              </>
+            )}
+
+            {hasDoc && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onViewDoc(row.imageURL);
+                }}
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer ${
+                  isPending ? "border-t border-gray-100 mt-1 pt-1.5" : ""
+                }`}
+              >
+                <Eye size={14} className="text-indigo-600" />
+                <span>View Document</span>
+              </button>
+            )}
           </div>,
           document.body
         )}
@@ -469,46 +579,45 @@ const LeaveRequests = () => {
       label: "Student",
       render: (row) => {
         const student = row.student || {};
+        const subDept = student.subDepartmentId?.name || "";
+        const level = student.currentLevelId?.name || "";
+        const subLevel = student.currentSubLevelId?.name || "";
+        const levelStr = level ? (subLevel ? `${level} • ${subLevel}` : level) : "";
+
         return (
           <div className="flex items-center gap-3">
             <div className="relative rounded-full p-0.5 border border-orange-100 shadow-sm flex-shrink-0">
               <Avatar firstName={student.firstName} lastName={student.lastName} imageUrl={student.image} size="md" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-800 hover:text-orange-500 transition-colors">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-800 hover:text-orange-500 transition-colors truncate">
                 {toTitleCase(`${student.firstName || ""} ${student.lastName || ""}`)}
               </p>
-              <div className="mt-1 flex items-center gap-1.5">
+              <div className="mt-1 flex items-center gap-1.5 flex-wrap text-xs text-gray-500 font-medium">
                 {student.studentMobile ? (
-                  <span className="text-xs text-gray-500 font-medium">
+                  <span className="text-gray-600 font-medium">
                     {student.studentMobile}
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-500 font-medium">
+                  <span className="text-gray-400">
                     {student.course || "Student"}
+                  </span>
+                )}
+                {subDept && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <span className="font-semibold text-gray-700 bg-slate-50 border border-slate-200/80 rounded px-1.5 py-0.2 text-[11px]">
+                      {subDept}
+                    </span>
+                  </>
+                )}
+                {levelStr && (
+                  <span className="text-[10.5px] font-bold text-orange-600 bg-orange-50 border border-orange-200/70 rounded px-1.5 py-0.2">
+                    {levelStr}
                   </span>
                 )}
               </div>
             </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: "department",
-      label: "Department",
-      render: (row) => {
-        const subDept = row.student?.subDepartmentId?.name || "-";
-        const level = row.student?.currentLevelId?.name || "";
-        const subLevel = row.student?.currentSubLevelId?.name || "";
-        return (
-          <div className="text-xs text-gray-700">
-            <p className="font-bold text-gray-800">{subDept}</p>
-            {(level || subLevel) && (
-              <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-500 font-semibold bg-gray-50 border border-gray-100 rounded-md px-2 py-0.5 w-fit">
-                <span>{level} / {subLevel || "—"}</span>
-              </div>
-            )}
           </div>
         );
       },
@@ -556,7 +665,7 @@ const LeaveRequests = () => {
     },
     {
       key: "reason",
-      label: "Reason / Remark",
+      label: "Reason",
       render: (row) => <ReasonCell row={row} />,
     },
     {
@@ -611,46 +720,13 @@ const LeaveRequests = () => {
       return null;
     }
 
-    const hasDoc = Boolean(row.imageURL);
-
     return (
-      <div className="flex items-center gap-2">
-        {hasDoc && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setPreviewUrl(row.imageURL);
-            }}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 shadow-sm cursor-pointer"
-            title="View document"
-          >
-            <Eye size={14} />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            setResolveState({ request: row, decision: "approved" });
-          }}
-          className="flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-500 hover:text-white border border-emerald-100 shadow-sm transition-all duration-300 cursor-pointer"
-        >
-          <Check size={12} />
-          Approve
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            setResolveState({ request: row, decision: "rejected" });
-          }}
-          className="flex items-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-500 hover:text-white border border-rose-100 shadow-sm transition-all duration-300 cursor-pointer"
-        >
-          <XCircle size={12} />
-          Reject
-        </button>
-      </div>
+      <LeaveActionDropdown
+        row={row}
+        onApprove={(r) => setResolveState({ request: r, decision: "approved" })}
+        onReject={(r) => setResolveState({ request: r, decision: "rejected" })}
+        onViewDoc={(url) => setPreviewUrl(url)}
+      />
     );
   };
 

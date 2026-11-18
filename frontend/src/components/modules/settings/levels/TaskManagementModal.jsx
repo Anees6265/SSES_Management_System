@@ -32,7 +32,7 @@ import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
 import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker";
 import { TaskUploadDrawer } from "./SyllabusTab";
-import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { filterSessionsByDepartment, formatSessionLabel, getCurrentSession } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 import { sortTasksAscending, sortByOrderAsc } from "../../../../utils/taskOrderHelpers";
 
@@ -59,11 +59,11 @@ const selectBtnCls = "w-full flex items-center justify-between gap-2 px-3.5 py-2
 const inputCls = "w-full border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder-gray-400 font-medium text-gray-800 shadow-2xs";
 const labelCls = "block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5";
 
-const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName, departmentId, subdepartment, onSuccess }) => {
+const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName, departmentId, subdepartment, onSuccess, initialSessionId }) => {
   const [activeTab, setActiveTab] = useState("add"); // add, manage
   const [addMode, setAddMode] = useState("manual"); // manual, bulk
   const [taskType, setTaskType] = useState("syllabus"); // syllabus, general
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = useState(initialSessionId || "");
   const [selectedVersionId, setSelectedVersionId] = useState("");
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [selectedTopicId, setSelectedTopicId] = useState("");
@@ -109,6 +109,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     ? "UI/UX"
     : (departmentName || subdepartment?.departmentId?.name || (typeof level?.subDepartmentId === "object" ? level.subDepartmentId.departmentId?.name : "") || "");
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+  const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
   const isLevel2B = useMemo(() => {
     const sName = String(subLevel?.name || "").trim().toUpperCase();
@@ -124,11 +125,15 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   }, [deptIdentifier]);
 
   useEffect(() => {
-    if (selectedSessionId && sessions.length > 0) {
+    if (sessions.length > 0) {
       const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) setSelectedSessionId("");
+      if (!exists) {
+        const initMatch = initialSessionId && sessions.find(s => s._id === initialSessionId);
+        const target = initMatch || currentSession;
+        setSelectedSessionId(target?._id || "");
+      }
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, initialSessionId, currentSession]);
 
   const { data: versionsData } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId: subLevel?._id, sessionId: selectedSessionId },
@@ -540,11 +545,8 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                             setSelectedTopicId("");
                             setSelectedSubTopicId("");
                           }}
-                          options={[
-                            { value: "", label: "All Sessions" },
-                            ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
-                          ]}
-                          placeholder="All Sessions"
+                          options={sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))}
+                          placeholder="Select Session"
                           buttonClassName={selectBtnCls}
                         />
                       </div>
@@ -1079,11 +1081,8 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                           setSelectedTopicId("");
                           setSelectedSubTopicId("");
                         }}
-                        options={[
-                          { value: "", label: "All Sessions" },
-                          ...sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))
-                        ]}
-                        placeholder="All Sessions"
+                        options={sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))}
+                        placeholder="Select Session"
                         buttonClassName={selectBtnCls}
                       />
                     </div>

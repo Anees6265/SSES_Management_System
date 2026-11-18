@@ -39,7 +39,7 @@ import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import CommonTable from "../../../shared/table/CommonTable";
-import { filterSessionsByDepartment, formatSessionLabel } from "../../../../utils/sessionDurationHelpers";
+import { filterSessionsByDepartment, formatSessionLabel, getCurrentSession } from "../../../../utils/sessionDurationHelpers";
 import { getDomainsForDepartment } from "../../../../utils/ftpConfig";
 import { sortTasksAscending, sortByOrderAsc, mapCombinedExcelRows } from "../../../../utils/taskOrderHelpers";
 
@@ -314,13 +314,16 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
   const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
+  const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
   useEffect(() => {
-    if (selectedSessionId && sessions.length > 0) {
+    if (sessions.length > 0) {
       const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) setSelectedSessionId("");
+      if (!exists) {
+        setSelectedSessionId(currentSession?._id || "");
+      }
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, currentSession]);
 
   const reset = () => {
     setSubject(""); setSelectedSessionId(""); setSelectedDomain("");
@@ -626,13 +629,16 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
   const isLevel2B = useMemo(() => checkIsLevel2B(level, subLevel), [level, subLevel]);
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
+  const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
   useEffect(() => {
-    if (selectedSessionId && sessions.length > 0) {
+    if (sessions.length > 0) {
       const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) setSelectedSessionId("");
+      if (!exists) {
+        setSelectedSessionId(currentSession?._id || "");
+      }
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, currentSession]);
 
   const totalSubjects  = hierarchy.length;
   const totalTopics    = hierarchy.reduce((acc, s) => acc + s.topics.length, 0);
@@ -3002,13 +3008,16 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
   const rawSessions = sessionsData?.data || [];
   const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+  const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
   useEffect(() => {
-    if (selectedSessionId && sessions.length > 0) {
+    if (sessions.length > 0) {
       const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) setSelectedSessionId("");
+      if (!exists) {
+        setSelectedSessionId(currentSession?._id || "");
+      }
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, currentSession]);
 
   const { data: versionsData, refetch } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId, sessionId: selectedSessionId },
@@ -3057,14 +3066,14 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
 
   const activeTaskChips = useMemo(() => {
     const chips = [];
-    if (selectedSessionId) {
+    if (selectedSessionId && currentSession && selectedSessionId !== currentSession._id) {
       const match = sessions.find((s) => s._id === selectedSessionId);
       chips.push({
         key: "session",
         label: "Session",
         value: selectedSessionId,
         displayValue: match ? formatSessionLabel(match) : "Selected Session",
-        onRemove: () => setSelectedSessionId(""),
+        onRemove: () => setSelectedSessionId(currentSession._id),
       });
     }
     if (activeSubjectId) {
@@ -3086,7 +3095,7 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
       });
     }
     return chips;
-  }, [selectedSessionId, sessions, activeSubjectId, activeSubjectName, searchTerm]);
+  }, [selectedSessionId, currentSession, sessions, activeSubjectId, activeSubjectName, searchTerm]);
 
   useEffect(() => {
     if (allVersions.length > 0) {
@@ -3126,6 +3135,7 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
           departmentName={deptIdentifier}
           departmentId={departmentId}
           subdepartment={subdepartment}
+          initialSessionId={selectedSessionId}
           onSuccess={() => {
             setShowTaskModal(false);
             refetch();
@@ -3167,8 +3177,8 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
                     setActiveSubjectId("");
                     setSearchTerm("");
                   }}
-                  options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-                  placeholder="All Sessions"
+                  options={sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))}
+                  placeholder="Select Session"
                 />
               </div>
 
@@ -3227,7 +3237,7 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
         <ActiveFilterChips
           chips={activeTaskChips}
           onClearAll={() => {
-            setSelectedSessionId("");
+            if (currentSession?._id) setSelectedSessionId(currentSession._id);
             setActiveSubjectId("");
             setSearchTerm("");
           }}
@@ -3315,13 +3325,16 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
   const rawSessions = sessionsData?.data || [];
   const deptIdentifier = resolveDeptIdentifier(departmentName, level, subLevel, subdepartment);
   const sessions = useMemo(() => filterSessionsByDepartment(rawSessions, deptIdentifier), [rawSessions, deptIdentifier]);
+  const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
   useEffect(() => {
-    if (selectedSessionId && sessions.length > 0) {
+    if (sessions.length > 0) {
       const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) setSelectedSessionId("");
+      if (!exists) {
+        setSelectedSessionId(currentSession?._id || "");
+      }
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, currentSession]);
 
   const { data: versionsData, refetch } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId, sessionId: selectedSessionId },
@@ -3440,14 +3453,14 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
 
   const activeSyllabusChips = useMemo(() => {
     const chips = [];
-    if (selectedSessionId) {
+    if (selectedSessionId && currentSession && selectedSessionId !== currentSession._id) {
       const match = sessions.find((s) => s._id === selectedSessionId);
       chips.push({
         key: "session",
         label: "Session",
         value: selectedSessionId,
         displayValue: match ? formatSessionLabel(match) : "Selected Session",
-        onRemove: () => setSelectedSessionId(""),
+        onRemove: () => setSelectedSessionId(currentSession._id),
       });
     }
     if (activeSubject) {
@@ -3469,7 +3482,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
       });
     }
     return chips;
-  }, [selectedSessionId, sessions, activeSubject, searchTerm]);
+  }, [selectedSessionId, currentSession, sessions, activeSubject, searchTerm]);
 
   if (allVersions.length === 0 && !selectedSessionId) {
     return (
@@ -3502,7 +3515,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
           />
         </div>
 
-        {/* Right side controls: All Sessions dropdown + Version selector + Session badge + Status + Actions */}
+        {/* Right side controls: Session dropdown + Version selector + Session badge + Status + Actions */}
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
           {/* Session Dropdown */}
           <div className="flex-1 sm:flex-initial min-w-[130px]">
@@ -3514,8 +3527,8 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
                 setActiveSubject("");
                 setSearchTerm("");
               }}
-              options={[{ value: "", label: "All Sessions" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-              placeholder="All Sessions"
+              options={sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))}
+              placeholder="Select Session"
             />
           </div>
 
@@ -3665,7 +3678,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
       <ActiveFilterChips
         chips={activeSyllabusChips}
         onClearAll={() => {
-          setSelectedSessionId("");
+          if (currentSession?._id) setSelectedSessionId(currentSession._id);
           setActiveSubject("");
           setSearchTerm("");
         }}

@@ -167,3 +167,61 @@ export const getDepartmentCourses = (deptNameOrObj) => {
   return [];
 };
 
+/**
+ * Resolves the "current" academic session from an array of sessions.
+ * Priority:
+ * 1. Session with status === "active" AND current date is between startDate & endDate
+ * 2. Session with status === "active"
+ * 3. Session whose date range covers today (startDate <= now <= endDate)
+ * 4. Session with isActive === true (and not archived / completed)
+ * 5. Any session with isActive === true
+ * 6. Fallback to first session in list
+ */
+export const getCurrentSession = (sessions = []) => {
+  if (!Array.isArray(sessions) || sessions.length === 0) return null;
+
+  const now = new Date();
+
+  // 1. status is 'active' AND today is within range
+  const activeAndCurrentDate = sessions.find((s) => {
+    if (s.status === "active" && s.startDate && s.endDate) {
+      const start = new Date(s.startDate);
+      const end = new Date(s.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        return now >= start && now <= end;
+      }
+    }
+    return false;
+  });
+  if (activeAndCurrentDate) return activeAndCurrentDate;
+
+  // 2. status is 'active'
+  const activeStatus = sessions.find((s) => s.status === "active");
+  if (activeStatus) return activeStatus;
+
+  // 3. Current date within startDate and endDate
+  const currentDate = sessions.find((s) => {
+    if (s.startDate && s.endDate) {
+      const start = new Date(s.startDate);
+      const end = new Date(s.endDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        return now >= start && now <= end;
+      }
+    }
+    return false;
+  });
+  if (currentDate) return currentDate;
+
+  // 4. isActive === true and not archived / completed
+  const activeFlag = sessions.find((s) => s.isActive && s.status !== "archived" && s.status !== "completed");
+  if (activeFlag) return activeFlag;
+
+  // 5. Any isActive === true
+  const anyActive = sessions.find((s) => s.isActive);
+  if (anyActive) return anyActive;
+
+  // 6. Fallback to first session
+  return sessions[0] || null;
+};
+
+

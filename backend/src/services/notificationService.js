@@ -21,6 +21,17 @@ const createNotification = async ({
   try {
     if (!title || !message) return null;
 
+    // Strict Notification Rules:
+    // 1. Student Side: ONLY promotion notifications (category === "level")
+    if (recipientRole === "student" && category !== "level") {
+      return null;
+    }
+
+    // 2. Faculty Side: ONLY promotion ("level") and student leave ("permission")
+    if (recipientRole === "faculty" && !["level", "permission"].includes(category)) {
+      return null;
+    }
+
     const notif = await Notification.create({
       title: title.trim(),
       message: message.trim(),
@@ -52,7 +63,14 @@ const createBulkNotifications = async (items = []) => {
   try {
     if (!Array.isArray(items) || items.length === 0) return [];
     const docs = items
-      .filter((item) => item && item.title && item.message)
+      .filter((item) => {
+        if (!item || !item.title || !item.message) return false;
+        const role = item.recipientRole || "student";
+        const cat = item.category || "general";
+        if (role === "student" && cat !== "level") return false;
+        if (role === "faculty" && !["level", "permission"].includes(cat)) return false;
+        return true;
+      })
       .map((item) => ({
         title: String(item.title).trim(),
         message: String(item.message).trim(),

@@ -306,3 +306,58 @@ exports.getActivityLogUsers = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/activity-logs/purge-unnecessary
+ * Permanently delete bloated/unnecessary logs from the database.
+ * Retains strictly:
+ * 1. Login logs (action: "LOGIN")
+ * 2. Logout logs (action: "LOGOUT")
+ * 3. Student promotion logs (module: "Students" and description contains promote/level)
+ * 4. Student deletion logs (action: "DELETE" and (module: "Students" or description contains student))
+ */
+exports.purgeUnnecessaryLogs = async (req, res) => {
+  try {
+    const userRole = String(req.user?.role || "").toLowerCase().trim();
+    if (!["superadmin", "admin"].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only superadmin and admin can purge unnecessary activity logs.",
+      });
+    }
+
+    const queryToDelete = {
+      $and: [
+        { action: { $nin: ["LOGIN", "LOGOUT"] } },
+        {
+          $nor: [
+            {
+              module: "Students",
+              $or: [
+                { "meta.isPromotion": true },
+                { description: { $regex: /promot|level/i } },
+              ],
+            },
+            {
+              action: "DELETE",
+              $or: [
+                { module: "Students" },
+                { description: { $regex: /student/i } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const deleteResult = await ActivityLog.deleteMany(queryToDelete);
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully purged ${deleteResult.deletedCount} unnecessary activity logs from the database.`,
+      deletedCount: deleteResult.deletedCount,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+

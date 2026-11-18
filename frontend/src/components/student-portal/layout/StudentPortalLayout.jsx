@@ -12,6 +12,7 @@ import logoSsism from "../../../assets/images/logo-ssism.png";
 import SecurityHelmet from "../../shared/SecurityHelmet";
 import NotificationBell from "../../shared/notifications/NotificationBell";
 import { useGetMyStudentProfileQuery } from "../../../redux/api/studentApi";
+import { useLogoutMutation } from "../../../redux/api/authApi";
 import { useStudentTheme, resetStudentPortalTheme } from "../../../utils/studentTheme";
 
 const navItems = [
@@ -110,6 +111,7 @@ export default function StudentPortalLayout() {
   }, [location.pathname]);
 
   const { data: profileResponse } = useGetMyStudentProfileQuery();
+  const [logoutApi] = useLogoutMutation();
   const rawStored = JSON.parse(localStorage.getItem("studentData") || "{}");
   const studentData = profileResponse?.data || rawStored;
 
@@ -120,7 +122,14 @@ export default function StudentPortalLayout() {
   const subDepartmentName = studentData.subDepartmentId?.name || rawStored.subDepartmentId?.name || "TECH";
   const courseName = studentData.course || rawStored.course || "Student Portal";
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const studentId = studentData?._id || rawStored?._id || rawStored?.id;
+      if (studentId) {
+        await logoutApi({ id: studentId }).unwrap();
+      }
+    } catch (_) {}
+
     localStorage.removeItem("studentToken");
     localStorage.removeItem("studentRefreshToken");
     localStorage.removeItem("studentData");

@@ -1986,13 +1986,39 @@ exports.deleteDocument = async (req, res) => {
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-
     const docIndex = student.documents.findIndex(d => d._id.toString() === req.params.docId);
     if (docIndex === -1) return res.status(404).json({ message: "Document not found" });
 
-
+    const deletedDoc = student.documents[docIndex];
     student.documents.splice(docIndex, 1);
     await student.save();
+
+    try {
+      const { logActivity } = require("../../services/activityLoggerService");
+      const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+      const actorRole = (req.user?.role || "Staff").toUpperCase();
+      const actorName = req.user?.name || "Staff";
+      const docTitle = deletedDoc.title || deletedDoc.fileType || "Document";
+
+      logActivity({
+        req,
+        user: req.user,
+        action: "DELETE",
+        module: "Students",
+        description: `${actorRole} ${actorName} deleted document "${docTitle}" of student ${studentDisplayName} (${student.prkey || student.email})`,
+        status: "SUCCESS",
+        severity: "WARNING",
+        meta: {
+          studentId: student._id,
+          studentName: studentDisplayName,
+          prkey: student.prkey,
+          documentId: req.params.docId,
+          documentTitle: docTitle,
+        },
+      });
+      req._alreadyLoggedActivity = true;
+    } catch (_) {}
+
     return res.status(200).json({ message: "Document deleted successfully" });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -3114,6 +3140,37 @@ exports.applyPermission = async (req, res) => {
       createdByRole: req.user?.role || "student",
     });
 
+    try {
+      const { createNotification } = require("../../services/notificationService");
+      const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+      const formattedFrom = new Date(fromDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      const formattedTo = new Date(toDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+      createNotification({
+        title: `Leave Request: ${studentDisplayName}`,
+        message: `Student ${studentDisplayName} (${student.prkey || ""}) applied for leave from ${formattedFrom} to ${formattedTo}. Reason: ${reason}`,
+        type: "warning",
+        category: "permission",
+        recipientRole: "faculty",
+        recipientId: addedPermission.assignedFacultyId || null,
+        studentId: student._id,
+        actorId: req.user?.id || req.user?._id || student._id,
+        actorName: studentDisplayName,
+        actorRole: "student",
+        metadata: {
+          studentId: student._id,
+          permissionId: addedPermission._id,
+          reason,
+          fromDate,
+          toDate,
+          assignedFacultyId: addedPermission.assignedFacultyId,
+          assignedFacultyIds: addedPermission.assignedFacultyIds,
+        },
+      }).catch((notifErr) => console.error("Leave request notification error:", notifErr));
+    } catch (notifErr) {
+      console.error("Failed to trigger leave notification for faculty:", notifErr);
+    }
+
     return res.status(201).json({
       message: "Permission applied successfully",
       data: addedPermission,
@@ -3602,6 +3659,49 @@ exports.deleteStudentTask = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Delete Student Record (Admin / Super Admin)
+exports.deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findById(id);
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+    const studentPrkey = student.prkey || student.email;
+    const actorRole = (req.user?.role || "Staff").toUpperCase();
+    const actorName = req.user?.name || "Staff";
+
+    // Clean up student related data
+    await StudentTask.deleteMany({ studentId: student._id });
+    await StudentProgressSnapshot.deleteMany({ studentId: student._id });
+    await StudentLevelProgress.deleteMany({ studentId: student._id });
+    await Student.findByIdAndDelete(id);
+
+    try {
+      const { logActivity } = require("../../services/activityLoggerService");
+      logActivity({
+        req,
+        user: req.user,
+        action: "DELETE",
+        module: "Students",
+        description: `${actorRole} ${actorName} permanently deleted student ${studentDisplayName} (${studentPrkey})`,
+        status: "SUCCESS",
+        severity: "CRITICAL",
+        meta: {
+          studentId: student._id,
+          studentName: studentDisplayName,
+          prkey: studentPrkey,
+        },
+      });
+      req._alreadyLoggedActivity = true;
+    } catch (_) {}
+
+    return res.status(200).json({ success: true, message: `Student ${studentDisplayName} deleted successfully` });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 

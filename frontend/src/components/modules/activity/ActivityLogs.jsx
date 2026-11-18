@@ -13,7 +13,9 @@ import {
   useGetActivityLogStatsQuery,
   useGetActivityLogUsersQuery,
   useGetAllUsersQuery,
+  usePurgeUnnecessaryActivityLogsMutation,
 } from "../../../redux/api/authApi";
+import { toast } from "react-toastify";
 import {
   RotateCcw,
   ShieldAlert,
@@ -68,6 +70,25 @@ export default function ActivityLogs() {
 
   const loggedInUser = JSON.parse(localStorage.getItem("user") || "{}");
   const isHod = (loggedInUser?.role || "").toLowerCase() === "hod";
+  const isSuperOrAdmin = ["superadmin", "admin"].includes(
+    String(loggedInUser?.role || "").toLowerCase()
+  );
+
+  const [purgeLogs, { isLoading: isPurging }] = usePurgeUnnecessaryActivityLogsMutation();
+
+  const handlePurge = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to clean up all unnecessary activity logs from the database?\n\nThis will permanently delete all clutter logs while strictly keeping:\n1. Login logs\n2. Logout logs\n3. Student promotion logs\n4. Student data deletion logs\n\nThis action will immediately free up database storage."
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await purgeLogs().unwrap();
+      toast.success(res.message || "Database logs cleaned successfully!");
+    } catch (err) {
+      toast.error(err?.data?.message || err?.message || "Failed to purge logs");
+    }
+  };
 
   // Blocked Threats option turned off for now (code commented as requested)
   // const threatOnly = activeTab === "Security Threats (Alerts)";
@@ -345,6 +366,20 @@ export default function ActivityLogs() {
             />
             <span className="hidden sm:inline">Refresh</span>
           </button>
+
+          {/* Purge Unnecessary Logs (Super Admin / Admin only) */}
+          {isSuperOrAdmin && (
+            <button
+              type="button"
+              onClick={handlePurge}
+              disabled={isPurging}
+              className="h-10 px-3.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Clean unnecessary activity logs from database"
+            >
+              <Trash2 size={14} className={isPurging ? "animate-spin" : "text-red-600"} />
+              <span className="hidden sm:inline">{isPurging ? "Cleaning..." : "Purge Unnecessary Logs"}</span>
+            </button>
+          )}
 
           {/* Standard Orange Download Dropdown */}
           <TableDownloadDropdown

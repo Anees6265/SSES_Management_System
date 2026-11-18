@@ -8,6 +8,7 @@ router.use(verifyToken);
 
 router.get("/", notificationController.getNotifications);
 router.post("/clear-all", notificationController.clearAllNotifications);
+router.delete("/purge-unnecessary", notificationController.purgeUnnecessaryNotifications);
 router.delete("/:id", notificationController.dismissNotification);
 router.patch("/:id/read", notificationController.markAsRead);
 

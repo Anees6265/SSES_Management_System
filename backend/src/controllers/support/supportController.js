@@ -13,7 +13,6 @@ const {
   sendSupportStatusUpdateEmail,
 } = require("../../services/emailService");
 const { createNotification } = require("../../services/notificationService");
-const { logActivity } = require("../../services/activityLoggerService");
 
 const IMAGE_DATA_URI_RE = /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,/i;
 const VALID_STATUSES = ["open", "in_progress", "resolved", "closed"];
@@ -364,16 +363,6 @@ exports.createSupportTicket = async (req, res) => {
     }
 
     req._alreadyLoggedActivity = true;
-    logActivity({
-      req,
-      user: actor,
-      action: "CREATE",
-      module: "System",
-      description: `${actor.name} (${actor.role}) submitted support ticket ${ticket.ticketCode}: ${ticket.subject}`,
-      status: "SUCCESS",
-      severity: resolvedSeverity === "critical" ? "WARNING" : "INFO",
-      meta: { ticketCode: ticket.ticketCode, targetDeveloper: resolvedTarget, emailSent: emailResult.sent },
-    });
 
     return res.status(201).json({
       success: true,
@@ -469,15 +458,6 @@ exports.updateSupportTicketStatus = async (req, res) => {
     }
 
     req._alreadyLoggedActivity = true;
-    logActivity({
-      req,
-      user: actor,
-      action: "UPDATE",
-      module: "System",
-      description: `${actor.name} updated ticket ${ticket.ticketCode} status from ${prevStatus} to ${ticket.status}`,
-      status: "SUCCESS",
-      severity: "INFO",
-    });
 
     return res.status(200).json({
       success: true,

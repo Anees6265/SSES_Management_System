@@ -743,25 +743,51 @@ exports.extendSession = async (req, res) => {
 // LOGOUT
 exports.logout = async (req, res) => {
   try {
-    const userId = req.body.id || req.body._id;
+    const userId = req.body.id || req.body._id || req.user?.id || req.user?._id;
     if (!userId) return res.status(400).json({ message: "User ID is required" });
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user) {
+      logActivity({
+        req,
+        user,
+        action: "LOGOUT",
+        module: "Auth",
+        description: `${(user.role || "").toUpperCase()} ${user.name} logged out`,
+        status: "SUCCESS",
+        severity: "INFO",
+      });
 
-    logActivity({
-      req,
-      user,
-      action: "LOGOUT",
-      module: "Auth",
-      description: `${(user.role || "").toUpperCase()} ${user.name} logged out`,
-      status: "SUCCESS",
-      severity: "INFO",
-    });
+      user.refreshToken = null;
+      await user.save();
+      return res.status(200).json({ message: "Logged out successfully" });
+    }
 
-    user.refreshToken = null;
-    await user.save();
-    res.status(200).json({ message: "Logged out successfully" });
+    // Check if it's a student logging out
+    const student = await Student.findById(userId).populate("subDepartmentId", "name");
+    if (student) {
+      const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+      logActivity({
+        req,
+        user: {
+          id: student._id,
+          name: studentName,
+          email: student.email,
+          role: "student",
+          department: student.subDepartmentId?.name || "Student",
+          departmentId: student.subDepartmentId?._id || null,
+        },
+        action: "LOGOUT",
+        module: "Auth",
+        description: `Student ${studentName} (${student.email}) logged out`,
+        status: "SUCCESS",
+        severity: "INFO",
+      });
+
+      return res.status(200).json({ message: "Logged out successfully" });
+    }
+
+    return res.status(404).json({ message: "User or Student not found" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

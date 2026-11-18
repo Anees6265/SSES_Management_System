@@ -196,6 +196,49 @@ function inspectSecurityThreat(req) {
 }
 
 /**
+ * Strict Activity Whitelist:
+ * ONLY 4 types of activities are allowed to be saved in DB:
+ * 1. Login (action === "LOGIN")
+ * 2. Logout (action === "LOGOUT")
+ * 3. Student Promotion to next level / sub-level
+ * 4. Student Data Deletion (student record, task, or document deletion)
+ * All other activities are rejected to prevent DB storage exhaustion.
+ */
+function isAllowedActivity({ action, module, description = "", meta = {}, req = null }) {
+  // 1. Login
+  if (action === "LOGIN") return true;
+
+  // 2. Logout
+  if (action === "LOGOUT") return true;
+
+  const reqPath = String(req?.originalUrl || req?.url || "").toLowerCase();
+  const desc = String(description || "").toLowerCase();
+  const isStudentRelated =
+    module === "Students" ||
+    reqPath.includes("/student") ||
+    desc.includes("student");
+
+  // 3. Student Promotion to next level / sub-level
+  if (isStudentRelated && (
+    meta?.isPromotion ||
+    desc.includes("promot") ||
+    desc.includes("next level") ||
+    desc.includes("sublevel") ||
+    reqPath.includes("/promote")
+  )) {
+    return true;
+  }
+
+  // 4. Student Data Deletion (student record, document, task, etc.)
+  if (action === "DELETE" && isStudentRelated) {
+    return true;
+  }
+
+  // Reject all other unnecessary activities
+  return false;
+}
+
+/**
  * Asynchronous, non-blocking activity logger
  */
 function logActivity({
@@ -210,6 +253,15 @@ function logActivity({
   threatType = null,
   meta = {},
 }) {
+  // Enforce strict whitelist: only Login, Logout, Student Promotion, and Student Deletion
+  if (!isAllowedActivity({ action, module, description, meta, req })) {
+    return;
+  }
+
+  if (req) {
+    req._alreadyLoggedActivity = true;
+  }
+
   setImmediate(async () => {
     try {
       const activeUser = user || req?.user || null;

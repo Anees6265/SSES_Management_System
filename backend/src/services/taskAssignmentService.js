@@ -1328,6 +1328,26 @@ const deleteStudentTaskService = async (studentId, taskId, actor = null) => {
       createdByRole: actorRole,
       createdAt: new Date()
     });
+
+    try {
+      const { logActivity } = require("./activityLoggerService");
+      const roleUpper = (actorRole || "Staff").toUpperCase();
+      logActivity({
+        user: actor,
+        action: "DELETE",
+        module: "Students",
+        description: `${roleUpper} ${actorName} deleted task "${taskTitle}" of student ${studentDisplayName} (${student.prkey || ""})`,
+        status: "SUCCESS",
+        severity: "WARNING",
+        meta: {
+          studentId: student._id,
+          studentName: studentDisplayName,
+          prkey: student.prkey,
+          taskId: studentTask._id,
+          taskTitle,
+        },
+      });
+    } catch (_) {}
   } catch (logErr) {
     console.warn("Failed to create task deletion event log:", logErr.message);
   }

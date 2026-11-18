@@ -30,47 +30,55 @@ const buildUserFilter = (req) => {
     clearedBy: { $ne: userId },
   };
 
-  if (studentId) {
-    baseFilter.studentId = studentId;
-    return baseFilter;
-  }
+  // 1. Student Side: ONLY receives Promotion notifications (category: "level")
+  if (role === "student" || studentId) {
+    const studentObjId = mongoose.Types.ObjectId.isValid(studentId || userId)
+      ? new mongoose.Types.ObjectId(studentId || userId)
+      : (studentId || userId);
 
-  if (role === "student") {
-    const studentObjId = mongoose.Types.ObjectId.isValid(userId)
-      ? new mongoose.Types.ObjectId(userId)
-      : userId;
     baseFilter.$or = [
       { studentId: studentObjId },
       { recipientId: studentObjId },
       {
         studentId: null,
         recipientId: null,
-        recipientRole: { $in: ["all", "student"] },
+        recipientRole: "student",
       },
     ];
-    // Exclude task completion/started alerts (already visible in Student Activity Log) and legacy seed alerts
-    baseFilter.title = {
-      $nin: ["Task Completed", "Task Status Updated", "System Ready"],
-    };
-  } else if (["superadmin", "admin"].includes(role)) {
+    baseFilter.category = "level";
+    return baseFilter;
+  }
+
+  // 2. Faculty Side: ONLY receives Student Promotion ("level") and Student Leave ("permission")
+  if (["faculty", "hod", "coordinator"].includes(role)) {
+    const facultyObjId = mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+
+    baseFilter.$or = [
+      { recipientRole: { $in: ["faculty", "all"] } },
+      { recipientId: facultyObjId },
+      { recipientId: userId },
+    ];
+    baseFilter.category = { $in: ["level", "permission"] };
+    return baseFilter;
+  }
+
+  // 3. Admin & Super Admin Side
+  if (["superadmin", "admin"].includes(role)) {
     baseFilter.$or = [
       { recipientRole: { $in: ["all", "superadmin", "admin", "staff", "faculty"] } },
       { recipientId: userId },
       { studentId: { $ne: null } },
     ];
-  } else if (["faculty", "hod"].includes(role)) {
-    baseFilter.$or = [
-      { recipientRole: { $in: ["all", "faculty", "hod", "staff"] } },
-      { recipientId: userId },
-      { studentId: { $ne: null } },
-    ];
-  } else {
-    baseFilter.$or = [
-      { recipientRole: { $in: ["all", role, "staff"] } },
-      { recipientId: userId },
-      { studentId: { $ne: null } },
-    ];
+    return baseFilter;
   }
+
+  baseFilter.$or = [
+    { recipientRole: { $in: ["all", role, "staff"] } },
+    { recipientId: userId },
+    { studentId: { $ne: null } },
+  ];
 
   return baseFilter;
 };
@@ -182,6 +190,33 @@ exports.markAsRead = async (req, res) => {
     });
   } catch (error) {
     console.error("markAsRead error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /api/notifications/purge-unnecessary
+exports.purgeUnnecessaryNotifications = async (req, res) => {
+  try {
+    const userRole = String(req.user?.role || "").toLowerCase().trim();
+    if (!["superadmin", "admin"].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only superadmin and admin can purge unnecessary notifications.",
+      });
+    }
+
+    // Keep ONLY promotions ("level") and student leaves ("permission")
+    const result = await Notification.deleteMany({
+      category: { $nin: ["level", "permission"] },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully purged ${result.deletedCount} unnecessary notifications from database.`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("purgeUnnecessaryNotifications error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

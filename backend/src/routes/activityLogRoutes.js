@@ -17,5 +17,8 @@ router.get("/stats", activityLogController.getActivityStats);
 // GET /api/activity-logs/users (Distinct active users list)
 router.get("/users", activityLogController.getActivityLogUsers);
 
+// DELETE /api/activity-logs/purge-unnecessary (Super Admin / Admin only)
+router.delete("/purge-unnecessary", activityLogController.purgeUnnecessaryLogs);
+
 module.exports = router;
 

@@ -112,6 +112,7 @@ router.get("/attendance/stats", ...auth, attendanceController.getOverallAttendan
 
 router.get("/:id", ...auth, studentController.getStudentById);
 router.patch("/:id", ...auth, studentController.updateStudent);
+router.delete("/:id", ...auth, studentController.deleteStudent);
 router.patch("/update_technology/:id", ...auth, studentController.updateTechnology);
 router.patch("/:id/technology", ...auth, studentController.updateTechnology);
 

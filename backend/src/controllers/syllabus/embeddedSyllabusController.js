@@ -787,17 +787,7 @@ exports.deleteTopicFromSyllabusVersion = async (req, res) => {
       ]
     });
 
-    try {
-      const { logActivity } = require("../../services/activityLoggerService");
-      logActivity({
-        req,
-        action: "DELETE",
-        module: "Curriculum",
-        description: `Topic "${topicName}" and ${taskDeleteRes.deletedCount} associated tasks deleted from syllabus version ${sv.version}`,
-        status: "SUCCESS",
-        severity: "INFO",
-      });
-    } catch {}
+
 
     res.status(200).json({
       success: true,
@@ -893,17 +883,7 @@ exports.bulkDeleteTopicsFromSyllabusVersion = async (req, res) => {
       ]
     });
 
-    try {
-      const { logActivity } = require("../../services/activityLoggerService");
-      logActivity({
-        req,
-        action: "DELETE",
-        module: "Curriculum",
-        description: `${deletedTopicIds.length} topic(s) and ${taskDeleteRes.deletedCount} associated tasks deleted from syllabus version ${sv.version}`,
-        status: "SUCCESS",
-        severity: "INFO",
-      });
-    } catch {}
+
 
     res.status(200).json({
       success: true,

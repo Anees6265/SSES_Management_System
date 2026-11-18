@@ -351,6 +351,13 @@ export const authApi = createApi({
       }),
       providesTags: ["ActivityLog"],
     }),
+    purgeUnnecessaryActivityLogs: builder.mutation({
+      query: () => ({
+        url: "/activity-logs/purge-unnecessary",
+        method: "DELETE",
+      }),
+      invalidatesTags: ["ActivityLog"],
+    }),
 
     // ---- Forget Password API ----
     forgetPassword: builder.mutation({
@@ -2461,6 +2468,7 @@ export const {
   useGetActivityLogsQuery,
   useGetActivityLogStatsQuery,
   useGetActivityLogUsersQuery,
+  usePurgeUnnecessaryActivityLogsMutation,
   useGetSupportDevelopersQuery,
   useGetSupportTicketsQuery,
   useCreateSupportTicketMutation,

@@ -144,6 +144,8 @@ const syncStudentReadiness = async (studentId) => {
       });
 
       const { createNotification } = require("./notificationService");
+      const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+
       createNotification({
         title: "All Levels Completed — Ready for Placement",
         message: "Congratulations! You have completed all academic levels and are now ready for placement.",
@@ -151,7 +153,16 @@ const syncStudentReadiness = async (studentId) => {
         category: "level",
         studentId,
         recipientRole: "student",
-      }).catch((notifErr) => console.error("All-levels notification error:", notifErr));
+      }).catch((notifErr) => console.error("All-levels notification error (student):", notifErr));
+
+      createNotification({
+        title: `Student Completed All Levels: ${studentDisplayName}`,
+        message: `Student ${studentDisplayName} (${student.prkey || ""}) has completed all academic levels and is now ready for placement.`,
+        type: "success",
+        category: "level",
+        recipientRole: "faculty",
+        studentId,
+      }).catch((notifErr) => console.error("All-levels notification error (faculty):", notifErr));
     }
     // All other errors are silently swallowed - promotion is best-effort on auto-trigger
   } finally {
@@ -306,6 +317,37 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
         createdByName: actorUser?.name || "",
         createdByRole: actorUser?.role || "",
       });
+
+      try {
+        const { logActivity } = require("./activityLoggerService");
+        const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+        const actorRole = (actorUser?.role || (isAuto ? "system" : "faculty")).toUpperCase();
+        const actorName = actorUser?.name || (isAuto ? "System (Auto)" : "Faculty");
+
+        logActivity({
+          user: actorUser || {
+            name: actorName,
+            role: isAuto ? "system" : "faculty",
+            department: student.departmentName || "",
+            departmentId: student.subDepartmentId || null,
+          },
+          action: "UPDATE",
+          module: "Students",
+          description: `${actorRole} ${actorName} promoted student ${studentDisplayName} (${student.prkey || student.email}) - completed all levels and marked ready for placement`,
+          status: "SUCCESS",
+          severity: "INFO",
+          meta: {
+            isPromotion: true,
+            placementReady: true,
+            studentId: student._id,
+            studentName: studentDisplayName,
+            prkey: student.prkey,
+            isAuto,
+          },
+        });
+      } catch (err) {
+        console.error("[promotionService] ActivityLog error:", err.message);
+      }
 
       return {
         promotedToNewLevel: false,
@@ -754,8 +796,46 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
   });
 
   try {
+    const { logActivity } = require("./activityLoggerService");
+    const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+    const actorRole = (actorUser?.role || (isAuto ? "system" : "faculty")).toUpperCase();
+    const actorName = actorUser?.name || (isAuto ? "System (Auto)" : "Faculty");
+
+    logActivity({
+      user: actorUser || {
+        name: actorName,
+        role: isAuto ? "system" : "faculty",
+        department: student.departmentName || "",
+        departmentId: student.subDepartmentId || null,
+      },
+      action: "UPDATE",
+      module: "Students",
+      description: `${actorRole} ${actorName} promoted student ${studentDisplayName} (${student.prkey || student.email}) from ${fromLevelName} (${fromSubLevelName}) to ${toLevelName} (${toSubLevelName})`,
+      status: "SUCCESS",
+      severity: "INFO",
+      meta: {
+        isPromotion: true,
+        studentId: student._id,
+        studentName: studentDisplayName,
+        prkey: student.prkey,
+        fromLevel: fromLevelName,
+        fromSubLevel: fromSubLevelName,
+        toLevel: toLevelName,
+        toSubLevel: toSubLevelName,
+        promotedToNewLevel,
+        isAuto,
+      },
+    });
+  } catch (err) {
+    console.error("[promotionService] ActivityLog error:", err.message);
+  }
+
+  try {
     const { createNotification } = require("./notificationService");
     const taskNote = tasksAssigned > 0 ? ` ${tasksAssigned} task${tasksAssigned > 1 ? "s" : ""} assigned.` : "";
+    const studentDisplayName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email;
+
+    // 1. Send promotion notification to Student
     createNotification({
       title: promoTitle,
       message: promotedToNewLevel
@@ -777,7 +857,34 @@ const promoteToNextSubLevel = async (studentId, actorUser = null, options = {}) 
         tasksAssigned,
         isAuto,
       },
-    }).catch((notifErr) => console.error("Promotion notification error:", notifErr));
+    }).catch((notifErr) => console.error("Promotion notification error (student):", notifErr));
+
+    // 2. Send promotion notification to Faculty
+    createNotification({
+      title: `Student Promoted: ${studentDisplayName}`,
+      message: promotedToNewLevel
+        ? `Student ${studentDisplayName} (${student.prkey || ""}) was promoted from ${fromLevelName} (${fromSubLevelName}) to ${toLevelName} (${toSubLevelName}) by ${actorUser?.name || (isAuto ? "System (Auto)" : "Faculty")}`
+        : `Student ${studentDisplayName} (${student.prkey || ""}) moved from SubLevel ${fromSubLevelName} to ${toSubLevelName} by ${actorUser?.name || (isAuto ? "System (Auto)" : "Faculty")}`,
+      type: "success",
+      category: "level",
+      studentId: student._id,
+      recipientRole: "faculty",
+      actorId,
+      actorName: actorUser?.name || (isAuto ? "System" : "Faculty"),
+      actorRole: actorUser?.role || (isAuto ? "system" : "faculty"),
+      metadata: {
+        studentId: student._id,
+        studentName: studentDisplayName,
+        prkey: student.prkey,
+        prevLevelName: fromLevelName,
+        prevSubLevelName: fromSubLevelName,
+        newLevelName: toLevelName,
+        newSubLevelName: toSubLevelName,
+        promotedToNewLevel,
+        tasksAssigned,
+        isAuto,
+      },
+    }).catch((notifErr) => console.error("Promotion notification error (faculty):", notifErr));
   } catch (notifErr) {
     console.error("Failed to trigger promotion notification:", notifErr);
   }

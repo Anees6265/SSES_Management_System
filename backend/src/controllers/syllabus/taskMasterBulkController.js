@@ -9,7 +9,7 @@ const VALID_PRIORITY = ["low", "medium", "high"];
 // Body: { syllabusVersionId, tasks: [{ topic, subTopic, taskTitle, taskType, priority, maxMarks, timeDays, measurablePoints }], assignTo, studentIds }
 exports.bulkUploadTasks = async (req, res) => {
   try {
-    const { syllabusVersionId, tasks, domain, assignTo, studentIds } = req.body;
+    const { syllabusVersionId, sessionIds, tasks, domain, assignTo, studentIds } = req.body;
 
     if (!syllabusVersionId)
       return res.status(400).json({ success: false, message: "syllabusVersionId is required" });
@@ -152,10 +152,116 @@ exports.bulkUploadTasks = async (req, res) => {
       await syncTasksToSubLevelStudents(syllabusVersionId).catch(() => {});
     }
 
+    let totalInserted = inserted.length;
+    const extraSessionIds = Array.isArray(sessionIds) && sessionIds.length > 0
+      ? sessionIds.filter(id => String(id) !== String(sv.sessionId))
+      : [];
+
+    for (const otherSessId of extraSessionIds) {
+      try {
+        const otherSv = await SyllabusVersion.findOne({
+          sessionId: otherSessId,
+          subLevelId: sv.subLevelId,
+          isActive: true
+        }).sort({ createdAt: -1 });
+
+        if (!otherSv) continue;
+
+        const otherTaskDocs = [];
+        const otherExistingCount = await Task.countDocuments({ syllabusVersionId: otherSv._id });
+
+        for (let i = 0; i < tasks.length; i++) {
+          const row = tasks[i];
+          const subjectName = (row.subject || row.Subject || "").trim();
+          const topicName = (row.topic || row.Topic || "").trim();
+          const subTopicName = (row.subTopic || row["Sub Topic"] || row.SubTopic || "").trim();
+          const taskTitle = (row.taskTitle || row["Task Title"] || row.TaskTitle || row.Task || row.task || row.title || "").trim();
+          if (!topicName || !taskTitle) continue;
+
+          let foundSubj = null;
+          let foundTop = null;
+          let foundSubTop = null;
+
+          const subjectsSearch = subjectName
+            ? (otherSv.subjects || []).filter(s => s.name.trim().toLowerCase() === subjectName.toLowerCase())
+            : (otherSv.subjects || []);
+
+          for (const s of subjectsSearch) {
+            const top = (s.topics || []).find(t => t.name.trim().toLowerCase() === topicName.toLowerCase());
+            if (top) {
+              foundSubj = s;
+              foundTop = top;
+              if (subTopicName) {
+                foundSubTop = (top.subTopics || []).find(st => st.name.trim().toLowerCase() === subTopicName.toLowerCase()) || null;
+              }
+              break;
+            }
+          }
+
+          if (!foundTop) continue;
+
+          const exists = await Task.findOne({
+            syllabusVersionId: otherSv._id,
+            topicId: foundTop._id,
+            subTopicId: foundSubTop?._id || null,
+            title: taskTitle,
+            isActive: true
+          });
+          if (exists) continue;
+
+          const seqOffset = otherTaskDocs.length;
+          const docTimestamp = new Date(baseTime + seqOffset);
+          const rowCourses = Array.isArray(row.courses) && row.courses.length > 0
+            ? row.courses
+            : (row.course ? String(row.course).split(",").map(c => c.trim()).filter(Boolean) : (otherSv.courses || ["All"]));
+
+          otherTaskDocs.push({
+            syllabusVersionId: otherSv._id,
+            sessionId: otherSessId,
+            levelId: otherSv.levelId || sv.levelId || null,
+            subLevelId: otherSv.subLevelId || sv.subLevelId || null,
+            subjectId: foundSubj._id,
+            subjectName: foundSubj.name,
+            topicId: foundTop._id,
+            topicName: foundTop.name,
+            subTopicId: foundSubTop?._id || null,
+            subTopicName: foundSubTop?.name || "",
+            taskNodeType: foundSubTop ? "subTopic" : "topic",
+            title: taskTitle,
+            domain: (row.domain || domain || otherSv.domain || sv.domain || "").trim(),
+            course: rowCourses.join(", "),
+            courses: rowCourses,
+            type: VALID_TYPES.includes(row.taskType) ? row.taskType : "assessment",
+            priority: VALID_PRIORITY.includes(row.priority) ? row.priority : "medium",
+            maxMarks: Math.min(5, Math.max(1, Number(row.maxMarks) || 5)),
+            timeDays: row.timeDays !== undefined && row.timeDays !== null ? String(row.timeDays).trim() : null,
+            measurablePoints: (row.measurablePoints || "").trim(),
+            order: otherExistingCount + seqOffset + 1,
+            assignTo: assignTo === "specific" ? "specific" : "all",
+            specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
+            assignedByName: req.user?.name || "System",
+            isActive: true,
+            createdAt: docTimestamp,
+            updatedAt: docTimestamp
+          });
+        }
+
+        if (otherTaskDocs.length > 0) {
+          await Task.insertMany(otherTaskDocs, { ordered: true });
+          totalInserted += otherTaskDocs.length;
+          await syncTasksToSubLevelStudents(otherSv._id).catch(() => {});
+        }
+      } catch (err) {
+        console.error(`Error uploading tasks for extra session ${otherSessId}:`, err);
+      }
+    }
+
     res.status(201).json({
       success:  true,
-      message:  `${inserted.length} task(s) uploaded successfully`,
-      inserted: inserted.length,
+      message:  extraSessionIds.length > 0
+        ? `${totalInserted} task(s) uploaded across ${1 + extraSessionIds.length} sessions`
+        : `${inserted.length} task(s) uploaded successfully`,
+      inserted: totalInserted,
       skipped:  errors.length,
       errors,
     });

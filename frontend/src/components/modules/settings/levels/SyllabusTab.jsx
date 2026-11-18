@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
+import SessionMultiSelect from "../../../shared/form-fields/SessionMultiSelect";
 import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker";
 import * as XLSX from "xlsx";
 import {
@@ -300,7 +301,7 @@ const SubjectAccordion = ({ item, index }) => {
 ══════════════════════════════════════════════════════════ */
 export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName, departmentId, subdepartment, onSaved, onClose }, ref) => {
   const subLevelId = subLevel?._id;
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSessionIds, setSelectedSessionIds] = useState([]);
   const [selectedDomain,    setSelectedDomain]    = useState("");
   const [selectedCourses,   setSelectedCourses]   = useState(["All"]);
   const [subject,           setSubject]           = useState("");
@@ -316,17 +317,23 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
   const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
+  const selectedSessionId = selectedSessionIds[0] || "";
+
   useEffect(() => {
     if (sessions.length > 0) {
-      const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) {
-        setSelectedSessionId(currentSession?._id || "");
+      const validIds = selectedSessionIds.filter(id => sessions.some(s => s._id === id));
+      if (validIds.length === 0) {
+        if (currentSession?._id) setSelectedSessionIds([currentSession._id]);
+      } else if (validIds.length !== selectedSessionIds.length) {
+        setSelectedSessionIds(validIds);
       }
     }
-  }, [selectedSessionId, sessions, currentSession]);
+  }, [sessions, currentSession]);
 
   const reset = () => {
-    setSubject(""); setSelectedSessionId(""); setSelectedDomain("");
+    setSubject("");
+    setSelectedSessionIds(currentSession?._id ? [currentSession._id] : []);
+    setSelectedDomain("");
     setSelectedCourses(["All"]);
     setTopics([{ name: "", subTopics: [""] }]);
   };
@@ -351,7 +358,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
     if (!subject.trim())     { toast.error("Subject name required"); return; }
     const validTopics = topics.filter((t) => t.name.trim());
     if (!validTopics.length) { toast.error("At least one topic required"); return; }
-    if (!selectedSessionId)  { toast.error("Please select an academic session"); return; }
+    if (!selectedSessionIds.length) { toast.error("Please select at least one academic session"); return; }
     if (!subLevel?._id)      { toast.error("SubLevel not found"); return; }
     if (!level?._id)         { toast.error("Level not found"); return; }
     setSaving(true);
@@ -359,7 +366,8 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
       const coursesList = selectedCourses && selectedCourses.length > 0 ? selectedCourses : ["All"];
       const courseStr = coursesList.includes("All") ? "All" : coursesList.join(", ");
       await createSyllabusVersion({
-        sessionId: selectedSessionId,
+        sessionId: selectedSessionIds[0],
+        sessionIds: selectedSessionIds,
         levelId: level._id,
         subLevelId: subLevel._id,
         domain: isLevel2B ? (selectedDomain || "") : "",
@@ -367,7 +375,11 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
         courses: coursesList,
         subjects: [buildSubjectPayload()],
       }).unwrap();
-      toast.success("Subject saved to syllabus!");
+      toast.success(
+        selectedSessionIds.length > 1
+          ? `Subject saved to syllabus for ${selectedSessionIds.length} sessions!`
+          : "Subject saved to syllabus!"
+      );
       reset(); 
       onSaved?.();
       onClose?.();
@@ -411,16 +423,15 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
           </span>
         </div>
 
-        {/* Session */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Academic Session <span className="text-red-500">*</span>
-          </label>
-          <SelectDropdown
-            value={selectedSessionId}
-            onChange={(val) => setSelectedSessionId(val)}
-            options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-            placeholder="-- Select Session --"
+        {/* Session MultiSelect */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <SessionMultiSelect
+            sessions={sessions}
+            selectedSessionIds={selectedSessionIds}
+            onChange={setSelectedSessionIds}
+            label="Target Academic Session(s)"
+            hint="Select one or multiple sessions to add syllabus across multiple sessions simultaneously."
+            size="sm"
           />
         </div>
 
@@ -616,7 +627,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const [hierarchy,        setHierarchy]        = useState([]);
   const [rawRows,          setRawRows]          = useState([]);
   const [fileName,         setFileName]         = useState("");
-  const [selectedSessionId,setSelectedSessionId]= useState("");
+  const [selectedSessionIds,setSelectedSessionIds]= useState([]);
   const [selectedDomain,   setSelectedDomain]   = useState("");
   const [selectedCourses,  setSelectedCourses]  = useState(["All"]);
   const [subjectMeta,      setSubjectMeta]      = useState([]); // [{ name, includeInReportCard, reportCategory }]
@@ -631,14 +642,18 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   const departmentDomains = useMemo(() => getDomainsForDepartment(deptIdentifier), [deptIdentifier]);
   const currentSession = useMemo(() => getCurrentSession(sessions), [sessions]);
 
+  const selectedSessionId = selectedSessionIds[0] || "";
+
   useEffect(() => {
     if (sessions.length > 0) {
-      const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) {
-        setSelectedSessionId(currentSession?._id || "");
+      const validIds = selectedSessionIds.filter(id => sessions.some(s => s._id === id));
+      if (validIds.length === 0) {
+        if (currentSession?._id) setSelectedSessionIds([currentSession._id]);
+      } else if (validIds.length !== selectedSessionIds.length) {
+        setSelectedSessionIds(validIds);
       }
     }
-  }, [selectedSessionId, sessions, currentSession]);
+  }, [sessions, currentSession]);
 
   const totalSubjects  = hierarchy.length;
   const totalTopics    = hierarchy.reduce((acc, s) => acc + s.topics.length, 0);
@@ -653,7 +668,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
     setHierarchy([]);
     setRawRows([]);
     setFileName("");
-    setSelectedSessionId("");
+    setSelectedSessionIds(currentSession?._id ? [currentSession._id] : []);
     setSelectedDomain("");
     setSelectedCourses(["All"]);
     setSubjectMeta([]);
@@ -714,7 +729,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
 
   const handleSave = async (confirmedMeta = subjectMeta) => {
     if (!hierarchy.length)  { toast.error("Please upload a valid Excel file first"); return; }
-    if (!selectedSessionId) { toast.error("Please select an academic session"); return; }
+    if (!selectedSessionIds.length) { toast.error("Please select at least one academic session"); return; }
     if (!subLevel?._id)     { toast.error("SubLevel not found"); return; }
     if (!level?._id)        { toast.error("Level not found"); return; }
 
@@ -740,7 +755,8 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
         courses: coursesList,
       }));
       const res = await uploadCombined({
-        sessionId:   selectedSessionId,
+        sessionId:   selectedSessionIds[0],
+        sessionIds:  selectedSessionIds,
         levelId:     level._id,
         subLevelId:  subLevel._id,
         domain:      isLevel2B ? (selectedDomain || "") : "",
@@ -803,16 +819,15 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
           </span>
         </div>
 
-        {/* Academic Session */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Target Academic Session <span className="text-red-500">*</span>
-          </label>
-          <SelectDropdown
-            value={selectedSessionId}
-            onChange={(val) => setSelectedSessionId(val)}
-            options={[{ value: "", label: "-- Select Session --" }, ...sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))]}
-            placeholder="-- Select Session --"
+        {/* Academic Session MultiSelect */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+          <SessionMultiSelect
+            sessions={sessions}
+            selectedSessionIds={selectedSessionIds}
+            onChange={setSelectedSessionIds}
+            label="Target Academic Session(s)"
+            hint="Select one or multiple sessions to upload syllabus and tasks for students across multiple sessions."
+            size="sm"
           />
         </div>
 
@@ -1792,7 +1807,7 @@ const parseTaskExcel = (file) =>
     reader.readAsArrayBuffer(file);
   });
 
-export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSaved, level, subLevel, departmentName, departmentId, subdepartment }) => {
+export const TaskUploadDrawer = ({ syllabusVersionId, sessionIds, subjectName, version, onSaved, level, subLevel, departmentName, departmentId, subdepartment }) => {
   const fileRef = useRef(null);
   const [rows,           setRows]           = useState([]);
   const [fileName,       setFileName]       = useState("");
@@ -1893,6 +1908,7 @@ export const TaskUploadDrawer = ({ syllabusVersionId, subjectName, version, onSa
       }));
       const res = await bulkUploadTasks({
         syllabusVersionId,
+        sessionIds,
         tasks: tasksWithDomain,
         domain: isLevel2B ? (selectedDomain || "") : "",
         assignTo: assignTarget,

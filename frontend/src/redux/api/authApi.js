@@ -1914,10 +1914,10 @@ export const authApi = createApi({
 
     // Bulk upload tasks via Excel rows
     bulkUploadTasks: builder.mutation({
-      query: ({ syllabusVersionId, tasks }) => ({
+      query: ({ syllabusVersionId, tasks, ...rest }) => ({
         url: `/syllabus/versions/bulk-upload-tasks`,
         method: 'POST',
-        body: { syllabusVersionId, tasks },
+        body: { syllabusVersionId, tasks, ...rest },
       }),
       invalidatesTags: (result, error, data) => [
         { type: 'SyllabusVersion', id: data.syllabusVersionId },

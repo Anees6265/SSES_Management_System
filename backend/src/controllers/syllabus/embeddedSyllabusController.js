@@ -138,9 +138,13 @@ const extractRowsFromWorksheet = (worksheet) => {
 
 exports.createSyllabusVersion = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, version: versionInput, title, subjects, domain, courses, course } = req.body;
-    if (!sessionId || !levelId || !subLevelId) {
-      return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
+    const { sessionId, sessionIds, levelId, subLevelId, version: versionInput, title, subjects, domain, courses, course } = req.body;
+    const targetSessionIds = Array.isArray(sessionIds) && sessionIds.length > 0
+      ? [...new Set(sessionIds.filter(Boolean))]
+      : (sessionId ? [sessionId] : []);
+
+    if (targetSessionIds.length === 0 || !levelId || !subLevelId) {
+      return res.status(400).json({ success: false, message: "sessionId or sessionIds, levelId, subLevelId are required" });
     }
     if (!Array.isArray(subjects) || subjects.length === 0) {
       return res.status(400).json({ success: false, message: "subjects must be a non-empty array" });
@@ -155,56 +159,61 @@ exports.createSyllabusVersion = async (req, res) => {
       normalizedCourses = course.split(",").map((c) => c.trim()).filter(Boolean);
     }
 
-    let resolvedVersion = versionInput?.trim();
+    const savedVersions = [];
+    for (const currSessionId of targetSessionIds) {
+      let resolvedVersion = versionInput?.trim();
 
-    if (!resolvedVersion) {
-      // Auto-detect: find latest existing version for this session + subLevel
-      const existing = await SyllabusVersion.findOne(
-        { subLevelId, ...(sessionId ? { sessionId } : {}), isActive: true },
-        { version: 1 },
-        { sort: { createdAt: -1 } }
-      );
-      if (existing) {
-        // Same version — new subject goes into same version doc
-        resolvedVersion = existing.version;
-      } else {
-        resolvedVersion = "v1.0";
+      if (!resolvedVersion) {
+        // Auto-detect: find latest existing version for this session + subLevel
+        const existing = await SyllabusVersion.findOne(
+          { subLevelId, sessionId: currSessionId, isActive: true },
+          { version: 1 },
+          { sort: { createdAt: -1 } }
+        );
+        if (existing) {
+          resolvedVersion = existing.version;
+        } else {
+          resolvedVersion = "v1.0";
+        }
       }
-    }
 
-    // Check if a version with this subLevelId + resolvedVersion already exists
-    const existingVersion = await SyllabusVersion.findOne({
-      sessionId, levelId, subLevelId, version: resolvedVersion
-    });
-
-    if (existingVersion) {
-      existingVersion.isActive = true;
-      existingVersion.status = "active";
-      if (domain !== undefined) existingVersion.domain = (domain || "").trim();
-      if (courses !== undefined || course !== undefined) {
-        existingVersion.courses = normalizedCourses;
-        existingVersion.course = normalizedCourses.join(", ");
-      }
-      // Add subjects to existing version instead of creating new
-      upsertSubjectTree(existingVersion, subjects);
-      await existingVersion.save();
-      return res.status(200).json({
-        success: true,
-        message: `Subjects added to version ${resolvedVersion}`,
-        data: existingVersion
+      // Check if a version with this subLevelId + resolvedVersion already exists
+      const existingVersion = await SyllabusVersion.findOne({
+        sessionId: currSessionId, levelId, subLevelId, version: resolvedVersion
       });
+
+      if (existingVersion) {
+        existingVersion.isActive = true;
+        existingVersion.status = "active";
+        if (domain !== undefined) existingVersion.domain = (domain || "").trim();
+        if (courses !== undefined || course !== undefined) {
+          existingVersion.courses = normalizedCourses;
+          existingVersion.course = normalizedCourses.join(", ");
+        }
+        upsertSubjectTree(existingVersion, subjects);
+        await existingVersion.save();
+        savedVersions.push(existingVersion);
+      } else {
+        const syllabusVersion = await SyllabusVersion.create({
+          sessionId: currSessionId, levelId, subLevelId,
+          version: resolvedVersion,
+          title: title || "",
+          domain: (domain || "").trim(),
+          courses: normalizedCourses,
+          course: normalizedCourses.join(", "),
+          subjects: normalizeSubjects(subjects),
+          status: "active",
+          isActive: true
+        });
+        savedVersions.push(syllabusVersion);
+      }
     }
 
-    const syllabusVersion = await SyllabusVersion.create({
-      sessionId, levelId, subLevelId,
-      version: resolvedVersion,
-      title: title || "",
-      domain: (domain || "").trim(),
-      courses: normalizedCourses,
-      course: normalizedCourses.join(", "),
-      subjects: normalizeSubjects(subjects)
+    res.status(201).json({
+      success: true,
+      message: `Syllabus saved successfully for ${savedVersions.length} session(s)`,
+      data: savedVersions.length === 1 ? savedVersions[0] : savedVersions
     });
-    res.status(201).json({ success: true, message: "Syllabus version created successfully", data: syllabusVersion });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: "This syllabus version already exists for the selected session/level/sublevel" });
@@ -342,7 +351,7 @@ exports.archiveSyllabusVersion = async (req, res) => {
 
 exports.addTaskToSyllabusVersion = async (req, res) => {
   try {
-    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain, course, courses, assignTo, studentIds } = req.body;
+    const { subjectId, topicId, subTopicId, title, description, type, priority, mandatory, maxMarks, timeDays, measurablePoints, dueDate, domain, course, courses, assignTo, studentIds, sessionIds, targetSessionIds } = req.body;
     if (!ensureObjectId(subjectId) || !ensureObjectId(topicId) || !title) {
       return res.status(400).json({ success: false, message: "subjectId, topicId and title are required" });
     }
@@ -404,13 +413,113 @@ exports.addTaskToSyllabusVersion = async (req, res) => {
     });
 
     const syncResults = await syncTaskToStudents(task, assignTo === "specific" ? studentIds : null);
+    let totalSynced = syncResults?.count || 0;
+
+    // Handle extra sessions if multi-session is specified
+    const extraSessionIds = Array.isArray(sessionIds) && sessionIds.length > 0
+      ? sessionIds.filter(id => String(id) !== String(sv.sessionId))
+      : (Array.isArray(targetSessionIds) ? targetSessionIds.filter(id => String(id) !== String(sv.sessionId)) : []);
+
+    for (const otherSessionId of extraSessionIds) {
+      try {
+        const otherSv = await SyllabusVersion.findOne({
+          sessionId: otherSessionId,
+          subLevelId: sv.subLevelId,
+          isActive: true
+        }).sort({ createdAt: -1 });
+
+        if (otherSv) {
+          const otherSubj = (otherSv.subjects || []).find(
+            s => s.name.trim().toLowerCase() === subject.name.trim().toLowerCase()
+          );
+          const otherTop = otherSubj?.topics?.find(
+            t => t.name.trim().toLowerCase() === topic.name.trim().toLowerCase()
+          );
+          const otherSubTop = subTopic
+            ? otherTop?.subTopics?.find(st => st.name.trim().toLowerCase() === subTopic.name.trim().toLowerCase())
+            : null;
+
+          if (otherTop) {
+            const otherCount = await Task.countDocuments({ syllabusVersionId: otherSv._id, topicId: otherTop._id });
+            const otherTask = await Task.create({
+              syllabusVersionId: otherSv._id,
+              sessionId: otherSessionId,
+              levelId: sv.levelId || null,
+              subLevelId: sv.subLevelId || null,
+              subjectId: otherSubj._id,
+              subjectName: otherSubj.name,
+              topicId: otherTop._id,
+              topicName: otherTop.name,
+              subTopicId: otherSubTop?._id || null,
+              subTopicName: otherSubTop?.name || "",
+              taskNodeType: otherSubTop ? "subTopic" : "topic",
+              title,
+              domain: (domain || sv.domain || "").trim(),
+              course: normalizedCourses.join(", "),
+              courses: normalizedCourses,
+              description: description || "",
+              type: type || "assignment",
+              priority: priority || "medium",
+              dueDate: dueDate || null,
+              mandatory: mandatory !== false,
+              maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : 5,
+              timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
+              measurablePoints: measurablePoints || "",
+              order: otherCount + 1,
+              assignTo: assignTo === "specific" ? "specific" : "all",
+              specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
+              assignedByName: req.user?.name || "System",
+              isActive: true
+            });
+            const otherSync = await syncTaskToStudents(otherTask, assignTo === "specific" ? studentIds : null);
+            totalSynced += otherSync?.count || 0;
+            continue;
+          }
+        }
+
+        // If no matching topic or no version for this session, create general task for that session
+        const genCount = await Task.countDocuments({ sessionId: otherSessionId, subLevelId: sv.subLevelId });
+        const otherGenTask = await Task.create({
+          sessionId: otherSessionId,
+          levelId: sv.levelId || null,
+          subLevelId: sv.subLevelId || null,
+          subjectName: subject.name,
+          topicName: topic.name,
+          title,
+          domain: (domain || sv.domain || "").trim(),
+          course: normalizedCourses.join(", "),
+          courses: normalizedCourses,
+          description: description || "",
+          type: type || "assignment",
+          priority: priority || "medium",
+          dueDate: dueDate || null,
+          mandatory: mandatory !== false,
+          maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : 5,
+          timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
+          measurablePoints: measurablePoints || "",
+          order: genCount + 1,
+          isGeneralTask: true,
+          taskNodeType: "general",
+          assignTo: assignTo === "specific" ? "specific" : "all",
+          specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
+          assignedByName: req.user?.name || "System",
+          isActive: true
+        });
+        const otherGenSync = await syncTaskToStudents(otherGenTask, assignTo === "specific" ? studentIds : null);
+        totalSynced += otherGenSync?.count || 0;
+      } catch (err) {
+        console.error(`Error assigning task to extra session ${otherSessionId}:`, err);
+      }
+    }
 
     res.status(201).json({
       success: true,
-      message: "Task added successfully",
+      message: extraSessionIds.length > 0 
+        ? `Task added and synced to ${1 + extraSessionIds.length} sessions`
+        : "Task added successfully",
       data: {
         task,
-        syncedStudents: syncResults.count || 0
+        syncedStudents: totalSynced
       }
     });
   } catch (error) {
@@ -977,9 +1086,13 @@ exports.toggleSubTopicActive = async (req, res) => {
 // Rows with taskTitle = syllabus + task
 exports.uploadCombined = async (req, res) => {
   try {
-    const { sessionId, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version, domain, courses, course } = req.body;
-    if (!sessionId || !levelId || !subLevelId)
-      return res.status(400).json({ success: false, message: "sessionId, levelId, subLevelId are required" });
+    const { sessionId, sessionIds, levelId, subLevelId, tasks: rows, subjectMeta = [], title, version, domain, courses, course } = req.body;
+    const targetSessionIds = Array.isArray(sessionIds) && sessionIds.length > 0
+      ? [...new Set(sessionIds.filter(Boolean))]
+      : (sessionId ? [sessionId] : []);
+
+    if (targetSessionIds.length === 0 || !levelId || !subLevelId)
+      return res.status(400).json({ success: false, message: "sessionId or sessionIds, levelId, subLevelId are required" });
     if (!Array.isArray(rows) || rows.length === 0)
       return res.status(400).json({ success: false, message: "tasks array is required" });
 
@@ -1070,130 +1183,139 @@ exports.uploadCombined = async (req, res) => {
     if (subjects.length === 0)
       return res.status(400).json({ success: false, message: "No valid subject/topic rows found" });
 
-    // Step 2: Create or update SyllabusVersion
-    let sv = await SyllabusVersion.findOne({ sessionId, levelId, subLevelId }).sort({ createdAt: -1 });
-    if (sv) {
-      sv.isActive = true;
-      sv.status = "active";
-      if (title && title.trim()) sv.title = title.trim();
-      if (version && version.trim()) sv.version = version.trim();
-      if (domain !== undefined) sv.domain = (domain || "").trim();
-      if (courses !== undefined || course !== undefined) {
-        sv.courses = normalizedCourses;
-        sv.course = normalizedCourses.join(", ");
-      }
-      upsertSubjectTree(sv, subjects);
-      await sv.save();
-    } else {
-      sv = await SyllabusVersion.create({
-        sessionId,
-        levelId,
-        subLevelId,
-        title: (title || "").trim(),
-        version: (version || "").trim() || "v1.0",
-        domain: (domain || "").trim(),
-        courses: normalizedCourses,
-        course: normalizedCourses.join(", "),
-        subjects: normalizeSubjects(subjects),
-        status: "active",
-        isActive: true
-      });
-    }
-
-    // Step 3: Create tasks for rows that have taskTitle
     const getTaskTitle = (r) => (r.taskTitle || r["Task Title"] || r.TaskTitle || r.Task || r.task || r.Tasks || r.TASK || r.title || r.Title || "").trim();
     const taskRows = rows.filter(r => Boolean(getTaskTitle(r)));
-    const taskDocs = [];
+
+    let totalTasksInserted = 0;
+    let primarySv = null;
     const taskErrors = [];
-    const existingVersionTaskCount = await Task.countDocuments({ syllabusVersionId: sv._id });
-    const baseTime = Date.now();
 
-    for (let i = 0; i < taskRows.length; i++) {
-      const row = taskRows[i];
-      const subjectName  = (row.subject  || row.Subject || "").trim();
-      const topicName    = (row.topic    || row.Topic || "").trim();
-      const subTopicName = (row.subTopic || row["Sub Topic"] || row.SubTopic || "").trim();
-      const taskTitle    = getTaskTitle(row);
-      const taskType     = (row.taskType || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
-      const priorityVal  = (row.priority || row.Priority || "medium").trim().toLowerCase();
-      const priority     = ["low", "medium", "high"].includes(priorityVal) ? priorityVal : "medium";
-      const maxMarks     = Math.min(5, Math.max(1, Number(row.maxMarks || row["Max Marks"]) || 5));
-      const timeDays     = (row.timeDays !== undefined && row.timeDays !== null) || (row["Time Days"] !== undefined && row["Time Days"] !== null) ? String(row.timeDays || row["Time Days"] || "").trim() : null;
-      const measurablePoints = (row.measurablePoints || row["Measurable Points"] || "").trim();
-
-      // Find subject in saved sv
-      const foundSubject = subjectName
-        ? sv.subjects.find(s => s.name.toLowerCase() === subjectName.toLowerCase())
-        : sv.subjects.find(s => s.topics.some(t => t.name.toLowerCase() === topicName.toLowerCase()));
-
-      if (!foundSubject) { taskErrors.push(`Row ${i + 2}: Subject "${subjectName}" not found`); continue; }
-
-      const foundTopic = foundSubject.topics.find(t => t.name.toLowerCase() === topicName.toLowerCase());
-      if (!foundTopic) { taskErrors.push(`Row ${i + 2}: Topic "${topicName}" not found`); continue; }
-
-      let foundSubTopic = null;
-      if (subTopicName) {
-        foundSubTopic = foundTopic.subTopics.find(st => st.name.toLowerCase() === subTopicName.toLowerCase());
-        if (!foundSubTopic) { taskErrors.push(`Row ${i + 2}: SubTopic "${subTopicName}" not found`); continue; }
+    // Process for each target session
+    for (const currSessionId of targetSessionIds) {
+      // Step 2: Create or update SyllabusVersion
+      let sv = await SyllabusVersion.findOne({ sessionId: currSessionId, levelId, subLevelId }).sort({ createdAt: -1 });
+      if (sv) {
+        sv.isActive = true;
+        sv.status = "active";
+        if (title && title.trim()) sv.title = title.trim();
+        if (version && version.trim()) sv.version = version.trim();
+        if (domain !== undefined) sv.domain = (domain || "").trim();
+        if (courses !== undefined || course !== undefined) {
+          sv.courses = normalizedCourses;
+          sv.course = normalizedCourses.join(", ");
+        }
+        upsertSubjectTree(sv, subjects);
+        await sv.save();
+      } else {
+        sv = await SyllabusVersion.create({
+          sessionId: currSessionId,
+          levelId,
+          subLevelId,
+          title: (title || "").trim(),
+          version: (version || "").trim() || "v1.0",
+          domain: (domain || "").trim(),
+          courses: normalizedCourses,
+          course: normalizedCourses.join(", "),
+          subjects: normalizeSubjects(subjects),
+          status: "active",
+          isActive: true
+        });
       }
 
-      // Skip duplicate tasks
-      const exists = await Task.findOne({
-        syllabusVersionId: sv._id,
-        topicId: foundTopic._id,
-        subTopicId: foundSubTopic?._id || null,
-        title: taskTitle,
-        isActive: true
-      });
-      if (exists) { taskErrors.push(`Row ${i + 2}: Task "${taskTitle}" already exists`); continue; }
+      if (!primarySv) primarySv = sv;
 
-      const seqOffset = taskDocs.length;
-      const docTimestamp = new Date(baseTime + seqOffset);
+      // Step 3: Create tasks for rows that have taskTitle
+      const taskDocs = [];
+      const existingVersionTaskCount = await Task.countDocuments({ syllabusVersionId: sv._id });
+      const baseTime = Date.now();
 
-      taskDocs.push({
-        syllabusVersionId: sv._id,
-        sessionId:    sv.sessionId || null,
-        levelId:      sv.levelId || null,
-        subLevelId:   sv.subLevelId || null,
-        subjectId:    foundSubject._id,
-        subjectName:  foundSubject.name,
-        topicId:      foundTopic._id,
-        topicName:    foundTopic.name,
-        subTopicId:   foundSubTopic?._id || null,
-        subTopicName: foundSubTopic?.name || "",
-        taskNodeType: foundSubTopic ? "subTopic" : "topic",
-        title:        taskTitle,
-        domain:       (row.domain || domain || sv.domain || "").trim(),
-        courses:      normalizedCourses,
-        course:       normalizedCourses.join(", "),
-        type:         ["assignment","project","practice","reading","assessment","other"].includes(taskType) ? taskType : "assessment",
-        priority,
-        maxMarks,
-        timeDays,
-        measurablePoints,
-        order:        existingVersionTaskCount + seqOffset + 1,
-        assignedByName: req.user?.name || "System",
-        isActive:     true,
-        createdAt:    docTimestamp,
-        updatedAt:    docTimestamp,
-      });
-    }
+      for (let i = 0; i < taskRows.length; i++) {
+        const row = taskRows[i];
+        const subjectName  = (row.subject  || row.Subject || "").trim();
+        const topicName    = (row.topic    || row.Topic || "").trim();
+        const subTopicName = (row.subTopic || row["Sub Topic"] || row.SubTopic || "").trim();
+        const taskTitle    = getTaskTitle(row);
+        const taskType     = (row.taskType || row["Task Type"] || row.TaskType || "assessment").trim().toLowerCase();
+        const priorityVal  = (row.priority || row.Priority || "medium").trim().toLowerCase();
+        const priority     = ["low", "medium", "high"].includes(priorityVal) ? priorityVal : "medium";
+        const maxMarks     = Math.min(5, Math.max(1, Number(row.maxMarks || row["Max Marks"]) || 5));
+        const timeDays     = (row.timeDays !== undefined && row.timeDays !== null) || (row["Time Days"] !== undefined && row["Time Days"] !== null) ? String(row.timeDays || row["Time Days"] || "").trim() : null;
+        const measurablePoints = (row.measurablePoints || row["Measurable Points"] || "").trim();
 
-    let insertedTasks = 0;
-    if (taskDocs.length > 0) {
-      await Task.insertMany(taskDocs, { ordered: true });
-      insertedTasks = taskDocs.length;
-      await syncTasksToSubLevelStudents(sv._id).catch(() => {});
+        // Find subject in saved sv
+        const foundSubject = subjectName
+          ? sv.subjects.find(s => s.name.toLowerCase() === subjectName.toLowerCase())
+          : sv.subjects.find(s => s.topics.some(t => t.name.toLowerCase() === topicName.toLowerCase()));
+
+        if (!foundSubject) { taskErrors.push(`Row ${i + 2}: Subject "${subjectName}" not found`); continue; }
+
+        const foundTopic = foundSubject.topics.find(t => t.name.toLowerCase() === topicName.toLowerCase());
+        if (!foundTopic) { taskErrors.push(`Row ${i + 2}: Topic "${topicName}" not found`); continue; }
+
+        let foundSubTopic = null;
+        if (subTopicName) {
+          foundSubTopic = foundTopic.subTopics.find(st => st.name.toLowerCase() === subTopicName.toLowerCase());
+          if (!foundSubTopic) { taskErrors.push(`Row ${i + 2}: SubTopic "${subTopicName}" not found`); continue; }
+        }
+
+        // Skip duplicate tasks
+        const exists = await Task.findOne({
+          syllabusVersionId: sv._id,
+          topicId: foundTopic._id,
+          subTopicId: foundSubTopic?._id || null,
+          title: taskTitle,
+          isActive: true
+        });
+        if (exists) { taskErrors.push(`Row ${i + 2}: Task "${taskTitle}" already exists`); continue; }
+
+        const seqOffset = taskDocs.length;
+        const docTimestamp = new Date(baseTime + seqOffset);
+
+        taskDocs.push({
+          syllabusVersionId: sv._id,
+          sessionId:    currSessionId,
+          levelId:      sv.levelId || null,
+          subLevelId:   sv.subLevelId || null,
+          subjectId:    foundSubject._id,
+          subjectName:  foundSubject.name,
+          topicId:      foundTopic._id,
+          topicName:    foundTopic.name,
+          subTopicId:   foundSubTopic?._id || null,
+          subTopicName: foundSubTopic?.name || "",
+          taskNodeType: foundSubTopic ? "subTopic" : "topic",
+          title:        taskTitle,
+          domain:       (row.domain || domain || sv.domain || "").trim(),
+          courses:      normalizedCourses,
+          course:       normalizedCourses.join(", "),
+          type:         ["assignment","project","practice","reading","assessment","other"].includes(taskType) ? taskType : "assessment",
+          priority,
+          maxMarks,
+          timeDays,
+          measurablePoints,
+          order:        existingVersionTaskCount + seqOffset + 1,
+          assignedByName: req.user?.name || "System",
+          isActive:     true,
+          createdAt:    docTimestamp,
+          updatedAt:    docTimestamp,
+        });
+      }
+
+      if (taskDocs.length > 0) {
+        await Task.insertMany(taskDocs, { ordered: true });
+        totalTasksInserted += taskDocs.length;
+        await syncTasksToSubLevelStudents(sv._id).catch(() => {});
+      }
     }
 
     res.status(201).json({
       success: true,
-      message: `Syllabus saved with ${subjects.length} subject(s). ${insertedTasks} task(s) created.`,
+      message: `Syllabus saved for ${targetSessionIds.length} session(s) with ${subjects.length} subject(s). ${totalTasksInserted} task(s) created.`,
       data: {
-        syllabusVersionId: sv._id,
-        syllabusStatus: sv.status,
+        syllabusVersionId: primarySv?._id,
+        syllabusStatus: primarySv?.status,
         subjectsCount: subjects.length,
-        tasksInserted: insertedTasks,
+        tasksInserted: totalTasksInserted,
+        sessionsCount: targetSessionIds.length,
         tasksSkipped: taskErrors.length,
         errors: taskErrors
       }

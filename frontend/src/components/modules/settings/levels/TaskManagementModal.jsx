@@ -30,6 +30,7 @@ import {
 } from "../../../../redux/api/authApi";
 import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 import CourseMultiSelect from "../../../shared/form-fields/CourseMultiSelect";
+import SessionMultiSelect from "../../../shared/form-fields/SessionMultiSelect";
 import StudentAssignPicker from "../../../shared/form-fields/StudentAssignPicker";
 import { TaskUploadDrawer } from "./SyllabusTab";
 import { filterSessionsByDepartment, formatSessionLabel, getCurrentSession } from "../../../../utils/sessionDurationHelpers";
@@ -63,7 +64,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
   const [activeTab, setActiveTab] = useState("add"); // add, manage
   const [addMode, setAddMode] = useState("manual"); // manual, bulk
   const [taskType, setTaskType] = useState("syllabus"); // syllabus, general
-  const [selectedSessionId, setSelectedSessionId] = useState(initialSessionId || "");
+  const [selectedSessionIds, setSelectedSessionIds] = useState(initialSessionId ? [initialSessionId] : []);
   const [selectedVersionId, setSelectedVersionId] = useState("");
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [selectedTopicId, setSelectedTopicId] = useState("");
@@ -124,16 +125,22 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
     return getDomainsForDepartment(deptIdentifier);
   }, [deptIdentifier]);
 
+  const selectedSessionId = selectedSessionIds[0] || "";
+
   useEffect(() => {
     if (sessions.length > 0) {
-      const exists = sessions.some((s) => s._id === selectedSessionId);
-      if (!exists) {
+      const validIds = selectedSessionIds.filter(id => sessions.some(s => s._id === id));
+      if (validIds.length === 0) {
         const initMatch = initialSessionId && sessions.find(s => s._id === initialSessionId);
         const target = initMatch || currentSession;
-        setSelectedSessionId(target?._id || "");
+        if (target?._id) {
+          setSelectedSessionIds([target._id]);
+        }
+      } else if (validIds.length !== selectedSessionIds.length) {
+        setSelectedSessionIds(validIds);
       }
     }
-  }, [selectedSessionId, sessions, initialSessionId, currentSession]);
+  }, [sessions, initialSessionId, currentSession]);
 
   const { data: versionsData } = useGetSyllabusVersionsBySubLevelQuery(
     { subLevelId: subLevel?._id, sessionId: selectedSessionId },
@@ -238,6 +245,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
       return;
     }
 
+    if (selectedSessionIds.length === 0) {
+      toast.error("Please select at least one academic session");
+      return;
+    }
+
     if (taskType === "syllabus" && (!selectedTopicId)) {
       toast.error("Please select a topic for syllabus-based task");
       return;
@@ -261,6 +273,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
         maxMarks: Math.min(5, Math.max(1, Number(taskForm.maxMarks) || 5)),
         assignTo: assignTarget,
         studentIds: assignTarget === "specific" ? selectedStudentIds : [],
+        sessionIds: selectedSessionIds,
       };
 
       if (taskType === "syllabus") {
@@ -282,7 +295,11 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
         toast.success("Task updated successfully!");
       } else {
         await createTask(payload).unwrap();
-        toast.success("Task created successfully!");
+        toast.success(
+          selectedSessionIds.length > 1
+            ? `Task created and assigned across ${selectedSessionIds.length} sessions!`
+            : "Task created successfully!"
+        );
       }
 
       resetForm();
@@ -535,19 +552,17 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       {/* Session */}
                       <div>
-                        <label className={labelCls}>Academic Session</label>
-                        <SelectDropdown
-                          value={selectedSessionId}
-                          onChange={(val) => {
-                            setSelectedSessionId(val);
-                            setSelectedVersionId("");
+                        <SessionMultiSelect
+                          sessions={sessions}
+                          selectedSessionIds={selectedSessionIds}
+                          onChange={(newIds) => {
+                            setSelectedSessionIds(newIds);
                             setSelectedSubjectId("");
                             setSelectedTopicId("");
                             setSelectedSubTopicId("");
                           }}
-                          options={sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))}
-                          placeholder="Select Session"
-                          buttonClassName={selectBtnCls}
+                          label="Academic Session(s)"
+                          size="sm"
                         />
                       </div>
 
@@ -1071,19 +1086,17 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className={labelCls}>Session</label>
-                      <SelectDropdown
-                        value={selectedSessionId}
-                        onChange={(val) => {
-                          setSelectedSessionId(val);
-                          setSelectedVersionId("");
+                      <SessionMultiSelect
+                        sessions={sessions}
+                        selectedSessionIds={selectedSessionIds}
+                        onChange={(newIds) => {
+                          setSelectedSessionIds(newIds);
                           setSelectedSubjectId("");
                           setSelectedTopicId("");
                           setSelectedSubTopicId("");
                         }}
-                        options={sessions.map(s => ({ value: s._id, label: formatSessionLabel(s) }))}
-                        placeholder="Select Session"
-                        buttonClassName={selectBtnCls}
+                        label="Session(s)"
+                        size="sm"
                       />
                     </div>
 
@@ -1109,6 +1122,7 @@ const TaskManagementModal = ({ isOpen, onClose, level, subLevel, departmentName,
                 {selectedVersionId ? (
                   <TaskUploadDrawer
                     syllabusVersionId={selectedVersionId}
+                    sessionIds={selectedSessionIds}
                     subjectName={subLevel?.name || ""}
                     version={versions.find(v => v._id === selectedVersionId)?.version || ""}
                     level={level}

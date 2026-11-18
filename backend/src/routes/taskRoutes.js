@@ -174,6 +174,7 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
       measurablePoints,
       dueDate,
       sessionId,
+      sessionIds,
       subjectName,
       topicName,
       domain,
@@ -205,38 +206,49 @@ router.post("/general", verifyToken, checkRole(writeRoles), async (req, res) => 
     }
     if (normalizedCourses.length === 0) normalizedCourses = ["All"];
 
-    const task = await Task.create({
-      sessionId: sessionId || null,
-      levelId,
-      subLevelId,
-      subjectName: subjectName || "General",
-      topicName: topicName || "",
-      title: title.trim(),
-      domain: (domain || "").trim(),
-      course: normalizedCourses.join(", "),
-      courses: normalizedCourses,
-      description: description || "",
-      type: type || "assignment",
-      priority: priority || "medium",
-      maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : (Number(maxMarks) > 0 ? Math.min(5, Number(maxMarks)) : 5),
-      timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
-      measurablePoints: measurablePoints || "",
-      dueDate: dueDate || null,
-      isGeneralTask: true,
-      taskNodeType: "general",
-      assignTo: assignTo === "specific" ? "specific" : "all",
-      specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
-      assignedByName: req.user?.name || "System",
-      isActive: true
-    });
+    const targetSessions = Array.isArray(sessionIds) && sessionIds.length > 0
+      ? [...new Set(sessionIds.filter(Boolean))]
+      : (sessionId ? [sessionId] : [null]);
 
-    // Sync to matching students (or specific selected students)
-    await syncTaskToStudents(task, assignTo === "specific" ? studentIds : null).catch((err) => console.error("syncTaskToStudents error:", err));
+    let primaryTask = null;
+    let totalSynced = 0;
+
+    for (const currSessId of targetSessions) {
+      const task = await Task.create({
+        sessionId: currSessId || null,
+        levelId,
+        subLevelId,
+        subjectName: subjectName || "General",
+        topicName: topicName || "",
+        title: title.trim(),
+        domain: (domain || "").trim(),
+        course: normalizedCourses.join(", "),
+        courses: normalizedCourses,
+        description: description || "",
+        type: type || "assignment",
+        priority: priority || "medium",
+        maxMarks: typeof maxMarks === "number" ? Math.min(5, Math.max(1, maxMarks)) : (Number(maxMarks) > 0 ? Math.min(5, Number(maxMarks)) : 5),
+        timeDays: timeDays !== undefined && timeDays !== null && String(timeDays).trim() !== "" ? String(timeDays).trim() : null,
+        measurablePoints: measurablePoints || "",
+        dueDate: dueDate || null,
+        isGeneralTask: true,
+        taskNodeType: "general",
+        assignTo: assignTo === "specific" ? "specific" : "all",
+        specificStudentIds: assignTo === "specific" && Array.isArray(studentIds) ? studentIds : [],
+        assignedByName: req.user?.name || "System",
+        isActive: true
+      });
+
+      if (!primaryTask) primaryTask = task;
+      const syncRes = await syncTaskToStudents(task, assignTo === "specific" ? studentIds : null).catch((err) => console.error("syncTaskToStudents error:", err));
+      totalSynced += syncRes?.count || 0;
+    }
 
     res.status(201).json({
       success: true,
-      message: "General task created successfully",
-      data: task
+      message: targetSessions.length > 1 ? `General task created for ${targetSessions.length} session(s)` : "General task created successfully",
+      data: primaryTask,
+      syncedStudents: totalSynced
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

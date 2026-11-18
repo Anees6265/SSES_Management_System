@@ -398,9 +398,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const depts = data?.departments || [];
 
-  // Department Table Search
-  const [deptSearch, setDeptSearch] = useState("");
-
   // Real academic sessions from backend
   const { data: sessionsData } = useGetAllSessionsQuery(true);
   const sessionsList = sessionsData?.data || [];
@@ -485,13 +482,8 @@ const AdminDashboard = () => {
     { name: "Level 4", students: 0 },
   ];
 
-  // Filtered departments for table
-  const filteredDepts = useMemo(() => {
-    if (!deptSearch.trim()) return depts;
-    return depts.filter((d) =>
-      d.name.toLowerCase().includes(deptSearch.toLowerCase().trim())
-    );
-  }, [depts, deptSearch]);
+  // Departments for table
+  const filteredDepts = depts;
 
   const handlePrint = () => {
     window.print();
@@ -1241,7 +1233,7 @@ const AdminDashboard = () => {
             {/* Department-wise Overview Table (Col span 2) */}
             <div className="lg:col-span-2 min-w-0 bg-white rounded-2xl border border-gray-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
               <div>
-                <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
@@ -1254,18 +1246,6 @@ const AdminDashboard = () => {
                     <p className="text-xs text-gray-400 mt-0.5">
                       Click any department to inspect detailed placement records
                     </p>
-                  </div>
-
-                  {/* Table Search */}
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Search departments..."
-                      value={deptSearch}
-                      onChange={(e) => setDeptSearch(e.target.value)}
-                      className="pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition w-full sm:w-48"
-                    />
                   </div>
                 </div>
 

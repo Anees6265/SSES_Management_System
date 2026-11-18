@@ -38,6 +38,7 @@ const DepartmentSelector = () => {
                 key={dept._id}
                 title={dept.name}
                 departmentName={dept.departmentId?.name}
+                hod={dept.departmentId?.headOfDepartment}
                 status={dept.isActive}
                 totalStudents={dept.totalStudents || 0}
                 allowedCourses={dept.allowedCourses || []}

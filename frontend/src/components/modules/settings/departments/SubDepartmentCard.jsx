@@ -1,4 +1,11 @@
-import { MdAccountTree, MdOutlineMenuBook, MdVisibility, MdEdit } from 'react-icons/md';
+import {
+  MdAccountTree,
+  MdOutlineMenuBook,
+  MdVisibility,
+  MdEdit,
+  MdLayers,
+  MdSupervisorAccount
+} from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,31 +13,31 @@ import { useNavigate } from 'react-router-dom';
 const ActionButtons = ({ onView, onEdit, inactive, variant }) => {
   const isFull = variant === 'fullpage';
   return (
-    <div className={`flex gap-2.5 sm:gap-3 mt-auto ${isFull ? 'w-full' : 'px-4 sm:px-5 pb-4 sm:pb-5'}`}>
+    <div className={`flex gap-2.5 sm:gap-3 mt-auto ${isFull ? 'w-full' : 'px-5 sm:px-6 pb-5 sm:pb-6 pt-1'}`}>
       {onView && (
         <button
           type="button"
           onClick={inactive ? undefined : onView}
           disabled={inactive}
-          className={`flex-1 border rounded-xl py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 border rounded-xl py-2.5 sm:py-3 px-3.5 sm:px-4 text-xs sm:text-sm font-extrabold tracking-wider uppercase transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2 shrink-0 ${
             inactive
               ? 'border-gray-150 bg-gray-50 text-gray-300 cursor-not-allowed'
-              : 'border-gray-200 text-gray-700 hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-slate-50 hover:border-gray-400 cursor-pointer shadow-2xs hover:shadow-xs'
           }`}
         >
-          <MdVisibility size={15} />
-          <span>{isFull ? 'VIEW DETAILS' : 'VIEW'}</span>
+          <MdVisibility size={16} />
+          <span>{isFull ? 'VIEW DETAILS' : 'VIEW DETAILS'}</span>
         </button>
       )}
       {onEdit && (
-        <div className={`${onView ? 'flex-1' : 'w-full'} ${inactive ? 'opacity-40 pointer-events-none' : ''} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2 [&_button]:sm:!py-2.5 [&_button]:!px-3 [&_button]:sm:!px-4 [&_button]:!text-xs [&_button]:sm:!text-sm [&_button]:!font-bold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600 [&_button]:!inline-flex [&_button]:!items-center [&_button]:!justify-center [&_button]:!gap-1.5 [&_button]:!shrink-0`}>
+        <div className={`${onView ? 'flex-1' : 'w-full'} ${inactive ? 'opacity-40 pointer-events-none' : ''} [&_button]:!w-full [&_button]:!h-full [&_button]:!py-2.5 [&_button]:sm:!py-3 [&_button]:!px-3.5 [&_button]:sm:!px-4 [&_button]:!text-xs [&_button]:sm:!text-sm [&_button]:!font-extrabold [&_button]:!tracking-wider [&_button]:!uppercase [&_button]:!rounded-xl [&_button]:!transition-all [&_button]:!duration-200 [&_button]:active:scale-[0.97] [&_button]:!shadow-xs [&_button]:!bg-orange-500 [&_button]:!text-white [&_button]:hover:!bg-orange-600 [&_button]:!inline-flex [&_button]:!items-center [&_button]:!justify-center [&_button]:!gap-2 [&_button]:!shrink-0`}>
           {typeof onEdit === 'function' ? (
             <button
               type="button"
               onClick={onEdit}
-              className="w-full h-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0"
+              className="w-full h-full py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-xl !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-200 active:scale-[0.97] shadow-xs hover:shadow-md cursor-pointer inline-flex items-center justify-center gap-2 shrink-0"
             >
-              <MdEdit size={14} />
+              <MdEdit size={16} />
               <span>EDIT</span>
             </button>
           ) : (
@@ -45,6 +52,8 @@ const ActionButtons = ({ onView, onEdit, inactive, variant }) => {
 const SubDepartmentCard = ({
   title,
   departmentName,
+  hod,
+  headOfDepartment,
   status,
   statusLabel,
   totalStudents = 0,
@@ -326,33 +335,61 @@ const SubDepartmentCard = ({
     );
   }
 
-  // Original compact card layout
+  // Resolve HOD name: prefer explicit hod / headOfDepartment prop, then check faculties for someone with HOD role or position
+  const hodFaculty = (faculties || []).find(f => 
+    (f.position && (f.position.toLowerCase().includes('hod') || f.position.toLowerCase().includes('head'))) || 
+    (f.role && f.role.toLowerCase() === 'hod')
+  );
+
+  const resolvedHodName = 
+    hod || 
+    headOfDepartment || 
+    hodFaculty?.name || 
+    (typeof departmentName === 'object' ? departmentName?.headOfDepartment : null) || 
+    null;
+
+  const getLevelPct = (count) => {
+    if (!totalStudents || totalStudents <= 0) return 0;
+    return Math.min(100, Math.round((count / totalStudents) * 100));
+  };
+
+  // Original compact card layout (enhanced for laptop & desktop viewing)
   return (
-    <div className={`bg-white border rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md overflow-hidden flex flex-col h-full ${
+    <div className={`bg-white border rounded-2xl sm:rounded-3xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md overflow-hidden flex flex-col h-full ${
       inactive ? 'border-gray-200 bg-gray-50/50' : 'border-gray-200 hover:border-orange-300'
     }`}>
-      {!inactive && <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 to-amber-500 flex-shrink-0" />}
+      {!inactive && <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 flex-shrink-0" />}
       
-      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 sm:gap-4">
-        {/* Header: Title, Department Subtitle, Status */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className={`text-base font-extrabold tracking-tight leading-snug truncate ${inactive ? 'text-gray-500' : 'text-gray-900'}`}>
-              {title}
-            </h3>
-            {departmentName && (
-              <p className="text-[11px] text-gray-500 font-semibold mt-0.5 uppercase tracking-wider">
-                Dept: {departmentName}
-              </p>
-            )}
+      <div className="p-5 sm:p-6 flex-1 flex flex-col gap-4 sm:gap-4.5">
+        {/* Header: Icon, Title, Department Subtitle, Status */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-2xs ${
+              inactive 
+                ? 'bg-slate-100 text-slate-400 border-slate-200' 
+                : 'bg-gradient-to-br from-orange-50 to-amber-100/70 text-orange-600 border-orange-200/80'
+            }`}>
+              <MdAccountTree className="text-2xl" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className={`text-base sm:text-lg font-black tracking-tight leading-snug truncate ${inactive ? 'text-gray-500' : 'text-gray-900'}`} title={title}>
+                {title}
+              </h3>
+              {departmentName && (
+                <p className="text-[11px] text-gray-500 font-semibold mt-0.5 uppercase tracking-wider truncate">
+                  Dept: <span className="text-gray-700 font-bold">{departmentName}</span>
+                </p>
+              )}
+            </div>
           </div>
-          <span className={`inline-flex items-center text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border flex-shrink-0 ${
+
+          <span className={`inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border flex-shrink-0 ${
             inactive 
               ? 'bg-slate-50 text-slate-400 border-slate-200' 
-              : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
           }`}>
             {!inactive && (
-              <span className="relative flex h-1.5 w-1.5 mr-1">
+              <span className="relative flex h-1.5 w-1.5 mr-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
@@ -364,35 +401,56 @@ const SubDepartmentCard = ({
         {/* Divider */}
         <div className={`border-t ${inactive ? 'border-gray-150' : 'border-slate-100'}`} />
 
-        {/* Quick Stats: Students & Courses */}
-        <div className="flex items-center flex-wrap gap-2">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${
-            inactive 
-              ? 'bg-slate-50 text-slate-400 border-slate-100' 
-              : 'bg-slate-50 text-gray-700 border-slate-100'
-          }`}>
-            <HiOutlineUserGroup size={13} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
-            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-wider">Students:</span>
-            <span className="font-extrabold">{totalStudents}</span>
+        {/* Quick Metrics: Students, Levels, Faculties, Courses */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 border border-slate-150/80">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1 truncate">
+              <HiOutlineUserGroup size={13} className="text-orange-500 shrink-0" />
+              Students
+            </span>
+            <span className="text-base font-black text-gray-900 mt-0.5">{totalStudents}</span>
           </div>
 
-          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${
-            inactive 
-              ? 'bg-slate-50 text-slate-400 border-slate-100' 
-              : 'bg-slate-50 text-gray-700 border-slate-100'
-          }`}>
-            <MdOutlineMenuBook size={13} className={inactive ? 'text-gray-400' : 'text-orange-500'} />
-            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-wider">Courses:</span>
-            <span className="font-extrabold">{allowedCourses?.length || 0}</span>
+          <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 border border-slate-150/80">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1 truncate">
+              <MdLayers size={13} className="text-amber-500 shrink-0" />
+              {showSubLevels ? "Sub-Levels" : "Levels"}
+            </span>
+            <span className="text-base font-black text-gray-900 mt-0.5">{activeLevelCounts?.length || 0}</span>
+          </div>
+
+          <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 border border-slate-150/80">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1 truncate">
+              <MdSupervisorAccount size={13} className="text-blue-500 shrink-0" />
+              Faculties
+            </span>
+            <span className="text-base font-black text-gray-900 mt-0.5">{faculties?.length || 0}</span>
+          </div>
+
+          <div className="flex flex-col p-2.5 rounded-xl bg-slate-50 border border-slate-150/80">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider flex items-center gap-1 truncate">
+              <MdOutlineMenuBook size={13} className="text-emerald-500 shrink-0" />
+              Courses
+            </span>
+            <span className="text-base font-black text-gray-900 mt-0.5">{allowedCourses?.length || 0}</span>
           </div>
         </div>
 
         {/* Faculties Group */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Faculties ({faculties.length})</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">
+              Faculty Team ({faculties?.length || 0})
+            </span>
+            {resolvedHodName && (
+              <span className="text-[10px] text-gray-600 font-semibold truncate max-w-[200px]" title={`HOD: ${resolvedHodName}`}>
+                HOD: <strong className="text-gray-800">{resolvedHodName}</strong>
+              </span>
+            )}
+          </div>
           {faculties && faculties.length > 0 ? (
-            <div className="flex items-center pl-1 pt-0.5">
-              <div className="flex items-center -space-x-2 overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center -space-x-2 overflow-hidden py-0.5">
                 {faculties.slice(0, 5).map((fac) => (
                   <div 
                     key={fac._id}
@@ -404,10 +462,10 @@ const SubDepartmentCard = ({
                       <img 
                         src={fac.profileImage} 
                         alt={fac.name} 
-                        className="w-7 h-7 rounded-full object-cover ring-2 ring-white hover:scale-105 transition duration-150"
+                        className="w-8 h-8 rounded-full object-cover ring-2 ring-white hover:scale-105 transition duration-150 shadow-2xs"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center text-[10px] font-black ring-2 ring-white hover:scale-105 transition duration-150">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white flex items-center justify-center text-[10px] font-black ring-2 ring-white hover:scale-105 transition duration-150 shadow-2xs">
                         {fac.name?.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -416,12 +474,17 @@ const SubDepartmentCard = ({
                 {faculties.length > 5 && (
                   <div 
                     title={`${faculties.slice(5).map(f => f.name).join(', ')}`}
-                    className="w-7 h-7 rounded-full bg-slate-100 text-slate-650 border border-slate-200 flex items-center justify-center text-[9px] font-bold ring-2 ring-white cursor-help"
+                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center text-[10px] font-bold ring-2 ring-white cursor-help shadow-2xs"
                   >
                     +{faculties.length - 5}
                   </div>
                 )}
               </div>
+              {faculties.length <= 2 && (
+                <span className="text-[11px] text-gray-500 font-medium truncate max-w-[200px]">
+                  {faculties.map(f => f.name).join(', ')}
+                </span>
+              )}
             </div>
           ) : (
             <span className="text-[10px] text-gray-400 italic font-bold">No assigned faculty</span>
@@ -431,12 +494,12 @@ const SubDepartmentCard = ({
         {/* Student Levels - Structured Table */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">
               {showSubLevels ? "Students Sub-Level Wise" : "Students Level Wise"}
             </span>
             {(showSubLevels ? onSubLevelClick : onLevelClick) && (
-              <span className="text-[9px] text-orange-500 font-semibold">
-                Click row to view
+              <span className="text-[10px] text-orange-600 font-bold flex items-center gap-0.5">
+                Click row to view →
               </span>
             )}
           </div>
@@ -463,7 +526,7 @@ const SubDepartmentCard = ({
                         title={onSubLevelClick ? `Click to view ${slc.subLevelName} students` : undefined}
                       >
                         <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1.5">
                             {slc.subLevelName}
                             {onSubLevelClick && (
                               <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
@@ -472,8 +535,18 @@ const SubDepartmentCard = ({
                             )}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">
-                          {slc.studentCount}
+                        <td className="px-3 py-1.5 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden hidden sm:inline-block">
+                              <span 
+                                style={{ width: `${getLevelPct(slc.studentCount)}%` }} 
+                                className="bg-orange-500 h-full block rounded-full" 
+                              />
+                            </span>
+                            <span className="font-bold text-orange-600 min-w-[20px] text-right">
+                              {slc.studentCount}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -502,8 +575,8 @@ const SubDepartmentCard = ({
                             )}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-right font-black text-orange-600">
-                          {othersCount}
+                        <td className="px-3 py-1.5 text-right">
+                          <span className="font-black text-purple-700">{othersCount}</span>
                         </td>
                       </tr>
                     )}
@@ -521,6 +594,9 @@ const SubDepartmentCard = ({
                       <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
                         <span className="inline-flex items-center gap-1.5">
                           <span className="font-bold text-gray-800 group-hover:text-orange-600">FTP</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-orange-100 text-orange-700 font-extrabold uppercase tracking-wide">
+                            Track
+                          </span>
                           {(onSubLevelClick || onFtpClick) && (
                             <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
                               →
@@ -528,8 +604,8 @@ const SubDepartmentCard = ({
                           )}
                         </span>
                       </td>
-                      <td className="px-3 py-1.5 text-right font-black text-orange-600">
-                        {ftpCount}
+                      <td className="px-3 py-1.5 text-right">
+                        <span className="font-black text-orange-600">{ftpCount}</span>
                       </td>
                     </tr>
                   </tbody>
@@ -561,7 +637,7 @@ const SubDepartmentCard = ({
                         title={onLevelClick ? `Click to view ${lc.levelName} students` : undefined}
                       >
                         <td className="px-3 py-1.5 font-medium group-hover:text-orange-600 group-hover:font-bold transition-colors">
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1.5">
                             {lc.levelName}
                             {onLevelClick && (
                               <span className="opacity-0 group-hover:opacity-100 text-orange-500 text-[10px] transition-opacity">
@@ -570,8 +646,18 @@ const SubDepartmentCard = ({
                             )}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-right font-bold text-orange-600">
-                          {lc.studentCount}
+                        <td className="px-3 py-1.5 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden hidden sm:inline-block">
+                              <span 
+                                style={{ width: `${getLevelPct(lc.studentCount)}%` }} 
+                                className="bg-orange-500 h-full block rounded-full" 
+                              />
+                            </span>
+                            <span className="font-bold text-orange-600 min-w-[20px] text-right">
+                              {lc.studentCount}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -600,8 +686,8 @@ const SubDepartmentCard = ({
                             )}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-right font-black text-orange-600">
-                          {othersCount}
+                        <td className="px-3 py-1.5 text-right">
+                          <span className="font-black text-purple-700">{othersCount}</span>
                         </td>
                       </tr>
                     )}
@@ -629,8 +715,8 @@ const SubDepartmentCard = ({
                           )}
                         </span>
                       </td>
-                      <td className="px-3 py-1.5 text-right font-black text-orange-600">
-                        {ftpCount}
+                      <td className="px-3 py-1.5 text-right">
+                        <span className="font-black text-orange-600">{ftpCount}</span>
                       </td>
                     </tr>
                   </tbody>

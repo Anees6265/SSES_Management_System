@@ -141,7 +141,7 @@ const DepartmentDetails = () => {
         </div>
       )}
 
-      {/* Sub-Departments Content: Single Pager if 1, Normal Cards Grid if > 1, EmptyState if 0 */}
+      {/* Sub-Departments Content: Normal Cards Grid on Single Page for all departments */}
       <div className="px-3 sm:px-6 mt-4 sm:mt-6 pb-8">
         {subdepartments.length === 0 ? (
           <EmptyState
@@ -149,26 +149,8 @@ const DepartmentDetails = () => {
             title="No Sub-Departments Found"
             subtitle="Add sub-departments using 'Add Sub-Department' above to organize academic levels."
           />
-        ) : subdepartments.length === 1 ? (
-          /* Single Sub-Department: Simple Single Pager View (No carousel controls) */
-          <div className="w-full">
-            <SubDepartmentCard
-              variant="fullpage"
-              title={subdepartments[0].name}
-              departmentName={department?.name}
-              status={subdepartments[0].isActive}
-              totalStudents={subdepartments[0].totalStudents || 0}
-              allowedCourses={subdepartments[0].allowedCourses || []}
-              faculties={subdepartments[0].faculties || []}
-              levelCounts={subdepartments[0].levelCounts || []}
-              ftpCount={subdepartments[0].ftpCount || 0}
-              othersCount={subdepartments[0].othersCount || 0}
-              onView={() => handleViewSubdept(subdepartments[0])}
-              onEdit={handleEditSubdept(subdepartments[0])}
-            />
-          </div>
         ) : (
-          /* Multiple Sub-Departments: Normal Cards Grid on Single Page */
+          /* Cards Grid on Single Page (Compact small cards like ITEG for all departments) */
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -181,22 +163,31 @@ const DepartmentDetails = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
               {subdepartments.map((subdept) => (
                 <SubDepartmentCard
                   key={subdept._id}
                   variant="compact"
                   title={subdept.name}
                   departmentName={department?.name}
+                  hod={department?.headOfDepartment || subdept.departmentId?.headOfDepartment}
                   status={subdept.isActive}
                   totalStudents={subdept.totalStudents || 0}
                   allowedCourses={subdept.allowedCourses || []}
                   faculties={subdept.faculties || []}
                   levelCounts={subdept.levelCounts || []}
+                  subLevelCounts={subdept.subLevelCounts || []}
                   ftpCount={subdept.ftpCount || 0}
                   othersCount={subdept.othersCount || 0}
                   onView={() => handleViewSubdept(subdept)}
                   onEdit={handleEditSubdept(subdept)}
+                  onLevelClick={(levelName, levelId) => {
+                    const deptId = activeDepartmentId || "";
+                    navigate(`/show-sublevel-tables?levelId=${levelId}&subdeptId=${subdept._id}&deptId=${deptId}`, {
+                      state: { level: { _id: levelId, name: levelName }, subdepartment: subdept, departmentId: deptId, departmentName: department?.name }
+                    });
+                  }}
+                  onFtpClick={() => handleViewSubdept(subdept)}
                 />
               ))}
             </div>

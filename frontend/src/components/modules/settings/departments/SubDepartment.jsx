@@ -159,7 +159,7 @@ const SubDepartment = () => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
                     {filteredSubdepartments.length === 0 ? (
                         <div className="col-span-full">
                             <EmptyState
@@ -174,14 +174,25 @@ const SubDepartment = () => {
                                 key={subdept._id}
                                 title={subdept.name}
                                 departmentName={subdept.departmentId?.name}
+                                hod={subdept.departmentId?.headOfDepartment}
                                 status={subdept.isActive}
                                 totalStudents={subdept.totalStudents || 0}
                                 allowedCourses={subdept.allowedCourses || []}
                                 faculties={subdept.faculties || []}
                                 levelCounts={subdept.levelCounts || []}
+                                subLevelCounts={subdept.subLevelCounts || []}
                                 ftpCount={subdept.ftpCount || 0}
                                 othersCount={subdept.othersCount || 0}
                                 onView={() => navigate(`/subdepartment/${subdept._id}/levels`, {
+                                    state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
+                                })}
+                                onLevelClick={(levelName, levelId) => {
+                                    const deptId = subdept.departmentId?._id || subdept.departmentId || "";
+                                    navigate(`/show-sublevel-tables?levelId=${levelId}&subdeptId=${subdept._id}&deptId=${deptId}`, {
+                                        state: { level: { _id: levelId, name: levelName }, subdepartment: subdept, departmentId: deptId, departmentName: subdept.departmentId?.name }
+                                    });
+                                }}
+                                onFtpClick={() => navigate(`/subdepartment/${subdept._id}/levels`, {
                                     state: { departmentId: subdept.departmentId?._id || subdept.departmentId, subdepartment: subdept, departmentName: subdept.departmentId?.name }
                                 })}
                                 onEdit={

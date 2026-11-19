@@ -25,6 +25,7 @@ const SIDEBAR_ROOT_PATHS = [
   "/settings",
   "/session-management",
   "/support",
+  "/release-notes",
   "/subdepartments",
   "/levels"
 ];

@@ -27,10 +27,13 @@ const subLevelRoutes = require('./subLevelRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const activityLogRoutes = require('./activityLogRoutes');
 const supportRoutes = require('./supportRoutes');
+const releaseNotesRoutes = require('./releaseNotesRoutes');
 
 // Mount routes
 router.use('/activity-logs', activityLogRoutes);
 router.use('/support', supportRoutes);
+router.use('/release-notes', releaseNotesRoutes);
+router.use('/release_notes', releaseNotesRoutes);
 router.use('/user', userRoutes);
 router.use('/users', userRoutes);
 router.use('/user/otp', otpRoutes);

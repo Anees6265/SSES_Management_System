@@ -47,6 +47,7 @@ import CurriculumManagement from "../settings/curriculum/CurriculumManagement";
 import PlacementDriveManagement from "../placements/PlacementDriveManagement";
 import ResumeSharingScreen from "../placements/ResumeSharingScreen";
 import ActivityLogs from "../activity/ActivityLogs";
+import ReleaseNotes from "../release-notes/ReleaseNotes";
 
 // admin/superadmin → DepartmentSelector, faculty → direct StudentDetailTable
 const RoleBasedStudentPage = () => {
@@ -77,6 +78,7 @@ const routeTitleMap = {
     "/curriculum-management": "Curriculum Management",
     "/session-management": "Session Management",
     "/activity-logs": "Activity Logs",
+    "/release-notes": "Release Notes",
     "/settings": "Settings",
     "/support": "Support & Help",
 };
@@ -154,6 +156,7 @@ const Layout = () => {
                     <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><CurriculumManagement /></ProtectedRoute>} />
                     <Route path="/session-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SessionManagement /></ProtectedRoute>} />
                     <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ActivityLogs /></ProtectedRoute>} />
+                    <Route path="/release-notes" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ReleaseNotes /></ProtectedRoute>} />
                     <Route path="/unauthorized" element={<PageNotFound />} />
                     <Route path="*" element={<PageNotFound />} />
                 </Routes>

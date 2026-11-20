@@ -15,6 +15,7 @@ import {
 import { toast } from "react-toastify";
 import CryptoJS from "crypto-js";
 import { FiCamera, FiCheck } from "react-icons/fi";
+import { FaBrain } from "react-icons/fa";
 import {
     ResponsiveContainer,
     AreaChart,
@@ -2930,6 +2931,13 @@ const StudentProfilePage = () => {
                                 <MdAssignment size={16} /> Task Board
                             </button>
                             <button
+                                onClick={() => navigate(`/student/${raw._id}/vision-blueprint`)}
+                                className="flex items-center justify-center gap-1.5 sm:gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-sm active:scale-[0.98] cursor-pointer"
+                                title="Personal Vision Blueprint & AI Strategic Alignment Report"
+                            >
+                                <FaBrain size={15} /> Vision Blueprint
+                            </button>
+                            <button
                                 onClick={() => navigate(`/student/${raw._id}/archive`)}
                                 className="flex items-center justify-center gap-1.5 sm:gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 sm:px-4 py-2.5 rounded-xl text-xs transition shadow-2xs active:scale-[0.98] cursor-pointer"
                                 title="View Previous Level Archived Tasks & Syllabus"
@@ -2978,6 +2986,12 @@ const StudentProfilePage = () => {
                                                 className="w-full text-left px-4 py-2 hover:bg-amber-50 text-amber-800 flex items-center gap-2 font-medium"
                                             >
                                                 <MdArchive size={14} className="text-amber-600" /> View Archive
+                                            </button>
+                                            <button 
+                                                onClick={() => { setMoreOpen(false); navigate(`/student/${raw._id}/vision-blueprint`); }}
+                                                className="w-full text-left px-4 py-2 hover:bg-orange-50 text-orange-600 flex items-center gap-2 font-bold"
+                                            >
+                                                <FaBrain size={14} /> Vision Blueprint & AI Report
                                             </button>
                                             {raw.isFTP && (
                                                 <button 

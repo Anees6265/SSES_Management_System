@@ -48,6 +48,7 @@ import PlacementDriveManagement from "../placements/PlacementDriveManagement";
 import ResumeSharingScreen from "../placements/ResumeSharingScreen";
 import ActivityLogs from "../activity/ActivityLogs";
 import ReleaseNotes from "../release-notes/ReleaseNotes";
+import StudentVisionBlueprintPage from "../students/StudentVisionBlueprintPage";
 
 // admin/superadmin → DepartmentSelector, faculty → direct StudentDetailTable
 const RoleBasedStudentPage = () => {
@@ -123,6 +124,7 @@ const Layout = () => {
                     <Route path="/student/:id/archive" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentArchivePage /></ProtectedRoute>} />
                     <Route path="/student/:id/report/edit" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentReportForm /></ProtectedRoute>} />
                     <Route path="/student/:id/report" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentReport /></ProtectedRoute>} />
+                    <Route path="/student/:id/vision-blueprint" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentVisionBlueprintPage /></ProtectedRoute>} />
                     <Route path="/student-level-interviews/:studentId" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentLevelInterviewHistory /></ProtectedRoute>} />
                     <Route path="/student/:id/task-list" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TaskList /></ProtectedRoute>} />
                     <Route path="/student-permission" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentPermission /></ProtectedRoute>} />

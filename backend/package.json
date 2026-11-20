@@ -19,6 +19,7 @@
     "face-api.js": "^0.20.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.13.0",
     "mongoose": "^8.9.5",
     "multer": "^2.0.1",
     "nodemailer": "^10.0.10",

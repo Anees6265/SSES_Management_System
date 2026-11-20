@@ -6,6 +6,9 @@ const { departmentFilter } = require("../middlewares/departmentFilter");
 const studentController = require("../controllers/student/studentController");
 const placementController = require("../controllers/placement/placementController");
 const attendanceController = require("../controllers/student/attendanceController");
+const visionBlueprintController = require("../controllers/student/visionBlueprintController");
+const blueprintDocUpload = require("../config/blueprintDocUploadConfig");
+const imageUpload = require("../config/imageUploadConfig");
 const upload = require("../config/multerConfig");
 
 const multer = require("multer");
@@ -170,5 +173,26 @@ router.get("/:id/task-history", ...auth, studentController.getStudentTaskHistory
 router.get("/:id/archived-tasks", ...auth, studentController.getStudentArchivedTasks);
 router.get("/:id/progress-snapshots", ...auth, studentController.getStudentProgressSnapshots);
 router.get("/:id/activity", ...auth, studentController.getStudentActivity);
+
+// Personal Vision Blueprint & AI Strategic Alignment Report (Gemini Powered)
+router.get("/:id/vision-blueprint", ...auth, visionBlueprintController.getStudentVisionBlueprintReport);
+router.post(
+  "/:id/vision-blueprint/generate",
+  ...auth,
+  (req, res, next) => {
+    blueprintDocUpload.any()(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      if (req.files && req.files.length > 0) {
+        req.file = req.files[0];
+      }
+      next();
+    });
+  },
+  visionBlueprintController.generateVisionBlueprintReport
+);
+router.put("/:id/vision-blueprint/:reportId", ...auth, visionBlueprintController.updateVisionBlueprintReport);
+router.delete("/:id/vision-blueprint/:reportId", ...auth, visionBlueprintController.deleteVisionBlueprintReport);
 
 module.exports = router;

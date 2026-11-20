@@ -230,7 +230,7 @@ const baseQueryWithAutoRefresh = async (args, api, extraOptions) => {
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryWithAutoRefresh,
-  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications', 'ActivityLog', 'SupportTicket'],
+  tagTypes: ['Student', 'PlacementStudent', 'User', 'Department', 'Role', 'Permission', 'SyllabusVersion', 'Session', 'TaskMaster', 'Task', 'Notifications', 'ActivityLog', 'SupportTicket', 'VisionBlueprint'],
   // Global configuration for better caching
   keepUnusedDataFor: 300, // 5 minutes default cache
   refetchOnMountOrArgChange: 30, // Only refetch if data is older than 30 seconds
@@ -1389,6 +1389,53 @@ export const authApi = createApi({
       ],
     }),
 
+    // Personal Vision Blueprint & AI Strategic Alignment Report (Gemini)
+    getStudentVisionBlueprint: builder.query({
+      query: (studentId) => ({
+        url: `/students/${studentId}/vision-blueprint`,
+        method: "GET",
+      }),
+      providesTags: (result, error, studentId) => [
+        { type: 'Student', id: studentId },
+        'VisionBlueprint'
+      ],
+    }),
+
+    generateVisionBlueprint: builder.mutation({
+      query: ({ studentId, formData, body }) => ({
+        url: `/students/${studentId}/vision-blueprint/generate`,
+        method: "POST",
+        body: formData || body,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [
+        { type: 'Student', id: studentId },
+        'VisionBlueprint'
+      ],
+    }),
+
+    updateVisionBlueprint: builder.mutation({
+      query: ({ studentId, reportId, data }) => ({
+        url: `/students/${studentId}/vision-blueprint/${reportId}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { studentId }) => [
+        { type: 'Student', id: studentId },
+        'VisionBlueprint'
+      ],
+    }),
+
+    deleteVisionBlueprint: builder.mutation({
+      query: ({ studentId, reportId }) => ({
+        url: `/students/${studentId}/vision-blueprint/${reportId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { studentId }) => [
+        { type: 'Student', id: studentId },
+        'VisionBlueprint'
+      ],
+    }),
+
     // Create report card
     createReportCard: builder.mutation({
       query: (reportData) => {
@@ -2481,4 +2528,8 @@ export const {
   useSendDirectDeveloperMailMutation,
   useUpdateSupportTicketStatusMutation,
   useAddSupportTicketCommentMutation,
+  useGetStudentVisionBlueprintQuery,
+  useGenerateVisionBlueprintMutation,
+  useUpdateVisionBlueprintMutation,
+  useDeleteVisionBlueprintMutation,
 } = authApi;

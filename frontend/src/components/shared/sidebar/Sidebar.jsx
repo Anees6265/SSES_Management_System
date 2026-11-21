@@ -428,7 +428,7 @@ const Sidebar = ({ children }) => {
     <>
       {/* ── MOBILE OVERLAY DRAWER WITH SMOOTH SLIDE ANIMATION ── */}
       <div
-        className={`fixed inset-0 z-40 lg:hidden transition-all duration-300 ${
+        className={`fixed inset-0 z-40 lg:hidden print:hidden transition-all duration-300 ${
           isMobileOpen ? "pointer-events-auto visible" : "pointer-events-none invisible"
         }`}
       >
@@ -464,7 +464,7 @@ const Sidebar = ({ children }) => {
 
 
       {/* ── DESKTOP SIDEBAR ── */}
-      <div className="hidden lg:flex">
+      <div className="hidden lg:flex print:hidden">
         <aside
           ref={desktopAsideRef}
           className={`fixed top-0 left-0 z-30 h-screen transition-all duration-300 bg-white border-r border-gray-200 overscroll-contain ${
@@ -497,7 +497,7 @@ const Sidebar = ({ children }) => {
       {/* ── MAIN CONTENT ── */}
       <main
         ref={mainRef}
-        className={`bg-[#F8F7F5] h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 overscroll-contain ${
+        className={`bg-[#F8F7F5] h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 overscroll-contain print:h-auto print:overflow-visible print:ml-0 print:p-0 print:bg-white ${
           isOpen ? "lg:ml-64" : "lg:ml-16"
         }`}
         style={{ overscrollBehavior: 'contain' }}

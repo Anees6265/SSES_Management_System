@@ -155,13 +155,19 @@ export default function StudentVisionBlueprintPage() {
 
   // Trigger browser print
   const handlePrint = () => {
+    const studentName = blueprint?.studentName || student?.fullName || "Student";
+    const originalTitle = document.title;
+    document.title = `${studentName} - Personal Vision & Career Roadmap`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1500);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 pb-16">
+    <div className="min-h-screen bg-slate-50/70 pb-16 print:min-h-0 print:bg-white print:p-0 print:m-0 print:pb-0">
       {/* ── TOP ACTION BAR (Hidden in print) ── */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-2xs print:hidden">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-2xs print:hidden blueprint-print-hide">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
@@ -229,9 +235,30 @@ export default function StudentVisionBlueprintPage() {
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 space-y-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 space-y-6 print:p-0 print:m-0 print:space-y-4 blueprint-print-container">
+        {/* ── OFFICIAL PRINT HEADER (Visible ONLY in Print / PDF export) ── */}
+        <div className="hidden print:block pb-3 mb-2 border-b-2 border-orange-500 blueprint-avoid-break">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-black text-gray-900 tracking-tight">
+                Personal Vision & Career Roadmap
+              </h1>
+              <p className="text-xs text-gray-600 font-medium mt-0.5">
+                Academic & Career Strategic Alignment Report • Sant Singaji Institute of Science and Management
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-orange-600 uppercase tracking-wider block">
+                Official Student Record
+              </span>
+              <span className="text-[10px] text-gray-500">
+                Date: {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            </div>
+          </div>
+        </div>
         {/* ── STUDENT SUMMARY BANNER ── */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4 blueprint-print-card blueprint-avoid-break">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-lg shadow-sm uppercase">
               {blueprint?.studentName?.slice(0, 2) || student?.fullName?.slice(0, 2) || "ST"}
@@ -361,7 +388,7 @@ export default function StudentVisionBlueprintPage() {
         {!isLoading && report && (
           <div className="space-y-6">
             {/* 1. CORE PURPOSE CARD (Clean, Light Theme) */}
-            <div className="bg-gradient-to-r from-orange-50/70 via-amber-50/40 to-white rounded-2xl border border-orange-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="bg-gradient-to-r from-orange-50/70 via-amber-50/40 to-white rounded-2xl border border-orange-200/90 p-5 sm:p-6 shadow-2xs space-y-4 blueprint-print-card blueprint-avoid-break">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500 text-white shadow-2xs">
                   <FaCompass size={12} /> Student&apos;s Core Purpose
@@ -397,7 +424,7 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* 2. TAB NAVIGATION (Equal width, aligned & formatted across full container) */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-1.5 shadow-2xs print:hidden">
+            <div className="bg-white rounded-2xl border border-gray-200 p-1.5 shadow-2xs print:hidden blueprint-print-hide">
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
                 {[
                   { id: "overview", label: "Summary", icon: MdFactCheck },
@@ -433,9 +460,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 1: SUMMARY ── */}
-            <div className={activeTab === "overview" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-5">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">
+            <div className={`space-y-6 blueprint-print-section blueprint-page-break-after ${activeTab === "overview" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-5 blueprint-print-card blueprint-avoid-break">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <MdFactCheck size={18} />
                   </span>
@@ -451,7 +478,7 @@ export default function StudentVisionBlueprintPage() {
 
                 {/* Vivid Description of Success */}
                 {blueprint?.vividDescriptionOfSuccess && (
-                  <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200">
+                  <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 blueprint-avoid-break">
                     <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider block mb-1">
                       Final Vision of Success (End Goal):
                     </span>
@@ -464,9 +491,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 2: CORE VALUES & HABITS ── */}
-            <div className={activeTab === "values" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">
+            <div className={`space-y-6 blueprint-print-section blueprint-page-break-after ${activeTab === "values" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6 blueprint-print-card">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <FaGem size={16} />
                   </span>
@@ -476,11 +503,11 @@ export default function StudentVisionBlueprintPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 print:grid print:grid-cols-2 print:gap-3">
                   {(aiReport?.coreValuesPlaybook || []).map((val, idx) => (
                     <div
                       key={idx}
-                      className="bg-gray-50/70 rounded-2xl border border-gray-200 p-5 space-y-3 hover:border-orange-200 transition"
+                      className={`bg-gray-50/70 rounded-2xl border border-gray-200 p-5 space-y-3 hover:border-orange-200 transition blueprint-card-item blueprint-avoid-break ${idx === 4 ? "print:col-span-2" : ""}`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="px-3 py-1 rounded-lg bg-orange-100 text-orange-800 text-xs font-bold uppercase">
@@ -520,9 +547,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 3: 3, 5 & 10 YEARS GOALS ── */}
-            <div className={activeTab === "roadmap" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6">
-                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5">
+            <div className={`space-y-6 blueprint-print-section ${activeTab === "roadmap" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6 blueprint-print-card">
+                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <MdTimeline size={18} />
                   </span>
@@ -534,7 +561,7 @@ export default function StudentVisionBlueprintPage() {
 
                 <div className="space-y-5">
                   {/* PHASE 1: 3-YEAR GOAL */}
-                  <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-5 space-y-3">
+                  <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-5 space-y-3 blueprint-card-item blueprint-avoid-break">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider">
                         Phase 1 • 3-Year Foundation Goal
@@ -572,7 +599,7 @@ export default function StudentVisionBlueprintPage() {
                   </div>
 
                   {/* PHASE 2: 5-YEAR GOAL */}
-                  <div className="bg-emerald-50/40 rounded-2xl border border-emerald-200/80 p-5 space-y-3">
+                  <div className="bg-emerald-50/40 rounded-2xl border border-emerald-200/80 p-5 space-y-3 blueprint-card-item blueprint-avoid-break">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider">
                         Phase 2 • 5-Year Growth Goal
@@ -593,7 +620,7 @@ export default function StudentVisionBlueprintPage() {
                   </div>
 
                   {/* PHASE 3: 10-YEAR GOAL */}
-                  <div className="bg-amber-50/40 rounded-2xl border border-amber-200/90 p-5 space-y-3">
+                  <div className="bg-amber-50/40 rounded-2xl border border-amber-200/90 p-5 space-y-3 blueprint-card-item blueprint-avoid-break">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider">
                         Phase 3 • 10-Year Leadership Goal
@@ -617,9 +644,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 4: NEXT 90 DAYS PLAN ── */}
-            <div className={activeTab === "sprint" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6">
-                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5">
+            <div className={`space-y-6 blueprint-print-section blueprint-page-break-after ${activeTab === "sprint" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6 blueprint-print-card">
+                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <MdCalendarToday size={18} />
                   </span>
@@ -629,11 +656,11 @@ export default function StudentVisionBlueprintPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid print:grid-cols-3 print:gap-3">
                   {(aiReport?.ninetyDayActionSprint || []).map((sprint, idx) => (
                     <div
                       key={idx}
-                      className="bg-gray-50/70 rounded-2xl border border-gray-200 p-5 space-y-3 flex flex-col justify-between"
+                      className="bg-gray-50/70 rounded-2xl border border-gray-200 p-5 space-y-3 flex flex-col justify-between blueprint-card-item blueprint-avoid-break"
                     >
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
@@ -667,9 +694,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 5: CHALLENGES & SOLUTIONS ── */}
-            <div className={activeTab === "obstacles" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6">
-                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5">
+            <div className={`space-y-6 blueprint-print-section ${activeTab === "obstacles" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6 blueprint-print-card">
+                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <MdOutlineShield size={18} />
                   </span>
@@ -679,11 +706,11 @@ export default function StudentVisionBlueprintPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 print:space-y-3">
                   {(aiReport?.potentialObstaclesAndCountermeasures || []).map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-4 rounded-xl bg-gray-50/70 border border-gray-200 space-y-2 text-xs"
+                      className="p-4 rounded-xl bg-gray-50/70 border border-gray-200 space-y-2 text-xs blueprint-card-item blueprint-avoid-break"
                     >
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-[10px]">
@@ -707,9 +734,9 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 6: MENTOR REVIEW GUIDE ── */}
-            <div className={activeTab === "mentor" || window.matchMedia("print").matches ? "block space-y-6" : "hidden"}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6">
-                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5">
+            <div className={`space-y-6 blueprint-print-section ${activeTab === "mentor" ? "block" : "hidden print:block"}`}>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-6 blueprint-print-card">
+                <div className="pb-3 border-b border-gray-100 flex items-center gap-2.5 blueprint-section-header blueprint-avoid-break">
                   <span className="p-2 rounded-xl bg-orange-50 text-orange-600">
                     <FaUserTie size={16} />
                   </span>
@@ -719,9 +746,9 @@ export default function StudentVisionBlueprintPage() {
                   </div>
                 </div>
 
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 print:divide-y-0 print:space-y-2.5">
                   {(aiReport?.mentorReviewChecklist || []).map((chk, idx) => (
-                    <div key={idx} className="py-4 space-y-2 text-xs first:pt-0 last:pb-0">
+                    <div key={idx} className="py-4 space-y-2 text-xs first:pt-0 last:pb-0 blueprint-card-item blueprint-avoid-break print:p-3 print:border print:border-gray-200 print:rounded-xl">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-gray-900 text-xs sm:text-sm">{chk.checkpoint}</span>
                         <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-mono text-[10px]">Checkpoint {idx + 1}</span>
@@ -737,7 +764,7 @@ export default function StudentVisionBlueprintPage() {
                 </div>
 
                 {/* SIGNATURE BLOCK FOR PRINT */}
-                <div className="hidden print:block pt-12 border-t border-gray-300">
+                <div className="hidden print:block pt-10 mt-6 border-t border-gray-300 blueprint-avoid-break">
                   <div className="flex justify-between items-end text-xs font-semibold text-gray-800">
                     <div className="text-center w-48 border-t border-gray-400 pt-2">
                       Student Signature
@@ -754,7 +781,7 @@ export default function StudentVisionBlueprintPage() {
             </div>
 
             {/* ── SECTION 7: VIEW ORIGINAL ONE-PAGER ── */}
-            <div className={activeTab === "original" ? "block space-y-6" : "hidden"}>
+            <div className={`space-y-6 print:hidden blueprint-print-hide ${activeTab === "original" ? "block" : "hidden"}`}>
               <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xs space-y-4">
                 {(() => {
                   const docUrl = report?.onePagerImageUrl || "";
@@ -903,6 +930,90 @@ export default function StudentVisionBlueprintPage() {
           </div>
         </div>
       )}
+
+      {/* ── PRINT STYLESHEET OVERRIDES FOR COMPLETE MULTI-SECTION PDF EXPORT ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 12mm 12mm;
+          }
+
+          /* Hide UI interactive buttons & tabs */
+          .print\\:hidden,
+          .blueprint-print-hide {
+            display: none !important;
+          }
+
+          /* Force full container width */
+          .blueprint-print-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          /* Force all 6 strategic report sections to display in full */
+          .blueprint-print-section {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin-bottom: 16px !important;
+          }
+
+          /* Clean page breaks between major report chapters */
+          .blueprint-page-break-after {
+            page-break-after: always !important;
+            break-after: page !important;
+          }
+
+          .blueprint-page-break-before {
+            page-break-before: always !important;
+            break-before: page !important;
+          }
+
+          /* CRITICAL: Never slice cards horizontally across page boundaries */
+          .blueprint-avoid-break,
+          .blueprint-card-item,
+          .blueprint-print-card {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+            box-shadow: none !important;
+          }
+
+          /* Prevent headings from being orphaned at the bottom of a page */
+          .blueprint-section-header,
+          h1, h2, h3, h4 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+
+          /* Clean card styling for crisp print */
+          .blueprint-card-item {
+            box-shadow: none !important;
+          }
+
+          /* Print grid adjustments */
+          .blueprint-print-section .print\\:grid-cols-2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+          }
+
+          .blueprint-print-section .print\\:grid-cols-3 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 10px !important;
+          }
+
+          /* Exact color reproduction */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

@@ -16,7 +16,8 @@ import {
   IoMailOutline, 
   IoEyeOutline, 
   IoEyeOffOutline,
-  IoSearchOutline
+  IoSearchOutline,
+  IoSparkles
 } from "react-icons/io5";
 import { 
   FiUser, 
@@ -34,10 +35,12 @@ import {
   FiX, 
   FiCheckCircle,
   FiLock,
-  FiKey
+  FiKey,
+  FiTrash2
 } from "react-icons/fi";
 import Header from "../../shared/sidebar/Header";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
+import AvatarPickerModal from "../../shared/avatar/AvatarPickerModal";
 import { toast } from 'react-toastify';
 import { useState, useRef, useMemo, useEffect } from 'react';
 
@@ -95,6 +98,7 @@ const UserProfile = () => {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [showAadhar, setShowAadhar] = useState(false);
   const [permissionSearch, setPermissionSearch] = useState("");
@@ -253,6 +257,67 @@ const UserProfile = () => {
     fileInputRef.current?.click();
   };
 
+  // Avatar Selection
+  const handleSelectAvatar = async (dataUri) => {
+    const userId = id || userData?._id;
+    if (!userId) {
+      toast.error('User ID not found');
+      return;
+    }
+    setIsImageUploading(true);
+    try {
+      await updateUser({
+        id: userId,
+        data: { profileImage: dataUri }
+      }).unwrap();
+      refetch();
+      if (isSelf) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("user") || "{}");
+          stored.profileImage = dataUri;
+          localStorage.setItem("user", JSON.stringify(stored));
+        } catch (e) {
+          console.warn("Could not update local storage user", e);
+        }
+      }
+      toast.success('Profile avatar updated successfully!');
+    } catch (err) {
+      console.error('Error updating avatar:', err);
+      toast.error(err?.data?.message || 'Failed to update avatar');
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
+
+  // Remove photo / Reset to default initials
+  const handleRemovePhoto = async () => {
+    const userId = id || userData?._id;
+    if (!userId) return;
+    setIsImageUploading(true);
+    try {
+      await updateUser({
+        id: userId,
+        data: { profileImage: "" }
+      }).unwrap();
+      refetch();
+      if (isSelf) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("user") || "{}");
+          stored.profileImage = "";
+          localStorage.setItem("user", JSON.stringify(stored));
+        } catch {
+          // ignore local storage errors
+        }
+      }
+      toast.info('Profile picture reset. Default initials active.');
+    } catch (err) {
+      console.error('Error removing photo:', err);
+      toast.error('Failed to remove photo');
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -308,46 +373,95 @@ const UserProfile = () => {
               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left w-full md:w-auto">
                 
                 {/* Avatar */}
-                <div className="relative shrink-0">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl bg-slate-50 p-1 shadow-sm border-2 border-slate-200/70 overflow-hidden relative">
-                    {userData?.profileImage ? (
-                      <img
-                        src={userData.profileImage}
-                        alt={userData?.name || "Profile"}
-                        className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-xl sm:rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-2xl sm:text-3xl tracking-wider shadow-inner">
-                        {initials}
-                      </div>
-                    )}
+                <div className="flex flex-col items-center sm:items-start shrink-0">
+                  <div className="relative">
+                    <div 
+                      onClick={() => canEdit && setShowAvatarModal(true)}
+                      className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl bg-slate-50 p-1 shadow-sm border-2 border-slate-200/70 overflow-hidden relative ${
+                        canEdit ? "cursor-pointer hover:border-orange-400 transition" : ""
+                      }`}
+                      title={canEdit ? "Click to change avatar or photo" : undefined}
+                    >
+                      {userData?.profileImage ? (
+                        <img
+                          src={userData.profileImage}
+                          alt={userData?.name || "Profile"}
+                          className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-xl sm:rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-2xl sm:text-3xl tracking-wider shadow-inner">
+                          {initials}
+                        </div>
+                      )}
 
-                    {/* Image Uploading Spinner */}
-                    {isImageUploading && (
-                      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center rounded-xl sm:rounded-2xl">
-                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
+                      {/* Image Uploading Spinner */}
+                      {isImageUploading && (
+                        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center rounded-xl sm:rounded-2xl">
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quick Trigger Button */}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAvatarModal(true)}
+                        disabled={isImageUploading}
+                        className="absolute -bottom-1 -right-1 w-8 h-8 sm:w-9 sm:h-9 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition duration-200 cursor-pointer"
+                        title="Choose an avatar or upload photo"
+                        aria-label="Change photo"
+                      >
+                        <IoSparkles size={16} />
+                      </button>
                     )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
                   </div>
 
-                  {/* Camera Upload Button */}
-                  <button
-                    type="button"
-                    onClick={triggerImageUpload}
-                    disabled={isImageUploading}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 sm:w-9 sm:h-9 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition duration-200 cursor-pointer"
-                    title="Upload profile photo"
-                    aria-label="Upload photo"
-                  >
-                    <IoCamera size={16} />
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  {/* Photo & Avatar Action Badges */}
+                  {canEdit && (
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={triggerImageUpload}
+                        disabled={isImageUploading}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-[11px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                        title="Upload photo from device"
+                      >
+                        <IoCamera size={13} className="text-slate-500" />
+                        <span>Photo</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowAvatarModal(true)}
+                        disabled={isImageUploading}
+                        className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 active:scale-95 text-orange-700 border border-orange-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                        title="Choose an institutional avatar"
+                      >
+                        <IoSparkles size={13} className="text-orange-500" />
+                        <span>Avatar</span>
+                      </button>
+
+                      {userData?.profileImage && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          disabled={isImageUploading}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Reset to Initials"
+                        >
+                          <FiTrash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Name, Designation, Department */}
@@ -850,6 +964,18 @@ const UserProfile = () => {
           onSuccess={() => refetch()}
         />
       )}
+
+      {/* ── 6. Professional Avatar Picker Modal ── */}
+      <AvatarPickerModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onSelectAvatar={handleSelectAvatar}
+        onUploadPhotoClick={triggerImageUpload}
+        onRemovePhoto={handleRemovePhoto}
+        currentImage={userData?.profileImage}
+        userName={userData?.name}
+        userRole={userData?.role}
+      />
 
     </>
   );

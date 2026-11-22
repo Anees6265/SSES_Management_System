@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { useUpdateUserMutation, useChangeUserPasswordMutation } from "../../../redux/api/authApi";
 import { toast } from "react-toastify";
 import profileImg from "../../../assets/images/profile-img.png";
-import { FiCamera, FiCheck, FiLock, FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiKey } from "react-icons/fi";
+import { FiCamera, FiCheck, FiLock, FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiKey, FiTrash2 } from "react-icons/fi";
+import { IoSparkles } from "react-icons/io5";
 import { API_BASE_URL } from "../../../config/apiConfig";
+import AvatarPickerModal from "../avatar/AvatarPickerModal";
 
 const SettingsDrawerContent = ({ user, saveButtonRef }) => {
     const isGlobalAdmin = ['superadmin', 'admin'].includes(user?.role?.toLowerCase());
@@ -18,6 +20,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
     });
     const [previewUrl, setPreviewUrl] = useState("");
     const [profileImageBase64, setProfileImageBase64] = useState("");
+    const [showAvatarModal, setShowAvatarModal] = useState(false);
     const fileInputRef = useRef(null);
 
     const [updateUser, { isLoading }] = useUpdateUserMutation();
@@ -132,7 +135,7 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
             ...(formData.role && { role: formData.role }),
             department: resolvedDept,
             ...(typeof formData.isActive === "boolean" && { isActive: formData.isActive }),
-            ...(profileImageBase64 && { profileImage: profileImageBase64 }),
+            ...(profileImageBase64 !== "" ? { profileImage: profileImageBase64 } : (previewUrl === "" && user?.profileImage ? { profileImage: "" } : {})),
             updatedAt: new Date(),
         };
 
@@ -154,14 +157,14 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
 
     return (
         <>
-            {/* Profile Header & Image Upload */}
+            {/* Profile Header & Image Upload / Avatar Selection */}
             <div className="-mx-6 -mt-6 mb-6 p-6 flex flex-col items-center border-b border-gray-100 bg-white">
                 <div className="relative group flex flex-col items-center">
                     {/* Avatar Container */}
                     <div 
-                        onClick={triggerImageUpload}
+                        onClick={() => setShowAvatarModal(true)}
                         className="relative cursor-pointer group/avatar rounded-full p-1 transition-all duration-300 hover:scale-[1.02]"
-                        title="Click to change profile picture"
+                        title="Click to choose an avatar or upload photo"
                     >
                         <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-orange-400 shadow-md ring-4 ring-orange-500/10 group-hover/avatar:ring-orange-500/30 transition-all duration-300">
                             <img
@@ -171,30 +174,66 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                             />
                         </div>
 
-                        {/* Floating Camera Badge */}
+                        {/* Floating Sparkles Badge */}
                         <button
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                triggerImageUpload();
+                                setShowAvatarModal(true);
                             }}
-                            className="absolute bottom-1 right-1 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full shadow-md transition-transform duration-200 hover:scale-110 active:scale-95"
-                            title="Upload new photo"
+                            className="absolute bottom-1 right-1 bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-full shadow-md transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                            title="Choose avatar or photo"
                         >
-                            <FiCamera className="w-3.5 h-3.5" />
+                            <IoSparkles className="w-3.5 h-3.5" />
                         </button>
+                    </div>
+
+                    {/* Quick Action Buttons: Upload Photo & Choose Avatar */}
+                    <div className="flex items-center gap-2 mt-3.5 flex-wrap justify-center">
+                        <button
+                            type="button"
+                            onClick={triggerImageUpload}
+                            className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                            <FiCamera size={13} className="text-slate-500" />
+                            <span>Upload Photo</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowAvatarModal(true)}
+                            className="px-3 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                            <IoSparkles size={13} className="text-orange-500" />
+                            <span>Choose Avatar</span>
+                        </button>
+
+                        {(previewUrl || user?.profileImage) && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPreviewUrl("");
+                                    setProfileImageBase64("");
+                                    toast.info("Photo reset. Click Save to apply.");
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                title="Reset / Remove Photo"
+                            >
+                                <FiTrash2 size={14} />
+                            </button>
+                        )}
                     </div>
 
                     {/* Preview Selected Status */}
                     {previewUrl && (
                         <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md animate-fade-in">
                             <FiCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>New photo selected</span>
+                            <span>New profile image selected</span>
                         </div>
                     )}
                 </div>
 
-                <p className="text-xs text-gray-500 mt-3 font-medium bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                <p className="text-xs text-gray-500 mt-2.5 font-medium bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                     {user?.email}
                 </p>
             </div>
@@ -393,6 +432,26 @@ const SettingsDrawerContent = ({ user, saveButtonRef }) => {
                     </form>
                 )}
             </div>
+
+            {/* Avatar Picker Modal */}
+            <AvatarPickerModal
+                isOpen={showAvatarModal}
+                onClose={() => setShowAvatarModal(false)}
+                onSelectAvatar={(dataUri) => {
+                    setPreviewUrl(dataUri);
+                    setProfileImageBase64(dataUri);
+                    toast.success("Avatar selected! Click Save to apply changes.");
+                }}
+                onUploadPhotoClick={triggerImageUpload}
+                onRemovePhoto={() => {
+                    setPreviewUrl("");
+                    setProfileImageBase64("");
+                    toast.info("Photo removed. Click Save to apply changes.");
+                }}
+                currentImage={previewUrl || user?.profileImage}
+                userName={user?.name}
+                userRole={user?.role}
+            />
         </>
     );
 };

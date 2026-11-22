@@ -890,7 +890,7 @@ exports.updateUserFields = async (req, res) => {
       ...(role && { role: typeof role === "string" ? role.trim().toLowerCase() : role }),
       ...(department !== undefined && { department: typeof department === "string" ? department.trim() : department }),
       ...(typeof isActive === "boolean" && { isActive }),
-      ...(profileImage && { profileImage: uploadedImageUrl }),
+      ...(profileImage !== undefined && { profileImage: uploadedImageUrl || "" }),
     };
 
     // When role changes, sync permissions to new role defaults

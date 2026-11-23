@@ -15,12 +15,10 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import InputField from "../../../shared/form-fields/InputField";
 import RadioGroup from "../../../shared/form-fields/RadioGroup";
-import { MdLayers, MdSearch, MdClose, MdDelete, MdWarning, MdVisibility, MdEdit } from "react-icons/md";
+import { MdLayers, MdWarning, MdVisibility, MdEdit, MdDeleteOutline } from "react-icons/md";
 import Loader from "../../../shared/loader/Loader";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { DeleteConfirmModal } from "../../../shared/modal/DeleteConfirmModal";
-import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
-import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 
 const SubLevelCount = ({ levelId, render }) => {
   const { data } = useGetSubLevelsByLevelQuery(levelId, { skip: !levelId });
@@ -61,11 +59,13 @@ const LevelCard = ({ level, subLevelCount, subLevelsList, onView, onEdit, onDele
           </span>
           {onDelete && (
             <button
+              type="button"
               onClick={onDelete}
               title="Delete Level"
-              className="w-7 h-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors flex items-center justify-center cursor-pointer"
+              className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-xl border border-red-200/80 bg-red-50/60 hover:bg-red-100 active:bg-red-200 text-red-600 hover:text-red-700 transition-all duration-200 active:scale-95 shadow-2xs hover:shadow-xs flex items-center justify-center cursor-pointer shrink-0"
+              aria-label="Delete Level"
             >
-              <MdDelete size={16} />
+              <MdDeleteOutline size={15} />
             </button>
           )}
         </div>
@@ -196,8 +196,6 @@ const SubdepartmentDetails = () => {
     location.state?.subdepartment?._id ||
     sessionStorage.getItem("lastVisitedSubdepartmentId");
 
-  const [searchQuery, setSearchQuery] = usePersistentState(`subdept_levels_search_${subdepartmentId || "all"}`, "");
-
   useEffect(() => {
     if (subdepartmentId) {
       sessionStorage.setItem("lastVisitedSubdepartmentId", subdepartmentId);
@@ -221,10 +219,6 @@ const SubdepartmentDetails = () => {
   const levels = [...(levelsData?.data || [])]
     .filter((lvl) => lvl.isActive !== false)
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-
-  const filteredLevels = levels.filter((lvl) =>
-    lvl.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleDeleteLevel = async () => {
     if (!levelToDelete) return;
@@ -319,70 +313,51 @@ const SubdepartmentDetails = () => {
         />
       )}
 
-      <div className="px-3.5 sm:px-6 pb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3.5 sm:py-5 border-b border-gray-100">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">{subdepartment.name}</h1>
-              <span className="px-2.5 py-0.5 text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200/60 rounded-full">
-                {levels.length} {levels.length === 1 ? "Level" : "Levels"}
-              </span>
+      {/* Sub-Department Overview Banner (Compact Single-Row Heading) */}
+      <div className="px-3.5 sm:px-6 pt-3.5 sm:pt-4">
+        <div className="bg-gradient-to-r from-orange-50/60 via-white to-amber-50/40 border border-orange-100/90 rounded-2xl p-3 sm:p-3.5 shadow-2xs">
+          <div className="flex items-center gap-3 sm:gap-3.5">
+            <div className="w-9 h-9 rounded-xl bg-orange-100/80 text-orange-600 flex items-center justify-center shrink-0 border border-orange-200/60">
+              <MdLayers size={18} />
             </div>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Manage levels and academic curriculum</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600 bg-orange-100/80 px-2 py-0.5 rounded-md">
+                  Sub-Department Overview
+                </span>
+                {departmentName && (
+                  <span className="text-xs text-slate-500 font-medium">
+                    • Department: <strong className="text-slate-700">{departmentName}</strong>
+                  </span>
+                )}
+                <span className="text-xs text-slate-500 font-medium">
+                  • Levels: <strong className="text-slate-700">{levels.length}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                  {subdepartment.name}
+                </h2>
+                <span className="text-slate-400 font-medium text-xs sm:text-sm">-</span>
+                <span className="text-xs sm:text-sm text-slate-600 font-medium">
+                  Manage levels and academic curriculum
+                </span>
+              </div>
+            </div>
           </div>
-
-          {levels.length > 1 && (
-            <div className="relative w-full sm:w-64">
-              <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search levels..."
-                className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-gray-400 shadow-2xs"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs p-1"
-                >
-                  <MdClose size={14} />
-                </button>
-              )}
-            </div>
-          )}
         </div>
+      </div>
 
-        {searchQuery && (
-          <div className="pt-2">
-            <ActiveFilterChips
-              chips={[
-                {
-                  key: "search",
-                  label: "Search",
-                  value: searchQuery,
-                  displayValue: `"${searchQuery}"`,
-                  onRemove: () => setSearchQuery(""),
-                },
-              ]}
-              onClearAll={() => setSearchQuery("")}
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-6 mt-3.5 sm:mt-5">
-          {filteredLevels.length === 0 ? (
+      <div className="px-3.5 sm:px-6 mt-4 sm:mt-6 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-6">
+          {levels.length === 0 ? (
             <div className="col-span-full text-center py-16 bg-white rounded-2xl border border-gray-100 p-6">
               <MdLayers size={44} className="mx-auto text-gray-300 mb-2.5" />
-              <p className="text-sm font-semibold text-gray-700">
-                {searchQuery ? `No levels matching "${searchQuery}"` : "No levels found"}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {searchQuery ? "Try clearing your search filter" : "Add a new level to get started"}
-              </p>
+              <p className="text-sm font-semibold text-gray-700">No levels found</p>
+              <p className="text-xs text-gray-400 mt-1">Add a new level to get started</p>
             </div>
           ) : (
-            filteredLevels.map((level) => (
+            levels.map((level) => (
               <SubLevelCount
                 key={level._id}
                 levelId={level._id}

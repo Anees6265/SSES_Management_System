@@ -94,10 +94,10 @@ const DepartmentDetails = () => {
   return (
     <>
       <Header
-        title={department?.name || "Department Details"}
+        title={department?.name ? `${department.name} - Sub-Departments` : "Sub-Departments"}
         breadcrumbs={[
           { label: "Departments", path: "/department-management" },
-          { label: department?.name || "Details" },
+          { label: department?.name ? `${department.name} - Sub-Departments` : "Sub-Departments" },
         ]}
         actions={
           canManage && (
@@ -151,46 +151,33 @@ const DepartmentDetails = () => {
           />
         ) : (
           /* Cards Grid on Single Page (Compact small cards like ITEG for all departments) */
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-extrabold text-gray-800 uppercase tracking-wider">
-                  Sub-Departments
-                </h2>
-                <span className="text-[11px] font-bold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">
-                  {subdepartments.length}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
-              {subdepartments.map((subdept) => (
-                <SubDepartmentCard
-                  key={subdept._id}
-                  variant="compact"
-                  title={subdept.name}
-                  departmentName={department?.name}
-                  hod={department?.headOfDepartment || subdept.departmentId?.headOfDepartment}
-                  status={subdept.isActive}
-                  totalStudents={subdept.totalStudents || 0}
-                  allowedCourses={subdept.allowedCourses || []}
-                  faculties={subdept.faculties || []}
-                  levelCounts={subdept.levelCounts || []}
-                  subLevelCounts={subdept.subLevelCounts || []}
-                  ftpCount={subdept.ftpCount || 0}
-                  othersCount={subdept.othersCount || 0}
-                  onView={() => handleViewSubdept(subdept)}
-                  onEdit={handleEditSubdept(subdept)}
-                  onLevelClick={(levelName, levelId) => {
-                    const deptId = activeDepartmentId || "";
-                    navigate(`/show-sublevel-tables?levelId=${levelId}&subdeptId=${subdept._id}&deptId=${deptId}`, {
-                      state: { level: { _id: levelId, name: levelName }, subdepartment: subdept, departmentId: deptId, departmentName: department?.name }
-                    });
-                  }}
-                  onFtpClick={() => handleViewSubdept(subdept)}
-                />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
+            {subdepartments.map((subdept) => (
+              <SubDepartmentCard
+                key={subdept._id}
+                variant="compact"
+                title={subdept.name}
+                departmentName={department?.name}
+                hod={department?.headOfDepartment || subdept.departmentId?.headOfDepartment}
+                status={subdept.isActive}
+                totalStudents={subdept.totalStudents || 0}
+                allowedCourses={subdept.allowedCourses || []}
+                faculties={subdept.faculties || []}
+                levelCounts={subdept.levelCounts || []}
+                subLevelCounts={subdept.subLevelCounts || []}
+                ftpCount={subdept.ftpCount || 0}
+                othersCount={subdept.othersCount || 0}
+                onView={() => handleViewSubdept(subdept)}
+                onEdit={handleEditSubdept(subdept)}
+                onLevelClick={(levelName, levelId) => {
+                  const deptId = activeDepartmentId || "";
+                  navigate(`/show-sublevel-tables?levelId=${levelId}&subdeptId=${subdept._id}&deptId=${deptId}`, {
+                    state: { level: { _id: levelId, name: levelName }, subdepartment: subdept, departmentId: deptId, departmentName: department?.name }
+                  });
+                }}
+                onFtpClick={() => handleViewSubdept(subdept)}
+              />
+            ))}
           </div>
         )}
       </div>

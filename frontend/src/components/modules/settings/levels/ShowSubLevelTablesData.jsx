@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import { MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck, MdEdit } from "react-icons/md";
+import { MdCloudUpload, MdTableChart, MdSearch, MdDelete, MdWarning, MdLayers, MdPeopleOutline, MdClose, MdCheck, MdEdit, MdAdd } from "react-icons/md";
 import Header from "../../../shared/sidebar/Header";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import {
@@ -204,11 +204,10 @@ const StudentsTab = ({
                             }
                             onTaskBoard(row);
                         }}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
-                            isInactive
-                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
-                                : "bg-orange-50 text-orange-500 hover:bg-orange-100 border-orange-200 cursor-pointer"
-                        }`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${isInactive
+                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
+                            : "bg-orange-50 text-orange-500 hover:bg-orange-100 border-orange-200 cursor-pointer"
+                            }`}
                         title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                     >
                         <MdTableChart size={14} /> Task Board
@@ -369,11 +368,10 @@ const StudentsTab = ({
                                                     }
                                                     onTaskBoard(st);
                                                 }}
-                                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition ${
-                                                    isInactive
-                                                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
-                                                        : "bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200 cursor-pointer"
-                                                }`}
+                                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition ${isInactive
+                                                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
+                                                    : "bg-orange-50 text-orange-600 hover:bg-orange-100 border-orange-200 cursor-pointer"
+                                                    }`}
                                                 title={isInactive ? `Task board is disabled for ${status === "dropped" ? "dropped" : "dummy"} students` : "Open Task Board"}
                                             >
                                                 <MdTableChart size={13} /> Task Board
@@ -847,8 +845,8 @@ const ShowSubLevelTablesData = () => {
 
     const { data: deptsRes } = useGetAllDepartmentsQuery();
     const allDepartments = deptsRes?.data || [];
-    const matchedDept = allDepartments.find((d) => 
-        String(d._id) === String(departmentId) || 
+    const matchedDept = allDepartments.find((d) =>
+        String(d._id) === String(departmentId) ||
         (departmentName && departmentName !== "Department" && String(d.name).toUpperCase() === String(departmentName).toUpperCase())
     );
     const effectiveDepartmentName = matchedDept?.name || (departmentName !== "Department" ? departmentName : "") || "";
@@ -879,6 +877,7 @@ const ShowSubLevelTablesData = () => {
     const [activeTaskVersionId, setActiveTaskVersionId] = useState("");
     const [subLevelToDelete, setSubLevelToDelete] = useState(null);
     const [isEditSubLevelOpen, setIsEditSubLevelOpen] = useState(false);
+    const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
     const editSubLevelFormRef = useRef(null);
 
     const { data: subLevelsData, isLoading: isSubLevelsLoading } = useGetSubLevelsByLevelQuery(level?._id, { skip: !level?._id });
@@ -983,28 +982,65 @@ const ShowSubLevelTablesData = () => {
                 breadcrumbs={breadcrumbs}
                 bottomRow={
                     subLevels.length > 0 ? (
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth py-1.5 px-0.5">
-                            {subLevels.map((sl) => (
-                                <button
-                                    key={sl._id}
-                                    onClick={() => handleTabChange(sl)}
-                                    className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 cursor-pointer ${activeTab?._id === sl._id
-                                        ? "bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs font-bold"
-                                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/60"
-                                        }`}
-                                >
-                                    {sl.name}
-                                </button>
-                            ))}
+                        <div className="flex items-center justify-between gap-3 py-1.5 px-0.5 w-full">
+                            {/* Sub-Level tabs */}
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none scroll-smooth min-w-0">
+                                {subLevels.map((sl) => (
+                                    <button
+                                        key={sl._id}
+                                        onClick={() => handleTabChange(sl)}
+                                        className={`px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 rounded-xl flex-shrink-0 cursor-pointer ${activeTab?._id === sl._id
+                                            ? "bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs font-bold"
+                                            : "text-gray-500 hover:text-gray-800 hover:bg-gray-100/60"
+                                            }`}
+                                    >
+                                        {sl.name}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Active Sub-Level Actions */}
+                            {activeTab && (
+                                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                    {hasPermission('Page_SubLevel', 'update') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditSubLevelOpen(true)}
+                                            title={`Edit Sub-Level ${activeTab.name}`}
+                                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-orange-600 bg-white hover:bg-orange-50/60 border border-slate-200 hover:border-orange-200 rounded-xl transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                        >
+                                            <MdEdit size={15} className="text-orange-500" />
+                                            <span>Edit <span className="hidden sm:inline"></span></span>
+                                        </button>
+                                    )}
+
+                                    {hasPermission('Page_SubLevel', 'delete') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSubLevelToDelete(activeTab)}
+                                            title={`Delete Sub-Level ${activeTab.name}`}
+                                            className="inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                        >
+                                            <MdDelete size={15} />
+                                            <span className="hidden sm:inline">Delete</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ) : null
                 }
             >
                 <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
                     {/* Action buttons — only when sublevels exist */}
-                    {subLevels.length > 0 && activeSection === "Progress" && (
-                        <button onClick={() => { }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-orange-500 bg-white border border-orange-500 rounded-xl hover:bg-orange-50 active:scale-[0.98] transition flex-shrink-0 cursor-pointer">
-                            <MdTableChart size={16} /> Upload Excel
+                    {subLevels.length > 0 && activeSection === "Tasks" && (
+                        <button
+                            type="button"
+                            onClick={() => setIsAddTaskOpen(true)}
+                            className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
+                        >
+                            <MdAdd size={18} />
+                            <span>Add Task</span>
                         </button>
                     )}
                     {subLevels.length > 0 && activeSection === "Syllabus" && (
@@ -1028,84 +1064,6 @@ const ShowSubLevelTablesData = () => {
                                 />
                             )}
                         />
-                    )}
-
-                    {/* Edit Active SubLevel (when sublevels exist) */}
-                    {subLevels.length > 0 && activeTab && hasPermission('Page_SubLevel', 'update') && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => setIsEditSubLevelOpen(true)}
-                                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold tracking-wider uppercase text-white !bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 active:scale-[0.97] rounded-xl transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer shrink-0 inline-flex items-center justify-center gap-1.5"
-                            >
-                                <MdEdit size={16} />
-                                <span>EDIT SUB LEVEL</span>
-                            </button>
-
-                            <OrangeButton
-                                isOpen={isEditSubLevelOpen}
-                                onClose={() => setIsEditSubLevelOpen(false)}
-                                panelTitle="Edit Sub Level"
-                                panelSubtitle={activeTab ? `Editing: ${activeTab.name}` : ""}
-                                leftBtnText="Cancel"
-                                rightBtnText="Update Sub Level"
-                                onLeftClick={() => setIsEditSubLevelOpen(false)}
-                                onRightClick={() => editSubLevelFormRef.current?.submitForm()}
-                                drawerContent={
-                                    activeTab && (
-                                        <Formik
-                                            innerRef={editSubLevelFormRef}
-                                            initialValues={{
-                                                name: activeTab.name || "",
-                                                order: activeTab.order ?? "",
-                                                isActive: activeTab.isActive ?? true
-                                            }}
-                                            validationSchema={validationSchema}
-                                            enableReinitialize
-                                            onSubmit={async (values, { setSubmitting, resetForm }) => {
-                                                try {
-                                                    await updateSubLevel({
-                                                        subLevelId: activeTab._id,
-                                                        name: values.name,
-                                                        order: Number(values.order),
-                                                        levelId: level?._id,
-                                                        isActive: values.isActive
-                                                    }).unwrap();
-                                                    toast.success("SubLevel updated successfully!");
-                                                    resetForm();
-                                                    setIsEditSubLevelOpen(false);
-                                                } catch (error) {
-                                                    toast.error(error?.data?.message || "Error updating sublevel");
-                                                } finally {
-                                                    setSubmitting(false);
-                                                }
-                                            }}
-                                        >
-                                            {({ isSubmitting }) => (
-                                                <Form className="space-y-4">
-                                                    <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
-                                                    <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
-                                                    <RadioGroup label="Status" name="isActive" required={false} />
-                                                </Form>
-                                            )}
-                                        </Formik>
-                                    )
-                                }
-                            />
-                        </>
-                    )}
-
-                    {/* Delete Active SubLevel (when sublevels exist) */}
-                    {subLevels.length > 0 && activeTab && hasPermission('Page_SubLevel', 'delete') && (
-                        <button
-                            type="button"
-                            onClick={() => setSubLevelToDelete(activeTab)}
-                            title="Delete Sub Level"
-                            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200/80 hover:border-red-200 rounded-xl transition-all active:scale-[0.97] cursor-pointer shrink-0"
-                        >
-                            <MdDelete size={16} />
-                            <span>Delete Sub Level</span>
-                        </button>
                     )}
 
                     {/* Add SubLevel button */}
@@ -1146,6 +1104,60 @@ const ShowSubLevelTablesData = () => {
                     )}
                 </div>
             </Header>
+
+            {/* Edit Active SubLevel Drawer */}
+            {hasPermission('Page_SubLevel', 'update') && (
+                <OrangeButton
+                    isOpen={isEditSubLevelOpen}
+                    onClose={() => setIsEditSubLevelOpen(false)}
+                    panelTitle="Edit Sub Level"
+                    panelSubtitle={activeTab ? `Editing: ${activeTab.name}` : ""}
+                    leftBtnText="Cancel"
+                    rightBtnText="Update Sub Level"
+                    onLeftClick={() => setIsEditSubLevelOpen(false)}
+                    onRightClick={() => editSubLevelFormRef.current?.submitForm()}
+                    drawerContent={
+                        activeTab && (
+                            <Formik
+                                innerRef={editSubLevelFormRef}
+                                initialValues={{
+                                    name: activeTab.name || "",
+                                    order: activeTab.order ?? "",
+                                    isActive: activeTab.isActive ?? true
+                                }}
+                                validationSchema={validationSchema}
+                                enableReinitialize
+                                onSubmit={async (values, { setSubmitting, resetForm }) => {
+                                    try {
+                                        await updateSubLevel({
+                                            subLevelId: activeTab._id,
+                                            name: values.name,
+                                            order: Number(values.order),
+                                            levelId: level?._id,
+                                            isActive: values.isActive
+                                        }).unwrap();
+                                        toast.success("SubLevel updated successfully!");
+                                        resetForm();
+                                        setIsEditSubLevelOpen(false);
+                                    } catch (error) {
+                                        toast.error(error?.data?.message || "Error updating sublevel");
+                                    } finally {
+                                        setSubmitting(false);
+                                    }
+                                }}
+                            >
+                                {({ isSubmitting }) => (
+                                    <Form className="space-y-4">
+                                        <InputField label="SubLevel Name" name="name" placeholder="Enter sublevel name" />
+                                        <InputField label="Order" name="order" type="number" placeholder="Enter order number" />
+                                        <RadioGroup label="Status" name="isActive" required={false} />
+                                    </Form>
+                                )}
+                            </Formik>
+                        )
+                    }
+                />
+            )}
 
             <div className="px-3 sm:px-6 pb-10">
 
@@ -1202,6 +1214,8 @@ const ShowSubLevelTablesData = () => {
                                 departmentId={departmentId}
                                 subdepartment={subdepartment}
                                 onVersionChange={setActiveTaskVersionId}
+                                isAddTaskOpen={isAddTaskOpen}
+                                setIsAddTaskOpen={setIsAddTaskOpen}
                             />
                         )}
                         {activeSection === "Syllabus" && (

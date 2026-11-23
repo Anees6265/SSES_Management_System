@@ -38,6 +38,8 @@ import TaskManagementModal from "./TaskManagementModal";
 import SmartSyllabusUpdate from "./SmartSyllabusUpdate";
 import OrangeButton from "../../../shared/sidebar/OrangeButton";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
+import SearchBox from "../../../shared/search-export/SearchBox";
+import ExportDropdown from "../../../shared/search-export/ExportDropdown";
 import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import CommonTable from "../../../shared/table/CommonTable";
 import { filterSessionsByDepartment, formatSessionLabel, getCurrentSession } from "../../../../utils/sessionDurationHelpers";
@@ -3012,12 +3014,14 @@ export const ManualTaskForm = ({ level, subLevel, versionId, departmentName, dep
 };
 
 /* --- Tasks Tab ----------------------------------------- */
-export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdepartment, onVersionChange }) => {
+export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdepartment, onVersionChange, isAddTaskOpen, setIsAddTaskOpen }) => {
   const subLevelId = subLevel?._id;
   const [selectedSessionId, setSelectedSessionId] = usePersistentState(`tasks_tab_session_${subLevelId || "all"}`, "");
   const [activeVersionId,   setActiveVersionId]   = useState("");
   const [searchTerm,        setSearchTerm]        = usePersistentState(`tasks_tab_search_${subLevelId || "all"}`, "");
-  const [showTaskModal,     setShowTaskModal]     = useState(false);
+  const [internalShowTaskModal, setInternalShowTaskModal] = useState(false);
+  const showTaskModal = isAddTaskOpen !== undefined ? isAddTaskOpen : internalShowTaskModal;
+  const setShowTaskModal = setIsAddTaskOpen || setInternalShowTaskModal;
   const [activeSubjectId,   setActiveSubjectId]   = useState("");
 
   const { data: sessionsData } = useGetAllSessionsQuery();
@@ -3126,6 +3130,44 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
 
   useEffect(() => { onVersionChange?.(currentVersionId); }, [currentVersionId]);
 
+  const { data: tasksData } = useGetTasksBySyllabusVersionQuery(currentVersionId, { skip: !currentVersionId });
+  const allTasksList = useMemo(() => {
+    if (!currentVersionId) return [];
+    const list = tasksData?.tasks || tasksData?.data || [];
+    return sortTasksAscending(list);
+  }, [currentVersionId, tasksData]);
+
+  const exportableTasksData = useMemo(() => {
+    if (!allTasksList || allTasksList.length === 0) return [];
+    let filtered = allTasksList;
+    if (activeSubjectId) {
+      const activeNameClean = (activeSubjectName || "").trim().toLowerCase();
+      filtered = filtered.filter((t) => {
+        const idMatches = t.subjectId && String(t.subjectId) === String(activeSubjectId);
+        const tNameClean = (t.subjectName || "").trim().toLowerCase();
+        const nameMatches = activeNameClean && tNameClean === activeNameClean;
+        return idMatches || nameMatches;
+      });
+    }
+    if (searchTerm?.trim()) {
+      const q = searchTerm.toLowerCase();
+      filtered = filtered.filter((t) =>
+        t.title?.toLowerCase().includes(q) ||
+        t.topicName?.toLowerCase().includes(q) ||
+        t.subTopicName?.toLowerCase().includes(q)
+      );
+    }
+    return filtered.map((t, idx) => ({
+      "S.No": idx + 1,
+      "Task Title": t.title || "",
+      "Subject": t.subjectName || activeSubjectName || "",
+      "Topic": t.topicName || "",
+      "Sub Topic": t.subTopicName || "-",
+      "Estimated Hours": t.estimatedHours || t.duration || "-",
+      "Difficulty": t.difficulty || "medium",
+    }));
+  }, [allTasksList, activeSubjectId, activeSubjectName, searchTerm]);
+
   if (!subLevelId) return <div className="py-16 text-center text-gray-450 text-sm">SubLevel not found</div>;
 
   if (allVersions.length === 0 && !selectedSessionId) {
@@ -3162,68 +3204,65 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
   }
 
   return (
-    <>
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* Top bar: search + session filter + version filter + Add Task button */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-5 py-3 sm:py-4 border-b border-gray-100 bg-white">
-          <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
-            {/* Search Input Container */}
-            <div className="relative w-full sm:flex-1 sm:max-w-sm">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
-                <MdSearch size={18} />
-              </span>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search tasks..."
-                className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
-                style={{ paddingLeft: '2.75rem' }}
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-              {/* Session Select Container */}
-              <div className="flex-1 sm:flex-initial min-w-[135px]">
-                <SelectDropdown
-                  value={selectedSessionId}
-                  onChange={(val) => {
-                    setSelectedSessionId(val);
-                    setActiveVersionId("");
-                    setActiveSubjectId("");
-                    setSearchTerm("");
-                  }}
-                  options={sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))}
-                  placeholder="Select Session"
-                />
-              </div>
-
-              {/* Version Select Container */}
-              {allVersions.length > 1 && (
-                <div className="flex-1 sm:flex-initial min-w-[130px]">
-                  <SelectDropdown
-                    value={currentVersionId}
-                    onChange={(val) => setActiveVersionId(val)}
-                    options={allVersions.map((v) => ({
-                      value: v._id,
-                      label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
-                    }))}
-                    placeholder="Select Version"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={() => setShowTaskModal(true)}
-            className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-500/10 cursor-pointer w-full sm:w-auto shrink-0"
-          >
-            <MdAdd size={18} />
-            <span>Add Task</span>
-          </button>
+    <div className="space-y-3">
+      {/* Top bar: search + session filter + version filter + Export + Add Task button */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
+        <div className="w-full sm:flex-1">
+          <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search tasks..." />
         </div>
 
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+          {/* Session Select Container */}
+          <div className="flex-1 sm:flex-initial min-w-[135px] sm:min-w-[145px]">
+            <SelectDropdown
+              value={selectedSessionId}
+              onChange={(val) => {
+                setSelectedSessionId(val);
+                setActiveVersionId("");
+                setActiveSubjectId("");
+                setSearchTerm("");
+              }}
+              options={sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))}
+              placeholder="Select Session"
+              className="w-full"
+              buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+            />
+          </div>
+
+          {/* Version Select Container */}
+          {allVersions.length > 1 && (
+            <div className="flex-1 sm:flex-initial min-w-[130px]">
+              <SelectDropdown
+                value={currentVersionId}
+                onChange={(val) => setActiveVersionId(val)}
+                options={allVersions.map((v) => ({
+                  value: v._id,
+                  label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
+                }))}
+                placeholder="Select Version"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+              />
+            </div>
+          )}
+
+          {/* Export Dropdown */}
+          <ExportDropdown data={exportableTasksData} sectionName="tasks" fileName={`Tasks_${subLevel?.name || "SubLevel"}`} />
+        </div>
+      </div>
+
+      {/* Active Filter Chips */}
+      <ActiveFilterChips
+        chips={activeTaskChips}
+        onClearAll={() => {
+          if (currentSession?._id) setSelectedSessionId(currentSession._id);
+          setActiveSubjectId("");
+          setSearchTerm("");
+        }}
+        className="mb-1"
+      />
+
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {/* Subject tabs (Pill selectors) */}
         {allVersions.length > 0 && Boolean(currentVersionId) && subjectsList.length > 0 && (
           <div className="flex gap-2 overflow-x-auto p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4 no-scrollbar scrollbar-none">
@@ -3231,7 +3270,7 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
               <button
                 key={s._id}
                 onClick={() => { setActiveSubjectId(s._id); setSearchTerm(""); }}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 ${
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg border transition-all flex-shrink-0 cursor-pointer ${
                   activeSubjectId === s._id
                     ? "bg-white text-orange-600 shadow-sm border-orange-200/30"
                     : "border-transparent text-gray-555 hover:text-gray-855 hover:bg-gray-100/50"
@@ -3249,17 +3288,6 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
           </div>
         )}
 
-        {/* Active Filter Chips */}
-        <ActiveFilterChips
-          chips={activeTaskChips}
-          onClearAll={() => {
-            if (currentSession?._id) setSelectedSessionId(currentSession._id);
-            setActiveSubjectId("");
-            setSearchTerm("");
-          }}
-          className="px-4 py-1.5"
-        />
-
         {/* Table or empty state */}
         {allVersions.length === 0 || !currentVersionId ? (
           <div className="py-20 text-center px-4">
@@ -3275,7 +3303,7 @@ export const TasksTab = ({ level, subLevel, departmentName, departmentId, subdep
           <VersionTasksTable versionId={currentVersionId} searchTerm={searchTerm} activeSubjectId={activeSubjectId} activeSubjectName={activeSubjectName} />
         )}
       </div>
-    </>
+    </div>
   );
 };
 
@@ -3500,6 +3528,49 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
     return chips;
   }, [selectedSessionId, currentSession, sessions, activeSubject, searchTerm]);
 
+  const { data: syllabusHierarchyData } = useGetSyllabusVersionWithHierarchyQuery(currentVersionId, { skip: !currentVersionId });
+
+  const exportableSyllabusData = useMemo(() => {
+    if (!currentVersionId || !syllabusHierarchyData?.data?.subjects) return [];
+    const list = [];
+    let sno = 1;
+    const subjects = sortByOrderAsc(syllabusHierarchyData.data.subjects);
+    subjects.forEach((subj) => {
+      if (activeSubject && subj.name !== activeSubject) return;
+      const topics = sortByOrderAsc(subj.topics || []);
+      topics.forEach((top) => {
+        if (searchTerm?.trim()) {
+          const q = searchTerm.toLowerCase();
+          const matches = top.name?.toLowerCase().includes(q) ||
+            top.description?.toLowerCase().includes(q) ||
+            top.subTopics?.some(st => st.name?.toLowerCase().includes(q));
+          if (!matches) return;
+        }
+
+        if (top.subTopics && top.subTopics.length > 0) {
+          sortByOrderAsc(top.subTopics).forEach((st) => {
+            list.push({
+              "S.No": sno++,
+              "Subject": subj.name,
+              "Topic": top.name,
+              "Sub Topic": st.name,
+              "Description": top.description || ""
+            });
+          });
+        } else {
+          list.push({
+            "S.No": sno++,
+            "Subject": subj.name,
+            "Topic": top.name,
+            "Sub Topic": "-",
+            "Description": top.description || ""
+          });
+        }
+      });
+    });
+    return list;
+  }, [currentVersionId, syllabusHierarchyData, activeSubject, searchTerm]);
+
   if (allVersions.length === 0 && !selectedSessionId) {
     return (
       <EmptyUploadState
@@ -3514,27 +3585,18 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-
-      {/* Top bar: search + session dropdown + version + session info + actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 bg-white">
+    <div className="space-y-3">
+      {/* Top bar: search + session dropdown + version + session info + actions + export */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
         {/* Search Container */}
-        <div className="relative w-full sm:flex-1 sm:max-w-xs">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 z-10">
-            <MdSearch size={18} />
-          </span>
-          <input
-            type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search topics..."
-            className="w-full pr-4 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white placeholder-gray-400 transition-all duration-200"
-            style={{ paddingLeft: '2.75rem' }}
-          />
+        <div className="w-full sm:flex-1">
+          <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search topics..." />
         </div>
 
-        {/* Right side controls: Session dropdown + Version selector + Session badge + Status + Actions */}
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
+        {/* Right side controls: Session dropdown + Version selector + Status + Actions + Export */}
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
           {/* Session Dropdown */}
-          <div className="flex-1 sm:flex-initial min-w-[130px]">
+          <div className="flex-1 sm:flex-initial min-w-[135px] sm:min-w-[145px]">
             <SelectDropdown
               value={selectedSessionId}
               onChange={(val) => {
@@ -3545,6 +3607,8 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
               }}
               options={sessions.map((s) => ({ value: s._id, label: formatSessionLabel(s) }))}
               placeholder="Select Session"
+              className="w-full"
+              buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
             />
           </div>
 
@@ -3559,21 +3623,16 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
                   label: `${v.title || v.version}${v.status === "active" ? " (Active)" : ""}`,
                 }))}
                 placeholder="Select Version"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
               />
             </div>
           ) : currentVersionDoc ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700">
+            <div className="h-10 inline-flex items-center gap-1.5 px-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 shrink-0">
               <MdBook size={14} className="text-orange-500" />
               <span>{currentVersionDoc.title || currentVersionDoc.version || "v1.0"}</span>
             </div>
           ) : null}
-
-          {/* Session Info (kis session ka syllabus hai) */}
-          {currentVersionDoc?.sessionId?.name && (
-            <span className="text-[11px] sm:text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200/70 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
-              Session: <strong className="text-gray-800 font-bold">{currentVersionDoc.sessionId.name}</strong>
-            </span>
-          )}
 
           {/* Version Status Badge */}
           {currentVersionDoc && (
@@ -3585,7 +3644,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
             <button
               type="button"
               onClick={() => handleActivate(currentVersionDoc._id)}
-              className="text-xs px-3 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 font-bold transition border border-green-200 cursor-pointer flex items-center gap-1.5"
+              className="h-10 text-xs px-3 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 font-bold transition border border-green-200 cursor-pointer flex items-center gap-1.5 shrink-0"
             >
               <MdCheckCircle size={14} />
               <span>Activate</span>
@@ -3597,16 +3656,31 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
             <button
               type="button"
               onClick={() => handleDelete(currentVersionDoc._id)}
-              className="p-1.5 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition cursor-pointer"
+              className="h-10 w-10 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 border border-gray-200 transition cursor-pointer shrink-0"
               title="Delete version"
             >
               <MdDelete size={16} />
             </button>
           )}
+
+          {/* Export Dropdown */}
+          <ExportDropdown data={exportableSyllabusData} sectionName="syllabus" fileName={`Syllabus_${subLevel?.name || "SubLevel"}`} />
         </div>
       </div>
 
-      {/* Subject tabs (Pill selectors) + Active Subject Actions */}
+      {/* Active Filter Chips */}
+      <ActiveFilterChips
+        chips={activeSyllabusChips}
+        onClearAll={() => {
+          if (currentSession?._id) setSelectedSessionId(currentSession._id);
+          setActiveSubject("");
+          setSearchTerm("");
+        }}
+        className="mb-1"
+      />
+
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        {/* Subject tabs (Pill selectors) + Active Subject Actions */}
       {allVersions.length > 0 && Boolean(currentVersionId) && subjectsList.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50/50 rounded-xl border border-gray-150/45 mx-3 my-3 sm:m-4">
           <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none flex-1">
@@ -3739,6 +3813,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
         <VersionTopicTable versionId={currentVersionId} searchTerm={searchTerm} activeSubject={activeSubject} />
       )}
 
+      </div>
     </div>
   );
 };

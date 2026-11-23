@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 
-const SearchBox = ({ searchTerm = "", setSearchTerm = () => {}, placeholder = "Search..." }) => {
+const SearchBox = ({ searchTerm = "", setSearchTerm = () => {}, placeholder = "Search...", className = "" }) => {
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
@@ -31,7 +31,7 @@ const SearchBox = ({ searchTerm = "", setSearchTerm = () => {}, placeholder = "S
 
       {/* Mobile: icon only, expands on click */}
       <div className={`sm:hidden flex items-center transition-all duration-300 ${
-        expanded ? "w-48 border border-orange-500 ring-2 ring-orange-500/20 rounded-lg bg-white" : "w-9"
+        expanded ? "w-56 border border-orange-500 ring-2 ring-orange-500/20 rounded-lg bg-white" : "w-9"
       } h-9 overflow-hidden`}>
         {expanded ? (
           <div className="flex items-center w-full px-2 gap-1">
@@ -59,7 +59,7 @@ const SearchBox = ({ searchTerm = "", setSearchTerm = () => {}, placeholder = "S
       </div>
 
       {/* Desktop: always visible full input */}
-      <div className="hidden sm:flex items-center border border-gray-300 rounded-lg h-10 w-56 md:w-72 bg-white focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-colors px-3 gap-2">
+      <div className={`hidden sm:flex items-center border border-gray-300 rounded-lg h-10 ${className || "w-72 md:w-80 lg:w-96"} bg-white focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-colors px-3 gap-2`}>
         <Search size={15} className="text-gray-400 flex-shrink-0" />
         <input
           type="text"

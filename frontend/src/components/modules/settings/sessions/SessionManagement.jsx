@@ -188,8 +188,8 @@ const SessionManagement = () => {
   const [updateSessionStatus] = useUpdateSessionStatusMutation();
 
   const getComputedStatus = (session) => {
-    if (session.isActive || session.status === "active") return "active";
     if (session.status) return session.status;
+    if (session.isActive) return "active";
     const now = new Date();
     const start = new Date(session.startDate);
     const end = new Date(session.endDate);
@@ -356,7 +356,7 @@ const SessionManagement = () => {
           <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-4 flex items-center justify-between shadow-2xs hover:shadow-xs transition">
             <div className="min-w-0">
               <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider truncate">
-                Active Session
+                Active Sessions
               </p>
               <p className="text-lg sm:text-2xl font-black text-emerald-600 mt-0.5">{stats.active}</p>
             </div>

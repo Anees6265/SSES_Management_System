@@ -21,31 +21,12 @@ router.post("/", ...auth, sessionController.createSession);
 // PUT /api/sessions/:id — update session
 router.put("/:id", ...auth, sessionController.updateSession);
 
-// PATCH /api/sessions/:id/activate — set this session as the active one
+// PATCH /api/sessions/:id/activate — set this session as active
 router.patch("/:id/activate", ...auth, async (req, res) => {
   try {
     const Session = require("../models/Session");
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
-
-    const now = new Date();
-
-    // Deactivate all other sessions and adjust any that had status 'active'
-    const otherSessions = await Session.find({ _id: { $ne: req.params.id } });
-    for (const other of otherSessions) {
-      let changed = false;
-      if (other.isActive) {
-        other.isActive = false;
-        changed = true;
-      }
-      if (other.status === 'active') {
-        other.status = now > new Date(other.endDate) ? 'completed' : 'upcoming';
-        changed = true;
-      }
-      if (changed) {
-        await other.save();
-      }
-    }
 
     session.isActive = true;
     session.status = 'active';
@@ -65,10 +46,7 @@ router.patch("/:id/deactivate", ...auth, async (req, res) => {
     if (!session) return res.status(404).json({ success: false, message: "Session not found" });
 
     session.isActive = false;
-    if (session.status === 'active') {
-      const now = new Date();
-      session.status = now > new Date(session.endDate) ? 'completed' : 'archived';
-    }
+    session.status = req.body?.status || 'completed';
     await session.save();
 
     res.status(200).json({ success: true, message: "Session deactivated successfully", data: session });

@@ -30,20 +30,16 @@ exports.createSession = async (req, res) => {
       });
     }
 
-    // Auto-determine status based on dates
-    const now = new Date();
-    let status = 'upcoming';
-    if (now >= start && now <= end) {
-      status = 'active';
-    } else if (now > end) {
-      status = 'completed';
-    }
+    // Default to active unless explicitly specified
+    const status = req.body.status || 'active';
+    const isActive = req.body.isActive !== undefined ? req.body.isActive : (status === 'active');
 
     const session = await Session.create({
       ...req.body,
       startDate: start,
       endDate: end,
-      status
+      status,
+      isActive
     });
     
     res.status(201).json({
@@ -277,11 +273,11 @@ exports.deleteSession = async (req, res) => {
 // Get Active Session
 exports.getActiveSession = async (req, res) => {
   try {
-    let activeSession = await Session.findOne({ isActive: true });
+    let activeSession = await Session.findOne({ isActive: true }).sort({ startDate: -1 });
     
     // Fallback if no session has isActive: true
     if (!activeSession) {
-      activeSession = await Session.findOne({ status: 'active' });
+      activeSession = await Session.findOne({ status: 'active' }).sort({ startDate: -1 });
     }
     
     // Further fallback to newest session
@@ -328,34 +324,8 @@ exports.updateSessionStatus = async (req, res) => {
       });
     }
 
-    const now = new Date();
-
-    if (status === 'active') {
-      // Deactivate all other sessions and reset any other that had status 'active'
-      const otherSessions = await Session.find({ _id: { $ne: req.params.id } });
-      for (const other of otherSessions) {
-        let changed = false;
-        if (other.isActive) {
-          other.isActive = false;
-          changed = true;
-        }
-        if (other.status === 'active') {
-          other.status = now > new Date(other.endDate) ? 'completed' : 'upcoming';
-          changed = true;
-        }
-        if (changed) {
-          await other.save();
-        }
-      }
-
-      session.isActive = true;
-      session.status = 'active';
-    } else {
-      session.status = status;
-      if (status === 'archived' || status === 'completed') {
-        session.isActive = false;
-      }
-    }
+    session.status = status;
+    session.isActive = (status === 'active');
 
     await session.save();
     

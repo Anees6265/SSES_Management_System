@@ -6,7 +6,7 @@ const sessionSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate:   { type: Date, required: true },
     isActive:  { type: Boolean, default: true, index: true },
-    status:    { type: String, enum: ['upcoming', 'active', 'completed', 'archived'], default: 'upcoming' },
+    status:    { type: String, enum: ['upcoming', 'active', 'completed', 'archived'], default: 'active' },
     description: { type: String, trim: true },
   },
   { timestamps: true, versionKey: false }

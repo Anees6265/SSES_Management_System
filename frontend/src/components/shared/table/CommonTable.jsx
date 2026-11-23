@@ -268,12 +268,13 @@ const CommonTable = ({
   }, [currentPage]);
 
   useEffect(() => {
-    if (pageCount > 0 && pageIndex >= pageCount) {
+    // Only clamp page if data has loaded and pageIndex is truly out of bounds
+    if (Array.isArray(data) && data.length > 0 && pageCount > 0 && pageIndex >= pageCount) {
       const validPage = pageCount;
       table.setPageIndex(validPage - 1);
       onPageChange?.(validPage);
     }
-  }, [pageCount, pageIndex, onPageChange]);
+  }, [data, pageCount, pageIndex, onPageChange]);
 
   const currentRows = table.getRowModel().rows;
   const currentRowsCount = currentRows.length;

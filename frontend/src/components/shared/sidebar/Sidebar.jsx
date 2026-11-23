@@ -8,6 +8,7 @@ import { HiChevronUp, HiChevronDown, HiChevronLeft, HiChevronRight } from "react
 import UserProfile from "../user-profile/UserProfile";
 import { usePermissions } from "../../../hooks/usePermissions";
 import { useSidebar } from "../../../contexts/SidebarContext";
+import { clearAllPersistentFilters } from "../../../hooks/usePersistentFilters";
 import logo from "../../../assets/images/logo.png";
 import logoo from "../../../assets/images/logo-ssism.png";
 
@@ -332,6 +333,16 @@ const Sidebar = ({ children }) => {
   const showAll = role === "superadmin" || role === "admin";
   const displayedMenuItems = showAll ? menuItems : menuItems.filter(item => hasPermission(item.permission, 'read'));
 
+  const handleNavClick = (targetPath) => {
+    const isCurrentSection = isSubMenuActive(targetPath);
+    const isExactSamePath = location.pathname === targetPath;
+
+    // Clear persistent filters if changing to a different tab, or clicking the current tab again
+    if (!isCurrentSection || isExactSamePath) {
+      clearAllPersistentFilters();
+    }
+  };
+
   const NavContent = ({ onClose, navRef }) => (
     <>
       <nav 
@@ -376,7 +387,10 @@ const Sidebar = ({ children }) => {
                       <Link
                         key={i}
                         to={sub.path}
-                        onClick={onClose}
+                        onClick={() => {
+                          handleNavClick(sub.path);
+                          if (onClose) onClose();
+                        }}
                         className={`block ml-6 px-3 py-2 text-sm rounded-r-md transition border-l-2 ${
                           active
                             ? "bg-orange-50 text-orange-600 font-bold border-orange-500 shadow-2xs"
@@ -404,7 +418,10 @@ const Sidebar = ({ children }) => {
               <Link
                 key={idx}
                 to={item.path}
-                onClick={onClose}
+                onClick={() => {
+                  handleNavClick(item.path);
+                  if (onClose) onClose();
+                }}
                 className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[15px] transition mb-1 ${
                   active ? "bg-orange-100 text-orange-600 font-bold shadow-2xs" : "text-gray-700 hover:bg-gray-100"
                 }`}

@@ -2113,7 +2113,7 @@ const StudentProfilePage = () => {
 
         return [
             { label: "Academics", path: "/student-detail-table" },
-            { label: "Student Progress", path: "/student-detail-table" },
+            { label: "Student Progress", path: stateFrom || (subdepartment ? `/student-detail-table/${subdepartment}` : "/student-detail-table") },
             { label: name || "Profile" },
         ];
     }, [origin, stateDeptId, stateDeptName, subdepartment, level, name, stateFrom, stateFromState]);

@@ -6,7 +6,7 @@ import { initClientIp } from "../../../../utils/clientIpHelper";
 import Loader from "../../../shared/loader/Loader";
 // import CompactFaceLogin from "../../face-auth/CompactFaceLogin"; // Face recognition login disabled
 import { toast } from "react-toastify";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Check } from "lucide-react";
 import SecurityHelmet from "../../../shared/SecurityHelmet";
 import { API_BASE_URL } from "../../../../config/apiConfig";
 
@@ -215,8 +215,8 @@ const LoginPage = () => {
         />
       </div>
 
-      {/* ── Top Header ────────────────────────────────────────── */}
-      <header className="relative z-10 w-full px-6 sm:px-12 lg:px-16 py-4 sm:py-5 flex items-center justify-between">
+      {/* ── Top Header with horizontal bottom border line ───────── */}
+      <header className="relative z-10 w-full px-6 sm:px-12 lg:px-16 py-3.5 sm:py-4 flex items-center justify-between bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-2xs">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Sant Singaji Logo" className="h-10 w-10 sm:h-11 sm:w-11 object-contain" />
           <div className="flex flex-col">
@@ -242,30 +242,40 @@ const LoginPage = () => {
             SANT SINGAJI EDUCATIONAL SOCIETY
           </h1>
 
-          {/* Context content from previous version */}
-          <p className="text-slate-700 text-sm sm:text-base leading-relaxed mt-4 font-semibold max-w-lg">
-            A comprehensive digital institutional portal to streamline academic progress, student records,
-            curriculum syllabus, and placement analytics for faculty and students.
-          </p>
+          {/* Frosted Container for high contrast & perfect visibility */}
+          <div className="mt-5 p-5 sm:p-6 rounded-2xl bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.05)] max-w-lg space-y-4">
+            <p className="text-slate-800 text-sm sm:text-[15px] leading-relaxed font-medium">
+              A comprehensive digital institutional portal to streamline academic progress, student records,
+              curriculum syllabus, and placement analytics for faculty and students.
+            </p>
 
-          {/* Key highlights / badges */}
-          <div className="flex flex-wrap gap-2.5 mt-6 text-xs font-semibold">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/85 backdrop-blur-sm border border-orange-200 text-orange-800 shadow-xs">
-              <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Academic Portal
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/85 backdrop-blur-sm border border-orange-200 text-orange-800 shadow-xs">
-              <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Curriculum & Tasks
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/85 backdrop-blur-sm border border-orange-200 text-orange-800 shadow-xs">
-              <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Placement Cell
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/85 backdrop-blur-sm border border-orange-200 text-orange-800 shadow-xs">
-              <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Attendance Insights
-            </span>
+            {/* Informational Feature Checklist (Clean, non-clickable feature highlights) */}
+            <div className="pt-3.5 border-t border-slate-200/70 grid grid-cols-2 gap-x-5 gap-y-2.5 text-xs font-semibold text-slate-700 select-none cursor-default">
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+                <span>Academic Portal</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+                <span>Curriculum & Tasks</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+                <span>Placement Cell</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+                <span>Attendance Insights</span>
+              </div>
+            </div>
           </div>
         </div>
 

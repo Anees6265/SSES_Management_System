@@ -13,6 +13,7 @@ import {
   Phone,
   X,
   MoreVertical,
+  Filter,
 } from "lucide-react";
 import {
   useGetLeaveRequestsQuery,
@@ -25,16 +26,10 @@ import CommonTable from "../../shared/table/CommonTable";
 import Pagination from "../../shared/pagination/Pagination";
 import EmptyState from "../../shared/empty-state/EmptyState";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
+import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 import { usePersistentFilters } from "../../../hooks/usePersistentFilters";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
-
-const FILTERS = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Approved", value: "approved" },
-  { label: "Rejected", value: "rejected" },
-];
 
 const statusStyles = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
@@ -493,11 +488,35 @@ const LeaveRequests = () => {
   const [previewUrl, setPreviewUrl] = useState("");
   const [resolveState, setResolveState] = useState(null);
   const [mobilePage, setMobilePage] = useState(1);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const mobilePageSize = 10;
 
   const { data, isLoading, isError, error } = useGetLeaveRequestsQuery("all");
 
   const requests = data?.data || [];
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "all", label: "All Status" },
+      { value: "pending", label: "Pending" },
+      { value: "approved", label: "Approved" },
+      { value: "rejected", label: "Rejected" },
+    ],
+    []
+  );
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeTab && activeTab !== "all") count += 1;
+    return count;
+  }, [activeTab]);
+
+  const hasActiveFilters = Boolean(searchTerm || (activeTab && activeTab !== "all"));
+
+  const handleClearAllFilters = () => {
+    setSearchTerm("");
+    setActiveTab("all");
+  };
 
   const filteredRequests = useMemo(() => {
     let result = requests;
@@ -551,16 +570,6 @@ const LeaveRequests = () => {
 
   const activeChips = useMemo(() => {
     const chips = [];
-    if (activeTab !== "all") {
-      const tabObj = FILTERS.find((f) => f.value === activeTab);
-      chips.push({
-        key: "activeTab",
-        label: "Status",
-        value: activeTab,
-        displayValue: tabObj?.label || activeTab,
-        onRemove: () => setActiveTab("all"),
-      });
-    }
     if (searchTerm) {
       chips.push({
         key: "searchTerm",
@@ -570,8 +579,18 @@ const LeaveRequests = () => {
         onRemove: () => setSearchTerm(""),
       });
     }
+    if (activeTab && activeTab !== "all") {
+      const tabObj = statusOptions.find((f) => f.value === activeTab);
+      chips.push({
+        key: "activeTab",
+        label: "Status",
+        value: activeTab,
+        displayValue: tabObj?.label || toTitleCase(activeTab),
+        onRemove: () => setActiveTab("all"),
+      });
+    }
     return chips;
-  }, [activeTab, searchTerm]);
+  }, [activeTab, searchTerm, statusOptions]);
 
   const columns = [
     {
@@ -774,121 +793,33 @@ const LeaveRequests = () => {
     <>
       <Header
         title="Leave Requests"
-        badge={`${counts.total} shown`}
+        showBack={false}
+        badge={`${requests.length} requests`}
+        breadcrumbs={[
+          { label: "Academics" },
+          { label: "Leave Requests" },
+        ]}
       />
 
-      <div className="min-h-screen bg-gray-50/30 px-3.5 sm:px-5 py-4 sm:py-6">
-        {/* Statistics Section */}
-        <div className="mb-4 sm:mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {[
-              {
-                label: "Total Requests",
-                value: counts.total,
-                statusKey: "all",
-              },
-              {
-                label: "Pending",
-                value: counts.pending,
-                statusKey: "pending",
-                pulse: counts.pending > 0,
-              },
-              {
-                label: "Approved",
-                value: counts.approved,
-                statusKey: "approved",
-              },
-              {
-                label: "Rejected",
-                value: counts.rejected,
-                statusKey: "rejected",
-              },
-            ].map((item) => {
-              const isSelected = activeTab === item.statusKey;
-              return (
-                <div
-                  key={item.label}
-                  onClick={() => setActiveTab(item.statusKey)}
-                  className={`relative overflow-hidden rounded-2xl bg-white p-4 sm:p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer select-none ${
-                    isSelected ? "shadow-md -translate-y-0.5" : "hover:bg-gray-50/70"
-                  }`}
-                >
-                  {/* Active Indicator Top Accent Bar (Theme Orange, No border) */}
-                  {isSelected && (
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600" />
-                  )}
-
-                  <div className="flex flex-col justify-between h-full space-y-2">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <p className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider truncate transition-colors ${
-                        isSelected ? "text-orange-600" : "text-gray-400"
-                      }`}>
-                        {item.label}
-                      </p>
-                      {item.pulse && (
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700">
-                          <span className="relative flex h-2 w-2">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
-                          </span>
-                          <span>Review</span>
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">
-                      {item.value}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Filters and Search Bar */}
-        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-gray-200 shadow-xs">
-          {/* Status Tabs */}
-          <div className="flex items-center rounded-xl border border-gray-150 bg-gray-50/80 p-1 overflow-x-auto no-scrollbar scroll-smooth [-webkit-overflow-scrolling:touch]">
-            {FILTERS.map((item) => {
-              const isActive = activeTab === item.value;
-              const count = counts[item.value === "all" ? "total" : item.value];
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setActiveTab(item.value)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 sm:px-4 py-2 text-xs font-bold transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
-                    isActive
-                      ? "bg-orange-500 text-white shadow-xs"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isActive ? "bg-white/20 text-white" : "bg-gray-200/80 text-gray-600"
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search Box and Download */}
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+      <div className="p-3.5 sm:p-5 flex-1 flex flex-col space-y-3.5 sm:space-y-4">
+        {/* Search and Filters Card */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 shrink-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-full md:max-w-md">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
+                type="text"
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search students..."
-                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/70 pl-9 pr-9 text-xs sm:text-sm font-medium text-gray-800 outline-none transition-all duration-200 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10"
+                className="w-full h-10 pl-9 pr-9 text-xs sm:text-sm bg-gray-50/70 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500/10 transition placeholder:text-gray-400 font-medium text-gray-800"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
                   title="Clear search"
                 >
                   <X size={14} />
@@ -896,17 +827,89 @@ const LeaveRequests = () => {
               )}
             </div>
 
-            <TableDownloadDropdown
-              total={filteredRequests.length}
-              onDownloadExcel={() => handleDownloadExcel(filteredRequests)}
-              onDownloadPDF={() => handleDownloadPDF(filteredRequests)}
-              size="md"
-            />
-          </div>
-        </div>
+            {/* Mobile Filter Toggle Button */}
+            <div className="flex items-center justify-between md:hidden gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                  showMobileFilters || activeFilterCount > 0
+                    ? "bg-orange-50 border-orange-200 text-orange-600"
+                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Filter size={14} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4.5 h-4.5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center font-extrabold ml-0.5">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
 
-        {/* Active Filter Chips */}
-        <ActiveFilterChips chips={activeChips} onClearAll={resetAllFilters} className="mb-3" />
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Dropdown Filters Container */}
+            <div className={`${showMobileFilters ? "grid" : "hidden"} md:flex grid-cols-1 sm:grid-cols-2 md:items-center gap-2.5 w-full md:w-auto`}>
+              {/* Status Dropdown */}
+              <SelectDropdown
+                value={activeTab}
+                onChange={(val) => setActiveTab(val || "all")}
+                options={statusOptions}
+                placeholder="All Status"
+                className="w-full md:w-auto md:min-w-[135px]"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
+              />
+
+              {/* Desktop Reset Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="hidden md:inline-flex h-10 px-3 items-center justify-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-xl border border-orange-200/80 transition cursor-pointer active:scale-95"
+                  title="Reset all filters"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset</span>
+                </button>
+              )}
+
+              {/* Export Dropdown */}
+              <TableDownloadDropdown
+                total={filteredRequests.length}
+                onDownloadExcel={() => handleDownloadExcel(filteredRequests)}
+                onDownloadPDF={() => handleDownloadPDF(filteredRequests)}
+                size="md"
+              />
+
+              {/* Mobile Close/Apply Filters Button */}
+              {showMobileFilters && (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilters(false)}
+                  className="md:hidden w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer mt-1"
+                >
+                  Apply & Close
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Active Filter Chips */}
+          <ActiveFilterChips chips={activeChips} onClearAll={handleClearAllFilters} />
+        </div>
 
         {/* ── DESKTOP & TABLET VIEW: FULL DATA TABLE (>= 768px) ── */}
         <div className="hidden md:flex flex-col flex-1 min-h-[520px]">
@@ -939,17 +942,10 @@ const LeaveRequests = () => {
               subtitle={
                 searchTerm
                   ? "No leave requests match your search criteria."
-                  : `No ${activeTab} leave requests available at this time.`
+                  : `No ${activeTab === "all" ? "" : activeTab} leave requests available at this time.`
               }
-              actionText={searchTerm || activeTab !== "all" ? "Reset Filters" : undefined}
-              onAction={
-                searchTerm || activeTab !== "all"
-                  ? () => {
-                      setSearchTerm("");
-                      setActiveTab("all");
-                    }
-                  : undefined
-              }
+              actionText={hasActiveFilters ? "Reset Filters" : undefined}
+              onAction={hasActiveFilters ? handleClearAllFilters : undefined}
             />
           ) : (
             <>

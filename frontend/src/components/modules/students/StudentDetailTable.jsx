@@ -69,10 +69,6 @@ const StudentDetailTable = () => {
       setMobilePage(1);
     }
   }, [queryTab]);
-  const [selectedStatus, setSelectedStatus] = useState(() => {
-    const f = getStoredProgressFilters(subDepartmentId);
-    return Array.isArray(f?.selectedStatus) ? f.selectedStatus : [];
-  });
   const [selectedSessionId, setSelectedSessionId] = useState(() => {
     return getStoredProgressFilters(subDepartmentId)?.selectedSessionId || "";
   });
@@ -267,9 +263,7 @@ const StudentDetailTable = () => {
         s.ftpDomain === selectedDomain ||
         s.domain === selectedDomain ||
         s.track === selectedDomain;
-      const matchStatus = selectedStatus.length === 0
-        ? s.status !== "Internship" && s.status !== "Dropped" && s.status !== "Placed"
-        : selectedStatus.includes(s.status);
+      const matchStatus = s.status !== "Internship" && s.status !== "Dropped" && s.status !== "Placed";
       const studentSessId = s.sessionId?._id || s.sessionId;
       const matchSession = !selectedSessionId || studentSessId === selectedSessionId || s.sessionId?.name === selectedSessionId;
       const matchYear = selectedYear === "All" || (s.year || "1st Year") === selectedYear;
@@ -291,7 +285,7 @@ const StudentDetailTable = () => {
         s.district?.toLowerCase().includes(searchLower);
       return matchTab && matchDomain && matchStatus && matchSession && matchYear && matchTech && matchSearch;
     });
-  }, [students, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech, searchTerm, isUiUxPage]);
+  }, [students, activeTab, selectedDomain, selectedSessionId, selectedYear, selectedTech, searchTerm, isUiUxPage]);
 
   const prevSubDeptRef = useRef(subDepartmentId);
 
@@ -301,7 +295,6 @@ const StudentDetailTable = () => {
       const f = getStoredProgressFilters(subDepartmentId);
       setActiveTab(f?.activeTab || "All");
       setSearchTerm(f?.searchTerm || "");
-      setSelectedStatus(Array.isArray(f?.selectedStatus) ? f.selectedStatus : []);
       setSelectedSessionId(f?.selectedSessionId || "");
       setSelectedYear(f?.selectedYear || "All");
       setSelectedTech(f?.selectedTech || "All");
@@ -318,7 +311,6 @@ const StudentDetailTable = () => {
       const dataToSave = {
         activeTab,
         searchTerm,
-        selectedStatus,
         selectedSessionId,
         selectedYear,
         selectedTech,
@@ -335,7 +327,6 @@ const StudentDetailTable = () => {
     subDepartmentId,
     activeTab,
     searchTerm,
-    selectedStatus,
     selectedSessionId,
     selectedYear,
     selectedTech,
@@ -349,7 +340,6 @@ const StudentDetailTable = () => {
     searchTerm,
     activeTab,
     selectedDomain,
-    selectedStatus: JSON.stringify(selectedStatus),
     selectedSessionId,
     selectedYear,
     selectedTech,
@@ -357,12 +347,10 @@ const StudentDetailTable = () => {
 
   useEffect(() => {
     const prev = prevFilterCriteriaRef.current;
-    const currentStatusStr = JSON.stringify(selectedStatus);
     const hasFilterChanged =
       prev.searchTerm !== searchTerm ||
       prev.activeTab !== activeTab ||
       prev.selectedDomain !== selectedDomain ||
-      prev.selectedStatus !== currentStatusStr ||
       prev.selectedSessionId !== selectedSessionId ||
       prev.selectedYear !== selectedYear ||
       prev.selectedTech !== selectedTech;
@@ -372,7 +360,6 @@ const StudentDetailTable = () => {
         searchTerm,
         activeTab,
         selectedDomain,
-        selectedStatus: currentStatusStr,
         selectedSessionId,
         selectedYear,
         selectedTech,
@@ -381,7 +368,7 @@ const StudentDetailTable = () => {
       setCurrentPage(1);
       setSelectedIds([]);
     }
-  }, [searchTerm, activeTab, selectedDomain, selectedStatus, selectedSessionId, selectedYear, selectedTech]);
+  }, [searchTerm, activeTab, selectedDomain, selectedSessionId, selectedYear, selectedTech]);
 
   // Ensure active tab is valid for current department tabs (only after sublevels load)
   useEffect(() => {
@@ -395,13 +382,12 @@ const StudentDetailTable = () => {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedTech !== "All") count++;
-    if (selectedStatus.length > 0) count++;
     if (selectedSessionId) count++;
     if (selectedYear !== "All") count++;
     const isUiUx2ATab = isUiUxPage && (activeTab === "2A" || activeTab.includes("2A"));
     if ((activeTab === "FTP Students" || isUiUx2ATab) && selectedDomain !== "All") count++;
     return count;
-  }, [selectedTech, selectedStatus, selectedSessionId, selectedYear, activeTab, selectedDomain, isUiUxPage]);
+  }, [selectedTech, selectedSessionId, selectedYear, activeTab, selectedDomain, isUiUxPage]);
 
   const hasActiveFilters = activeFilterCount > 0 || Boolean(searchTerm);
 
@@ -409,7 +395,6 @@ const StudentDetailTable = () => {
     setSearchTerm("");
     setActiveTab("All");
     setSelectedDomain("All");
-    setSelectedStatus([]);
     setSelectedSessionId("");
     setSelectedYear("All");
     setSelectedTech("All");
@@ -423,15 +408,6 @@ const StudentDetailTable = () => {
 
   const activeChips = useMemo(() => {
     const chips = [];
-    if (selectedStatus.length > 0) {
-      chips.push({
-        key: "status",
-        label: "Status",
-        value: selectedStatus,
-        displayValue: selectedStatus.join(", "),
-        onRemove: () => setSelectedStatus([]),
-      });
-    }
     if (selectedSessionId) {
       const match = sessions.find((s) => s._id === selectedSessionId || s.name === selectedSessionId);
       chips.push({
@@ -480,7 +456,7 @@ const StudentDetailTable = () => {
       });
     }
     return chips;
-  }, [selectedStatus, selectedSessionId, sessions, selectedYear, selectedTech, activeTab, selectedDomain, searchTerm]);
+  }, [selectedSessionId, sessions, selectedYear, selectedTech, activeTab, selectedDomain, searchTerm]);
 
   const currentFilteredIds = useMemo(() => filteredData.map((s) => s._id), [filteredData]);
   const isAllSelected = currentFilteredIds.length > 0 && currentFilteredIds.every((id) => selectedIds.includes(id));
@@ -797,42 +773,7 @@ const StudentDetailTable = () => {
             </div>
 
             {/* Dropdown Filters Container */}
-            <div className={`${showMobileFilters ? "grid" : "hidden"} md:flex grid-cols-1 sm:grid-cols-3 md:items-center gap-2.5 w-full md:w-auto`}>
-              {/* Technology Dropdown (Hidden/Commented) */}
-              {/* <SelectDropdown
-                value={selectedTech}
-                onChange={(val) => setSelectedTech(val)}
-                options={[
-                  { value: "All", label: "All Technologies" },
-                  { value: "Python", label: "Python" },
-                  { value: "MERN Stack", label: "MERN Stack" },
-                  { value: "Java", label: "Java" },
-                  { value: ".NET", label: ".NET" },
-                  { value: "UI/UX", label: "UI/UX" },
-                  { value: "Data Analytics", label: "Data Analytics" },
-                  { value: "Salesforce", label: "Salesforce" },
-                  { value: "SAP", label: "SAP" }
-                ]}
-                className="w-full md:w-auto md:min-w-[145px]"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
-              /> */}
-
-              {/* Status Dropdown */}
-              <SelectDropdown
-                value={selectedStatus[0] || ""}
-                onChange={(val) => setSelectedStatus(val ? [val] : [])}
-                options={[
-                  { value: "", label: "All Status" },
-                  { value: "Active", label: "Active" },
-                  { value: "Placed", label: "Placed" },
-                  { value: "Dropped", label: "Dropped" },
-                  { value: "Completed", label: "Completed" },
-                  { value: "Dummy", label: "Dummy" }
-                ]}
-                className="w-full md:w-auto md:min-w-[135px]"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-gray-200 bg-white rounded-xl text-xs sm:text-sm text-gray-700 font-medium transition-colors cursor-pointer hover:border-gray-400 focus:outline-none shadow-2xs"
-              />
-
+            <div className={`${showMobileFilters ? "grid" : "hidden"} md:flex grid-cols-1 sm:grid-cols-2 md:items-center gap-2.5 w-full md:w-auto`}>
               {/* Session Dropdown Filter */}
               <SelectDropdown
                 value={selectedSessionId}
@@ -939,12 +880,6 @@ const StudentDetailTable = () => {
             }
             filtersConfig={[
               {
-                title: "Status",
-                options: ["Active", "Placed", "Dropped", "Completed", "Dummy"],
-                selected: selectedStatus,
-                setter: setSelectedStatus,
-              },
-              {
                 title: "Session",
                 options: sessions.map(s => s.name),
                 selected: selectedSessionId ? [sessions.find(s => s._id === selectedSessionId)?.name || selectedSessionId] : [],
@@ -1035,7 +970,7 @@ const StudentDetailTable = () => {
                     ? "No students have been marked as FTP yet in this department."
                     : activeTab === "Others"
                       ? "No students have been marked as UI/UX yet."
-                      : "Try adjusting your search terms, session, or status filters to view records."
+                      : "Try adjusting your search terms or session filter to view records."
               }
               actionText={hasActiveFilters ? "Reset All Filters" : undefined}
               onAction={hasActiveFilters ? handleResetFilters : undefined}

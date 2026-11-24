@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
 import Header from "../../shared/sidebar/Header";
-import TabsCommon from "../../shared/table/TabsCommon";
-import SearchBox from "../../shared/search-export/SearchBox";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
@@ -20,18 +18,14 @@ import {
   RotateCcw,
   ShieldAlert,
   LogIn,
-  LogOut,
-  Plus,
   Edit,
   Trash2,
-  FileSpreadsheet,
   Laptop,
   X,
   Info,
-  Calendar,
   Activity,
-  Layers,
   Filter,
+  Search,
 } from "lucide-react";
 import { exportGenericToExcel, exportGenericToPDF } from "../../../utils/studentExportHelpers";
 
@@ -57,7 +51,6 @@ const MODULE_BADGES = {
 };
 
 export default function ActivityLogs() {
-  const [activeTab, setActiveTab] = useState("All Logs");
   const [page, setPage] = useState(1);
   const pageSize = 15;
   const [search, setSearch] = useState("");
@@ -67,6 +60,7 @@ export default function ActivityLogs() {
   const [moduleFilter, setModuleFilter] = useState("ALL");
   const [dateRange, setDateRange] = useState("");
   const [selectedLog, setSelectedLog] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const loggedInUser = JSON.parse(localStorage.getItem("user") || "{}");
   const isHod = (loggedInUser?.role || "").toLowerCase() === "hod";
@@ -90,8 +84,6 @@ export default function ActivityLogs() {
     }
   };
 
-  // Blocked Threats option turned off for now (code commented as requested)
-  // const threatOnly = activeTab === "Security Threats (Alerts)";
   const threatOnly = false;
 
   // Fetch unique users from activity logs and user directory for filter dropdown
@@ -100,7 +92,6 @@ export default function ActivityLogs() {
 
   const availableUsers = useMemo(() => {
     const map = new Map();
-    // From active log entries
     (logUsersData?.users || []).forEach((u) => {
       if (u.userName && u.userName !== "System" && u.userName !== "Suspicious Client") {
         map.set(u.userName.toLowerCase(), {
@@ -110,7 +101,6 @@ export default function ActivityLogs() {
         });
       }
     });
-    // From system user directory (HOD scoped if HOD)
     (allUsersData?.users || []).forEach((u) => {
       if (u.name) {
         map.set(u.name.toLowerCase(), {
@@ -151,7 +141,7 @@ export default function ActivityLogs() {
     { value: "CREATE", label: "CREATE / ADD" },
     { value: "UPDATE", label: "UPDATE / EDIT" },
     { value: "DELETE", label: "DELETE / REMOVE" },
-    { value: "SECURITY_ALERT", label: "🚨 SECURITY ALERT" },
+    { value: "SECURITY_ALERT", label: "SECURITY ALERT" },
     { value: "EXPORT", label: "EXPORT" },
   ];
 
@@ -220,6 +210,17 @@ export default function ActivityLogs() {
     setPage(1);
   };
 
+  // Active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (userNameFilter !== "ALL") count++;
+    if (roleFilter !== "ALL") count++;
+    if (actionFilter !== "ALL") count++;
+    if (moduleFilter !== "ALL") count++;
+    if (dateRange) count++;
+    return count;
+  }, [userNameFilter, roleFilter, actionFilter, moduleFilter, dateRange]);
+
   // Build active filter chips
   const activeChips = useMemo(() => {
     const chips = [];
@@ -285,7 +286,7 @@ export default function ActivityLogs() {
       });
     }
     return chips;
-  }, [search, roleFilter, actionFilter, moduleFilter, dateRange]);
+  }, [search, userNameFilter, roleFilter, actionFilter, moduleFilter, dateRange]);
 
   // Export handlers
   const exportColumns = [
@@ -342,87 +343,53 @@ export default function ActivityLogs() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-slate-50/60 min-h-screen">
-      {/* ── TOP HEADER (With Standard Action Buttons) ── */}
+    <div className="w-full flex-1 flex flex-col bg-gray-50/40 min-h-screen">
+      {/* ── TOP HEADER (With Refresh & Purge Action Buttons) ── */}
       <Header
         title="Activity Logs"
-        subtitle={
-          isHod
-            ? `Department: ${loggedInUser?.department || "HOD Scope"}`
-            : "Complete institutional activity tracking and security shield logs"
-        }
+        badge={`${pagination.total || 0} activities`}
+        breadcrumbs={[
+          { label: "System" },
+          { label: "Activity Logs", path: "/activity-logs" },
+        ]}
       >
         <div className="flex items-center gap-2">
           {/* Refresh Button */}
           <button
             type="button"
             onClick={() => refetch()}
-            className="h-10 px-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-2xs"
-            title="Refresh logs"
+            className="h-10 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-2xs"
+            title="Refresh activity logs"
           >
             <RotateCcw
               size={15}
-              className={isFetching ? "animate-spin text-orange-600" : "text-gray-500"}
+              className={isFetching ? "animate-spin text-orange-600" : "text-slate-500"}
             />
-            <span className="hidden sm:inline">Refresh</span>
+            {/* <span className="hidden sm:inline">Refresh</span> */}
           </button>
 
-          {/* Purge Unnecessary Logs (Super Admin / Admin only) */}
+          {/* Purge Button (Super Admin / Admin only) */}
           {isSuperOrAdmin && (
             <button
               type="button"
               onClick={handlePurge}
               disabled={isPurging}
-              className="h-10 px-3.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              className="h-10 px-3.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
               title="Clean unnecessary activity logs from database"
             >
-              <Trash2 size={14} className={isPurging ? "animate-spin" : "text-red-600"} />
-              <span className="hidden sm:inline">{isPurging ? "Cleaning..." : "Purge Unnecessary Logs"}</span>
+              <Trash2 size={14} className={isPurging ? "animate-spin" : "text-rose-600"} />
+              <span className="hidden sm:inline">{isPurging ? "Cleaning..." : "Purge Logs"}</span>
             </button>
           )}
-
-          {/* Standard Orange Download Dropdown */}
-          <TableDownloadDropdown
-            total={pagination.total}
-            label="Download"
-            onDownloadExcel={handleExportExcel}
-            onDownloadPDF={handleExportPDF}
-          />
         </div>
       </Header>
 
-      {/* ── SUB-HEADER WITH TABS & SEARCH (Standard App Pattern) ── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6 py-1 sm:py-0 gap-2 w-full">
-        <div className="flex-1 min-w-0">
-          <TabsCommon
-            // Blocked Threats option turned off for now (commented out as requested)
-            // tabs={["All Logs", "Security Threats (Alerts)"]}
-            tabs={["All Logs"]}
-            activeTab={activeTab}
-            onTabChange={(tab) => {
-              setActiveTab(tab);
-              setPage(1);
-            }}
-          />
-        </div>
-        <div className="flex-shrink-0 self-end sm:self-auto py-1">
-          <SearchBox
-            searchTerm={search}
-            setSearchTerm={(val) => {
-              setSearch(val);
-              setPage(1);
-            }}
-            placeholder="Search by user, action, IP..."
-          />
-        </div>
-      </div>
-
       {/* ── FULL WIDTH MAIN CONTENT AREA ── */}
-      <div className="w-full p-2.5 sm:p-4 md:p-6 space-y-4 flex-1">
-        {/* ── TOP KPI SUMMARY CARDS (Consistent App Card Theme) ── */}
+      <div className="w-full p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 flex-1">
+        {/* ── TOP KPI SUMMARY CARDS ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
           {/* Card 1: Activities Today */}
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-orange-200 hover:shadow-xs">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition-all hover:border-orange-200 hover:shadow-xs">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Activities Today
@@ -438,7 +405,7 @@ export default function ActivityLogs() {
           </div>
 
           {/* Card 2: Logins Today */}
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-purple-200 hover:shadow-xs">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition-all hover:border-purple-200 hover:shadow-xs">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Logins Today
@@ -454,7 +421,7 @@ export default function ActivityLogs() {
           </div>
 
           {/* Card 3: Data Changes */}
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:border-blue-200 hover:shadow-xs">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex items-center justify-between transition-all hover:border-blue-200 hover:shadow-xs">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Data Changes
@@ -469,15 +436,11 @@ export default function ActivityLogs() {
             </div>
           </div>
 
-          {/* Card 4: Blocked Threats (Alert Card) - Toggle option temporarily disabled */}
+          {/* Card 4: Blocked Threats */}
           <div
-            /* onClick={() => {
-              setActiveTab(threatOnly ? "All Logs" : "Security Threats (Alerts)");
-              setPage(1);
-            }} */
             className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-2xs flex items-center justify-between ${stats.blockedThreatsToday > 0
                 ? "bg-rose-50/70 border-rose-200 text-rose-900"
-                : "bg-white border-slate-200/90 text-slate-900"
+                : "bg-white border-slate-200/80 text-slate-900"
               }`}
           >
             <div>
@@ -502,123 +465,199 @@ export default function ActivityLogs() {
           </div>
         </div>
 
-        {/* ── FILTER CONTROLS BAR (Software Theme with SelectDropdown) ── */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs w-full space-y-3.5">
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200/60 flex items-center justify-center text-orange-600">
-                <Filter size={14} />
-              </span>
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                  Filter Activity Logs
-                </h4>
-                <p className="text-[10px] text-slate-400 font-medium">
-                  Refine logs by user identity, role, action, module, or time period
-                </p>
-              </div>
-            </div>
-            {activeChips.length > 0 && (
+        {/* ── SEARCH & ACTION TOOLBAR (Standard App Pattern) ── */}
+        <div className="bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Left: Search Bar */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by user, action, IP, description..."
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+            />
+            {search && (
               <button
                 type="button"
-                onClick={handleClearFilters}
-                className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer flex items-center gap-1 transition"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear search"
               >
-                <RotateCcw size={12} />
-                <span>Reset Filters</span>
+                <X size={15} />
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Filter by User / Source */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                User / Source
-              </label>
-              <SelectDropdown
-                value={userNameFilter}
-                onChange={(val) => {
-                  setUserNameFilter(val);
-                  setPage(1);
-                }}
-                options={userOptions}
-                placeholder="All Users / Sources"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
-              />
-            </div>
+          {/* Right: Filter & Download Buttons */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Filter Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilters((p) => !p)}
+              className={`h-10 px-3.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs shrink-0 ${showFilters || activeFilterCount > 0
+                  ? "bg-orange-50 border-orange-300 text-orange-600"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                }`}
+              title="Toggle filter controls"
+            >
+              <Filter size={15} />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
-            {/* Filter by Role */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                Role
-              </label>
-              <SelectDropdown
-                value={roleFilter}
-                onChange={(val) => {
-                  setRoleFilter(val);
-                  setPage(1);
-                }}
-                options={roleOptions}
-                placeholder="All Roles"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
-              />
-            </div>
+            {/* Reset Button (when filters are active) */}
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="h-10 px-3 items-center justify-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-xl border border-orange-200/80 transition cursor-pointer active:scale-95 flex shadow-2xs"
+                title="Reset all filters"
+              >
+                <RotateCcw size={13} />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
+            )}
 
-            {/* Filter by Action */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                Action Type
-              </label>
-              <SelectDropdown
-                value={actionFilter}
-                onChange={(val) => {
-                  setActionFilter(val);
-                  setPage(1);
-                }}
-                options={actionOptions}
-                placeholder="All Actions"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
-              />
-            </div>
-
-            {/* Filter by Module */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                Module
-              </label>
-              <SelectDropdown
-                value={moduleFilter}
-                onChange={(val) => {
-                  setModuleFilter(val);
-                  setPage(1);
-                }}
-                options={moduleOptions}
-                placeholder="All Modules"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
-              />
-            </div>
-
-            {/* Filter by Date */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                Date Range
-              </label>
-              <SelectDropdown
-                value={dateRange}
-                onChange={(val) => {
-                  setDateRange(val);
-                  setPage(1);
-                }}
-                options={dateOptions}
-                placeholder="All Time"
-                buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
-              />
-            </div>
+            {/* TableDownloadDropdown */}
+            <TableDownloadDropdown
+              total={pagination.total}
+              label="Download"
+              onDownloadExcel={handleExportExcel}
+              onDownloadPDF={handleExportPDF}
+            />
           </div>
         </div>
 
-        {/* ── ACTIVE FILTER CHIPS (Standard App Component) ── */}
+        {/* ── COLLAPSIBLE FILTER CONTROLS BAR (SelectDropdowns) ── */}
+        {showFilters && (
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs w-full space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200/60 flex items-center justify-center text-orange-600">
+                  <Filter size={14} />
+                </span>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                    Filter Activity Logs
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Refine logs by user identity, role, action, module, or time period
+                  </p>
+                </div>
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer flex items-center gap-1 transition"
+                >
+                  <RotateCcw size={12} />
+                  <span>Reset Filters</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {/* Filter by User / Source */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  User / Source
+                </label>
+                <SelectDropdown
+                  value={userNameFilter}
+                  onChange={(val) => {
+                    setUserNameFilter(val);
+                    setPage(1);
+                  }}
+                  options={userOptions}
+                  placeholder="All Users / Sources"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+                />
+              </div>
+
+              {/* Filter by Role */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  Role
+                </label>
+                <SelectDropdown
+                  value={roleFilter}
+                  onChange={(val) => {
+                    setRoleFilter(val);
+                    setPage(1);
+                  }}
+                  options={roleOptions}
+                  placeholder="All Roles"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+                />
+              </div>
+
+              {/* Filter by Action Type */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  Action Type
+                </label>
+                <SelectDropdown
+                  value={actionFilter}
+                  onChange={(val) => {
+                    setActionFilter(val);
+                    setPage(1);
+                  }}
+                  options={actionOptions}
+                  placeholder="All Actions"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+                />
+              </div>
+
+              {/* Filter by Module */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  Module
+                </label>
+                <SelectDropdown
+                  value={moduleFilter}
+                  onChange={(val) => {
+                    setModuleFilter(val);
+                    setPage(1);
+                  }}
+                  options={moduleOptions}
+                  placeholder="All Modules"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+                />
+              </div>
+
+              {/* Filter by Date */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  Date Range
+                </label>
+                <SelectDropdown
+                  value={dateRange}
+                  onChange={(val) => {
+                    setDateRange(val);
+                    setPage(1);
+                  }}
+                  options={dateOptions}
+                  placeholder="All Time"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs sm:text-sm text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-orange-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ACTIVE FILTER CHIPS ── */}
         {activeChips.length > 0 && (
           <ActiveFilterChips
             chips={activeChips}
@@ -627,8 +666,8 @@ export default function ActivityLogs() {
           />
         )}
 
-        {/* ── DATA TABLE CONTAINER (Full Width, Styled like CommonTable) ── */}
-        <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        {/* ── DATA TABLE CONTAINER ── */}
+        <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
           {isLoading ? (
             <div className="p-16 flex justify-center items-center">
               <Loader />
@@ -831,7 +870,7 @@ export default function ActivityLogs() {
       {selectedLog && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="fixed inset-0" onClick={() => setSelectedLog(null)} />
-          <div className="relative bg-white rounded-2xl max-w-xl w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col z-10 overflow-hidden">
+          <div className="relative bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col z-10 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -879,7 +918,7 @@ export default function ActivityLogs() {
                 </div>
               </div>
 
-              {/* Activity Summary with word break, pre-wrap, and clean overflow containment */}
+              {/* Activity Summary */}
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity Summary</span>
                 <div className="font-semibold text-slate-800 mt-1 bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200/80 leading-relaxed break-words break-all whitespace-pre-wrap max-h-48 overflow-y-auto overscroll-contain text-xs sm:text-sm">

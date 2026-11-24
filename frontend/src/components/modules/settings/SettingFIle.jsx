@@ -1,34 +1,25 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    MdSettings, MdPalette, MdTrendingUp, MdCalendarToday,
-    MdLock, MdWarning, MdInfo, MdCheck, MdUpload, MdAdd,
-    MdToggleOn, MdToggleOff, MdNotificationsNone, MdSearch,
-    MdEdit, MdDelete, MdClose, MdSchool, MdSecurity
+    MdPalette, MdTrendingUp, MdSchool, MdSecurity,
+    MdCheck, MdUpload, MdToggleOn, MdToggleOff,
+    MdInfo, MdLock, MdArrowForward
 } from "react-icons/md";
 import { toast } from "react-toastify";
-import { confirmToast } from "../../../utils/confirmToast";
 import {
-    useGetAllSessionsQuery,
-    useCreateSessionMutation,
-    useUpdateSessionMutation,
-    useUpdateSessionStatusMutation,
-    useActivateSessionMutation,
-    useDeleteSessionMutation,
     useGetAllDepartmentsQuery,
     useUpdateDepartmentPassingCriteriaMutation,
-} from "./../../../redux/api/authApi";
+} from "../../../redux/api/authApi";
 import Header from "../../shared/sidebar/Header";
-import EmptyState from "../../shared/empty-state/EmptyState";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 
 const themes = [
-    { id: "orange", label: "Orange", color: "#F97316", shade: "#FFEDD5" },
-    { id: "blue", label: "Blue", color: "#3B82F6", shade: "#DBEAFE" },
-    { id: "green", label: "Green", color: "#22C55E", shade: "#DCFCE7" },
-    { id: "purple", label: "Purple", color: "#8B5CF6", shade: "#EDE9FE" },
-    { id: "rose", label: "Rose", color: "#F43F5E", shade: "#FFE4E6" },
-    { id: "indigo", label: "Indigo", color: "#6366F1", shade: "#E0E7FF" },
+    { id: "orange", label: "Orange (SSES)", color: "#F97316", shade: "#FFEDD5", description: "Default institutional theme" },
+    { id: "blue", label: "Ocean Blue", color: "#3B82F6", shade: "#DBEAFE", description: "Modern professional blue" },
+    { id: "green", label: "Emerald Green", color: "#22C55E", shade: "#DCFCE7", description: "Vibrant emerald green" },
+    { id: "purple", label: "Royal Purple", color: "#8B5CF6", shade: "#EDE9FE", description: "Elegant royal purple" },
+    { id: "rose", label: "Rose Pink", color: "#F43F5E", shade: "#FFE4E6", description: "Warm rose accent" },
+    { id: "indigo", label: "Deep Indigo", color: "#6366F1", shade: "#E0E7FF", description: "Refined dark indigo" },
 ];
 
 const SettingFIle = () => {
@@ -44,38 +35,13 @@ const SettingFIle = () => {
     const isSuperAdmin = rawRole === "superadmin";
     const isHOD = rawRole === "hod" || positionRole.includes("hod") || user.role?.toLowerCase() === "hod";
 
-    // Who can change what?
-    // Theme: EVERYONE who has access to Settings!
-    // Level Passing Criteria: ONLY HOD (for their own department) & SuperAdmin (for any department).
-    // Everything else (Maintenance, Sessions, Lock Academic Year, Logo): ONLY SuperAdmin!
     const canManageGlobal = isSuperAdmin;
     const canUpdateCriteria = isSuperAdmin || isHOD;
 
-    // Fetch real sessions from API
-    const { data: sessionsData, isLoading: sessionsLoading, refetch: refetchSessions } = useGetAllSessionsQuery(true);
-    const sessions = sessionsData?.data || [];
-
-    const [createSession]       = useCreateSessionMutation();
-    const [updateSession]       = useUpdateSessionMutation();
-    const [updateSessionStatus] = useUpdateSessionStatusMutation();
-    const [activateSession]     = useActivateSessionMutation();
-    const [deleteSession]       = useDeleteSessionMutation();
-
     // Fetch real departments from API
-    const { data: deptData, isLoading: deptsLoading } = useGetAllDepartmentsQuery();
+    const { data: deptData } = useGetAllDepartmentsQuery();
     const departments = deptData?.data || [];
     const [updatePassingCriteria, { isLoading: isSavingCriteria }] = useUpdateDepartmentPassingCriteriaMutation();
-
-    // Session Modal State
-    const [showSessionModal, setShowSessionModal] = useState(false);
-    const [editingSession,   setEditingSession]   = useState(null);
-    const [sessionFormData,  setSessionFormData]  = useState({
-        name: "",
-        startDate: "",
-        endDate: "",
-        description: ""
-    });
-    const [submittingSession, setSubmittingSession] = useState(false);
 
     // Department Level Passing Criteria State
     const [selectedDeptId, setSelectedDeptId] = useState("");
@@ -195,145 +161,33 @@ const SettingFIle = () => {
         toast.info("Changes discarded.");
     };
 
-    // Session CRUD handlers
-    const openAddSessionModal = () => {
-        if (!canManageGlobal) {
-            toast.warning("Only Superadmin can add new academic sessions.");
-            return;
-        }
-        setEditingSession(null);
-        setSessionFormData({ name: "", startDate: "", endDate: "", description: "" });
-        setShowSessionModal(true);
-    };
-
-    const openEditSessionModal = (s) => {
-        if (!canManageGlobal) {
-            toast.warning("Only Superadmin can edit academic sessions.");
-            return;
-        }
-        setEditingSession(s);
-        setSessionFormData({
-            name: s.name,
-            startDate: s.startDate ? new Date(s.startDate).toISOString().split('T')[0] : "",
-            endDate: s.endDate ? new Date(s.endDate).toISOString().split('T')[0] : "",
-            description: s.description || ""
-        });
-        setShowSessionModal(true);
-    };
-
-    const handleSessionSubmit = async (e) => {
-        e.preventDefault();
-        if (!canManageGlobal) {
-            toast.error("Only Superadmin can perform session modifications.");
-            return;
-        }
-        if (!sessionFormData.name.trim() || !sessionFormData.startDate || !sessionFormData.endDate) {
-            toast.error("Name, start date, and end date are required");
-            return;
-        }
-
-        if (new Date(sessionFormData.startDate) >= new Date(sessionFormData.endDate)) {
-            toast.error("End date must be after start date");
-            return;
-        }
-
-        setSubmittingSession(true);
-        try {
-            if (editingSession) {
-                await updateSession({ id: editingSession._id, ...sessionFormData }).unwrap();
-                toast.success("Session updated successfully!");
-            } else {
-                await createSession(sessionFormData).unwrap();
-                toast.success("Session created successfully!");
-            }
-            setShowSessionModal(false);
-            refetchSessions();
-        } catch (err) {
-            toast.error(err?.data?.message || "Operation failed");
-        } finally {
-            setSubmittingSession(false);
-        }
-    };
-
-    const handleStatusChange = async (id, newStatus) => {
-        if (!canManageGlobal) {
-            toast.warning("Only Superadmin can change session status.");
-            return;
-        }
-        try {
-            if (newStatus === 'active') {
-                await activateSession(id).unwrap();
-            } else {
-                await updateSessionStatus({ id, status: newStatus }).unwrap();
-            }
-            toast.success(`Session status changed to ${newStatus.toUpperCase()}`);
-            refetchSessions();
-        } catch (err) {
-            toast.error(err?.data?.message || "Status change failed");
-        }
-    };
-
-    const handleDeleteSession = async (sess) => {
-        if (!canManageGlobal) {
-            toast.warning("Only Superadmin can delete sessions.");
-            return;
-        }
-        const id = sess?._id || sess;
-        const name = sess?.name || "this session";
-        if (!(await confirmToast(`Delete session "${name}"?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" }))) return;
-        try {
-            await deleteSession(id).unwrap();
-            toast.success("Session deleted successfully!");
-            refetchSessions();
-        } catch (err) {
-            if (err?.data?.hasStudents) {
-                const confirmForce = await confirmToast(
-                    `Session "${name}" has ${err.data.studentCount} enrolled student(s).\n\n` +
-                    `Deleting it will reassign these students to the active session.\n\n` +
-                    `Do you want to proceed with deleting this session?`,
-                    { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white", confirmText: "Delete & Reassign" }
-                );
-                if (confirmForce) {
-                    try {
-                        await deleteSession({ id, force: true }).unwrap();
-                        toast.success("Session deleted and students reassigned successfully!");
-                        refetchSessions();
-                    } catch (forceErr) {
-                        toast.error(forceErr?.data?.message || "Delete failed");
-                    }
-                }
-            } else {
-                toast.error(err?.data?.message || "Delete failed");
-            }
-        }
-    };
-
     const selectedDept = departments.find(d => d._id === selectedDeptId);
 
     return (
         <>
             <Header
                 title="Settings"
+                badge="System Configuration"
                 breadcrumbs={[
                     { label: "Administration" },
                     { label: "Settings", path: "/settings" }
                 ]}
             />
 
-            <div className="bg-[#F8F9FA] min-h-screen p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 pb-24 relative">
+            <div className="bg-gray-50/40 min-h-screen p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 pb-24 relative">
 
                 {/* SUB-HEADER & STATUS SECTION */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white border border-slate-200/80 p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-2xs">
                     <div>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2.5 flex-wrap">
                             <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">System Configuration</h2>
                             {isSuperAdmin && (
-                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                                     SUPERADMIN
                                 </span>
                             )}
                             {isHOD && !isSuperAdmin && (
-                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
                                     HOD ({user.department || "Department"})
                                 </span>
                             )}
@@ -343,17 +197,17 @@ const SettingFIle = () => {
                                 </span>
                             )}
                         </div>
-                        <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-0.5">
+                        <p className="text-xs font-semibold text-slate-400 mt-1">
                             {!isSuperAdmin && !isHOD
-                                ? "Settings permissions granted: You can customize your UI theme."
+                                ? "Settings permissions granted: Customize your UI color theme."
                                 : isHOD && !isSuperAdmin
                                 ? "Configure your department's level passing criteria and personalize UI theme."
-                                : "Manage institutional global rules, branding, and academic lifecycles."}
+                                : "Manage institutional passing criteria, theme appearance, branding, and system safeguards."}
                         </p>
                     </div>
 
                     {/* Maintenance Mode Toggle Card */}
-                    <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-50 border border-slate-200/80 px-3.5 py-2 rounded-xl">
+                    <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-50/80 border border-slate-200/80 px-4 py-2.5 rounded-xl sm:rounded-2xl shrink-0">
                         <div className="text-left sm:text-right">
                             <p className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                                 MAINTENANCE MODE {!canManageGlobal && <span className="text-rose-500">(LOCKED)</span>}
@@ -375,147 +229,27 @@ const SettingFIle = () => {
                             className={`transition shrink-0 ${!canManageGlobal ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                         >
                             {maintenanceMode ? (
-                                <MdToggleOn size={34} className="text-amber-500" />
+                                <MdToggleOn size={36} className="text-amber-500" />
                             ) : (
-                                <MdToggleOff size={34} className="text-slate-300" />
+                                <MdToggleOff size={36} className="text-slate-300 hover:text-slate-400" />
                             )}
                         </button>
                     </div>
                 </div>
 
-                {/* 2X2 GRID OF CONFIGURATION CARDS */}
+                {/* 2-COLUMN GRID OF CONFIGURATION CARDS */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
-                    {/* CARD 1: Academic Year Management */}
-                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs space-y-4 sm:space-y-5">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0">
-                                    <MdCalendarToday size={18} />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm sm:text-base font-black text-slate-900">Academic Year Management</h3>
-                                    {!canManageGlobal && (
-                                        <span className="text-[10px] font-bold text-slate-400">View Only (Superadmin Restricted)</span>
-                                    )}
-                                </div>
-                            </div>
-                            {canManageGlobal ? (
-                                <button
-                                    onClick={openAddSessionModal}
-                                    className="text-xs font-extrabold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-xl shadow-2xs"
-                                >
-                                    <MdAdd size={16} /> Add New
-                                </button>
-                            ) : (
-                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                                    <MdLock size={12} /> Read-only
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Cycles List */}
-                        <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-                            {sessionsLoading ? (
-                                <p className="text-xs font-semibold text-slate-400">Loading sessions...</p>
-                            ) : sessions.length === 0 ? (
-                                <EmptyState
-                                    icon={MdCalendarToday}
-                                    title="No Sessions Found"
-                                    subtitle="No academic sessions have been set up in the system."
-                                    compact
-                                />
-                            ) : (
-                                sessions.map((sess) => {
-                                    const statusStr = (sess.isActive || sess.status === 'active') ? 'active' : (sess.status || 'upcoming').toLowerCase();
-                                    let statusBadgeCls = "bg-slate-100 text-slate-700 border-slate-200";
-                                    if (statusStr === 'active') {
-                                        statusBadgeCls = "bg-emerald-50 text-emerald-600 border-emerald-200";
-                                    } else if (statusStr === 'upcoming') {
-                                        statusBadgeCls = "bg-blue-50 text-blue-600 border-blue-200";
-                                    } else if (statusStr === 'archived') {
-                                        statusBadgeCls = "bg-slate-100 text-slate-600 border-slate-200";
-                                    } else if (statusStr === 'completed') {
-                                        statusBadgeCls = "bg-orange-50 text-orange-600 border-orange-200";
-                                    }
-
-                                    return (
-                                        <div
-                                            key={sess._id}
-                                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${statusStr === 'active'
-                                                    ? "border-orange-200/80 bg-orange-50/40"
-                                                    : "border-slate-100 bg-slate-50/50"
-                                                }`}
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
-                                                    {sess.name.startsWith("AY") ? sess.name : `AY ${sess.name}`}
-                                                </h4>
-                                                <p className="text-[11px] sm:text-xs font-semibold text-slate-400 mt-0.5 truncate">
-                                                    {sess.description || (statusStr === 'active' ? 'Current Active Cycle' : `${statusStr.charAt(0).toUpperCase() + statusStr.slice(1)} Cycle`)}
-                                                </p>
-                                            </div>
-
-                                            <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
-                                                {/* Interactive Status Select Dropdown (Superadmin only) */}
-                                                {canManageGlobal ? (
-                                                    <SelectDropdown
-                                                        value={statusStr}
-                                                        onChange={(val) => handleStatusChange(sess._id, val)}
-                                                        align="right"
-                                                        options={[
-                                                            { value: "active", label: "ACTIVE" },
-                                                            { value: "upcoming", label: "UPCOMING" },
-                                                            { value: "archived", label: "ARCHIVED" },
-                                                            { value: "completed", label: "COMPLETED" },
-                                                        ]}
-                                                        className="w-auto min-w-[110px]"
-                                                        buttonClassName={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider cursor-pointer focus:outline-none hover:opacity-90 transition flex items-center justify-between gap-1 shadow-2xs ${statusBadgeCls}`}
-                                                    />
-                                                ) : (
-                                                    <span className={`border font-extrabold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider ${statusBadgeCls}`}>
-                                                        {statusStr.toUpperCase()}
-                                                    </span>
-                                                )}
-
-                                                {canManageGlobal && (
-                                                    <div className="flex items-center gap-1">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openEditSessionModal(sess)}
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                                                            title="Edit Session Details"
-                                                        >
-                                                            <MdEdit size={16} />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDeleteSession(sess)}
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                                                            title="Delete Session"
-                                                        >
-                                                            <MdDelete size={16} />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-
-                    {/* CARD 2: Department Level Passing Criteria */}
-                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs space-y-4 sm:space-y-5">
+                    {/* CARD 1: Department Level Passing Criteria */}
+                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-5">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0">
-                                    <MdTrendingUp size={18} />
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <MdTrendingUp size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm sm:text-base font-black text-slate-900">Level Passing Criteria</h3>
-                                    <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400">Department promotion rules & thresholds</p>
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">Level Passing Criteria</h3>
+                                    <p className="text-[11px] font-semibold text-slate-400">Department promotion rules & thresholds</p>
                                 </div>
                             </div>
 
@@ -537,9 +271,9 @@ const SettingFIle = () => {
 
                         {/* Department Context Selector / Banner */}
                         {isSuperAdmin ? (
-                            <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl space-y-1.5">
+                            <div className="p-3.5 bg-slate-50/70 border border-slate-100 rounded-2xl space-y-1.5">
                                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                                    SELECT DEPARTMENT TO CONFIGURE
+                                    Select Department to Configure
                                 </label>
                                 <SelectDropdown
                                     value={selectedDeptId}
@@ -550,26 +284,28 @@ const SettingFIle = () => {
                                     }))}
                                     placeholder="Select Department..."
                                     className="w-full"
-                                    buttonClassName="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
+                                    buttonClassName="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-orange-400 cursor-pointer flex items-center justify-between gap-1.5 shadow-2xs"
                                 />
                             </div>
                         ) : isHOD ? (
-                            <div className="p-3 bg-orange-50/70 border border-orange-100 rounded-2xl flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <MdSchool size={18} className="text-orange-500 shrink-0" />
+                            <div className="p-3.5 bg-orange-50/60 border border-orange-100 rounded-2xl flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <MdSchool size={18} />
+                                    </div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600">ASSIGNED DEPARTMENT</p>
+                                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600">Assigned Department</p>
                                         <p className="text-xs font-black text-slate-900 truncate">
                                             {selectedDept?.name || user.department || "Your Department"}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-[10px] font-bold text-orange-700 bg-white border border-orange-200 px-2.5 py-1 rounded-lg shrink-0">
+                                <span className="text-[10px] font-extrabold text-orange-700 bg-white border border-orange-200 px-2.5 py-1 rounded-xl shrink-0">
                                     Only HOD Updates
                                 </span>
                             </div>
                         ) : (
-                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-2.5 text-xs text-slate-600">
+                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-2.5 text-xs text-slate-600">
                                 <MdLock size={16} className="text-slate-400 shrink-0 mt-0.5" />
                                 <div>
                                     <p className="font-bold text-slate-800">Criteria Update Locked</p>
@@ -581,47 +317,47 @@ const SettingFIle = () => {
                         )}
 
                         {/* Criteria Input Fields */}
-                        <div className="space-y-3.5 sm:space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                 <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        MINIMUM GPA (0 - 10)
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Minimum GPA (0 - 10)
                                     </label>
                                     <input
                                         type="text"
                                         value={minGpa}
                                         disabled={!canUpdateCriteria}
                                         onChange={(e) => { setMinGpa(e.target.value); handleCriteriaChange(); }}
-                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs sm:text-sm font-semibold transition ${
                                             canUpdateCriteria
-                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs"
+                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-2xs"
                                                 : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
                                         }`}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        ATTENDANCE % (0 - 100)
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Attendance % (0 - 100)
                                     </label>
                                     <input
                                         type="text"
                                         value={minAttendance}
                                         disabled={!canUpdateCriteria}
                                         onChange={(e) => { setMinAttendance(e.target.value); handleCriteriaChange(); }}
-                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs sm:text-sm font-semibold transition ${
                                             canUpdateCriteria
-                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs"
+                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-2xs"
                                                 : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
                                         }`}
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                                 <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        BACKLOG LIMIT
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Backlog Limit
                                     </label>
                                     <SelectDropdown
                                         value={backlogLimit}
@@ -635,176 +371,218 @@ const SettingFIle = () => {
                                         ]}
                                         placeholder="Select Backlog Limit"
                                         className="w-full"
-                                        buttonClassName={`w-full border rounded-xl px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-1.5 shadow-2xs transition ${
+                                        buttonClassName={`w-full border rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold flex items-center justify-between gap-1.5 shadow-2xs transition ${
                                             canUpdateCriteria
-                                                ? "bg-white border-gray-200 text-gray-700 hover:border-orange-400 cursor-pointer"
-                                                : "bg-slate-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60"
+                                                ? "bg-white border-slate-200 text-slate-700 hover:border-orange-400 cursor-pointer"
+                                                : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
                                         }`}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        TASK COMPLETION %
+                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Task Completion % (0 - 100)
                                     </label>
                                     <input
                                         type="text"
                                         value={minTaskCompletion}
                                         disabled={!canUpdateCriteria}
                                         onChange={(e) => { setMinTaskCompletion(e.target.value); handleCriteriaChange(); }}
-                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs font-bold transition ${
+                                        className={`w-full h-10 px-3.5 border rounded-xl text-xs sm:text-sm font-semibold transition ${
                                             canUpdateCriteria
-                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-orange-400 shadow-2xs"
+                                                ? "bg-white border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-2xs"
                                                 : "bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed"
                                         }`}
                                     />
                                 </div>
                             </div>
 
-                            {/* Save Criteria Button for HOD / Superadmin */}
+                            {/* Save Criteria Footer for HOD / Superadmin */}
                             {canUpdateCriteria && (
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
                                     <p className="text-[11px] font-semibold text-slate-400">
-                                        {hasUnsavedCriteria ? "⚠️ You have unsaved criteria changes" : "Changes will apply to level promotions"}
+                                        {hasUnsavedCriteria ? "⚠️ Unsaved changes pending" : "Changes will apply to sublevel promotions"}
                                     </p>
-                                    <button
-                                        type="button"
-                                        onClick={handleSaveCriteria}
-                                        disabled={isSavingCriteria || !hasUnsavedCriteria}
-                                        className="w-full sm:w-auto px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                                    >
-                                        {isSavingCriteria ? "Saving..." : "Save Department Criteria"}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {hasUnsavedCriteria && (
+                                            <button
+                                                type="button"
+                                                onClick={handleDiscardCriteria}
+                                                className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+                                            >
+                                                Discard
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveCriteria}
+                                            disabled={isSavingCriteria || !hasUnsavedCriteria}
+                                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            {isSavingCriteria ? "Saving..." : "Save Criteria"}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* CARD 3: Society Logo & Branding (THEME COLOR SELECTOR) */}
-                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs space-y-4 sm:space-y-5">
+                    {/* CARD 2: Theme Customization & Personal Accent */}
+                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-5">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0">
-                                    <MdPalette size={18} />
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <MdPalette size={20} />
                                 </div>
-                                <h3 className="text-sm sm:text-base font-black text-slate-900">Society Logo & Branding</h3>
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">Theme & Appearance</h3>
+                                    <p className="text-[11px] font-semibold text-slate-400">Personal accent & user interface theme</p>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-                                Theme Customizer Active
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Instant Apply
                             </span>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 p-3.5 sm:p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-orange-100 text-orange-600 font-black flex items-center justify-center text-lg sm:text-xl border border-orange-200 flex-shrink-0 shadow-2xs">
-                                ITEG
-                            </div>
-                            <div className="space-y-1">
-                                <h4 className="text-xs font-black text-slate-900">Official Society Logo</h4>
-                                <p className="text-[11px] font-semibold text-slate-400">
-                                    {canManageGlobal
-                                        ? "Upload high-res PNG or SVG. Max 2MB."
-                                        : "Society logo management is restricted to Superadmin."}
-                                </p>
-                                {canManageGlobal ? (
+                        {/* Theme Palette Cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {themes.map((t) => {
+                                const isActive = activeTheme === t.id;
+                                return (
                                     <button
+                                        key={t.id}
                                         type="button"
-                                        onClick={() => toast.info("Select new logo file")}
-                                        className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                        onClick={() => handleThemeChange(t.id)}
+                                        className={`p-3 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between cursor-pointer ${
+                                            isActive
+                                                ? "border-orange-500 bg-orange-50/40 shadow-xs ring-2 ring-orange-500/20"
+                                                : "border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300"
+                                        }`}
                                     >
-                                        <MdUpload size={14} /> Change Logo
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span
+                                                className="w-6 h-6 rounded-full flex items-center justify-center shadow-xs"
+                                                style={{ backgroundColor: t.color }}
+                                            >
+                                                {isActive && <MdCheck size={14} className="text-white" />}
+                                            </span>
+                                            {isActive && (
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-orange-600 bg-white px-2 py-0.5 rounded-md border border-orange-200">
+                                                    Active
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900">{t.label}</p>
+                                            <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate">{t.description}</p>
+                                        </div>
                                     </button>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg mt-1 border border-slate-200">
-                                        <MdLock size={12} /> Superadmin Only
-                                    </span>
-                                )}
-                            </div>
+                                );
+                            })}
                         </div>
 
-                        {/* THEME COLOR SELECTOR - ACCESSIBLE TO ALL USERS WITH SETTINGS PERMISSION */}
-                        <div className="space-y-2 pt-1 border-t border-slate-100">
-                            <div className="flex items-center justify-between">
-                                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-700">
-                                    THEME PRIMARY COLOR (PERSONAL ACCENT)
-                                </label>
-                                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
-                                    Always Editable
-                                </span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1">
-                                {themes.map((t) => {
-                                    const isActive = activeTheme === t.id;
-                                    return (
-                                        <button
-                                            key={t.id}
-                                            type="button"
-                                            onClick={() => handleThemeChange(t.id)}
-                                            title={t.label}
-                                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                                                isActive ? "ring-4 ring-orange-200 scale-110 shadow-md" : "hover:scale-105"
-                                            }`}
-                                            style={{ backgroundColor: t.color }}
-                                        >
-                                            {isActive && <MdCheck size={18} className="text-white" />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <p className="text-[11px] font-medium text-slate-400 mt-1">
-                                Current active theme: <strong className="text-slate-700 capitalize">{activeTheme}</strong>. Applies instantly across all modules.
-                            </p>
+                        <div className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl text-xs text-slate-600 flex items-center justify-between">
+                            <span className="font-semibold text-slate-500">
+                                Active accent: <strong className="text-slate-900 capitalize font-black">{activeTheme}</strong>
+                            </span>
+                            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100">
+                                Persisted to profile
+                            </span>
                         </div>
                     </div>
 
-                    {/* CARD 4: Lock Academic Year */}
-                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs space-y-4 sm:space-y-5">
+                    {/* CARD 3: Society Logo & Institutional Branding */}
+                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-5">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center shrink-0">
-                                    <MdLock size={18} />
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <MdSchool size={20} />
                                 </div>
-                                <h3 className="text-sm sm:text-base font-black text-slate-900">Lock Academic Year</h3>
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">Society Logo & Branding</h3>
+                                    <p className="text-[11px] font-semibold text-slate-400">Sant Singaji Educational Society institutional branding</p>
+                                </div>
                             </div>
-                            {!canManageGlobal && (
-                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
-                                    <MdLock size={12} /> Superadmin Only
-                                </span>
-                            )}
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                Official Branding
+                            </span>
                         </div>
 
-                        <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50/70 border border-rose-100 text-xs font-semibold text-rose-700 flex items-start gap-3">
-                            <MdWarning size={20} className="text-rose-500 flex-shrink-0 mt-0.5" />
-                            <p className="leading-relaxed">
-                                Locking the academic year <strong>({sessions[0]?.name || 'Current Session'})</strong> will freeze all marks, attendance, and faculty records. This action is <u>irreversible</u> and ensures data integrity for audits.
-                            </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50">
+                            <div className="w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 font-black flex items-center justify-center text-xl border border-orange-200 shrink-0 shadow-2xs">
+                                SSES
+                            </div>
+                            <div className="space-y-1 flex-1">
+                                <h4 className="text-xs font-black text-slate-900">Sant Singaji Educational Society (SSES)</h4>
+                                <p className="text-[11px] font-semibold text-slate-400">
+                                    Official logo displayed on portal headers, report cards, and student documents.
+                                </p>
+                                <div className="pt-1">
+                                    {canManageGlobal ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => toast.info("Select new official logo file (PNG or SVG, max 2MB)")}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                        >
+                                            <MdUpload size={14} /> Change Logo
+                                        </button>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                                            <MdLock size={12} /> Superadmin Only
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                            <div>
-                                <p className="text-xs font-black text-slate-900">Ready for Finalization?</p>
-                                <p className="text-[10px] font-bold text-slate-400 mt-0.5">STATUS: READ-ONLY LOCK</p>
+                        <div className="text-[11px] font-medium text-slate-400">
+                            Recommended resolution: 512x512px transparent PNG. Uploaded logos synchronize with PDF export engines.
+                        </div>
+                    </div>
+
+                    {/* CARD 4: System Operations & Navigation */}
+                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs space-y-5">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <MdSecurity size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">System Operations</h3>
+                                    <p className="text-[11px] font-semibold text-slate-400">Platform operational status and session portal</p>
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                <MdCheck size={12} /> System Healthy
+                            </span>
+                        </div>
+
+                        {/* Quick Jump to Dedicated Session Page */}
+                        <div className="p-4 rounded-2xl border border-orange-200/80 bg-orange-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-0.5">
+                                <h4 className="text-xs font-black text-slate-900">Academic Session Management</h4>
+                                <p className="text-[11px] font-semibold text-slate-500">
+                                    Manage academic cycles, batches, and enrollment in the dedicated Session portal.
+                                </p>
                             </div>
                             <button
                                 type="button"
-                                disabled={!canManageGlobal}
-                                onClick={async () => {
-                                    if (!canManageGlobal) {
-                                        toast.warning("Only Superadmin can lock an academic year.");
-                                        return;
-                                    }
-                                    const targetName = sessions[0]?.name || 'Current Session';
-                                    if (await confirmToast(`Are you sure you want to lock ${targetName}? This cannot be undone.`, { confirmButtonClass: "bg-rose-600 hover:bg-rose-700 text-white" })) {
-                                        toast.success(`${targetName} locked successfully`);
-                                    }
-                                }}
-                                className={`w-full sm:w-auto px-5 py-2.5 text-white rounded-xl text-xs font-extrabold shadow-2xs transition ${
-                                    canManageGlobal
-                                        ? "bg-rose-600 hover:bg-rose-700 cursor-pointer"
-                                        : "bg-slate-300 cursor-not-allowed"
-                                }`}
+                                onClick={() => navigate("/session-management")}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition cursor-pointer shrink-0 self-start sm:self-auto"
                             >
-                                Lock {sessions[0]?.name || 'Academic Year'}
+                                Open Sessions <MdArrowForward size={14} />
                             </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                                <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Database Status</p>
+                                <p className="text-xs font-black text-emerald-600 mt-0.5">Connected</p>
+                            </div>
+                            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                                <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Role Enforcement</p>
+                                <p className="text-xs font-black text-slate-800 mt-0.5 capitalize">{rawRole || "Staff"}</p>
+                            </div>
                         </div>
                     </div>
 
@@ -834,99 +612,6 @@ const SettingFIle = () => {
                             >
                                 {isSavingCriteria ? "Saving..." : "Save Criteria"}
                             </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* SESSION ADD / EDIT MODAL (Superadmin Only) */}
-                {showSessionModal && canManageGlobal && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-                        <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 animate-scale-in">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <h3 className="text-sm font-black text-slate-900">
-                                    {editingSession ? "Edit Academic Year Session" : "Add New Academic Year Session"}
-                                </h3>
-                                <button
-                                    onClick={() => setShowSessionModal(false)}
-                                    className="p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                                >
-                                    <MdClose size={20} />
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleSessionSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        Session Name <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={sessionFormData.name}
-                                        onChange={(e) => setSessionFormData(prev => ({ ...prev, name: e.target.value }))}
-                                        placeholder="e.g. 2025-26 or AY 2025-26"
-                                        className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400"
-                                        required
-                                        autoFocus
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                        Description
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={sessionFormData.description}
-                                        onChange={(e) => setSessionFormData(prev => ({ ...prev, description: e.target.value }))}
-                                        placeholder="e.g. Academic Session 2025 - 2026"
-                                        className="w-full h-10 px-3.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                            Start Date <span className="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={sessionFormData.startDate}
-                                            onChange={(e) => setSessionFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                                            className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                                            End Date <span className="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={sessionFormData.endDate}
-                                            onChange={(e) => setSessionFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                                            className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-orange-400"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowSessionModal(false)}
-                                        className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={submittingSession}
-                                        className="px-5 py-2 rounded-xl text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {submittingSession ? "Saving..." : editingSession ? "Update Session" : "Create Session"}
-                                    </button>
-                                </div>
-                            </form>
                         </div>
                     </div>
                 )}

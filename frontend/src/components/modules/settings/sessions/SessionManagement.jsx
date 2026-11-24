@@ -5,8 +5,6 @@ import {
   MdEdit,
   MdDelete,
   MdCheckCircle,
-  MdSchedule,
-  MdArchive,
   MdSearch,
   MdClose,
   MdExpandMore,
@@ -26,6 +24,7 @@ import Loader from "../../../shared/loader/Loader";
 import ActiveFilterChips from "../../../shared/search-export/ActiveFilterChips";
 import { usePersistentState } from "../../../../hooks/usePersistentFilters";
 import EmptyState from "../../../shared/empty-state/EmptyState";
+import SelectDropdown from "../../../shared/form-fields/SelectDropdown";
 
 const STATUS_TABS = [
   { id: "all", label: "All Sessions" },
@@ -216,6 +215,16 @@ const SessionManagement = () => {
     return { total, active, upcoming, completed, archived };
   }, [sessions]);
 
+  const statusOptions = useMemo(() => {
+    return [
+      { value: "all", label: `All Sessions (${stats.total})` },
+      { value: "active", label: `Active (${stats.active})` },
+      { value: "upcoming", label: `Upcoming (${stats.upcoming})` },
+      { value: "completed", label: `Completed (${stats.completed})` },
+      { value: "archived", label: `Archived (${stats.archived})` },
+    ];
+  }, [stats]);
+
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
       const computedStatus = getComputedStatus(s);
@@ -338,124 +347,48 @@ const SessionManagement = () => {
       />
 
       <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6">
-
-        {/* Quick Statistics Bar (2x2 Grid on Mobile, 4-Cols on Desktop) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-4 flex items-center justify-between shadow-2xs hover:shadow-xs transition">
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider truncate">
-                Total Sessions
-              </p>
-              <p className="text-lg sm:text-2xl font-black text-slate-800 mt-0.5">{stats.total}</p>
-            </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-50 text-orange-500 border border-orange-100 flex items-center justify-center shrink-0">
-              <MdCalendarMonth size={18} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-4 flex items-center justify-between shadow-2xs hover:shadow-xs transition">
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider truncate">
-                Active Sessions
-              </p>
-              <p className="text-lg sm:text-2xl font-black text-emerald-600 mt-0.5">{stats.active}</p>
-            </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-              <MdCheckCircle size={18} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-4 flex items-center justify-between shadow-2xs hover:shadow-xs transition">
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider truncate">
-                Upcoming
-              </p>
-              <p className="text-lg sm:text-2xl font-black text-blue-600 mt-0.5">{stats.upcoming}</p>
-            </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-              <MdSchedule size={18} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-4 flex items-center justify-between shadow-2xs hover:shadow-xs transition">
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider truncate">
-                Past / Archived
-              </p>
-              <p className="text-lg sm:text-2xl font-black text-amber-600 mt-0.5">
-                {stats.completed + stats.archived}
-              </p>
-            </div>
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-              <MdArchive size={18} />
-            </div>
-          </div>
-        </div>
-
-        {/* Top actions layout */}
+        {/* Top Action & Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
-          <button
-            onClick={openAdd}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
-          >
-            <MdAdd size={18} /> Add New Session
-          </button>
+          {/* Search Input on Left */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search sessions..."
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <MdClose size={16} />
+              </button>
+            )}
+          </div>
 
-          {sessions.length > 0 && (
-            <div className="relative w-full sm:w-72 md:w-80">
-              <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sessions..."
-                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                  aria-label="Clear search"
-                >
-                  <MdClose size={16} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+          {/* Action & Filter Dropdown on Right */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <SelectDropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val || "all")}
+              options={statusOptions}
+              className="w-full sm:w-44"
+              buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-bold transition hover:border-orange-400 shadow-2xs cursor-pointer"
+            />
 
-        {/* Status Tabs with styled count badges */}
-        <div className="overflow-x-auto pb-1 -mb-1">
-          <div className="flex gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50 w-fit min-w-full sm:min-w-0">
-            {STATUS_TABS.map((tab) => {
-              const count =
-                tab.id === "all"
-                  ? sessions.length
-                  : sessions.filter((s) => getComputedStatus(s) === tab.id).length;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={`px-3 sm:px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 cursor-pointer ${
-                    statusFilter === tab.id
-                      ? "bg-white text-orange-600 shadow-2xs font-extrabold"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold ${
-                      statusFilter === tab.id
-                        ? "bg-orange-100 text-orange-600"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+            <button
+              type="button"
+              onClick={openAdd}
+              className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 rounded-xl transition shadow-xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <MdAdd size={18} />
+              <span>Add New Session</span>
+            </button>
           </div>
         </div>
 

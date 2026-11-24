@@ -148,7 +148,7 @@ const StudentAssignPicker = ({
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by student name, ID, or course..."
+                    placeholder="Search by student name or course..."
                     className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500 text-slate-700"
                   />
                 </div>
@@ -194,7 +194,6 @@ const StudentAssignPicker = ({
                   filteredStudents.map((student) => {
                     const isSelected = selectedStudentIds.includes(String(student._id));
                     const fullName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student";
-                    const identifier = student.prkey || student.studentId || "";
 
                     return (
                       <div
@@ -224,11 +223,6 @@ const StudentAssignPicker = ({
                             <span className={`text-xs font-bold truncate ${isSelected ? "text-orange-950" : "text-slate-800"}`}>
                               {fullName}
                             </span>
-                            {identifier && (
-                              <span className="text-[10px] text-slate-400 font-mono truncate">
-                                {identifier}
-                              </span>
-                            )}
                           </div>
                         </div>
 

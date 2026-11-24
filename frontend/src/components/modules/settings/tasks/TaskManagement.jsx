@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
     MdMoreVert, MdSearch, MdAdd, MdFilterList,
-    MdExpandMore, MdClose, MdViewList, MdGridView,
+    MdExpandMore, MdClose,
     MdChevronLeft, MdChevronRight, MdVisibility, MdEdit, MdDeleteOutline, MdCheck
 } from "react-icons/md";
 import { toast } from "react-toastify";
@@ -89,7 +89,7 @@ const ActionMenu = ({ task, onDelete, onViewDetails, onEdit }) => {
     }, [open]);
 
     return (
-        <div className="relative flex justify-end">
+        <div className="relative inline-flex items-center justify-end">
             <button
                 ref={buttonRef}
                 type="button"
@@ -763,10 +763,9 @@ const TaskManagement = () => {
     const setFilterStatus = (st) => updateFilter("filterStatus", st);
     const setFilterCourse = (c) => updateFilter("filterCourse", c);
 
-    const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [viewMode, setViewMode] = useState("table");
     const [selectedTask, setSelectedTask] = useState(null);
     const [editingTask, setEditingTask] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1055,53 +1054,55 @@ const TaskManagement = () => {
 
                 {/* Top Action & Search Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
-                    {canCreateTask && (
-                        <button
-                            type="button"
-                            onClick={() => setIsAddModalOpen(true)}
-                            className={`w-full sm:w-auto h-10 px-4 flex items-center justify-center gap-2 text-xs ${buttonStyles.primary}`}
-                        >
-                            <MdAdd size={18} />
-                            <span>Add New Task</span>
-                        </button>
-                    )}
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="relative flex-1 sm:w-72 md:w-80">
-                            <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
+                    {/* Search Input */}
+                    <div className="relative flex-1 max-w-full md:max-w-md">
+                        <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            placeholder="Search tasks..."
+                            className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+                        />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchTerm("");
                                     setCurrentPage(1);
                                 }}
-                                placeholder="Search tasks..."
-                                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
-                            />
-                            {searchTerm && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSearchTerm("");
-                                        setCurrentPage(1);
-                                    }}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                                    aria-label="Clear search"
-                                >
-                                    <MdClose size={16} />
-                                </button>
-                            )}
-                        </div>
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                                aria-label="Clear search"
+                            >
+                                <MdClose size={16} />
+                            </button>
+                        )}
+                    </div>
 
-                        {/* Mobile Filters Toggle Button */}
+                    {/* Action & Filters Toggle Button */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        {canCreateTask && (
+                            <button
+                                type="button"
+                                onClick={() => setIsAddModalOpen(true)}
+                                className={`w-full sm:w-auto h-10 px-4 flex items-center justify-center gap-2 text-xs ${buttonStyles.primary}`}
+                            >
+                                <MdAdd size={18} />
+                                <span>Add New Task</span>
+                            </button>
+                        )}
+
+                        {/* Filters Toggle Button (Beside Add Button) */}
                         <button
                             type="button"
-                            onClick={() => setShowMobileFilters((p) => !p)}
-                            className={`md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                                showMobileFilters || activeFilterCount > 0
-                                    ? "bg-orange-50 border-orange-200 text-orange-600"
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            onClick={() => setShowFilters((p) => !p)}
+                            className={`h-10 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 ${
+                                showFilters || activeFilterCount > 0
+                                    ? "bg-orange-50 border-orange-200 text-orange-600 shadow-2xs"
+                                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
                             }`}
                         >
                             <MdFilterList size={17} />
@@ -1113,149 +1114,44 @@ const TaskManagement = () => {
                             )}
                             <MdExpandMore
                                 size={16}
-                                className={`transition-transform duration-200 ${showMobileFilters ? "rotate-180" : ""}`}
+                                className={`transition-transform duration-200 ${showFilters ? "rotate-180" : ""}`}
                             />
                         </button>
                     </div>
                 </div>
 
-                {/* Desktop Filters: Full Grid (>= 768px) */}
-                <div className="hidden md:block bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Filter by Parameters {activeFilterCount > 0 && `(${activeFilterCount} active)`}
-                        </p>
-                        {hasActiveFilters && (
-                            <button
-                                type="button"
-                                onClick={resetFilters}
-                                className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
-                            >
-                                <MdClose size={14} />
-                                <span>Reset Filters</span>
-                            </button>
-                        )}
-                    </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2.5">
-                        <SelectDropdown
-                            value={filterYear}
-                            onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterSession}
-                            onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Session" }, ...sessions.map((s) => ({ value: s, label: s }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={isDeptScoped && userDept ? userDept : filterDept}
-                            onChange={(val) => {
-                                if (!isDeptScoped) {
-                                    setFilterDept(val);
-                                    setCurrentPage(1);
-                                }
-                            }}
-                            options={
-                                isDeptScoped && userDept
-                                    ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
-                                    : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
-                            }
-                            disabled={isDeptScoped}
-                            className="w-full"
-                            buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
-                                isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
-                            }`}
-                        />
-                        <SelectDropdown
-                            value={filterSub}
-                            onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Sub-Dept" }, ...subDepts.map((sd) => ({ value: sd, label: sd }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterLevel}
-                            onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Level" }, ...levels.map((l) => ({ value: l, label: l }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterSubLevel}
-                            onChange={(val) => { setFilterSubLevel(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Sub-Level" }, ...subLevels.map((sl) => ({ value: sl, label: sl }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterCourse}
-                            onChange={(val) => { setFilterCourse(val); setCurrentPage(1); }}
-                            options={[{ value: "", label: "Course" }, ...courses.map((c) => ({ value: c, label: c }))]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterPriority}
-                            onChange={(val) => { setFilterPriority(val); setCurrentPage(1); }}
-                            options={[
-                                { value: "", label: "Priority" },
-                                { value: "high", label: "High" },
-                                { value: "medium", label: "Medium" },
-                                { value: "low", label: "Low" }
-                            ]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                        <SelectDropdown
-                            value={filterStatus}
-                            onChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
-                            options={[
-                                { value: "", label: "Status" },
-                                { value: "active", label: "Active" },
-                                { value: "inactive", label: "Disabled" }
-                            ]}
-                            className="w-full"
-                            buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-                        />
-                    </div>
-                </div>
-
-                {/* Mobile Filters: Collapsible Card (< 768px) */}
-                {showMobileFilters && (
-                    <div className="md:hidden bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs space-y-3">
-                        <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                Filter Options {activeFilterCount > 0 && `(${activeFilterCount} active)`}
+                {/* Collapsible Filters Section */}
+                {showFilters && (
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                Filter by Parameters {activeFilterCount > 0 && `(${activeFilterCount} active)`}
                             </p>
                             {hasActiveFilters && (
                                 <button
                                     type="button"
                                     onClick={resetFilters}
-                                    className="text-xs font-bold text-orange-500 hover:text-orange-600 transition cursor-pointer flex items-center gap-1"
+                                    className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
                                 >
-                                    <MdClose size={13} />
-                                    <span>Clear All</span>
+                                    <MdClose size={14} />
+                                    <span>Reset Filters</span>
                                 </button>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-2.5">
                             <SelectDropdown
                                 value={filterYear}
                                 onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterSession}
                                 onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Session" }, ...sessions.map((s) => ({ value: s, label: s }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={isDeptScoped && userDept ? userDept : filterDept}
@@ -1272,8 +1168,8 @@ const TaskManagement = () => {
                                 }
                                 disabled={isDeptScoped}
                                 className="w-full"
-                                buttonClassName={`h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
-                                    isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : ""
+                                buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
+                                    isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
                                 }`}
                             />
                             <SelectDropdown
@@ -1281,28 +1177,28 @@ const TaskManagement = () => {
                                 onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Sub-Dept" }, ...subDepts.map((sd) => ({ value: sd, label: sd }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterLevel}
                                 onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Level" }, ...levels.map((l) => ({ value: l, label: l }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterSubLevel}
                                 onChange={(val) => { setFilterSubLevel(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Sub-Level" }, ...subLevels.map((sl) => ({ value: sl, label: sl }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterCourse}
                                 onChange={(val) => { setFilterCourse(val); setCurrentPage(1); }}
                                 options={[{ value: "", label: "Course" }, ...courses.map((c) => ({ value: c, label: c }))]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterPriority}
@@ -1314,7 +1210,7 @@ const TaskManagement = () => {
                                     { value: "low", label: "Low" }
                                 ]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                             <SelectDropdown
                                 value={filterStatus}
@@ -1325,7 +1221,7 @@ const TaskManagement = () => {
                                     { value: "inactive", label: "Disabled" }
                                 ]}
                                 className="w-full"
-                                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
                             />
                         </div>
                     </div>
@@ -1347,57 +1243,6 @@ const TaskManagement = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Data Bar: Title, Count, Swipe Hint & Mobile View Toggle */}
-                            <div className="px-3.5 sm:px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2.5 bg-white">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-slate-800">
-                                        Tasks Database
-                                    </span>
-                                    <span className="text-[11px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
-                                        {filtered.length} {filtered.length === 1 ? "task" : "tasks"}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    {/* Mobile Horizontal Swipe Hint (when in Table view) */}
-                                    {viewMode === "table" && (
-                                        <span className="md:hidden text-[10px] font-semibold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                                            <span>Swipe table ⇄</span>
-                                        </span>
-                                    )}
-
-                                    {/* View Switcher for mobile screens (< 768px) */}
-                                    <div className="md:hidden flex items-center p-0.5 bg-slate-100/90 rounded-xl border border-slate-200/70">
-                                        <button
-                                            type="button"
-                                            onClick={() => setViewMode("table")}
-                                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                                viewMode === "table"
-                                                    ? "bg-white text-orange-600 shadow-2xs"
-                                                    : "text-slate-500 hover:text-slate-800"
-                                            }`}
-                                            title="Compact Table View"
-                                        >
-                                            <MdViewList size={16} />
-                                            <span>Table</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setViewMode("cards")}
-                                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                                viewMode === "cards"
-                                                    ? "bg-white text-orange-600 shadow-2xs"
-                                                    : "text-slate-500 hover:text-slate-800"
-                                            }`}
-                                            title="Card View"
-                                        >
-                                            <MdGridView size={16} />
-                                            <span>Cards</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Empty State */}
                             {paginatedData.length === 0 ? (
                                 <div className="p-4 sm:p-6">
@@ -1414,175 +1259,150 @@ const TaskManagement = () => {
                                 </div>
                             ) : (
                                 <>
-                                    {/* Mobile Cards Mode (Active only when user explicitly toggles to 'cards' on mobile) */}
-                                    {viewMode === "cards" ? (
-                                        <div className="md:hidden p-3 space-y-3">
-                                            {paginatedData.map((r, idx) => (
-                                                <div
-                                                    key={r.id}
-                                                    className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3 hover:border-orange-200 transition"
-                                                >
-                                                    {/* Top Row: Year/Session Chip + Priority Pill + Action */}
+                                    {/* Mobile Cards Layout (block md:hidden) */}
+                                    <div className="block md:hidden divide-y divide-slate-100">
+                                        {paginatedData.map((r, idx) => (
+                                            <div
+                                                key={r.id}
+                                                className="p-3.5 space-y-3 bg-white"
+                                            >
+                                                {/* Top Row: Year/Session Chip + Priority Pill + Action */}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
+                                                            #{startIndex + idx + 1}
+                                                        </span>
+                                                        <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
+                                                            {r.academicYear} • {r.session}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                                                            {r.course || "All"}
+                                                        </span>
+                                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
+                                                            {r.priority}
+                                                        </span>
+                                                    </div>
+                                                    <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
+                                                </div>
+
+                                                {/* Task Title & Subject */}
+                                                <div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedTask(r)}
+                                                        className="text-left text-sm font-extrabold text-slate-900 leading-snug hover:text-orange-600 transition cursor-pointer break-words block w-full"
+                                                        title={`Click to view details: ${r.taskTitle}`}
+                                                    >
+                                                        {r.taskTitle}
+                                                    </button>
+                                                    {(r.subject || r.topic) && (
+                                                        <p className="text-xs font-semibold text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+                                                            <span className="text-orange-600 font-bold">{r.subject}</span>
+                                                            {r.topic && (
+                                                                <>
+                                                                    <span className="text-slate-300">›</span>
+                                                                    <span className="text-slate-600">{r.topic}</span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Department & Level Hierarchy Box */}
+                                                <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 text-xs space-y-1">
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black shrink-0 shadow-2xs">
-                                                                #{startIndex + idx + 1}
-                                                            </span>
-                                                            <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
-                                                                {r.academicYear} • {r.session}
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
-                                                                {r.course || "All"}
-                                                            </span>
-                                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
-                                                                {r.priority}
-                                                            </span>
-                                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                                                                r.status === "active"
-                                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                                    : "bg-slate-100 text-slate-600 border-slate-200"
-                                                                }`}>
-                                                                {r.status}
-                                                            </span>
-                                                        </div>
-                                                        <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
+                                                        <span className="text-slate-400 font-medium">Department:</span>
+                                                        <span className="font-bold text-slate-800 truncate">{r.department} / {r.subDept}</span>
                                                     </div>
-
-                                                    {/* Task Title & Subject */}
-                                                    <div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSelectedTask(r)}
-                                                            className="text-left text-sm font-extrabold text-slate-900 leading-snug hover:text-orange-600 transition cursor-pointer break-words block w-full"
-                                                            title={`Click to view details: ${r.taskTitle}`}
-                                                        >
-                                                            {r.taskTitle}
-                                                        </button>
-                                                        {(r.subject || r.topic) && (
-                                                            <p className="text-xs font-semibold text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
-                                                                <span className="text-orange-600 font-bold">{r.subject}</span>
-                                                                {r.topic && (
-                                                                    <>
-                                                                        <span className="text-slate-300">›</span>
-                                                                        <span className="text-slate-600">{r.topic}</span>
-                                                                    </>
-                                                                )}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Department & Level Hierarchy Box */}
-                                                    <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 text-xs space-y-1">
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <span className="text-slate-400 font-medium">Department:</span>
-                                                            <span className="font-bold text-slate-800 truncate">{r.department} / {r.subDept}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between gap-2">
-                                                            <span className="text-slate-400 font-medium">Level:</span>
-                                                            <span className="font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200/60 text-[11px]">
-                                                                {r.level} ({r.subLevel})
-                                                            </span>
-                                                        </div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-slate-400 font-medium">Level:</span>
+                                                        <span className="font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200/60 text-[11px]">
+                                                            {r.level} ({r.subLevel})
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        /* Compact Sticky-Column Table (Default for Mobile & Desktop) */
-                                        <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] relative">
-                                            <table className="w-full text-left border-collapse min-w-[780px] sm:min-w-[860px]">
-                                                <thead>
-                                                    <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                                                        <th className="py-3 sm:py-3.5 px-3 text-center w-14 whitespace-nowrap">
-                                                            S.NO
-                                                        </th>
-                                                        {/* Sticky Left: Task Info */}
-                                                        <th className="sticky left-0 z-20 bg-slate-50/95 backdrop-blur-xs py-3 sm:py-3.5 px-3 sm:px-4 border-r border-slate-200/80 shadow-[3px_0_6px_-3px_rgba(0,0,0,0.08)] min-w-[170px] sm:min-w-[220px] max-w-[210px] sm:max-w-[280px]">
-                                                            TASK INFO
-                                                        </th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">ACADEMIC YEAR</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">SESSION</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">DEPARTMENT</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">SUB-DEPT</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">LEVEL</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">SUB-LEVEL</th>
-                                                        <th className="py-3 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">STATUS</th>
-                                                        {/* Sticky Right: Action */}
-                                                        <th className="sticky right-0 z-20 bg-slate-50/95 backdrop-blur-xs py-3 sm:py-3.5 px-3 border-l border-slate-200/80 shadow-[-3px_0_6px_-3px_rgba(0,0,0,0.08)] text-right min-w-[56px] sm:min-w-[64px]">
-                                                            ACTION
-                                                        </th>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Desktop Table Layout (hidden md:block) */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-center border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                                    <th className="w-14 py-3.5 px-3 text-center whitespace-nowrap">
+                                                        S.NO
+                                                    </th>
+                                                    <th className="w-[22%] min-w-[180px] py-3.5 px-3 sm:px-4 text-center">
+                                                        TASK INFO
+                                                    </th>
+                                                    <th className="w-[11%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">ACADEMIC YEAR</th>
+                                                    <th className="w-[11%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">SESSION</th>
+                                                    <th className="w-[12%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">DEPARTMENT</th>
+                                                    <th className="w-[12%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">SUB-DEPT</th>
+                                                    <th className="w-[11%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">LEVEL</th>
+                                                    <th className="w-[11%] py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">SUB-LEVEL</th>
+                                                    <th className="w-16 py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
+                                                        ACTION
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                                                {paginatedData.map((r, idx) => (
+                                                    <tr key={r.id} className="group hover:bg-slate-50/80 transition-colors">
+                                                        <td className="w-14 py-3.5 px-3 text-center">
+                                                            <span className="inline-flex w-7 h-7 rounded-lg bg-slate-900 text-white text-xs font-black items-center justify-center shadow-2xs">
+                                                                #{startIndex + idx + 1}
+                                                            </span>
+                                                        </td>
+                                                        <td className="w-[22%] min-w-[180px] py-3.5 px-3 sm:px-4 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedTask(r)}
+                                                                className="text-center font-extrabold text-slate-900 text-xs sm:text-sm line-clamp-1 leading-snug hover:text-orange-600 transition cursor-pointer break-words block w-full group/title"
+                                                                title={`Click to view full details: ${r.taskTitle}`}
+                                                            >
+                                                                <span className="group-hover/title:underline">{r.taskTitle}</span>
+                                                            </button>
+                                                            <div className="flex items-center justify-center gap-1.5 mt-1 flex-wrap">
+                                                                <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.2 rounded truncate max-w-[95px]" title={r.subject}>
+                                                                    {r.subject}
+                                                                </span>
+                                                                <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded shrink-0" title={`Course: ${r.course || "All"}`}>
+                                                                    {r.course || "All"}
+                                                                </span>
+                                                                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded border shrink-0 ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
+                                                                    {r.priority}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="w-[11%] py-3.5 px-3 sm:px-4 font-extrabold text-slate-900 text-center whitespace-nowrap">
+                                                            {r.academicYear}
+                                                        </td>
+                                                        <td className="w-[11%] py-3.5 px-3 sm:px-4 text-slate-600 font-medium text-center whitespace-nowrap">
+                                                            {r.session}
+                                                        </td>
+                                                        <td className="w-[12%] py-3.5 px-3 sm:px-4 font-bold text-slate-900 text-center whitespace-nowrap">
+                                                            <span className="block truncate text-center" title={r.department}>{r.department}</span>
+                                                        </td>
+                                                        <td className="w-[12%] py-3.5 px-3 sm:px-4 text-slate-500 font-medium text-center whitespace-nowrap">
+                                                            <span className="block truncate text-center" title={r.subDept}>{r.subDept}</span>
+                                                        </td>
+                                                        <td className="w-[11%] py-3.5 px-3 sm:px-4 font-bold text-slate-800 text-center whitespace-nowrap">
+                                                            <span className="block truncate text-center" title={r.level}>{r.level}</span>
+                                                        </td>
+                                                        <td className="w-[11%] py-3.5 px-3 sm:px-4 text-slate-600 font-medium text-center whitespace-nowrap">
+                                                            <span className="block truncate text-center" title={r.subLevel}>{r.subLevel}</span>
+                                                        </td>
+                                                        <td className="w-16 py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">
+                                                            <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
+                                                        </td>
                                                     </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                                                    {paginatedData.map((r, idx) => (
-                                                        <tr key={r.id} className="group hover:bg-slate-50/80 transition-colors">
-                                                            <td className="py-2.5 sm:py-3.5 px-3 text-center">
-                                                                <span className="inline-flex w-7 h-7 rounded-lg bg-slate-900 text-white text-xs font-black items-center justify-center shadow-2xs">
-                                                                    #{startIndex + idx + 1}
-                                                                </span>
-                                                            </td>
-                                                            {/* Sticky Left Column: Task Title + Subject + Priority */}
-                                                            <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 py-2.5 sm:py-3.5 px-3 sm:px-4 border-r border-slate-200/80 shadow-[3px_0_6px_-3px_rgba(0,0,0,0.08)] min-w-[170px] sm:min-w-[220px] max-w-[210px] sm:max-w-[280px] transition-colors">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setSelectedTask(r)}
-                                                                    className="text-left font-extrabold text-slate-900 text-xs sm:text-sm line-clamp-2 leading-snug hover:text-orange-600 transition cursor-pointer break-words block w-full group/title"
-                                                                    title={`Click to view full details: ${r.taskTitle}`}
-                                                                >
-                                                                    <span className="group-hover/title:underline">{r.taskTitle}</span>
-                                                                </button>
-                                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                                                    <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-1.5 py-0.2 rounded truncate max-w-[100px]" title={r.subject}>
-                                                                        {r.subject}
-                                                                    </span>
-                                                                    <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded" title={`Course: ${r.course || "All"}`}>
-                                                                        {r.course || "All"}
-                                                                    </span>
-                                                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded border ${PRIORITY_STYLES[r.priority] || PRIORITY_STYLES.medium}`}>
-                                                                        {r.priority}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-
-                                                            {/* Scrollable Middle Columns */}
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 font-extrabold text-slate-900 whitespace-nowrap">
-                                                                {r.academicYear}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 text-slate-600 font-medium whitespace-nowrap">
-                                                                {r.session}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 font-bold text-slate-900 whitespace-nowrap">
-                                                                {r.department}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 text-slate-500 font-medium whitespace-nowrap">
-                                                                {r.subDept}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 font-bold text-slate-800 whitespace-nowrap">
-                                                                {r.level}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 text-slate-600 font-medium whitespace-nowrap">
-                                                                {r.subLevel}
-                                                            </td>
-                                                            <td className="py-2.5 sm:py-3.5 px-3 sm:px-4 whitespace-nowrap">
-                                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                                                                    r.status === "active"
-                                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                                        : "bg-slate-100 text-slate-600 border-slate-200"
-                                                                }`}>
-                                                                    {r.status}
-                                                                </span>
-                                                            </td>
-
-                                                            {/* Sticky Right Column: Action */}
-                                                            <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 py-2.5 sm:py-3.5 px-3 border-l border-slate-200/80 shadow-[-3px_0_6px_-3px_rgba(0,0,0,0.08)] text-right min-w-[56px] sm:min-w-[64px] transition-colors">
-                                                                <ActionMenu task={r} onDelete={handleDelete} onViewDetails={setSelectedTask} onEdit={setEditingTask} />
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </>
                             )}
 

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useMemo, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import { confirmToast } from "../../../../utils/confirmToast";
@@ -1448,7 +1449,7 @@ const CurriculumDetailsModal = ({ curriculumId, onClose }) => {
 const FileCell = ({ fileName, isTask }) => {
   if (!fileName) return <span className="text-xs font-medium text-slate-400 italic">None</span>;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center justify-center gap-1.5">
       {isTask ? (
         <MdAssignment size={16} className="text-emerald-500 shrink-0" />
       ) : (
@@ -1463,43 +1464,102 @@ const FileCell = ({ fileName, isTask }) => {
 
 const ActionMenu = ({ row, onDelete, onView }) => {
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 144;
+      const menuHeight = 90;
+
+      // Open upward if too close to viewport bottom
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
+      const top = openUpward ? rect.top - menuHeight - 4 : rect.bottom + 4;
+
+      let left = rect.right - menuWidth;
+      if (left < 10) left = 10;
+      if (left + menuWidth > window.innerWidth - 10) {
+        left = window.innerWidth - menuWidth - 10;
+      }
+
+      setMenuPosition({ top, left });
+      setOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleScrollOrResize = () => setOpen(false);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [open]);
 
   return (
-    <div className="relative flex justify-end">
+    <div className="relative inline-flex items-center justify-center">
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((p) => !p);
-        }}
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
         className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+        aria-label="Actions"
+        title="Curriculum Actions"
       >
         <MdMoreVert size={18} />
       </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 bg-white border border-slate-100 rounded-2xl shadow-xl w-36 py-1.5 overflow-hidden text-xs font-semibold text-slate-700">
-            <button
-              onClick={() => {
+      {open &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[99998]"
+              onClick={(e) => {
+                e.stopPropagation();
                 setOpen(false);
-                onView?.(row);
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 text-left transition text-slate-700 hover:bg-slate-50 cursor-pointer font-bold"
-            >
-              <MdVisibility size={15} /> View Details
-            </button>
-            <button
-              onClick={() => {
-                setOpen(false);
-                onDelete?.(row);
+            />
+            <div
+              style={{
+                position: "fixed",
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
               }}
-              className="flex items-center gap-2 w-full px-4 py-2 text-left transition text-rose-600 hover:bg-rose-50 font-bold cursor-pointer"
+              className="w-36 bg-white border border-slate-100 rounded-2xl shadow-xl py-1.5 z-[99999] animate-in fade-in duration-100 text-xs font-semibold text-slate-700"
             >
-              <MdDeleteOutline size={15} /> Delete Record
-            </button>
-          </div>
-        </>
-      )}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onView?.(row);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 text-left transition text-slate-700 hover:bg-slate-50 cursor-pointer font-bold"
+              >
+                <MdVisibility size={15} /> View Details
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete?.(row);
+                }}
+                className="flex items-center gap-2 w-full px-4 py-2 text-left transition text-rose-600 hover:bg-rose-50 font-bold cursor-pointer"
+              >
+                <MdDeleteOutline size={15} /> Delete Record
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 };
@@ -1746,7 +1806,7 @@ const CurriculumManagement = () => {
     return [...new Set(["Active", "Draft", "Archived", ...fromRows])].filter(Boolean);
   }, [curriculumRows]);
 
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const activeFilterCount = [
     Boolean(filterYear),
@@ -1777,181 +1837,116 @@ const CurriculumManagement = () => {
 
         {/* Top Action & Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
-          {!isFaculty && (
-            <OrangeButton
-              buttonTitle="+ Upload Curriculum"
-              panelTitle="Upload Curriculum & Tasks"
-              panelSubtitle="Upload syllabus hierarchy and tasks together using the official Excel template"
-              maxWidth="sm:max-w-2xl"
-              showFooter={false}
-              customButtonClass="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
-              drawerContent={({ closeDrawer }) => (
-                <CurriculumUploadDrawerContent
-                  sessions={sessions}
-                  departments={scopedDepartments}
-                  subDepartments={subDepartments}
-                  levels={levels}
-                  subLevels={subLevels}
-                  onSuccess={() => {
-                    refetch();
-                    closeDrawer();
-                  }}
-                  onClose={closeDrawer}
-                />
-              )}
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search curriculum..."
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
             />
-          )}
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-72 md:w-80">
-              <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm("");
                   setCurrentPage(1);
                 }}
-                placeholder="Search curriculum..."
-                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setCurrentPage(1);
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                  aria-label="Clear search"
-                >
-                  <MdClose size={16} />
-                </button>
-              )}
-            </div>
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                aria-label="Clear search"
+              >
+                <MdClose size={16} />
+              </button>
+            )}
+          </div>
 
-            {/* Mobile Filters Toggle Button */}
+          {/* Action & Mobile Filters Toggle Button */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {!isFaculty && (
+              <OrangeButton
+                buttonTitle="+ Upload Curriculum"
+                panelTitle="Upload Curriculum & Tasks"
+                panelSubtitle="Upload syllabus hierarchy and tasks together using the official Excel template"
+                maxWidth="sm:max-w-2xl"
+                showFooter={false}
+                customButtonClass="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+                drawerContent={({ closeDrawer }) => (
+                  <CurriculumUploadDrawerContent
+                    sessions={sessions}
+                    departments={scopedDepartments}
+                    subDepartments={subDepartments}
+                    levels={levels}
+                    subLevels={subLevels}
+                    onSuccess={() => {
+                      refetch();
+                      closeDrawer();
+                    }}
+                    onClose={closeDrawer}
+                  />
+                )}
+              />
+            )}
+
+            {/* Filters Toggle Button (Beside Upload Button) */}
             <button
               type="button"
-              onClick={() => setShowMobileFilters((p) => !p)}
-              className={`md:hidden h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
-                showMobileFilters || activeFilterCount > 0
-                  ? "bg-orange-50 border-orange-200 text-orange-600"
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              onClick={() => setShowFilters((p) => !p)}
+              className={`h-10 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 ${
+                showFilters || activeFilterCount > 0
+                  ? "bg-orange-50 border-orange-200 text-orange-600 shadow-2xs"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
               }`}
             >
               <MdFilterList size={17} />
               <span>Filters</span>
               {activeFilterCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-extrabold flex items-center justify-center">
+                <span className="w-4.5 h-4.5 rounded-full bg-orange-500 text-white text-[9px] font-extrabold flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
               <MdExpandMore
                 size={16}
-                className={`transition-transform duration-200 ${showMobileFilters ? "rotate-180" : ""}`}
+                className={`transition-transform duration-200 ${showFilters ? "rotate-180" : ""}`}
               />
             </button>
           </div>
         </div>
 
-        {/* Filter Section - Desktop: Grid */}
-        <div className="hidden md:block bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Filter by Parameters
-            </p>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-6 gap-3">
-            <SelectDropdown
-              value={filterYear}
-              onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-            />
-            <SelectDropdown
-              value={filterSession}
-              onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Session" }, ...sessionNames.map((s) => ({ value: s, label: s }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-            />
-            <SelectDropdown
-              value={isDeptScoped && userDept ? userDept : filterDept}
-              onChange={(val) => {
-                if (!isDeptScoped) {
-                  setFilterDept(val);
-                  setCurrentPage(1);
-                }
-              }}
-              options={
-                isDeptScoped && userDept
-                  ? [{ value: userDept, label: `${userDept} (Your Dept)` }]
-                  : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
-              }
-              disabled={isDeptScoped}
-              buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
-                isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
-              }`}
-            />
-            <SelectDropdown
-              value={filterSub}
-              onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Sub-Dept" }, ...subs.map((sd) => ({ value: sd, label: sd }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-            />
-            <SelectDropdown
-              value={filterLevel}
-              onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Level" }, ...levelNames.map((l) => ({ value: l, label: l }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-            />
-            <SelectDropdown
-              value={filterStatus}
-              onChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
-              options={[{ value: "", label: "Status" }, ...statuses.map((st) => ({ value: st, label: st }))]}
-              buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
-            />
-          </div>
-        </div>
-
-        {/* Mobile Filters: Collapsible card */}
-        {showMobileFilters && (
-          <div className="md:hidden bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs space-y-3 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Filter Options {activeFilterCount > 0 && `(${activeFilterCount} active)`}
+        {/* Collapsible Filter Section */}
+        {showFilters && (
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Filter by Parameters {activeFilterCount > 0 && `(${activeFilterCount} active)`}
               </p>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="text-xs font-bold text-orange-500 hover:text-orange-600 transition cursor-pointer"
+                  className="text-xs font-bold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 cursor-pointer"
                 >
-                  Clear All
+                  <MdClose size={14} />
+                  <span>Reset Filters</span>
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
               <SelectDropdown
                 value={filterYear}
                 onChange={(val) => { setFilterYear(val); setCurrentPage(1); }}
                 options={[{ value: "", label: "Academic Year" }, ...years.map((y) => ({ value: y, label: y }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
               />
               <SelectDropdown
                 value={filterSession}
                 onChange={(val) => { setFilterSession(val); setCurrentPage(1); }}
                 options={[{ value: "", label: "Session" }, ...sessionNames.map((s) => ({ value: s, label: s }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
               />
               <SelectDropdown
                 value={isDeptScoped && userDept ? userDept : filterDept}
@@ -1967,27 +1962,27 @@ const CurriculumManagement = () => {
                     : [{ value: "", label: "Department" }, ...depts.map((d) => ({ value: d, label: d }))]
                 }
                 disabled={isDeptScoped}
-                buttonClassName={`h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs ${
-                  isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : ""
+                buttonClassName={`h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors ${
+                  isDeptScoped ? "opacity-90 bg-orange-50/40 border-orange-200 text-orange-800 cursor-not-allowed" : "cursor-pointer hover:border-orange-400 shadow-2xs"
                 }`}
               />
               <SelectDropdown
                 value={filterSub}
                 onChange={(val) => { setFilterSub(val); setCurrentPage(1); }}
                 options={[{ value: "", label: "Sub-Dept" }, ...subs.map((sd) => ({ value: sd, label: sd }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
               />
               <SelectDropdown
                 value={filterLevel}
                 onChange={(val) => { setFilterLevel(val); setCurrentPage(1); }}
                 options={[{ value: "", label: "Level" }, ...levelNames.map((l) => ({ value: l, label: l }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
               />
               <SelectDropdown
                 value={filterStatus}
                 onChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
                 options={[{ value: "", label: "Status" }, ...statuses.map((st) => ({ value: st, label: st }))]}
-                buttonClassName="h-9 w-full flex items-center justify-between gap-1.5 px-2.5 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs"
+                buttonClassName="h-9 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold transition-colors cursor-pointer hover:border-orange-400 shadow-2xs"
               />
             </div>
           </div>
@@ -2081,18 +2076,18 @@ const CurriculumManagement = () => {
 
               {/* Desktop Table Layout (hidden md:block) */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-center border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       <th className="py-4 px-4 text-center w-14">S.NO</th>
-                      <th className="py-4 px-6">ACADEMIC YEAR</th>
-                      <th className="py-4 px-4">SESSION</th>
-                      <th className="py-4 px-6">DEPARTMENT</th>
-                      <th className="py-4 px-6">SUB-DEPARTMENT</th>
-                      <th className="py-4 px-4">LEVEL</th>
-                      <th className="py-4 px-6">SYLLABUS DETAILS</th>
-                      <th className="py-4 px-6">TASKS</th>
-                      <th className="py-4 px-6 text-right">ACTION</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">ACADEMIC YEAR</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">SESSION</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">DEPARTMENT</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">SUB-DEPARTMENT</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">LEVEL</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">SYLLABUS DETAILS</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap">TASKS</th>
+                      <th className="py-4 px-4 text-center whitespace-nowrap w-20">ACTION</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
@@ -2103,14 +2098,14 @@ const CurriculumManagement = () => {
                             #{startIndex + idx + 1}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-extrabold text-slate-900">{row.academicYear}</td>
-                        <td className="py-4 px-4 text-slate-600 font-medium">{row.session}</td>
-                        <td className="py-4 px-6 font-bold text-slate-900">{row.department}</td>
-                        <td className="py-4 px-6 text-slate-600 font-medium">{row.subDept}</td>
-                        <td className="py-4 px-4 text-slate-700 font-bold">{row.level} ({row.subLevel})</td>
-                        <td className="py-4 px-6"><FileCell fileName={row.syllabusFile} /></td>
-                        <td className="py-4 px-6"><FileCell fileName={row.taskList} isTask={Boolean(row.taskList)} /></td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-4 text-center font-extrabold text-slate-900 whitespace-nowrap">{row.academicYear}</td>
+                        <td className="py-4 px-4 text-center text-slate-600 font-medium whitespace-nowrap">{row.session}</td>
+                        <td className="py-4 px-4 text-center font-bold text-slate-900 whitespace-nowrap">{row.department}</td>
+                        <td className="py-4 px-4 text-center text-slate-600 font-medium whitespace-nowrap">{row.subDept}</td>
+                        <td className="py-4 px-4 text-center text-slate-700 font-bold whitespace-nowrap">{row.level} ({row.subLevel})</td>
+                        <td className="py-4 px-4 text-center"><FileCell fileName={row.syllabusFile} /></td>
+                        <td className="py-4 px-4 text-center"><FileCell fileName={row.taskList} isTask={Boolean(row.taskList)} /></td>
+                        <td className="py-4 px-4 text-center">
                           <ActionMenu
                             row={row}
                             onDelete={handleDelete}

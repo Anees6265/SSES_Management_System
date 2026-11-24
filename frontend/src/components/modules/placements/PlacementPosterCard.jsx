@@ -57,8 +57,8 @@ const PlacementPosterCard = ({
         />
       </svg>
 
-      {/* Bottom rounded campus building background (soft washed-out fade) */}
-      <div className="absolute left-[4.5%] right-[4.5%] bottom-[8px] h-[38%] rounded-t-[26px] overflow-hidden pointer-events-none">
+      {/* Bottom campus building background (soft washed-out fade - full width) */}
+      <div className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden pointer-events-none">
         <img
           src={campusBuildingBg}
           alt=""
@@ -77,7 +77,7 @@ const PlacementPosterCard = ({
             alt="SSISM Sant Singaji Educational Society"
             className={`${
               isPreview ? "h-11 sm:h-12" : "h-8 sm:h-9"
-            } max-w-[48%] object-contain object-left`}
+            } max-w-[48%] object-contain object-left mix-blend-multiply`}
           />
           <img
             src={poster.department.logo}
@@ -132,7 +132,7 @@ const PlacementPosterCard = ({
           </div>
 
           {/* Notched Ribbon Banner */}
-          <div className="relative z-20 -mt-[5.2%] w-[64%] flex items-center justify-center">
+          <div className="relative z-20 -mt-[5.2%] w-[52%] flex items-center justify-center">
             <svg
               viewBox="0 0 260 56"
               className="w-full h-auto block drop-shadow-xs"
@@ -151,7 +151,7 @@ const PlacementPosterCard = ({
             <div className="absolute inset-x-[10%] top-[4%] bottom-[25%] flex flex-col items-center justify-center text-center px-1">
               <p
                 className={`${
-                  isPreview ? "text-[16px] sm:text-[18px]" : "text-[11px] sm:text-[12px]"
+                  isPreview ? "text-[14.5px] sm:text-[16px]" : "text-[10px] sm:text-[11px]"
                 } font-extrabold text-white leading-tight truncate w-full`}
               >
                 {poster.fullName}
@@ -159,7 +159,7 @@ const PlacementPosterCard = ({
               {poster.courseYearLabel && (
                 <p
                   className={`${
-                    isPreview ? "text-[10.5px] sm:text-[11.5px]" : "text-[7.5px] sm:text-[8px]"
+                    isPreview ? "text-[9.5px] sm:text-[10.5px]" : "text-[7px] sm:text-[7.5px]"
                   } font-medium text-orange-50 leading-tight truncate w-full mt-0.5`}
                 >
                   {poster.courseYearLabel}
@@ -171,14 +171,17 @@ const PlacementPosterCard = ({
 
         {/* Lower Details: Parent, Village, Divider, Job Profile, Company Row */}
         <div className="flex-1 flex flex-col items-center justify-center text-center mt-[1%] min-h-0">
-          {poster.fatherDisplay && (
+          {(poster.parentsDisplay || poster.fatherDisplay) && (
             <p
               className={`${
-                isPreview ? "text-[13.5px] sm:text-[14.5px]" : "text-[9.5px] sm:text-[10px]"
-              } text-slate-800 leading-tight truncate max-w-full`}
+                isPreview ? "text-[12px] sm:text-[13.5px]" : "text-[8.5px] sm:text-[9.5px]"
+              } text-slate-800 leading-tight line-clamp-2 max-w-full px-1`}
+              title={`${poster.relationPrefix} ${poster.parentsDisplay || poster.fatherDisplay}`}
             >
               {poster.relationPrefix}{" "}
-              <span className="font-extrabold text-slate-900">{poster.fatherDisplay}</span>
+              <span className="font-extrabold text-slate-900">
+                {poster.parentsDisplay || poster.fatherDisplay}
+              </span>
             </p>
           )}
 

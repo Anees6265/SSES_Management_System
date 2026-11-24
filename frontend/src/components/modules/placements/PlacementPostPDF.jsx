@@ -40,12 +40,10 @@ const styles = StyleSheet.create({
   },
   campusWrapper: {
     position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 9,
-    height: 152,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 160,
     overflow: "hidden",
     backgroundColor: "#FFFFFF",
   },
@@ -131,9 +129,9 @@ const styles = StyleSheet.create({
     objectFit: "cover",
   },
   ribbonContainer: {
-    width: 248,
-    height: 48,
-    marginTop: -17,
+    width: 212,
+    height: 42,
+    marginTop: -15,
     position: "relative",
     alignItems: "center",
   },
@@ -141,27 +139,27 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
-    width: 248,
-    height: 48,
+    width: 212,
+    height: 42,
   },
   ribbonTextWrap: {
-    width: 200,
-    height: 35,
-    paddingTop: 4,
+    width: 172,
+    height: 32,
+    paddingTop: 3,
     alignItems: "center",
     justifyContent: "center",
   },
   studentNameText: {
-    fontSize: 13.5,
+    fontSize: 12.2,
     fontFamily: "Helvetica-Bold",
     color: "#FFFFFF",
     textAlign: "center",
   },
   courseYearText: {
-    fontSize: 8.8,
+    fontSize: 8.2,
     color: "#FFF7ED",
     textAlign: "center",
-    marginTop: 1.5,
+    marginTop: 1,
   },
   detailsSection: {
     flex: 1,
@@ -171,7 +169,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   familyText: {
-    fontSize: 9.8,
+    fontSize: 9.2,
     color: "#1F2937",
     textAlign: "center",
   },
@@ -333,10 +331,12 @@ const PlacementPostPDF = ({
 
           {/* Parent, Hometown, Role & Company Details */}
           <View style={styles.detailsSection}>
-            {poster.fatherDisplay ? (
+            {(poster.parentsDisplay || poster.fatherDisplay) ? (
               <Text style={styles.familyText}>
                 {poster.relationPrefix}{" "}
-                <Text style={styles.boldInline}>{poster.fatherDisplay}</Text>
+                <Text style={styles.boldInline}>
+                  {poster.parentsDisplay || poster.fatherDisplay}
+                </Text>
               </Text>
             ) : null}
 

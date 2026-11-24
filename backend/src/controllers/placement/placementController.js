@@ -850,7 +850,7 @@ exports.getPlacedStudents = async (req, res) => {
       .populate({
         path: "studentId",
         select:
-          "firstName lastName prkey course year currentYear gender fatherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status",
+          "firstName lastName prkey course year currentYear gender fatherName motherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status",
         populate: [
           {
             path: "subDepartmentId",
@@ -897,6 +897,7 @@ exports.getPlacedStudents = async (req, res) => {
           currentLevelName: p.studentId?.currentLevelId?.name || "",
           gender: p.studentId?.gender || "",
           fatherName: p.studentId?.fatherName || "",
+          motherName: p.studentId?.motherName || "",
           village: p.studentId?.village || "",
           tehsil: p.studentId?.tehsil || "",
           district: p.studentId?.district || "",
@@ -922,7 +923,7 @@ exports.getPlacedStudents = async (req, res) => {
     }
     const standalonePlaced = await Student.find(studentQuery)
       .select(
-        "firstName lastName prkey course year currentYear gender fatherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status"
+        "firstName lastName prkey course year currentYear gender fatherName motherName village tehsil district address email studentMobile image subDepartmentId currentLevelId status"
       )
       .populate({
         path: "subDepartmentId",
@@ -945,6 +946,7 @@ exports.getPlacedStudents = async (req, res) => {
           currentLevelName: st.currentLevelId?.name || "",
           gender: st.gender || "",
           fatherName: st.fatherName || "",
+          motherName: st.motherName || "",
           village: st.village || "",
           tehsil: st.tehsil || "",
           district: st.district || "",
@@ -1600,7 +1602,7 @@ exports.getPlacedStudentsByCompany = async (req, res) => {
     const filter = placementFilter(req, { "placedInfo.companyRef": companyId });
 
     const placements = await StudentPlacement.find(filter)
-      .populate("studentId", "firstName lastName email studentMobile course stream")
+      .populate("studentId", "firstName lastName email studentMobile course stream fatherName motherName")
       .populate("placedInfo.companyRef", "companyName companyLogo location")
       .lean();
 

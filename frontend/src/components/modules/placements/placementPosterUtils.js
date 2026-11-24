@@ -1,4 +1,4 @@
-import collegeLogo from "../../../assets/images/logo.png";
+import collegeLogo from "../../../assets/images/logowithname.png";
 import campusBuildingBg from "../../../assets/images/singaji_building.jpg";
 import profileDummy from "../../../assets/images/profileImgDummy.jpeg";
 import itegLogo from "../../../assets/images/iteg-logo.png";
@@ -95,6 +95,16 @@ const formatFatherDisplay = (fatherName = "") => {
   return `Mr. ${formatted}`;
 };
 
+const formatMotherDisplay = (motherName = "") => {
+  const cleaned = String(motherName).trim();
+  if (!cleaned) return "";
+  const formatted = toTitleCase(cleaned);
+  if (/^(mrs|ms|smt|late|dr|mr)\b\.?/i.test(formatted)) {
+    return formatted;
+  }
+  return `Mrs. ${formatted}`;
+};
+
 export const formatPlacementPosterData = (student = {}, companyMap = {}) => {
   const placedInfo = student?.placedInfo || {};
   const rawCompanyName = placedInfo.companyName || student?.companyName || "";
@@ -121,7 +131,26 @@ export const formatPlacementPosterData = (student = {}, companyMap = {}) => {
   const isFemale = genderLower === "female" || genderLower === "f" || genderLower === "girl";
   const relationPrefix = isFemale ? "Proud Daughter of" : "Proud Son of";
 
-  const fatherDisplay = formatFatherDisplay(student?.fatherName);
+  const rawFather =
+    student?.fatherName ||
+    student?.father_name ||
+    student?.father ||
+    student?.raw?.fatherName ||
+    student?.studentId?.fatherName ||
+    "";
+
+  const rawMother =
+    student?.motherName ||
+    student?.mother_name ||
+    student?.mother ||
+    student?.raw?.motherName ||
+    student?.studentId?.motherName ||
+    "";
+
+  const fatherDisplay = formatFatherDisplay(rawFather);
+  const motherDisplay = formatMotherDisplay(rawMother);
+  const parentsDisplay = [fatherDisplay, motherDisplay].filter(Boolean).join(" & ");
+
   const locationPlace = String(
     student?.village || student?.tehsil || student?.district || student?.address || ""
   ).trim();
@@ -140,7 +169,9 @@ export const formatPlacementPosterData = (student = {}, companyMap = {}) => {
     fullName,
     courseYearLabel,
     relationPrefix,
-    fatherDisplay,
+    fatherDisplay: parentsDisplay || fatherDisplay,
+    motherDisplay,
+    parentsDisplay: parentsDisplay || fatherDisplay,
     locationPlace,
     jobProfile,
     companyName,

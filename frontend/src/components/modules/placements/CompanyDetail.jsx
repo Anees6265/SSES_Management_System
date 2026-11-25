@@ -29,50 +29,8 @@ import {
   MdClose,
   MdCheckCircle,
   MdApartment,
+  MdRefresh,
 } from "react-icons/md";
-
-const STATUS_TABS = [
-  { id: "All", label: "All Partners", icon: MdApartment },
-  { id: "Active", label: "Active Recruiters", icon: MdCheckCircle },
-  { id: "Inactive", label: "Inactive / Paused", icon: MdToggleOff },
-];
-
-/* ─── Metric Card Component ───────────────────────────────── */
-const CompanyStatCard = ({ title, count, subtitle, icon: Icon, isActive, onClick, color = "orange" }) => {
-  const colorStyles = {
-    orange: "text-orange-500 bg-orange-50 border-orange-100",
-    emerald: "text-emerald-500 bg-emerald-50 border-emerald-100",
-    slate: "text-slate-500 bg-slate-50 border-slate-200",
-    blue: "text-blue-500 bg-blue-50 border-blue-100",
-    purple: "text-purple-500 bg-purple-50 border-purple-100",
-  }[color];
-
-  return (
-    <div
-      onClick={onClick}
-      className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between shadow-2xs relative overflow-hidden group ${isActive
-          ? "bg-white border-orange-500 ring-2 ring-orange-500/10 shadow-sm"
-          : "bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
-        }`}
-    >
-      {isActive && (
-        <span className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
-          {title}
-        </span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${colorStyles}`}>
-          <Icon size={17} />
-        </div>
-      </div>
-      <div className="mt-2.5">
-        <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{count}</p>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{subtitle}</p>
-      </div>
-    </div>
-  );
-};
 
 /* ─── Company Logo Component ──────────────────────────────── */
 const CompanyLogo = ({ company, size = "w-12 h-12", iconSize = "text-sm", rounded = "rounded-xl" }) => {
@@ -225,8 +183,13 @@ const CompanyDetail = () => {
   // Stats calculation
   const activeCount = useMemo(() => companies.filter((c) => (c.status || "Active") === "Active").length, [companies]);
   const inactiveCount = useMemo(() => companies.filter((c) => c.status === "Inactive").length, [companies]);
-  const locationCount = useMemo(() => new Set(companies.map((c) => c.location || c.city).filter(Boolean)).size, [companies]);
-  const contactCount = useMemo(() => companies.filter((c) => c.contactPersonName || c.hrEmail).length, [companies]);
+
+  // Status Filter Options for Dropdown
+  const statusOptions = useMemo(() => [
+    { value: "All", label: `All Partners (${companies.length})` },
+    { value: "Active", label: `Active (${activeCount})` },
+    { value: "Inactive", label: `Inactive (${inactiveCount})` },
+  ], [companies.length, activeCount, inactiveCount]);
 
   const handleOpenAddModal = () => {
     setCompanyToEdit(null);
@@ -332,169 +295,129 @@ const CompanyDetail = () => {
         title="Company Details"
         badge={`${companies.length} Companies`}
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Company Details" }]}
-      />
-
-      <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
-
-        {/* ── 1. Top Metrics Cards (5 Cards) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <CompanyStatCard
-            title="Total Partners"
-            count={companies.length}
-            subtitle="Registered recruiting network"
-            icon={MdApartment}
-            color="orange"
-            isActive={activeTab === "All"}
-            onClick={() => setActiveTab("All")}
-          />
-          <CompanyStatCard
-            title="Active Recruiters"
-            count={activeCount}
-            subtitle="Eligible for campus drives"
-            icon={MdCheckCircle}
-            color="emerald"
-            isActive={activeTab === "Active"}
-            onClick={() => setActiveTab("Active")}
-          />
-          <CompanyStatCard
-            title="Inactive / On Hold"
-            count={inactiveCount}
-            subtitle="Paused corporate accounts"
-            icon={MdToggleOff}
-            color="slate"
-            isActive={activeTab === "Inactive"}
-            onClick={() => setActiveTab("Inactive")}
-          />
-          <CompanyStatCard
-            title="Drive Locations"
-            count={locationCount}
-            subtitle="Pan-India hiring hubs"
-            icon={MdLocationOn}
-            color="blue"
-            isActive={false}
-          />
-          <CompanyStatCard
-            title="Verified HRs"
-            count={contactCount}
-            subtitle="Active liaison contacts"
-            icon={MdPeople}
-            color="purple"
-            isActive={false}
-          />
-        </div>
-
-        {/* ── 2. Navigation Tabs & Filter Bar ── */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3.5">
-
-          {/* Top Row: Status Tabs & Add Company Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1">
-              {STATUS_TABS.map((tab) => {
-                const isCurrent = activeTab === tab.id;
-                const Icon = tab.icon;
-                const count =
-                  tab.id === "All"
-                    ? companies.length
-                    : tab.id === "Active"
-                      ? activeCount
-                      : inactiveCount;
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 ${isCurrent
-                        ? "bg-orange-500 text-white shadow-xs"
-                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
-                      }`}
-                  >
-                    <Icon size={15} />
-                    <span>{tab.label}</span>
-                    <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${isCurrent ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                        }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="h-9 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Refresh Directory"
+            >
+              <MdRefresh size={16} />
+              {/* <span className="hidden sm:inline">Refresh</span> */}
+            </button>
             {isAuthorizedToManage && (
               <button
+                type="button"
                 onClick={handleOpenAddModal}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs cursor-pointer shrink-0"
+                className="h-9 px-3.5 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <MdAdd size={17} />
                 <span>Add Company</span>
               </button>
             )}
           </div>
+        }
+      />
 
-          {/* Bottom Row: Search & Multi-Dropdown Filters */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search companies..."
-                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+        {/* Top Control Bar: Search Input & Filter Dropdowns */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+
+          {/* Search Input on Left - Standard width (relative flex-1 max-w-full md:max-w-md) */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search companies by name, HR, email, location..."
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear Search"
+              >
+                <MdClose size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Dropdowns on Right */}
+          <div className="flex flex-wrap items-center gap-2.5">
+
+            {/* Status Dropdown */}
+            <div className="w-full sm:w-44">
+              <SelectDropdown
+                value={activeTab}
+                onChange={(val) => {
+                  setActiveTab(val);
+                  setCurrentPage(1);
+                }}
+                options={statusOptions}
+                placeholder="All Partners"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                menuClassName="w-full min-w-[180px] z-50 shadow-xl border border-slate-100 rounded-xl"
               />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                >
-                  <MdClose size={16} />
-                </button>
-              )}
             </div>
 
-            {/* Filter Dropdowns */}
-            <div className="flex flex-wrap items-center gap-2.5">
-
-              {/* Industry Dropdown */}
-              <div className="w-40 sm:w-44">
-                <SelectDropdown
-                  value={industryFilter}
-                  onChange={(val) => setIndustryFilter(val)}
-                  options={industryOptions.map((ind) => ({
-                    value: ind,
-                    label: ind === "All" ? "All Industries" : ind,
-                  }))}
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-400 cursor-pointer"
-                />
-              </div>
-
-              {/* Location Dropdown */}
-              <div className="w-40 sm:w-44">
-                <SelectDropdown
-                  value={locationFilter}
-                  onChange={(val) => setLocationFilter(val)}
-                  options={locationOptions.map((loc) => ({
-                    value: loc,
-                    label: loc === "All" ? "All Locations" : loc,
-                  }))}
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-400 cursor-pointer"
-                />
-              </div>
-
-              {/* Reset Filters */}
-              {hasActiveFilters && (
-                <button
-                  onClick={resetFilters}
-                  className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <MdClose size={15} /> Clear Filters
-                </button>
-              )}
+            {/* Industry Dropdown */}
+            <div className="w-full sm:w-44">
+              <SelectDropdown
+                value={industryFilter}
+                onChange={(val) => {
+                  setIndustryFilter(val);
+                  setCurrentPage(1);
+                }}
+                options={industryOptions.map((ind) => ({
+                  value: ind,
+                  label: ind === "All" ? "All Industries" : ind,
+                }))}
+                placeholder="All Industries"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                menuClassName="w-full min-w-[190px] z-50 shadow-xl border border-slate-100 rounded-xl max-h-60"
+              />
             </div>
+
+            {/* Location Dropdown */}
+            <div className="w-full sm:w-44">
+              <SelectDropdown
+                value={locationFilter}
+                onChange={(val) => {
+                  setLocationFilter(val);
+                  setCurrentPage(1);
+                }}
+                options={locationOptions.map((loc) => ({
+                  value: loc,
+                  label: loc === "All" ? "All Locations" : loc,
+                }))}
+                placeholder="All Locations"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                menuClassName="w-full min-w-[190px] z-50 shadow-xl border border-slate-100 rounded-xl max-h-60"
+              />
+            </div>
+
+            {/* Reset Filters */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                title="Reset Filters"
+              >
+                <MdClose size={15} /> Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -551,8 +474,8 @@ const CompanyDetail = () => {
                         <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <span
                             className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${isActive
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-slate-100 text-slate-600 border-slate-200"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
                               }`}
                           >
                             {company.status || "Active"}
@@ -630,75 +553,87 @@ const CompanyDetail = () => {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      <th className="py-4 px-5">COMPANY PROFILE</th>
-                      <th className="py-4 px-5">HR CONTACT</th>
-                      <th className="py-4 px-4">LOCATION</th>
-                      <th className="py-4 px-4">STATUS</th>
-                      <th className="py-4 px-5 text-right">ACTION</th>
+                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                      <th className="py-4 px-3 w-14 text-center">S.No.</th>
+                      <th className="py-4 px-5 text-center">Company Profile</th>
+                      <th className="py-4 px-5 text-center">HR / Point of Contact</th>
+                      <th className="py-4 px-4 text-center">Location</th>
+                      <th className="py-4 px-4 text-center">Status</th>
+                      <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                    {paginatedData.map((company) => {
+                    {paginatedData.map((company, idx) => {
                       const isActive = (company.status || "Active") === "Active";
+                      const hrEmail = company.contactPersonEmail || company.companyEmail || company.hrEmail;
+                      const hrPhone = company.contactPersonPhone || company.companyContact || company.hrContact;
+                      const hrName = company.contactPersonName || (hrEmail ? hrEmail.split("@")[0] : "—");
 
                       return (
                         <tr
                           key={company._id}
                           onClick={() => handleViewProfile(company)}
-                          className="hover:bg-slate-50/70 transition cursor-pointer group"
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer group border-b border-slate-100"
                         >
+                          {/* S.No. */}
+                          <td className="py-4 px-3 text-center align-middle font-semibold text-slate-500 text-xs">
+                            {startIndex + idx + 1}
+                          </td>
+
                           {/* Company Name & Logo */}
-                          <td className="py-4 px-5">
+                          <td className="py-4 px-5 text-left align-middle">
                             <div className="flex items-center gap-3">
-                              <CompanyLogo company={company} size="w-12 h-12" iconSize="text-sm" rounded="rounded-xl" />
+                              <CompanyLogo company={company} size="w-10 h-10" iconSize="text-xs" rounded="rounded-xl" />
                               <div className="min-w-0">
-                                <p className="font-extrabold text-slate-900 group-hover:text-orange-600 transition truncate max-w-[200px]">
+                                <p className="font-bold text-slate-900 group-hover:text-orange-600 transition truncate text-xs sm:text-sm">
                                   {company.companyName}
                                 </p>
-                                <span className="text-[11px] text-slate-400 font-medium">
-                                  {company.industry || "IT Services"} • {company.companyType || "Partner Company"}
-                                </span>
+                                <p className="text-[11px] text-slate-400 font-medium truncate">
+                                  {company.industry || "IT Services"} {company.companyType ? `• ${company.companyType}` : ""}
+                                </p>
                               </div>
                             </div>
                           </td>
 
                           {/* HR Liaison */}
-                          <td className="py-4 px-5">
+                          <td className="py-4 px-5 text-left align-middle">
                             <div className="space-y-0.5">
-                              <p className="font-extrabold text-slate-900 text-xs truncate max-w-[190px]">
-                                {company.contactPersonName || company.hrEmail?.split("@")[0] || "TPO Liaison"}
+                              <p className="font-bold text-slate-800 text-xs truncate">
+                                {hrName}
                               </p>
-                              <div className="flex flex-col gap-0.5 text-[11px] text-slate-400">
-                                {(company.contactPersonEmail || company.companyEmail || company.hrEmail) && (
-                                  <span className="flex items-center gap-1 text-slate-500 truncate max-w-[190px]">
-                                    <MdEmail className="text-slate-400 shrink-0" />
-                                    {company.contactPersonEmail || company.companyEmail || company.hrEmail}
+                              <div className="flex items-center gap-2.5 text-[11px] text-slate-500 flex-wrap">
+                                {hrEmail && (
+                                  <span className="inline-flex items-center gap-1 text-slate-500 truncate" title={hrEmail}>
+                                    <MdEmail className="text-slate-400 shrink-0" size={13} />
+                                    <span className="truncate max-w-[170px]">{hrEmail}</span>
                                   </span>
                                 )}
-                                {(company.contactPersonPhone || company.companyContact || company.hrContact) && (
-                                  <span className="flex items-center gap-1 text-slate-500">
-                                    <MdPhone className="text-slate-400 shrink-0" />
-                                    {company.contactPersonPhone || company.companyContact || company.hrContact}
+                                {hrPhone && (
+                                  <span className="inline-flex items-center gap-1 text-slate-500" title={hrPhone}>
+                                    <MdPhone className="text-slate-400 shrink-0" size={13} />
+                                    <span>{hrPhone}</span>
                                   </span>
+                                )}
+                                {!hrEmail && !hrPhone && (
+                                  <span className="text-slate-400 italic text-[11px]">—</span>
                                 )}
                               </div>
                             </div>
                           </td>
 
                           {/* Location */}
-                          <td className="py-4 px-4">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
-                              <MdLocationOn className="text-orange-500 shrink-0" />
-                              {company.location || company.city || "Pan-India"}
+                          <td className="py-4 px-4 text-center align-middle">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-lg shadow-2xs">
+                              <MdLocationOn className="text-orange-500 shrink-0" size={13} />
+                              <span className="truncate max-w-[140px]">{company.location || company.city || "Pan-India"}</span>
                             </span>
                           </td>
 
                           {/* Status & Toggle */}
-                          <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2">
+                          <td className="py-4 px-4 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <div className="inline-flex items-center gap-2 justify-center">
                               <span
-                                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 ${isActive
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold shadow-2xs ${isActive
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : "bg-slate-100 text-slate-600 border-slate-200"
                                   }`}
@@ -709,33 +644,38 @@ const CompanyDetail = () => {
 
                               {isAuthorizedToManage && (
                                 <button
+                                  type="button"
                                   onClick={() => handleToggleStatus(company)}
-                                  className={`transition cursor-pointer ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
+                                  className={`p-0.5 rounded-lg transition cursor-pointer hover:bg-slate-100 ${isActive ? "text-emerald-600 hover:text-emerald-700" : "text-slate-400 hover:text-slate-600"
                                     }`}
                                   title={isActive ? "Mark company as Inactive" : "Mark company as Active"}
                                 >
-                                  {isActive ? <MdToggleOn size={24} /> : <MdToggleOff size={24} />}
+                                  {isActive ? <MdToggleOn size={22} /> : <MdToggleOff size={22} />}
                                 </button>
                               )}
                             </div>
                           </td>
 
                           {/* Action Buttons */}
-                          <td className="py-4 px-5 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="py-4 px-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <div className="inline-flex items-center justify-center gap-1.5">
                               <button
+                                type="button"
                                 onClick={() => handleViewProfile(company)}
-                                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95"
+                                className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 text-slate-700 font-bold text-xs transition shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95"
+                                title="View Company Profile"
                               >
-                                <MdVisibility size={14} /> View
+                                <MdVisibility size={14} /> <span>View</span>
                               </button>
 
                               {isAuthorizedToManage && (
                                 <button
+                                  type="button"
                                   onClick={() => handleOpenEditModal(company)}
-                                  className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs transition shadow-xs cursor-pointer flex items-center gap-1 active:scale-95"
+                                  className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs transition shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95"
+                                  title="Edit Company Details"
                                 >
-                                  <MdEdit size={14} /> Edit
+                                  <MdEdit size={14} /> <span>Edit</span>
                                 </button>
                               )}
                             </div>
@@ -748,7 +688,7 @@ const CompanyDetail = () => {
               </div>
 
               {/* Table Pagination Footer */}
-              <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl sm:rounded-b-3xl">
+              <div className="border-t border-slate-200/80 px-3 sm:px-6 py-3 sm:py-4 bg-white rounded-b-2xl sm:rounded-b-3xl">
                 <Pagination
                   totalItems={filteredCompanies.length}
                   currentPage={currentPage}

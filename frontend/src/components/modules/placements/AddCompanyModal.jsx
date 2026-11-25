@@ -326,7 +326,9 @@ const AddCompanyModal = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 custom-scrollbar text-xs">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Form Content */}
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 custom-scrollbar text-xs">
           
           {/* Duplicate Company Warning Banner */}
           {duplicateWarning && (
@@ -688,23 +690,25 @@ const AddCompanyModal = ({
             </div>
           </div>
 
-          {/* Footer Action Bar matching Website Design Theme */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          </div>
+
+          {/* Fixed Footer Action Bar (Pinned outside scroll area) */}
+          <div className="px-5 sm:px-6 py-3.5 bg-white border-t border-slate-200/80 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 rounded-b-3xl">
             <span className="text-[11px] text-slate-500 font-medium">
-              * Required fields to create company record
+              * Required fields to {isEditMode ? "update" : "create"} company record
             </span>
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className={`${buttonStyles.cancel} px-5 py-2.5 text-xs sm:text-sm text-center flex items-center justify-center`}
+                className={`${buttonStyles.cancel} px-5 py-2.5 text-xs sm:text-sm text-center flex items-center justify-center cursor-pointer`}
               >
                 <span>Cancel</span>
               </button>
               <button
                 type="submit"
                 disabled={isCreating || isUpdating}
-                className={`${buttonStyles.primary} px-6 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50`}
+                className={`${buttonStyles.primary} px-6 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95 transition`}
               >
                 {isCreating || isUpdating ? (
                   <span>Saving Company...</span>

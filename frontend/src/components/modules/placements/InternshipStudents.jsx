@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -115,11 +115,10 @@ const InternshipActionMenu = ({
         ref={buttonRef}
         type="button"
         onClick={handleToggle}
-        className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${
-          open
-            ? "bg-orange-50 text-orange-600 ring-2 ring-orange-500/20"
-            : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-        }`}
+        className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${open
+          ? "bg-orange-50 text-orange-600 ring-2 ring-orange-500/20"
+          : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+          }`}
         title="Internship Actions"
         aria-label="Actions"
       >
@@ -322,10 +321,10 @@ const CandidateQuickViewDrawer = ({
                   <MdCalendarToday className="text-slate-400" size={13} />{" "}
                   {details.startDate
                     ? new Date(details.startDate).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
                     : "—"}
                 </p>
               </div>
@@ -522,19 +521,56 @@ const InternshipStudents = () => {
     }
   };
 
+  // Selection state & actions for selective download
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+
+  // Reset selection when search or filters change
+  useEffect(() => {
+    setSelectedStudentIds([]);
+  }, [searchTerm, selectedDept, activeTab]);
+
+  const allStudentIds = useMemo(() => {
+    return filteredStudents.map((s) => s._id);
+  }, [filteredStudents]);
+
+  const isAllStudentsSelected =
+    allStudentIds.length > 0 && allStudentIds.every((id) => selectedStudentIds.includes(id));
+  const isStudentIndeterminate =
+    selectedStudentIds.length > 0 && !isAllStudentsSelected;
+
+  const handleToggleSelectAllStudents = () => {
+    if (isAllStudentsSelected) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(allStudentIds);
+    }
+  };
+
+  const handleToggleSelectStudent = (id) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const getSelectedOrAllStudents = () => {
+    if (selectedStudentIds.length === 0) return filteredStudents;
+    const set = new Set(selectedStudentIds);
+    return filteredStudents.filter((s) => set.has(s._id));
+  };
+
   // Export to Excel
   const handleDownloadExcel = () => {
-    if (filteredStudents.length === 0) {
+    const list = getSelectedOrAllStudents();
+    if (list.length === 0) {
       toast.warning("No data to export");
       return;
     }
 
-    const rows = filteredStudents.map((s, index) => {
+    const rows = list.map((s, index) => {
       const d = s.internshipDetails || {};
       return {
         "S.No": index + 1,
         "Student Name": `${s.firstName || ""} ${s.lastName || ""}`.trim(),
-        "PR Key / Roll": s.prkey || s.studentId || "—",
         Course: s.course || "—",
         Department:
           s.subDepartmentId?.departmentId?.name || s.subDepartmentId?.name || "—",
@@ -554,13 +590,18 @@ const InternshipStudents = () => {
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Internship_Students");
-    XLSX.writeFile(workbook, `Internship_Students_${Date.now()}.xlsx`);
-    toast.success("Excel report downloaded successfully!");
+    const countLabel =
+      selectedStudentIds.length > 0
+        ? `${selectedStudentIds.length}_Selected`
+        : `All_${list.length}`;
+    XLSX.writeFile(workbook, `Internship_Students_${countLabel}_${Date.now()}.xlsx`);
+    toast.success(`Excel report downloaded (${list.length} interns)!`);
   };
 
   // Export to PDF
   const handleDownloadPDF = () => {
-    if (filteredStudents.length === 0) {
+    const list = getSelectedOrAllStudents();
+    if (list.length === 0) {
       toast.warning("No data to export");
       return;
     }
@@ -570,20 +611,23 @@ const InternshipStudents = () => {
     doc.text("SSES - Internship Students Report", 14, 15);
     doc.setFontSize(10);
     doc.text(
-      `Generated on: ${new Date().toLocaleDateString("en-IN")} | Total Interns: ${filteredStudents.length}`,
+      `Generated on: ${new Date().toLocaleDateString("en-IN")} | ${
+        selectedStudentIds.length > 0
+          ? `Selected Interns: ${list.length}`
+          : `Total Interns: ${list.length}`
+      }`,
       14,
       22
     );
 
     const headers = [
-      ["#", "Student Name", "PR Key", "Course", "From Level", "Company", "Role", "Type", "Stipend", "Location"],
+      ["#", "Student Name", "Course", "From Level", "Company", "Role", "Type", "Stipend", "Location"],
     ];
-    const data = filteredStudents.map((s, i) => {
+    const data = list.map((s, i) => {
       const d = s.internshipDetails || {};
       return [
         i + 1,
         `${s.firstName || ""} ${s.lastName || ""}`.trim(),
-        s.prkey || s.studentId || "—",
         s.course || "—",
         s.internshipFromLevelId?.name || s.currentLevelId?.name || "—",
         d.companyName || "—",
@@ -602,8 +646,12 @@ const InternshipStudents = () => {
       headStyles: { fillColor: [249, 115, 22] },
     });
 
-    doc.save(`Internship_Students_${Date.now()}.pdf`);
-    toast.success("PDF report downloaded successfully!");
+    const countLabel =
+      selectedStudentIds.length > 0
+        ? `${selectedStudentIds.length}_Selected`
+        : `All_${list.length}`;
+    doc.save(`Internship_Students_${countLabel}_${Date.now()}.pdf`);
+    toast.success(`PDF report downloaded (${list.length} interns)!`);
   };
 
   const hasActiveFilters = searchTerm || selectedDept !== "all" || activeTab !== "All";
@@ -679,7 +727,7 @@ const InternshipStudents = () => {
             title="Refresh Internship Data"
           >
             <MdRefresh size={16} />
-            <span className="hidden sm:inline">Refresh</span>
+            {/* <span className="hidden sm:inline">Refresh</span> */}
           </button>
         }
       />
@@ -758,17 +806,31 @@ const InternshipStudents = () => {
               </button>
             )}
 
+            {/* Clear Selection Button */}
+            {selectedStudentIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedStudentIds([])}
+                className="h-10 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Clear Selection"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>{selectedStudentIds.length} Selected</span>
+                <MdClose size={14} className="ml-0.5 text-amber-600" />
+              </button>
+            )}
+
             {/* Download Dropdown */}
             <TableDownloadDropdown
-              count={filteredStudents.length}
-              total={students.length}
+              count={selectedStudentIds.length}
+              total={filteredStudents.length}
               onDownloadExcel={handleDownloadExcel}
               onDownloadPDF={handleDownloadPDF}
               size="md"
             />
 
             {/* View Mode Switcher (Table / Cards) */}
-            <div className="hidden sm:flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 h-10 items-center">
+            {/* <div className="hidden sm:flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 h-10 items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -776,11 +838,10 @@ const InternshipStudents = () => {
                   setPageSize(10);
                   setCurrentPage(1);
                 }}
-                className={`flex items-center gap-1.5 px-2.5 h-8.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === "table"
+                className={`flex items-center gap-1.5 px-2.5 h-8.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "table"
                     ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
                     : "text-slate-500 hover:text-slate-900"
-                }`}
+                  }`}
                 title="Table View"
               >
                 <MdViewList className="text-sm" /> Table
@@ -792,16 +853,15 @@ const InternshipStudents = () => {
                   setPageSize(9);
                   setCurrentPage(1);
                 }}
-                className={`flex items-center gap-1.5 px-2.5 h-8.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === "grid"
+                className={`flex items-center gap-1.5 px-2.5 h-8.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === "grid"
                     ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
                     : "text-slate-500 hover:text-slate-900"
-                }`}
+                  }`}
                 title="Cards View"
               >
                 <MdGridView className="text-sm" /> Cards
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -835,6 +895,21 @@ const InternshipStudents = () => {
                   <table className="w-full text-left border-collapse">
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <tr>
+                        <th className="py-4 px-3 w-12 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isAllStudentsSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = isStudentIndeterminate;
+                            }}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleToggleSelectAllStudents();
+                            }}
+                            className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            title={isAllStudentsSelected ? "Deselect All" : "Select All"}
+                          />
+                        </th>
                         <th className="py-4 px-3 text-center w-14">S.No.</th>
                         <th className="py-4 px-4 text-left">Student</th>
                         <th className="py-4 px-4 text-left">Company & Role</th>
@@ -866,9 +941,22 @@ const InternshipStudents = () => {
                         return (
                           <tr
                             key={student._id}
-                            className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                            className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors group cursor-pointer ${
+                              selectedStudentIds.includes(student._id) ? "bg-orange-50/40" : ""
+                            }`}
                             onClick={() => navigate(`/student-profile/${student._id}`)}
                           >
+                            {/* Checkbox */}
+                            <td className="py-4 px-3 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedStudentIds.includes(student._id)}
+                                onChange={() => handleToggleSelectStudent(student._id)}
+                                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                                aria-label={`Select ${student.firstName} ${student.lastName}`}
+                              />
+                            </td>
+
                             {/* S.No. */}
                             <td className="py-4 px-3 text-center align-middle font-semibold text-slate-500 text-xs">
                               {(currentPage - 1) * pageSize + idx + 1}
@@ -1026,11 +1114,24 @@ const InternshipStudents = () => {
                     <div
                       key={student._id}
                       onClick={() => navigate(`/student-profile/${student._id}`)}
-                      className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-xs hover:border-slate-300 transition cursor-pointer space-y-3.5 flex flex-col justify-between"
+                      className={`bg-white rounded-2xl border transition cursor-pointer space-y-3.5 flex flex-col justify-between p-4 shadow-2xs hover:shadow-xs ${
+                        selectedStudentIds.includes(student._id)
+                          ? "border-orange-400 ring-2 ring-orange-500/20"
+                          : "border-slate-200/80 hover:border-slate-300"
+                      }`}
                     >
-                      {/* Top Row: Avatar, Student Info, Type Pill */}
+                      {/* Top Row: Checkbox, Avatar, Student Info, Type Pill */}
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center pr-0.5">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudentIds.includes(student._id)}
+                              onChange={() => handleToggleSelectStudent(student._id)}
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                              aria-label={`Select ${student.firstName} ${student.lastName}`}
+                            />
+                          </div>
                           <Avatar firstName={student.firstName} lastName={student.lastName} imageUrl={student.image} size="md" />
                           <div className="min-w-0">
                             <h4 className="font-extrabold text-sm text-slate-900 truncate">
@@ -1124,10 +1225,23 @@ const InternshipStudents = () => {
                   <div
                     key={student._id}
                     onClick={() => navigate(`/student-profile/${student._id}`)}
-                    className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3 cursor-pointer"
+                    className={`bg-white rounded-2xl border p-4 shadow-2xs space-y-3 cursor-pointer transition ${
+                      selectedStudentIds.includes(student._id)
+                        ? "border-orange-400 ring-2 ring-orange-500/20"
+                        : "border-slate-200/80 hover:border-slate-300"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center pr-0.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.includes(student._id)}
+                            onChange={() => handleToggleSelectStudent(student._id)}
+                            className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer accent-orange-500 transition"
+                            aria-label={`Select ${student.firstName} ${student.lastName}`}
+                          />
+                        </div>
                         <Avatar firstName={student.firstName} lastName={student.lastName} imageUrl={student.image} size="sm" />
                         <div className="min-w-0">
                           <h4 className="font-extrabold text-xs text-slate-900 truncate">

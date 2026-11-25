@@ -181,7 +181,13 @@ const OrangeButton = ({
               </div>
 
               {/* CONTENT */}
-              <div className={`flex-1 overflow-y-auto custom-scrollbar ${bodyClassName}`}>
+              <div
+                className={`flex-1 ${
+                  bodyClassName && (bodyClassName.includes("overflow-hidden") || bodyClassName.includes("!overflow-hidden"))
+                    ? ""
+                    : "overflow-y-auto custom-scrollbar"
+                } ${bodyClassName}`}
+              >
                 {typeof drawerContent === "function" ? drawerContent({ closeDrawer }) : (drawerContent || children)}
               </div>
 

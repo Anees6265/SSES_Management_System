@@ -393,8 +393,10 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
   useImperativeHandle(ref, () => ({ reset, save: handleSave }));
 
   return (
-    <div className="space-y-4">
-      {/* Target Location Breadcrumb */}
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+      {/* Scrollable Form Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar min-h-0">
+        {/* Target Location Breadcrumb */}
       <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 text-xs shadow-2xs">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
         <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
@@ -584,13 +586,14 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Action Footer */}
-      <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
+      {/* Action Footer (Fixed / Outside Scroll) */}
+      <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
+          className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
         >
           <span>Cancel</span>
         </button>
@@ -598,7 +601,7 @@ export const ManualSyllabusForm = forwardRef(({ level, subLevel, departmentName,
           type="button"
           onClick={handleSave}
           disabled={saving || !subject.trim() || !selectedSessionId}
-          className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+          className="px-4 sm:px-6 py-2 sm:py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-center active:scale-95"
         >
           {saving ? (
             <>
@@ -789,8 +792,10 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
   useImperativeHandle(ref, () => ({ reset, save: () => handleSave(subjectMeta) }));
 
   return (
-    <div className="space-y-4 text-xs font-semibold">
-      {/* Target Location Breadcrumb */}
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+      {/* Scrollable Form Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar min-h-0 text-xs font-semibold">
+        {/* Target Location Breadcrumb */}
       <div className="flex items-center gap-1.5 flex-wrap bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-2xs">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Target:</span>
         <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-orange-50 text-orange-700 border border-orange-200">
@@ -880,26 +885,37 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
           </span>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-orange-50/60 border border-orange-200/70 rounded-2xl gap-3">
-          <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
-              <MdFileDownload size={20} />
+        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-orange-50/70 via-amber-50/40 to-white border border-orange-200/80 rounded-2xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100/90 text-orange-600 flex items-center justify-center shrink-0 border border-orange-200">
+                <MdFileDownload size={22} />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
+                  Official Excel spreadsheet pre-formatted for uploading syllabus hierarchy and learning tasks.
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-xs font-black text-slate-900">Standard Syllabus & Tasks Template</h4>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed font-medium">
-                Official Excel template with Subject, Topic, SubTopic, Task Title and Time Days columns.
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={downloadSyllabusTemplate}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white hover:bg-orange-500 hover:text-white text-orange-600 border border-orange-300 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
+            >
+              <MdFileDownload size={16} />
+              <span>Download Template (.xlsx)</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={downloadSyllabusTemplate}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 font-extrabold text-xs rounded-xl shadow-xs transition hover:shadow-sm shrink-0 cursor-pointer w-full sm:w-auto"
-          >
-            <MdFileDownload size={16} />
-            <span>Download Template (.xlsx)</span>
-          </button>
+          <div className="pt-2 border-t border-orange-100 flex items-center gap-1.5 flex-wrap text-[10px] font-bold text-slate-600">
+            <span className="text-[10px] uppercase tracking-wider text-orange-700 font-extrabold mr-1">Columns:</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-orange-200 text-orange-700 font-bold">Subject *</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-orange-200 text-orange-700 font-bold">Topic *</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600">SubTopic</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600">Task Title</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600">Time Days</span>
+            <span className="bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600">Measurable Points</span>
+          </div>
         </div>
       </div>
 
@@ -985,21 +1001,21 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
       {hierarchy.length > 0 && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
-            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
-              <p className="text-base sm:text-lg font-black text-slate-900">{totalSubjects}</p>
-              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-blue-700">{totalSubjects}</p>
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-blue-500 uppercase tracking-wider">Subjects</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
-              <p className="text-base sm:text-lg font-black text-slate-900">{totalTopics}</p>
-              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Topics</p>
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-emerald-700">{totalTopics}</p>
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-emerald-500 uppercase tracking-wider">Topics</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
-              <p className="text-base sm:text-lg font-black text-slate-900">{totalSubTopics}</p>
-              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">SubTopics</p>
+            <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-indigo-700">{totalSubTopics}</p>
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider">SubTopics</p>
             </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
-              <p className="text-base sm:text-lg font-black text-slate-900">{totalTasks}</p>
-              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tasks</p>
+            <div className="bg-orange-50/70 border border-orange-200/80 rounded-xl p-2.5 sm:p-3 text-center shadow-2xs">
+              <p className="text-base sm:text-lg font-black text-orange-700">{totalTasks}</p>
+              <p className="text-[9px] sm:text-[10px] font-extrabold text-orange-500 uppercase tracking-wider">Tasks</p>
             </div>
           </div>
 
@@ -1025,13 +1041,14 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
         </>
       )}
       </div>
+    </div>
 
-      {/* 4. UNIFIED ACTION FOOTER */}
-      <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3">
+      {/* Fixed Action Footer (Outside Scroll) */}
+      <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => { reset(); onClose?.(); }}
-          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
+          className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
         >
           <span>Cancel</span>
         </button>
@@ -1039,7 +1056,7 @@ export const SyllabusUploadDrawer = forwardRef(({ level, subLevel, departmentNam
           type="button"
           onClick={() => handleSave(subjectMeta)}
           disabled={saving || !hierarchy.length || !selectedSessionId}
-          className="w-full sm:w-auto px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-center"
+          className="px-4 sm:px-6 py-2 sm:py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-center active:scale-95"
         >
           {saving ? (
             <>
@@ -1066,29 +1083,31 @@ export const SyllabusUploadModalContent = ({ level, subLevel, departmentName, de
   const [mode, setMode] = useState("excel");
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      {/* Segmented Mode Switcher */}
-      <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+      {/* Pinned Tab Navigation Header */}
+      <div className="flex border-b border-gray-150 bg-gray-50/70 px-4 sm:px-6 shrink-0">
         <button
           type="button"
           onClick={() => setMode("excel")}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+          className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
             mode === "excel"
-              ? "bg-white text-orange-600 shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
+              ? "border-orange-500 text-orange-600 bg-white"
+              : "border-transparent text-gray-500 hover:text-gray-800"
           }`}
         >
           <MdCloudUpload size={16} className="shrink-0" />
-          <span className="hidden sm:inline">Excel Upload (Recommended)</span>
-          <span className="sm:hidden">Excel Upload</span>
+          <span>Excel Bulk Upload</span>
+          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 text-orange-700">
+            Recommended
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setMode("manual")}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+          className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer ${
             mode === "manual"
-              ? "bg-white text-orange-600 shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
+              ? "border-orange-500 text-orange-600 bg-white"
+              : "border-transparent text-gray-500 hover:text-gray-800"
           }`}
         >
           <MdBook size={16} className="shrink-0" />
@@ -1096,27 +1115,30 @@ export const SyllabusUploadModalContent = ({ level, subLevel, departmentName, de
         </button>
       </div>
 
-      {mode === "excel" ? (
-        <SyllabusUploadDrawer
-          level={level}
-          subLevel={subLevel}
-          departmentName={departmentName}
-          departmentId={departmentId}
-          subdepartment={subdepartment}
-          onSaved={onSaved}
-          onClose={onClose}
-        />
-      ) : (
-        <ManualSyllabusForm
-          level={level}
-          subLevel={subLevel}
-          departmentName={departmentName}
-          departmentId={departmentId}
-          subdepartment={subdepartment}
-          onSaved={onSaved}
-          onClose={onClose}
-        />
-      )}
+      {/* Tab Content Panel */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {mode === "excel" ? (
+          <SyllabusUploadDrawer
+            level={level}
+            subLevel={subLevel}
+            departmentName={departmentName}
+            departmentId={departmentId}
+            subdepartment={subdepartment}
+            onSaved={onSaved}
+            onClose={onClose}
+          />
+        ) : (
+          <ManualSyllabusForm
+            level={level}
+            subLevel={subLevel}
+            departmentName={departmentName}
+            departmentId={departmentId}
+            subdepartment={subdepartment}
+            onSaved={onSaved}
+            onClose={onClose}
+          />
+        )}
+      </div>
     </div>
   );
 };
@@ -3326,6 +3348,7 @@ const EmptyUploadState = ({ level, subLevel, departmentName, departmentId, subde
           panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${subLevel?.name || "SubLevel"}`}
           maxWidth="sm:max-w-2xl lg:max-w-3xl"
           showFooter={false}
+          bodyClassName="p-0 flex flex-col flex-1 min-h-0 overflow-hidden"
           customButtonClass="!bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white text-xs sm:text-sm font-semibold px-5 sm:px-6 py-2.5 rounded-xl transition hover:shadow-md cursor-pointer !normal-case tracking-normal shadow-xs"
           drawerContent={({ closeDrawer }) => (
             <SyllabusUploadModalContent
@@ -3792,6 +3815,7 @@ const SyllabusTab = ({ level, subLevel, departmentName, departmentId, subdepartm
             panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${subLevel?.name || "SubLevel"}`}
             maxWidth="sm:max-w-2xl lg:max-w-3xl"
             showFooter={false}
+            bodyClassName="p-0 flex flex-col flex-1 min-h-0 overflow-hidden"
             customButtonClass="!bg-orange-500 hover:!bg-orange-600 active:!bg-orange-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl transition hover:shadow-md cursor-pointer !normal-case tracking-normal shadow-xs"
             drawerContent={({ closeDrawer }) => (
               <SyllabusUploadModalContent

@@ -1050,6 +1050,7 @@ const ShowSubLevelTablesData = () => {
                             panelSubtitle={`Configure syllabus and tasks for ${level?.name || "Level"} · ${activeTab?.name || "SubLevel"}`}
                             maxWidth="sm:max-w-2xl lg:max-w-3xl"
                             showFooter={false}
+                            bodyClassName="p-0 flex flex-col flex-1 min-h-0 overflow-hidden"
                             drawerContent={({ closeDrawer }) => (
                                 <SyllabusUploadModalContent
                                     level={level}

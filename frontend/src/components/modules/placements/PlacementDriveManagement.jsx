@@ -125,20 +125,22 @@ const PlacementDriveManagement = () => {
 
       <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
         {/* Top Control Bar */}
-        <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-          <div className="flex items-center h-10 w-full sm:w-80 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 shadow-xs hover:border-slate-300 focus-within:border-orange-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-400/20 transition-all">
-            <MdSearch className="text-slate-400 flex-shrink-0 mr-2" size={18} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+          {/* Search Input on Left - Matching Session Management width (flex-1 max-w-full md:max-w-md) */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Search drives..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-full bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none text-xs font-medium text-slate-800 placeholder-slate-400 p-0 shadow-none"
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
             />
             {searchTerm && (
               <button 
+                type="button"
                 onClick={() => setSearchTerm("")} 
-                className="text-slate-400 hover:text-slate-600 ml-1 p-0.5 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 title="Clear Search"
               >
                 <MdClose size={16} />
@@ -146,10 +148,7 @@ const PlacementDriveManagement = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <span className="hidden sm:inline-flex text-xs font-bold text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-              {filteredDrives.length} {filteredDrives.length === 1 ? "Drive" : "Drives"}
-            </span>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
               onClick={() => {
                 setReturnToCreateDrive(false);
@@ -162,7 +161,7 @@ const PlacementDriveManagement = () => {
             </button>
             <button
               onClick={() => setCreateModalOpen(true)}
-              className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-4 sm:px-5 rounded-xl shadow-sm transition-all cursor-pointer"
+              className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-4 sm:px-5 rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap"
             >
               <MdAdd size={18} /> Create Placement Drive
             </button>

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   useGetNewReadyStudentsQuery,
@@ -37,8 +38,8 @@ import {
   MdBusiness,
   MdAdd,
   MdVisibility,
+  MdMoreVert,
 } from "react-icons/md";
-import { FaUserGraduate } from "react-icons/fa";
 
 const toTitle = (str) =>
   str
@@ -49,13 +50,198 @@ const toTitle = (str) =>
         .join(" ")
     : "";
 
-const PIPELINE_TABS = [
-  { id: "All", label: "All Candidates", icon: FaUserGraduate },
-  { id: "Ready", label: "Ready Pool", icon: MdCheckCircle },
-  { id: "Interview", label: "In Interviews", icon: MdWork },
-  { id: "Selected", label: "Selected (Offers)", icon: MdVerifiedUser },
-  { id: "Placed", label: "Confirmed Placed", icon: MdTrendingUp },
-];
+/* ─── Candidate Action Menu (Three Dots Dropdown) ────────── */
+const CandidateActionMenu = ({
+  candidate,
+  onView,
+  onScheduleInterview,
+  onConfirmPlacement,
+  onPostBanner,
+  onMarkInternship,
+}) => {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+
+  const sId = candidate.studentId?._id || candidate.studentId || candidate._id;
+  const isPlaced = Boolean(candidate.placedInfo);
+  const isSelected = candidate.readinessStatus === "Selected" && !isPlaced;
+  const hasInterview = candidate.PlacementinterviewRecord?.some((r) =>
+    ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
+  );
+  const resumeURL =
+    candidate.resumeURL ||
+    candidate.studentId?.documents?.find((d) =>
+      (d.title || "").toLowerCase().includes("resume") || d.fileType === "pdf"
+    )?.fileURL;
+
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 190;
+      const menuHeight = 220;
+      const left = Math.max(10, rect.right - menuWidth);
+      const openUpward = window.innerHeight - rect.bottom < menuHeight && rect.top > menuHeight;
+      const top = openUpward ? rect.top - menuHeight : rect.bottom + 6;
+      setMenuPosition({ top, left });
+    }
+    setOpen((prev) => !prev);
+  };
+
+  return (
+    <div className="relative inline-flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleToggle}
+        className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${
+          open
+            ? "bg-orange-50 text-orange-600 ring-2 ring-orange-500/20"
+            : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+        }`}
+        title="Candidate Actions"
+        aria-label="Actions"
+      >
+        <MdMoreVert size={18} />
+      </button>
+
+      {open &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[99998]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+              }}
+            />
+            <div
+              style={{
+                position: "fixed",
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+              }}
+              className="w-48 bg-white border border-slate-200/90 rounded-2xl shadow-xl py-1.5 z-[99999] animate-in fade-in duration-150 text-xs font-semibold text-slate-700 divide-y divide-slate-100"
+            >
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onView(candidate);
+                  }}
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50/70 hover:text-orange-600 transition cursor-pointer font-bold text-slate-700"
+                >
+                  <MdVisibility size={15} className="text-slate-400" />
+                  <span>Quick Overview</span>
+                </button>
+
+                {resumeURL && (
+                  <a
+                    href={resumeURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50/70 hover:text-orange-600 transition cursor-pointer font-bold text-slate-700"
+                  >
+                    <MdOpenInNew size={15} className="text-orange-500" />
+                    <span>View Resume</span>
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate(`/student-profile/${sId}`);
+                  }}
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50/70 hover:text-orange-600 transition cursor-pointer font-bold text-slate-700"
+                >
+                  <MdPerson size={15} className="text-slate-400" />
+                  <span>Full Profile</span>
+                </button>
+              </div>
+
+              <div className="py-1">
+                {hasInterview && !isPlaced && !isSelected && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate(`/interview-history/${sId}`);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50 hover:text-orange-600 transition cursor-pointer font-bold text-orange-700"
+                  >
+                    <MdHistory size={15} className="text-orange-500" />
+                    <span>Update Result</span>
+                  </button>
+                )}
+
+                {!isPlaced && !isSelected && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        onScheduleInterview(candidate);
+                      }}
+                      className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50 hover:text-orange-600 transition cursor-pointer font-bold text-slate-800"
+                    >
+                      <MdCalendarToday size={15} className="text-orange-500" />
+                      <span>Schedule Drive</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        onMarkInternship(candidate);
+                      }}
+                      className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-orange-50/50 hover:text-orange-600 transition cursor-pointer font-bold text-slate-700"
+                    >
+                      <MdWork size={15} className="text-slate-400" />
+                      <span>Move to Internship</span>
+                    </button>
+                  </>
+                )}
+
+                {isSelected && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onConfirmPlacement(candidate);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-emerald-50 hover:text-emerald-700 transition cursor-pointer font-bold text-emerald-700"
+                  >
+                    <MdCheckCircle size={15} className="text-emerald-600" />
+                    <span>Confirm Placement</span>
+                  </button>
+                )}
+
+                {isPlaced && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onPostBanner(candidate);
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2 text-left hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer font-bold text-slate-800"
+                  >
+                    <MdAdd size={15} className="text-slate-500" />
+                    <span>Create Banner</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+    </div>
+  );
+};
 
 /* ─── Candidate Quick View Drawer ─────────────────────────── */
 const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onConfirmPlacement, onPostBanner, onMarkInternship }) => {
@@ -221,11 +407,11 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
               <div className="space-y-2">
                 {interviews.map((record, index) => {
                   const statusColors = {
-                    Scheduled: "bg-blue-50 text-blue-700 border-blue-200",
+                    Scheduled: "bg-orange-50 text-orange-700 border-orange-200/80",
                     Ongoing: "bg-amber-50 text-amber-700 border-amber-200",
-                    Selected: "bg-purple-50 text-purple-700 border-purple-200",
+                    Selected: "bg-emerald-50 text-emerald-700 border-emerald-200",
                     Rejected: "bg-rose-50 text-rose-700 border-rose-200",
-                    Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    Completed: "bg-slate-100 text-slate-700 border-slate-200",
                   }[record.status] || "bg-slate-100 text-slate-700 border-slate-200";
 
                   return (
@@ -295,9 +481,9 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
                 onClose();
                 onMarkInternship(candidate);
               }}
-              className="px-4 py-2 bg-white hover:bg-sky-50 text-sky-700 border border-sky-200 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1.5"
             >
-              <MdWork size={14} className="text-sky-600" /> Move to Internship
+              <MdWork size={14} className="text-slate-400" /> Move to Internship
             </button>
           )}
 
@@ -338,44 +524,6 @@ const CandidateQuickViewDrawer = ({ candidate, onClose, onScheduleInterview, onC
           )}
         </div>
 
-      </div>
-    </div>
-  );
-};
-
-/* ─── Metric Card Component ───────────────────────────────── */
-const PipelineStatCard = ({ title, count, subtitle, icon: Icon, isActive, onClick, color = "orange" }) => {
-  const colorStyles = {
-    orange: "text-orange-500 bg-orange-50 border-orange-100",
-    blue: "text-blue-500 bg-blue-50 border-blue-100",
-    amber: "text-amber-500 bg-amber-50 border-amber-100",
-    purple: "text-purple-500 bg-purple-50 border-purple-100",
-    emerald: "text-emerald-500 bg-emerald-50 border-emerald-100",
-  }[color];
-
-  return (
-    <div
-      onClick={onClick}
-      className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between shadow-2xs relative overflow-hidden group ${
-        isActive
-          ? "bg-white border-orange-500 ring-2 ring-orange-500/10 shadow-sm"
-          : "bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
-      }`}
-    >
-      {isActive && (
-        <span className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
-          {title}
-        </span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${colorStyles}`}>
-          <Icon size={17} />
-        </div>
-      </div>
-      <div className="mt-2.5">
-        <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{count}</p>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{subtitle}</p>
       </div>
     </div>
   );
@@ -522,6 +670,22 @@ const PlacementReadyStudents = () => {
     return Array.from(set);
   }, [allPool]);
 
+  // Dynamic Stage & Technology filter options
+  const stageFilterOptions = useMemo(() => [
+    { value: "All", label: `All Candidates (${poolCounts.All})` },
+    { value: "Ready", label: `Ready Pool (${poolCounts.Ready})` },
+    { value: "Interview", label: `In Interviews (${poolCounts.Interview})` },
+    { value: "Selected", label: `Selected (Offers) (${poolCounts.Selected})` },
+    { value: "Placed", label: `Confirmed Placed (${poolCounts.Placed})` },
+  ], [poolCounts.All, poolCounts.Ready, poolCounts.Interview, poolCounts.Selected, poolCounts.Placed]);
+
+  const techFilterOptions = useMemo(() => {
+    return availableTechnologies.map((t) => ({
+      value: t,
+      label: t === "All" ? "All Technologies" : t,
+    }));
+  }, [availableTechnologies]);
+
   // Filter active dataset based on activeTab, subFilter, tech, and search
   const filteredCandidates = useMemo(() => {
     let dataset = allPool;
@@ -628,7 +792,7 @@ const PlacementReadyStudents = () => {
     });
   };
 
-  const hasActiveFilters = Boolean(searchTerm || selectedTech !== "All" || readySubFilter !== "All");
+  const hasActiveFilters = Boolean(searchTerm || selectedTech !== "All" || readySubFilter !== "All" || activeTab !== "All");
 
   const resetFilters = () => {
     resetAllFilters();
@@ -638,20 +802,29 @@ const PlacementReadyStudents = () => {
   const activeChips = useMemo(() => {
     const chips = [];
     if (activeTab !== "All") {
+      const stageMap = {
+        Ready: "Ready Pool",
+        Interview: "In Interviews",
+        Selected: "Selected Offers",
+        Placed: "Confirmed Placed",
+      };
       chips.push({
         key: "activeTab",
         label: "Stage",
         value: activeTab,
-        displayValue: activeTab,
-        onRemove: () => setActiveTab("All"),
+        displayValue: stageMap[activeTab] || activeTab,
+        onRemove: () => {
+          setActiveTab("All");
+          setReadySubFilter("All");
+        },
       });
     }
     if (readySubFilter !== "All") {
       chips.push({
         key: "readySubFilter",
-        label: "Pool",
+        label: "Sub-Stage",
         value: readySubFilter,
-        displayValue: readySubFilter,
+        displayValue: readySubFilter === "Stage2A" ? "Stage 2A" : "Stage 2B",
         onRemove: () => setReadySubFilter("All"),
       });
     }
@@ -692,191 +865,107 @@ const PlacementReadyStudents = () => {
         breadcrumbs={[{ label: "Placements", path: "/placements/dashboard" }, { label: "Placement Candidates" }]}
       />
 
-      <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-3.5 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
         
-        {/* ── 1. Top Metrics Cards (5 Cards) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <PipelineStatCard
-            title="Total Candidates"
-            count={poolCounts.All}
-            subtitle="Complete candidate pool"
-            icon={FaUserGraduate}
-            color="orange"
-            isActive={activeTab === "All"}
-            onClick={() => setActiveTab("All")}
-          />
-          <PipelineStatCard
-            title="Ready for Drives"
-            count={poolCounts.Ready}
-            subtitle="Stage 2A & 2B cleared"
-            icon={MdCheckCircle}
-            color="blue"
-            isActive={activeTab === "Ready"}
-            onClick={() => setActiveTab("Ready")}
-          />
-          <PipelineStatCard
-            title="In Interviews"
-            count={poolCounts.Interview}
-            subtitle="Active company drives"
-            icon={MdWork}
-            color="amber"
-            isActive={activeTab === "Interview"}
-            onClick={() => setActiveTab("Interview")}
-          />
-          <PipelineStatCard
-            title="Selected (Offers)"
-            count={poolCounts.Selected}
-            subtitle="Awaiting final confirmation"
-            icon={MdVerifiedUser}
-            color="purple"
-            isActive={activeTab === "Selected"}
-            onClick={() => setActiveTab("Selected")}
-          />
-          <PipelineStatCard
-            title="Confirmed Placed"
-            count={poolCounts.Placed}
-            subtitle="Recruited students"
-            icon={MdTrendingUp}
-            color="emerald"
-            isActive={activeTab === "Placed"}
-            onClick={() => setActiveTab("Placed")}
-          />
-        </div>
-
-        {/* ── 2. Pipeline Navigation & Filter Bar ── */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3.5">
-          
-          {/* Top Row: Pipeline Stage Tabs */}
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 overflow-x-auto -mx-1 px-1">
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {PIPELINE_TABS.map((tab) => {
-                const isCurrent = activeTab === tab.id;
-                const Icon = tab.icon;
-                const count = poolCounts[tab.id] || 0;
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 ${
-                      isCurrent
-                        ? "bg-orange-500 text-white shadow-xs"
-                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
-                    }`}
-                  >
-                    <Icon size={15} />
-                    <span>{tab.label}</span>
-                    <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                        isCurrent ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <span className="hidden lg:block text-xs font-bold text-slate-400 shrink-0">
-              Showing <strong className="text-slate-800">{filteredCandidates.length}</strong> candidates
-            </span>
+        {/* Top Control Bar: Search Input & Filter Dropdowns */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+          {/* Search Input on Left - Matching standard width (flex-1 max-w-full md:max-w-md) */}
+          <div className="relative flex-1 max-w-full md:max-w-md">
+            <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear Search"
+              >
+                <MdClose size={16} />
+              </button>
+            )}
           </div>
 
-          {/* Bottom Row: Search & Dropdown Filters */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search students..."
-                className="w-full pl-9 pr-8 h-10 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+          {/* Filter Controls on Right */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Candidate Stage / Status Filter Dropdown */}
+            <div className="w-full sm:w-48">
+              <SelectDropdown
+                value={activeTab}
+                onChange={(val) => {
+                  setActiveTab(val);
+                  if (val !== "Ready") setReadySubFilter("All");
+                }}
+                options={stageFilterOptions}
+                placeholder="All Candidates"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                menuClassName="w-full min-w-[210px] z-50 shadow-xl border border-slate-100 rounded-xl"
               />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                >
-                  <MdClose size={16} />
-                </button>
-              )}
             </div>
 
-            {/* Filter Controls */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              
-              {/* Ready Stage Sub-Filter (Visible only in Ready tab) */}
-              {activeTab === "Ready" && (
-                <div className="flex items-center rounded-xl bg-slate-100 p-0.5 border border-slate-200/80">
-                  <button
-                    onClick={() => setReadySubFilter("All")}
-                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
-                      readySubFilter === "All" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    All Ready
-                  </button>
-                  <button
-                    onClick={() => setReadySubFilter("Stage2A")}
-                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
-                      readySubFilter === "Stage2A" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Stage 2A
-                  </button>
-                  <button
-                    onClick={() => setReadySubFilter("Stage2B")}
-                    className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
-                      readySubFilter === "Stage2B" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Stage 2B
-                  </button>
-                </div>
-              )}
-
-              {/* Technology Filter */}
-              <div className="w-44">
+            {/* Ready Stage Sub-Filter (Visible only in Ready tab) */}
+            {activeTab === "Ready" && (
+              <div className="w-full sm:w-36">
                 <SelectDropdown
-                  value={selectedTech}
-                  onChange={(val) => setSelectedTech(val)}
-                  options={availableTechnologies.map((t) => ({
-                    value: t,
-                    label: t === "All" ? "All Technologies" : t,
-                  }))}
-                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-400 cursor-pointer"
+                  value={readySubFilter}
+                  onChange={(val) => setReadySubFilter(val)}
+                  options={[
+                    { value: "All", label: "All Ready" },
+                    { value: "Stage2A", label: "Stage 2A" },
+                    { value: "Stage2B", label: "Stage 2B" },
+                  ]}
+                  placeholder="Sub Stage"
+                  className="w-full"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                  menuClassName="w-full min-w-[150px] z-50 shadow-xl border border-slate-100 rounded-xl"
                 />
               </div>
+            )}
 
-              {/* Reset Filter Button */}
-              {hasActiveFilters && (
-                <button
-                  onClick={resetFilters}
-                  className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <MdClose size={15} /> Clear Filters
-                </button>
-              )}
-
-              {/* Table Download Dropdown */}
-              <TableDownloadDropdown
-                count={selectedCandidateIds.length}
-                total={filteredCandidates.length}
-                onDownloadExcel={handleDownloadExcel}
-                onDownloadPDF={handleDownloadPDF}
-                size="md"
+            {/* Technology Filter Dropdown (Side-by-side with Candidate Status Filter) */}
+            <div className="w-full sm:w-44">
+              <SelectDropdown
+                value={selectedTech}
+                onChange={(val) => setSelectedTech(val)}
+                options={techFilterOptions}
+                placeholder="All Technologies"
+                className="w-full"
+                buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                menuClassName="w-full min-w-[190px] z-50 shadow-xl border border-slate-100 rounded-xl"
               />
             </div>
+
+            {/* Reset Filter Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                title="Reset Filters"
+              >
+                <MdClose size={15} /> Clear Filters
+              </button>
+            )}
+
+            {/* Table Download Dropdown */}
+            <TableDownloadDropdown
+              count={selectedCandidateIds.length}
+              total={filteredCandidates.length}
+              onDownloadExcel={handleDownloadExcel}
+              onDownloadPDF={handleDownloadPDF}
+              size="md"
+            />
           </div>
         </div>
 
         {/* Active Filter Chips */}
-        <ActiveFilterChips chips={activeChips} onClearAll={resetFilters} className="mb-3" />
+        <ActiveFilterChips chips={activeChips} onClearAll={resetFilters} className="mb-2" />
 
         {/* ── 3. Candidate Data View (Mobile Cards + Desktop Table) ── */}
         <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-2xs overflow-hidden">
@@ -947,15 +1036,15 @@ const PlacementReadyStudents = () => {
                             Placed
                           </span>
                         ) : isSelected ? (
-                          <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
-                            Selected
+                          <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                            Offer Received
                           </span>
                         ) : activeInterview ? (
                           <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
                             Interviewing
                           </span>
                         ) : (
-                          <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] font-extrabold text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">
                             Ready
                           </span>
                         )}
@@ -989,81 +1078,45 @@ const PlacementReadyStudents = () => {
                       )}
 
                       {/* Actions Bottom Bar */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setQuickViewCandidate(candidate)}
+                          className="flex-1 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-orange-50/50 hover:border-orange-300 text-slate-700 hover:text-orange-600 font-bold text-[11px] text-center shadow-2xs transition cursor-pointer"
+                        >
+                          View Details
+                        </button>
+
                         {resumeURL && (
                           <a
                             href={resumeURL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-orange-600 hover:border-orange-300 font-bold text-[11px] flex items-center gap-1 shadow-2xs transition"
                           >
-                            <MdOpenInNew size={12} /> Resume
+                            <MdOpenInNew size={12} className="text-orange-500" /> Resume
                           </a>
                         )}
 
-                        <button
-                          onClick={() => setQuickViewCandidate(candidate)}
-                          className="flex-1 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] text-center shadow-2xs cursor-pointer"
-                        >
-                          View Details
-                        </button>
-
-                        {hasActiveInterview(candidate) && !isPlaced && !isSelected && (
-                          <button
-                            onClick={() => navigate(`/interview-history/${candidate._id}`)}
-                            className="px-2.5 py-1.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 font-extrabold text-[11px] shadow-2xs cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            <MdHistory size={13} /> Result
-                          </button>
-                        )}
-
-                        {!isPlaced && !isSelected && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setSelectedForInternship(candidate);
-                                setIsInternshipModalOpen(true);
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-extrabold text-[11px] shadow-2xs cursor-pointer flex items-center gap-1"
-                            >
-                              <MdWork size={12} className="text-sky-600" /> Internship
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setSelectedStudentForInterview(candidate);
-                                setIsInterviewModalOpen(true);
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
-                            >
-                              Schedule Drive
-                            </button>
-                          </>
-                        )}
-
-                        {isSelected && (
-                          <button
-                            onClick={() => {
-                              setSelectedForPlacement(candidate);
-                              setIsConfirmModalOpen(true);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] shadow-xs cursor-pointer"
-                          >
-                            Confirm
-                          </button>
-                        )}
-
-                        {isPlaced && (
-                          <button
-                            onClick={() => {
-                              setSelectedForPost(candidate);
-                              setIsPostModalOpen(true);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[11px] shadow-xs cursor-pointer flex items-center gap-1"
-                          >
-                            <MdAdd size={14} /> Banner
-                          </button>
-                        )}
+                        <CandidateActionMenu
+                          candidate={candidate}
+                          onView={(c) => setQuickViewCandidate(c)}
+                          onScheduleInterview={(c) => {
+                            setSelectedStudentForInterview(c);
+                            setIsInterviewModalOpen(true);
+                          }}
+                          onConfirmPlacement={(c) => {
+                            setSelectedForPlacement(c);
+                            setIsConfirmModalOpen(true);
+                          }}
+                          onPostBanner={(c) => {
+                            setSelectedForPost(c);
+                            setIsPostModalOpen(true);
+                          }}
+                          onMarkInternship={(c) => {
+                            setSelectedForInternship(c);
+                            setIsInternshipModalOpen(true);
+                          }}
+                        />
                       </div>
                     </div>
                   );
@@ -1074,7 +1127,7 @@ const PlacementReadyStudents = () => {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
                       <th className="py-4 px-3 w-12 text-center">
                         <input
                           type="checkbox"
@@ -1186,8 +1239,10 @@ const PlacementReadyStudents = () => {
                             ) : isSelected ? (
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
-                                  <span className="font-bold text-purple-800">Offer Received</span>
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                                  <span className="font-bold text-amber-900 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md text-[11px]">
+                                    Offer Received
+                                  </span>
                                 </div>
                                 <p className="text-[11px] text-slate-500 pl-3.5">
                                   {candidate.selectedInterviews?.[0]?.companyRef?.companyName || "Selected"}
@@ -1207,8 +1262,8 @@ const PlacementReadyStudents = () => {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md text-[11px]">
+                                <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                                <span className="font-bold text-orange-700 bg-orange-50 border border-orange-200/80 px-2 py-0.5 rounded-md text-[11px]">
                                   Ready for Drives
                                 </span>
                               </div>
@@ -1231,82 +1286,28 @@ const PlacementReadyStudents = () => {
                             )}
                           </td>
 
-                          {/* Actions */}
-                          <td className="py-4 px-5 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Direct action to record interview rounds/selection */}
-                              {hasActiveInterview(candidate) && !isPlaced && !isSelected && (
-                                <button
-                                  onClick={() => navigate(`/interview-history/${candidate._id}`)}
-                                  className="px-3 py-1.5 bg-white hover:bg-orange-50 border border-orange-200 text-orange-700 font-extrabold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
-                                  title="Update Interview Rounds & Selection Result"
-                                >
-                                  <MdHistory size={14} className="text-orange-500" />
-                                  <span>Update Result</span>
-                                </button>
-                              )}
-
-                              {!isPlaced && !isSelected && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedForInternship(candidate);
-                                      setIsInternshipModalOpen(true);
-                                    }}
-                                    className="px-2.5 py-1.5 bg-white hover:bg-sky-50 text-sky-700 hover:text-sky-800 border border-sky-200 font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer flex items-center gap-1 active:scale-95"
-                                    title="Mark this candidate to Internship"
-                                  >
-                                    <MdWork size={13} className="text-sky-600" />
-                                    <span>Internship</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setSelectedStudentForInterview(candidate);
-                                      setIsInterviewModalOpen(true);
-                                    }}
-                                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95"
-                                    title="Schedule Drive for this candidate"
-                                  >
-                                    <MdCalendarToday size={13} />
-                                    <span>Schedule Drive</span>
-                                  </button>
-                                </>
-                              )}
-
-                              {isSelected && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedForPlacement(candidate);
-                                    setIsConfirmModalOpen(true);
-                                  }}
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95"
-                                >
-                                  Confirm Placement
-                                </button>
-                              )}
-
-                              {isPlaced && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedForPost(candidate);
-                                    setIsPostModalOpen(true);
-                                  }}
-                                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1 active:scale-95"
-                                >
-                                  <MdAdd size={14} /> Banner
-                                </button>
-                              )}
-
-                              {/* More Menu */}
-                              <button
-                                onClick={() => setQuickViewCandidate(candidate)}
-                                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                                title="Quick Overview"
-                              >
-                                <MdVisibility size={17} />
-                              </button>
-                            </div>
+                          {/* Actions - Three Dots Dropdown Menu */}
+                          <td className="py-3 px-5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <CandidateActionMenu
+                              candidate={candidate}
+                              onView={(c) => setQuickViewCandidate(c)}
+                              onScheduleInterview={(c) => {
+                                setSelectedStudentForInterview(c);
+                                setIsInterviewModalOpen(true);
+                              }}
+                              onConfirmPlacement={(c) => {
+                                setSelectedForPlacement(c);
+                                setIsConfirmModalOpen(true);
+                              }}
+                              onPostBanner={(c) => {
+                                setSelectedForPost(c);
+                                setIsPostModalOpen(true);
+                              }}
+                              onMarkInternship={(c) => {
+                                setSelectedForInternship(c);
+                                setIsInternshipModalOpen(true);
+                              }}
+                            />
                           </td>
                         </tr>
                       );
@@ -1316,7 +1317,7 @@ const PlacementReadyStudents = () => {
               </div>
 
               {/* Table Pagination Footer */}
-              <div className="border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 bg-gray-100 rounded-b-2xl sm:rounded-b-3xl">
+              <div className="border-t border-slate-200/80 px-3 sm:px-6 py-3 sm:py-4 bg-white rounded-b-2xl sm:rounded-b-3xl">
                 <Pagination
                   totalItems={filteredCandidates.length}
                   currentPage={currentPage}

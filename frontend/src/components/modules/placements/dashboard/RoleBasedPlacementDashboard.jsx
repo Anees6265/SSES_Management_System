@@ -48,35 +48,47 @@ const RoleBasedPlacementDashboard = () => {
         breadcrumbs={[{ label: "Placements" }, { label: "Dashboard" }]}
       />
 
-      <div className="p-3.5 sm:p-5 lg:p-6">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 sm:mb-4">
-          Select Department
-        </p>
-
-        {subDepts.length === 0 ? (
-          <EmptyState
-            icon={MdAccountTree}
-            title="No Departments Found"
-            subtitle="No departments are available for placement tracking."
-          />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-            {subDepts.map((dept) => (
-              <CommonCard
-                key={dept._id}
-                variant="card1"
-                icon={MdAccountTree}
-                title={dept.name}
-                status={dept.isActive}
-                infoItems={[
-                  { icon: <HiOutlineUserGroup size={14} className="text-orange-400" />, label: "Students", value: dept.totalStudents || 0 },
-                  { icon: <MdOutlineMenuBook size={14} className="text-orange-400" />, label: "Courses", value: dept.allowedCourses?.length || 0 },
-                ]}
-                onView={() => navigate(`/placements/department/${dept._id}`)}
-              />
-            ))}
+      <div className="bg-slate-50 min-h-screen pb-16">
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                Select Academic Department
+              </h2>
+              <p className="text-xs text-slate-500">
+                Choose a department to inspect student readiness, interview rounds, and placed records
+              </p>
+            </div>
+            <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">
+              {subDepts.length} Departments
+            </span>
           </div>
-        )}
+
+          {subDepts.length === 0 ? (
+            <EmptyState
+              icon={MdAccountTree}
+              title="No Departments Found"
+              subtitle="No departments are available for placement tracking."
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+              {subDepts.map((dept) => (
+                <CommonCard
+                  key={dept._id}
+                  variant="card1"
+                  icon={MdAccountTree}
+                  title={dept.name}
+                  status={dept.isActive}
+                  infoItems={[
+                    { icon: <HiOutlineUserGroup size={14} className="text-orange-500" />, label: "Students", value: dept.totalStudents || 0 },
+                    { icon: <MdOutlineMenuBook size={14} className="text-orange-500" />, label: "Courses", value: dept.allowedCourses?.length || 0 },
+                  ]}
+                  onView={() => navigate(`/placements/department/${dept._id}`)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

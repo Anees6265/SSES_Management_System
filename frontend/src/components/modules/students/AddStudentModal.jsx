@@ -753,11 +753,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
-          {/* ═══════════ TAB 1: EXCEL BULK IMPORT ═══════════ */}
-          {activeTab === "excel" && (
-            <div className="space-y-4">
+        {/* ═══════════ TAB 1: EXCEL BULK IMPORT ═══════════ */}
+        {activeTab === "excel" && (
+          <>
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
               {/* Information Callout Banner for Department Routing & Credentials */}
               <div className="bg-gradient-to-r from-slate-50 to-orange-50/30 border border-slate-200/90 rounded-2xl p-4 text-xs">
                 <div className="flex items-start gap-2.5">
@@ -1021,10 +1020,43 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                 </div>
               )}
             </div>
-          )}
 
-          {/* ═══════════ TAB 2: MANUAL SINGLE ENTRY (26 FIELDS) ═══════════ */}
-          {activeTab === "manual" && (
+            {/* Modal Footer (for Excel Tab) */}
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-end gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
+              >
+                <span>{importResult ? "Close" : "Cancel"}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isImportingExcel || parsedRows.length === 0 || validationStats.valid === 0}
+                onClick={handleSubmitImport}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isImportingExcel ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Importing Students...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={16} />
+                    <span>
+                      Import {validationStats.valid > 0 ? `${validationStats.valid} Students` : "from Excel"}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ═══════════ TAB 2: MANUAL SINGLE ENTRY (26 FIELDS) ═══════════ */}
+        {activeTab === "manual" && (
             <Formik
               initialValues={{
                 studentId: "",
@@ -1068,8 +1100,10 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
               enableReinitialize
             >
               {({ values, setFieldValue, isSubmitting }) => (
-                <Form className="space-y-6">
-                  {/* Section 1: Identification & Portal Credentials */}
+                <Form className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  {/* Scrollable Form Body */}
+                  <div className="p-5 sm:p-6 pb-28 overflow-y-auto flex-1 space-y-6">
+                    {/* Section 1: Identification & Portal Credentials */}
                   <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-xs font-bold text-slate-800 uppercase tracking-wider">
                       <span className="w-2 h-2 rounded-full bg-orange-500"></span>
@@ -1116,25 +1150,11 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         label="First Name *"
                         name="firstName"
                         placeholder="e.g. Rahul"
-                        onChange={(e) => {
-                          const fName = e.target.value;
-                          setFieldValue("firstName", fName);
-                          if (!values.fullName || values.fullName === `${values.firstName} ${values.lastName}`.trim()) {
-                            setFieldValue("fullName", `${fName} ${values.lastName || ""}`.trim());
-                          }
-                        }}
                       />
                       <InputField
                         label="Last Name"
                         name="lastName"
                         placeholder="e.g. Sharma"
-                        onChange={(e) => {
-                          const lName = e.target.value;
-                          setFieldValue("lastName", lName);
-                          if (!values.fullName || values.fullName === `${values.firstName} ${values.lastName}`.trim()) {
-                            setFieldValue("fullName", `${values.firstName || ""} ${lName}`.trim());
-                          }
-                        }}
                       />
                       <InputField
                         label="Full Name"
@@ -1435,6 +1455,7 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                         <SelectDropdown
                           value={values.sponsorshipType}
                           onChange={(val) => setFieldValue("sponsorshipType", val)}
+                          direction="up"
                           options={[
                             { value: "Regular", label: "Regular" },
                             { value: "Scholarship", label: "Scholarship" },
@@ -1456,63 +1477,29 @@ const AddStudentModal = ({ isOpen, onClose, defaultSubDepartmentId, onStudentAdd
                       />
                     </div>
                   </div>
+                </div>
 
-                  {/* Form Actions */}
-                  <div className="flex items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-gray-150">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
-                    >
-                      <span>Cancel</span>
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || isCreatingManual}
-                      className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 sm:gap-2 text-center"
-                    >
-                      <UserPlus size={15} />
-                      <span>{isSubmitting || isCreatingManual ? "Adding Student..." : "Add Student"}</span>
-                    </button>
-                  </div>
-                </Form>
-              )}
-            </Formik>
-          )}
-        </div>
-
-        {/* Modal Footer (for Excel Tab) */}
-        {activeTab === "excel" && (
-          <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-between gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
-            >
-              <span>{importResult ? "Close" : "Cancel"}</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isImportingExcel || parsedRows.length === 0 || validationStats.valid === 0}
-              onClick={handleSubmitImport}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isImportingExcel ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Importing Students...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud size={16} />
-                  <span>
-                    Import {validationStats.valid > 0 ? `${validationStats.valid} Students` : "from Excel"}
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
+                {/* Fixed Footer Actions (Outside Scroll) */}
+                <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-150 bg-gray-50/70 flex items-center justify-end gap-2.5 sm:gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-3.5 sm:px-4 py-2 sm:py-2.5 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs sm:text-sm rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer flex items-center justify-center text-center"
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isCreatingManual}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-xl shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-1.5 sm:gap-2 text-center"
+                  >
+                    <UserPlus size={15} />
+                    <span>{isSubmitting || isCreatingManual ? "Adding Student..." : "Add Student"}</span>
+                  </button>
+                </div>
+              </Form>
+            )}
+          </Formik>
         )}
       </div>
     </div>

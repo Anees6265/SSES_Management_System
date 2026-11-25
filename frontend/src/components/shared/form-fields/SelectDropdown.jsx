@@ -12,8 +12,10 @@ const SelectDropdown = ({
   menuClassName = "",
   disabled = false,
   align = "left",
+  direction = "auto", // "auto" | "down" | "up"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(direction === "up");
   const dropdownRef = useRef(null);
 
   const normalizedValue = value === undefined || value === null ? "" : String(value);
@@ -22,6 +24,30 @@ const SelectDropdown = ({
     return optVal === normalizedValue;
   });
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
+
+  useEffect(() => {
+    if (direction === "up") {
+      setOpenUpwards(true);
+    } else if (direction === "down") {
+      setOpenUpwards(false);
+    }
+  }, [direction]);
+
+  const toggleDropdown = () => {
+    if (disabled) return;
+    if (!isOpen && dropdownRef.current) {
+      if (direction === "up") {
+        setOpenUpwards(true);
+      } else if (direction === "down") {
+        setOpenUpwards(false);
+      } else {
+        const rect = dropdownRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        setOpenUpwards(spaceBelow < 260 && rect.top > spaceBelow);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -41,7 +67,7 @@ const SelectDropdown = ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         className={`${buttonClassName || `w-full flex items-center justify-between gap-2 px-3.5 py-2 text-sm border border-gray-200 hover:border-[var(--primary,#F97316)] bg-white rounded-xl text-gray-800 font-medium transition-all shadow-xs focus:outline-none ${
           disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
         }`} ${isOpen ? "!border-[var(--primary,#F97316)] ring-2 ring-[var(--primary,#F97316)]/20 !bg-white" : ""}`}
@@ -56,7 +82,9 @@ const SelectDropdown = ({
       </button>
 
       {isOpen && (
-        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1.5 min-w-full max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar ${menuClassName || "w-max max-w-[calc(100vw-2rem)]"}`}>
+        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} ${
+          openUpwards ? "bottom-full mb-1.5" : "top-full mt-1.5"
+        } min-w-full max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-fadeIn custom-scrollbar ${menuClassName || "w-max max-w-[calc(100vw-2rem)]"}`}>
           {options.length === 0 ? (
             <div className="px-3.5 py-2 text-xs text-gray-400 italic">No options available</div>
           ) : (

@@ -36,7 +36,6 @@ import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ActiveFilterChips from "../../shared/search-export/ActiveFilterChips";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
-import CreatePostModal from "./CreatePostModal";
 import {
   useGetInternshipStudentsQuery,
   useRevertStudentInternshipMutation,
@@ -421,8 +420,6 @@ const InternshipStudents = () => {
   // Modals
   const [selectedForPlacement, setSelectedForPlacement] = useState(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [selectedForPost, setSelectedForPost] = useState(null);
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [studentToRevert, setStudentToRevert] = useState(null);
   const [quickViewCandidate, setQuickViewCandidate] = useState(null);
 
@@ -1355,27 +1352,10 @@ const InternshipStudents = () => {
           }}
           student={selectedForPlacement}
           onSuccess={() => {
-            const studentThatWasPlaced = selectedForPlacement;
+            setIsConfirmModalOpen(false);
+            setSelectedForPlacement(null);
             refetch();
-            if (studentThatWasPlaced) {
-              setSelectedForPost(studentThatWasPlaced);
-              setIsPostModalOpen(true);
-            }
-          }}
-        />
-      )}
-
-      {/* ── Create Placement Post Modal (Auto-opens after Shift to Placed) ── */}
-      {isPostModalOpen && (
-        <CreatePostModal
-          isOpen={isPostModalOpen}
-          onClose={() => {
-            setIsPostModalOpen(false);
-            setSelectedForPost(null);
-          }}
-          student={selectedForPost}
-          onSuccess={() => {
-            refetch();
+            navigate("/placement-post");
           }}
         />
       )}

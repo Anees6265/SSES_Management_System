@@ -116,7 +116,9 @@ const PlacementPost = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(viewMode === "grid" ? 9 : 10);
 
-  const { data: placedRes, isLoading, error, refetch } = useGetNewPlacedStudentsQuery();
+  const { data: placedRes, isLoading, error, refetch } = useGetNewPlacedStudentsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const { data: companiesData } = useGetAllCompaniesQuery();
 
   const allPlacedStudents = useMemo(() => {
@@ -386,7 +388,7 @@ const PlacementPost = () => {
   if (error) {
     return (
       <>
-        <Header title="Placed Students & Success Stories" />
+        <Header title="Placement Post" />
         <div className="bg-slate-50 min-h-screen p-4 sm:p-6 flex items-center justify-center">
           <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-3xl border border-red-200 text-center shadow-sm">
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -411,10 +413,10 @@ const PlacementPost = () => {
   return (
     <>
       <Header
-        title="Placed Students & Success Stories"
+        title="Placement Post"
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
-          { label: "Placed Students" },
+          { label: "Placement Post" },
         ]}
       />
 

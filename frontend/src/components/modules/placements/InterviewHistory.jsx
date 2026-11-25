@@ -405,6 +405,9 @@ const InterviewHistory = () => {
       setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
       setIsUpdateModalOpen(false);
       await refetchHistory();
+      if (resultStatus === "Placed") {
+        navigate("/placement-post");
+      }
     } catch (err) {
       toast.error(err?.data?.message || err?.data?.error || "Failed to update interview result");
     }

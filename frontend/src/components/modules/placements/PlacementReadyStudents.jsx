@@ -15,7 +15,6 @@ import EmptyState from "../../shared/empty-state/EmptyState";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
 import ScheduleInterviewModal from "./ScheduleInterviewModal";
 import ConfirmPlacementModal from "./ConfirmPlacementModal";
-import CreatePostModal from "./CreatePostModal";
 import InternshipModal from "../students/InternshipModal";
 import TableDownloadDropdown from "../../shared/table/TableDownloadDropdown";
 import { exportStudentsToExcel, exportStudentsToPDF } from "../../../utils/studentExportHelpers";
@@ -569,8 +568,6 @@ const PlacementReadyStudents = () => {
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [selectedForPlacement, setSelectedForPlacement] = useState(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [selectedForPost, setSelectedForPost] = useState(null);
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedForInternship, setSelectedForInternship] = useState(null);
   const [isInternshipModalOpen, setIsInternshipModalOpen] = useState(false);
 
@@ -585,9 +582,36 @@ const PlacementReadyStudents = () => {
     s?.readinessStatus === "Internship" ||
     s?.rawReadinessStatus === "Internship";
 
-  const readyStudents = useMemo(() => (readyRes.data || []).filter(s => !isInternshipCandidate(s)), [readyRes]);
-  const selectedStudents = useMemo(() => (selectedRes.data || []).filter(s => !isInternshipCandidate(s)), [selectedRes]);
-  const placedStudents = useMemo(() => (placedRes.data || []).filter(s => !isInternshipCandidate(s)), [placedRes]);
+  // Placed IDs set to strictly exclude already placed students from placement candidates page
+  const placedIdsSet = useMemo(() => {
+    const set = new Set();
+    (placedRes.data || []).forEach((p) => {
+      const id = p.studentId?._id || p.studentId || p._id;
+      if (id) set.add(String(id));
+    });
+    return set;
+  }, [placedRes]);
+
+  const isPlacedCandidate = (s) => {
+    const id = String(s?.studentId?._id || s?.studentId || s?._id || "");
+    return (
+      Boolean(s?.placedInfo) ||
+      s?.status === "Placed" ||
+      s?.studentStatus === "Placed" ||
+      s?.readinessStatus === "Placed" ||
+      s?.rawReadinessStatus === "Placed" ||
+      (id && placedIdsSet.has(id))
+    );
+  };
+
+  const readyStudents = useMemo(
+    () => (readyRes.data || []).filter((s) => !isInternshipCandidate(s) && !isPlacedCandidate(s)),
+    [readyRes, placedIdsSet]
+  );
+  const selectedStudents = useMemo(
+    () => (selectedRes.data || []).filter((s) => !isInternshipCandidate(s) && !isPlacedCandidate(s)),
+    [selectedRes, placedIdsSet]
+  );
 
   const isLoading = loadingReady || loadingSelected || loadingPlaced;
 
@@ -611,10 +635,17 @@ const PlacementReadyStudents = () => {
       } else if (statusParam === "Selected") {
         setActiveTab("Selected");
       } else if (statusParam === "Placed") {
-        setActiveTab("Placed");
+        navigate("/placement-post", { replace: true });
       }
     }
-  }, [statusParam]);
+  }, [statusParam, navigate]);
+
+  // Ensure activeTab does not stay on 'Placed'
+  useEffect(() => {
+    if (activeTab === "Placed") {
+      setActiveTab("All");
+    }
+  }, [activeTab]);
 
   // Reset page when tab/filters change
   useEffect(() => {
@@ -627,7 +658,7 @@ const PlacementReadyStudents = () => {
       ["Scheduled", "Ongoing", "Rescheduled"].includes(r.status)
     );
 
-  // Categorize Pools
+  // Categorize Pools (Only unplaced candidates)
   const readyPool = useMemo(() => {
     return readyStudents.filter((s) => !hasActiveInterview(s));
   }, [readyStudents]);
@@ -637,19 +668,18 @@ const PlacementReadyStudents = () => {
   }, [readyStudents]);
 
   const selectedPool = useMemo(() => selectedStudents, [selectedStudents]);
-  const placedPool = useMemo(() => placedStudents, [placedStudents]);
 
-  // Unified Pool of all candidates across categories
+  // Unified Pool of all unplaced candidates across categories
   const allPool = useMemo(() => {
     const map = new Map();
-    [...readyStudents, ...selectedStudents, ...placedStudents].forEach((s) => {
+    [...readyStudents, ...selectedStudents].forEach((s) => {
       const id = s.studentId?._id || s.studentId || s._id;
       if (id && !map.has(id.toString())) {
         map.set(id.toString(), s);
       }
     });
     return Array.from(map.values());
-  }, [readyStudents, selectedStudents, placedStudents]);
+  }, [readyStudents, selectedStudents]);
 
   // Counts for tabs & stat cards
   const poolCounts = {
@@ -657,7 +687,6 @@ const PlacementReadyStudents = () => {
     Ready: readyPool.length,
     Interview: interviewPool.length,
     Selected: selectedPool.length,
-    Placed: placedPool.length,
   };
 
   // Dynamic Technology options
@@ -676,8 +705,7 @@ const PlacementReadyStudents = () => {
     { value: "Ready", label: `Ready Pool (${poolCounts.Ready})` },
     { value: "Interview", label: `In Interviews (${poolCounts.Interview})` },
     { value: "Selected", label: `Selected (Offers) (${poolCounts.Selected})` },
-    { value: "Placed", label: `Confirmed Placed (${poolCounts.Placed})` },
-  ], [poolCounts.All, poolCounts.Ready, poolCounts.Interview, poolCounts.Selected, poolCounts.Placed]);
+  ], [poolCounts.All, poolCounts.Ready, poolCounts.Interview, poolCounts.Selected]);
 
   const techFilterOptions = useMemo(() => {
     return availableTechnologies.map((t) => ({
@@ -692,7 +720,6 @@ const PlacementReadyStudents = () => {
     if (activeTab === "Ready") dataset = readyPool;
     else if (activeTab === "Interview") dataset = interviewPool;
     else if (activeTab === "Selected") dataset = selectedPool;
-    else if (activeTab === "Placed") dataset = placedPool;
 
     // Sub-stage filter for Ready pool
     if (activeTab === "Ready" && readySubFilter !== "All") {
@@ -720,19 +747,17 @@ const PlacementReadyStudents = () => {
         const prkey = (s.prkey || "").toLowerCase();
         const mobile = (s.studentMobile || "").toLowerCase();
         const tech = (s.technology || s.track || "").toLowerCase();
-        const company = (s.placedInfo?.companyName || "").toLowerCase();
         return (
           fullName.includes(q) ||
           prkey.includes(q) ||
           mobile.includes(q) ||
-          tech.includes(q) ||
-          company.includes(q)
+          tech.includes(q)
         );
       });
     }
 
     return dataset;
-  }, [allPool, readyPool, interviewPool, selectedPool, placedPool, activeTab, readySubFilter, selectedTech, searchTerm]);
+  }, [allPool, readyPool, interviewPool, selectedPool, activeTab, readySubFilter, selectedTech, searchTerm]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredCandidates.length / rowsPerPage) || 1;
@@ -806,7 +831,6 @@ const PlacementReadyStudents = () => {
         Ready: "Ready Pool",
         Interview: "In Interviews",
         Selected: "Selected Offers",
-        Placed: "Confirmed Placed",
       };
       chips.push({
         key: "activeTab",
@@ -1108,9 +1132,8 @@ const PlacementReadyStudents = () => {
                             setSelectedForPlacement(c);
                             setIsConfirmModalOpen(true);
                           }}
-                          onPostBanner={(c) => {
-                            setSelectedForPost(c);
-                            setIsPostModalOpen(true);
+                          onPostBanner={() => {
+                            navigate("/placement-post");
                           }}
                           onMarkInternship={(c) => {
                             setSelectedForInternship(c);
@@ -1299,9 +1322,8 @@ const PlacementReadyStudents = () => {
                                 setSelectedForPlacement(c);
                                 setIsConfirmModalOpen(true);
                               }}
-                              onPostBanner={(c) => {
-                                setSelectedForPost(c);
-                                setIsPostModalOpen(true);
+                              onPostBanner={() => {
+                                navigate("/placement-post");
                               }}
                               onMarkInternship={(c) => {
                                 setSelectedForInternship(c);
@@ -1346,9 +1368,8 @@ const PlacementReadyStudents = () => {
             setSelectedForPlacement(c);
             setIsConfirmModalOpen(true);
           }}
-          onPostBanner={(c) => {
-            setSelectedForPost(c);
-            setIsPostModalOpen(true);
+          onPostBanner={() => {
+            navigate("/placement-post");
           }}
           onMarkInternship={(c) => {
             setSelectedForInternship(c);
@@ -1389,18 +1410,12 @@ const PlacementReadyStudents = () => {
           setSelectedForPlacement(null);
         }}
         student={selectedForPlacement}
-        onSuccess={refetchAll}
-      />
-
-      {/* ── Create Post Modal ── */}
-      <CreatePostModal
-        isOpen={isPostModalOpen}
-        onClose={() => {
-          setIsPostModalOpen(false);
-          setSelectedForPost(null);
+        onSuccess={() => {
+          setIsConfirmModalOpen(false);
+          setSelectedForPlacement(null);
+          refetchAll();
+          navigate("/placement-post");
         }}
-        student={selectedForPost}
-        onSuccess={refetchAll}
       />
     </>
   );

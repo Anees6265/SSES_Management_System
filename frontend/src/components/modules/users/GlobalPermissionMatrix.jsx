@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGetAllPossiblePermissionsQuery, useGetUserPermissionsQuery, useUpdateUserPermissionsMutation } from '../../../redux/api/authApi';
-import { Save, ShieldCheck, Search, X } from 'lucide-react';
+import { Save, ShieldCheck, Search, X, ChevronDown, ChevronRight } from 'lucide-react';
 import Loader from '../../shared/loader/Loader';
 import Header from '../../shared/sidebar/Header';
 import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import ActiveFilterChips from '../../shared/search-export/ActiveFilterChips';
 import { toast } from 'react-toastify';
 
-const ACTION_DISPLAY_MAP = {
-    read: { label: 'View', desc: 'Can view page data' },
-    create: { label: 'Create / Add', desc: 'Can add new records' },
-    update: { label: 'Edit / Update', desc: 'Can modify existing records' },
-    delete: { label: 'Delete', desc: 'Can delete records' },
-    execute: { label: 'Access / Run', desc: 'Can execute actions' },
-};
+const ACTIONS = [
+    { key: 'read', label: 'View' },
+    { key: 'create', label: 'Create' },
+    { key: 'update', label: 'Edit' },
+    { key: 'delete', label: 'Delete' },
+    { key: 'execute', label: 'Execute' },
+];
 
 const GlobalPermissionMatrix = ({ user, onBack }) => {
     const { data: allPermissionsData, isLoading: isLoadingAll, error: errorAll } = useGetAllPossiblePermissionsQuery();
@@ -24,6 +24,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [collapsedCategories, setCollapsedCategories] = useState({});
 
     const permissionsString = JSON.stringify(userPermissionsData?.permissions || []);
 
@@ -38,34 +39,11 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
     }, [allPermissionsData]);
 
     const allAccessTypes = useMemo(() => {
-        return [...new Set(masterPermissions.flatMap(p => p.access))];
+        return [...new Set(masterPermissions.flatMap(p => p.access || []))];
     }, [masterPermissions]);
 
-    // Master toggle for a whole module (ON = grant default 'read' or all, OFF = revoke all actions)
-    const handleMasterToggle = (featureName, availableTypes) => {
-        setPermissions(current => {
-            const copy = JSON.parse(JSON.stringify(current));
-            let feature = copy.find(p => p.feature === featureName);
-            const isCurrentlyActive = feature && feature.access && feature.access.length > 0;
-
-            if (isCurrentlyActive) {
-                // Turn OFF: revoke access completely
-                feature.access = [];
-            } else {
-                // Turn ON: default to 'read' (view), or all available types if no 'read'
-                const defaultAccess = availableTypes.includes('read') ? ['read'] : [...availableTypes];
-                if (feature) {
-                    feature.access = defaultAccess;
-                } else {
-                    copy.push({ feature: featureName, access: defaultAccess });
-                }
-            }
-            return copy;
-        });
-    };
-
-    // Toggle a single action (View, Create, Edit, Delete) for a module
-    const handleActionToggle = (featureName, actionType, availableTypes) => {
+    // Toggle a single action checkbox (read, create, update, delete, execute)
+    const handleActionToggle = (featureName, actionType) => {
         setPermissions(current => {
             const copy = JSON.parse(JSON.stringify(current));
             let feature = copy.find(p => p.feature === featureName);
@@ -74,15 +52,70 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                 feature = { feature: featureName, access: [actionType] };
                 copy.push(feature);
             } else {
-                const idx = feature.access.indexOf(actionType);
+                const currentAccess = feature.access || [];
+                const idx = currentAccess.indexOf(actionType);
                 if (idx > -1) {
-                    feature.access.splice(idx, 1);
+                    feature.access = currentAccess.filter(a => a !== actionType);
                 } else {
-                    feature.access.push(actionType);
+                    feature.access = [...currentAccess, actionType];
                 }
             }
             return copy;
         });
+    };
+
+    // Master row checkbox: toggles all available permissions for this module
+    const handleRowToggleAll = (featureName, availableTypes) => {
+        setPermissions(current => {
+            const copy = JSON.parse(JSON.stringify(current));
+            let feature = copy.find(p => p.feature === featureName);
+            const currentAccess = feature?.access || [];
+            const allGranted = availableTypes.length > 0 && availableTypes.every(t => currentAccess.includes(t));
+
+            if (allGranted) {
+                // Revoke all actions for this module
+                if (feature) feature.access = [];
+            } else {
+                // Grant all available actions
+                if (feature) {
+                    feature.access = [...availableTypes];
+                } else {
+                    copy.push({ feature: featureName, access: [...availableTypes] });
+                }
+            }
+            return copy;
+        });
+    };
+
+    // Category grant all / revoke all
+    const handleCategoryToggleAll = (items, grantAll) => {
+        setPermissions(current => {
+            const copy = JSON.parse(JSON.stringify(current));
+            items.forEach(item => {
+                const availableTypes = item.access || allAccessTypes;
+                let feature = copy.find(p => p.feature === item.feature);
+
+                if (grantAll) {
+                    if (feature) {
+                        feature.access = [...availableTypes];
+                    } else {
+                        copy.push({ feature: item.feature, access: [...availableTypes] });
+                    }
+                } else {
+                    if (feature) {
+                        feature.access = [];
+                    }
+                }
+            });
+            return copy;
+        });
+    };
+
+    const toggleCategoryCollapse = (category) => {
+        setCollapsedCategories(prev => ({
+            ...prev,
+            [category]: !prev[category]
+        }));
     };
 
     const handleSave = async () => {
@@ -112,7 +145,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
         }, {});
     }, [masterPermissions]);
 
-    // Categories list for filter tabs and dropdown
+    // Categories list for filter dropdown
     const categoriesList = useMemo(() => {
         return ['All', ...Object.keys(groupedPermissions)];
     }, [groupedPermissions]);
@@ -204,15 +237,6 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
         return chips;
     }, [selectedCategory, statusFilter, searchQuery]);
 
-    // Metrics for display
-    const totalActiveActions = useMemo(() => {
-        return permissions.reduce((acc, p) => acc + (p.access?.length || 0), 0);
-    }, [permissions]);
-
-    const activeFeaturesCount = useMemo(() => {
-        return permissions.filter(p => p.access && p.access.length > 0).length;
-    }, [permissions]);
-
     if (isLoadingAll || isLoadingUser) {
         return (
             <div className="w-full flex-1 flex flex-col bg-gray-50/40 min-h-screen">
@@ -264,7 +288,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
 
     return (
         <div className="w-full flex-1 flex flex-col bg-gray-50/40 min-h-screen">
-            {/* ── TOP HEADER (Permissions for {name} with Back button & Badges) ── */}
+            {/* ── TOP HEADER (Permissions for {name} with Back button, Badges & Save button) ── */}
             <Header
                 showBack={true}
                 onBack={onBack}
@@ -305,7 +329,7 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
             />
 
             {/* ── MAIN CONTENT CONTAINER ── */}
-            <div className="p-3 sm:p-5 lg:p-6 w-full space-y-4 sm:space-y-6 pb-24 md:pb-8">
+            <div className="p-3 sm:p-5 lg:p-6 w-full space-y-4 sm:space-y-5 pb-24 md:pb-8">
                 {/* ── CONTROLS BAR: Search on Left (Opposite), Filters on Right ── */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
                     {/* Search Input on Left (Opposite) */}
@@ -364,16 +388,6 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                     />
                 )}
 
-                {/* Modules Metric & Summary Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 px-1 gap-1">
-                    <span>
-                        Showing <strong>{totalFilteredItems}</strong> of {masterPermissions.length} modules
-                    </span>
-                    <span className="font-semibold text-orange-600">
-                        {activeFeaturesCount} Modules Enabled ({totalActiveActions} actions configured)
-                    </span>
-                </div>
-
                 {/* Zero State if search/filter has no results */}
                 {totalFilteredItems === 0 && (
                     <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 shadow-xs">
@@ -389,152 +403,194 @@ const GlobalPermissionMatrix = ({ user, onBack }) => {
                     </div>
                 )}
 
-                {/* Permissions List Grouped By Category */}
-                <div className="space-y-6">
-                    {Object.entries(filteredGroupedPermissions).map(([category, items]) => {
-                        const cleanCategoryName = category.replace(/^\d+\.\s*/, '');
-                        const categoryActiveCount = items.filter(it => {
-                            const p = permissions.find(x => x.feature === it.feature);
-                            return p && p.access && p.access.length > 0;
-                        }).length;
+                {/* ── TABULAR PERMISSION MATRIX ── */}
+                {totalFilteredItems > 0 && (
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-2xs custom-scrollbar">
+                        <table className="w-full text-left border-collapse">
+                            {/* Sticky Table Header */}
+                            <thead className="bg-slate-50/95 border-b border-slate-200 text-slate-700 text-xs font-extrabold uppercase tracking-wider sticky top-0 z-20 backdrop-blur-xs">
+                                <tr>
+                                    <th className="py-3.5 px-4 text-left min-w-[280px]">
+                                        Module / Feature
+                                    </th>
+                                    <th className="py-3.5 px-2 text-center w-20 min-w-[75px]" title="Toggle all permissions for this row">
+                                        All
+                                    </th>
+                                    {ACTIONS.map(act => (
+                                        <th
+                                            key={act.key}
+                                            className="py-3.5 px-2 text-center w-20 min-w-[70px]"
+                                        >
+                                            {act.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
 
-                        return (
-                            <div key={category} className="space-y-2.5">
-                                {/* Category Title Band */}
-                                <div className="bg-slate-100/90 border-l-4 border-orange-500 px-3.5 py-2 rounded-r-xl flex items-center justify-between">
-                                    <span className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-                                        {cleanCategoryName}
-                                    </span>
-                                    <span className="text-[11px] font-semibold text-slate-500">
-                                        {categoryActiveCount} of {items.length} enabled
-                                    </span>
-                                </div>
+                            {/* Table Body with Category Groupings */}
+                            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                                {Object.entries(filteredGroupedPermissions).map(([category, items]) => {
+                                    const cleanCategoryName = category.replace(/^\d+\.\s*/, '');
+                                    const isCollapsed = Boolean(collapsedCategories[category]);
 
-                                {/* Permission Cards */}
-                                <div className="space-y-2">
-                                    {items.map(({ feature: featureName, displayName, description, access: itemAccess }) => {
-                                        const availableTypes = itemAccess || allAccessTypes;
-                                        const featurePermission = permissions.find(p => p.feature === featureName);
-                                        const grantedActions = featurePermission?.access || [];
-                                        const isEnabled = grantedActions.length > 0;
-
-                                        return (
-                                            <div
-                                                key={featureName}
-                                                className={`p-3.5 sm:p-4 rounded-xl border transition-all duration-150 ${
-                                                    isEnabled
-                                                        ? 'bg-white border-orange-200 shadow-xs'
-                                                        : 'bg-slate-50/50 border-slate-200/80 hover:bg-white'
-                                                }`}
-                                            >
-                                                {/* Header Row: Title, Code, Description & Master Switch */}
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <span className="font-bold text-slate-900 text-sm sm:text-[15px]">
-                                                                {displayName}
-                                                            </span>
-                                                            <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                                                {featureName}
-                                                            </span>
-                                                        </div>
-                                                        {description && (
-                                                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                                                                {description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Master Toggle Switch */}
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <span className={`text-xs font-semibold hidden sm:inline ${isEnabled ? 'text-orange-600' : 'text-slate-400'}`}>
-                                                            {isEnabled ? 'Enabled' : 'Disabled'}
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            role="switch"
-                                                            aria-checked={isEnabled}
-                                                            onClick={() => handleMasterToggle(featureName, availableTypes)}
-                                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                                                isEnabled ? 'bg-orange-500' : 'bg-slate-300'
-                                                            }`}
-                                                            title={isEnabled ? 'Click to disable access' : 'Click to enable access'}
+                                    return (
+                                        <React.Fragment key={category}>
+                                            {/* Category Section Header Row */}
+                                            <tr className="bg-slate-50/95 border-y border-slate-200/90 sticky top-[41px] z-10 backdrop-blur-xs select-none">
+                                                <td colSpan={7} className="py-2.5 px-4">
+                                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                        {/* Category Title & Collapse Toggle */}
+                                                        <div
+                                                            onClick={() => toggleCategoryCollapse(category)}
+                                                            className="flex items-center gap-2 cursor-pointer group"
                                                         >
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                                                    isEnabled ? 'translate-x-5' : 'translate-x-0'
-                                                                }`}
-                                                            />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Sub-actions Checkboxes (Shown when module has 2+ actions and is enabled) */}
-                                                {availableTypes.length > 1 && isEnabled && (
-                                                    <div className="mt-3 pt-2.5 border-t border-slate-100">
-                                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                                                            Permissions:
+                                                            <button
+                                                                type="button"
+                                                                className="text-slate-400 group-hover:text-orange-600 transition-colors p-0.5"
+                                                            >
+                                                                {isCollapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+                                                            </button>
+                                                            <span className="w-1.5 h-3.5 rounded-full bg-orange-500 shrink-0"></span>
+                                                            <span className="font-extrabold text-xs sm:text-sm text-slate-800 uppercase tracking-wide group-hover:text-orange-600 transition-colors">
+                                                                {cleanCategoryName}
+                                                            </span>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {availableTypes.map(actionType => {
-                                                                const isChecked = grantedActions.includes(actionType);
-                                                                const meta = ACTION_DISPLAY_MAP[actionType] || { label: actionType };
 
-                                                                return (
-                                                                    <label
-                                                                        key={actionType}
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            handleActionToggle(featureName, actionType, availableTypes);
-                                                                        }}
-                                                                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer select-none transition-all ${
-                                                                            isChecked
-                                                                                ? 'bg-orange-50 text-orange-900 border border-orange-300 font-bold shadow-2xs'
-                                                                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                                                                        }`}
-                                                                    >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isChecked}
-                                                                            readOnly
-                                                                            className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400 accent-orange-500 cursor-pointer"
-                                                                        />
-                                                                        <span>{meta.label}</span>
-                                                                    </label>
-                                                                );
-                                                            })}
+                                                        {/* Quick Category Action Links */}
+                                                        <div className="flex items-center gap-2 text-xs">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleCategoryToggleAll(items, true);
+                                                                }}
+                                                                className="font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                                                            >
+                                                                Grant All
+                                                            </button>
+                                                            <span className="text-slate-300">|</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleCategoryToggleAll(items, false);
+                                                                }}
+                                                                className="font-bold text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                                                            >
+                                                                Revoke All
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                                                </td>
+                                            </tr>
+
+                                            {/* Category Feature Rows (Hidden if category is collapsed) */}
+                                            {!isCollapsed && items.map(({ feature: featureName, displayName, description, access: itemAccess }) => {
+                                                const availableTypes = itemAccess || allAccessTypes;
+                                                const featurePermission = permissions.find(p => p.feature === featureName);
+                                                const grantedActions = featurePermission?.access || [];
+                                                const isRowFullyGranted = availableTypes.length > 0 && availableTypes.every(t => grantedActions.includes(t));
+                                                const isRowPartiallyGranted = grantedActions.length > 0 && !isRowFullyGranted;
+                                                const hasAnyAccess = grantedActions.length > 0;
+
+                                                return (
+                                                    <tr
+                                                        key={featureName}
+                                                        className={`border-b border-slate-100 hover:bg-orange-50/30 transition-colors group ${
+                                                            hasAnyAccess ? 'bg-white' : 'bg-slate-50/20'
+                                                        }`}
+                                                    >
+                                                        {/* 1. Module Name & Description */}
+                                                        <td className="py-3 px-4 align-middle">
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-gray-900 text-xs sm:text-sm">
+                                                                        {displayName}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
+                                                                        {featureName}
+                                                                    </span>
+                                                                </div>
+                                                                {description && (
+                                                                    <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1 leading-relaxed" title={description}>
+                                                                        {description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </td>
+
+                                                        {/* 2. Select All Checkbox for this row */}
+                                                        <td className="py-3 px-2 text-center align-middle">
+                                                            <label
+                                                                className="inline-flex items-center justify-center p-1 cursor-pointer rounded-lg hover:bg-orange-100/50 transition"
+                                                                title={isRowFullyGranted ? 'Revoke all permissions for this module' : 'Grant all permissions for this module'}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isRowFullyGranted}
+                                                                    ref={(el) => {
+                                                                        if (el) el.indeterminate = isRowPartiallyGranted;
+                                                                    }}
+                                                                    onChange={() => handleRowToggleAll(featureName, availableTypes)}
+                                                                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 accent-orange-500 cursor-pointer"
+                                                                />
+                                                            </label>
+                                                        </td>
+
+                                                        {/* 3-7. Individual Action Checkboxes: read, create, update, delete, execute */}
+                                                        {ACTIONS.map(act => {
+                                                            const isAvailable = availableTypes.includes(act.key);
+                                                            const isChecked = grantedActions.includes(act.key);
+
+                                                            return (
+                                                                <td
+                                                                    key={act.key}
+                                                                    className="py-3 px-2 text-center align-middle"
+                                                                >
+                                                                    {isAvailable ? (
+                                                                        <label
+                                                                            className="inline-flex items-center justify-center p-1 cursor-pointer rounded-lg hover:bg-orange-100/50 transition"
+                                                                            title={`${act.label} permission for ${displayName}`}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={() => handleActionToggle(featureName, act.key)}
+                                                                                className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 accent-orange-500 cursor-pointer"
+                                                                            />
+                                                                        </label>
+                                                                    ) : (
+                                                                        <span
+                                                                            className="inline-block text-gray-300 font-bold select-none text-xs"
+                                                                        >
+                                                                            —
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Mobile Sticky Save Footer Bar */}
-            <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl flex items-center justify-between z-40 sm:hidden">
-                <div className="min-w-0 pr-2">
-                    <span className="text-xs font-extrabold text-slate-900 block truncate">
-                        {activeFeaturesCount} Modules Enabled
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                        {totalActiveActions} actions configured
-                    </span>
-                </div>
+            <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl flex items-center justify-end z-40 sm:hidden">
                 <button
                     type="button"
                     onClick={handleSave}
                     disabled={isUpdating}
-                    className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-orange-500 rounded-xl hover:bg-orange-600 disabled:bg-orange-300 transition-all shadow-md cursor-pointer active:scale-95 shrink-0"
+                    className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-orange-500 rounded-xl hover:bg-orange-600 disabled:bg-orange-300 transition-all shadow-md cursor-pointer active:scale-95"
                 >
                     <Save size={15} />
-                    {isUpdating ? 'Saving...' : 'Save'}
+                    {isUpdating ? 'Saving...' : 'Save Permissions'}
                 </button>
             </div>
         </div>

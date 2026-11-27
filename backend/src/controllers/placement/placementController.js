@@ -220,7 +220,10 @@ exports.updateInterviewStatus = async (req, res) => {
     const { studentId, interviewId } = req.params;
     const { status, result, remark, statusRemark, rescheduleDate } = req.body;
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -273,7 +276,10 @@ exports.addInterviewRound = async (req, res) => {
     const { studentId, interviewId } = req.params;
     const { roundName, date, time, mode, feedback, result, interviewer, location } = req.body;
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -337,9 +343,21 @@ exports.addInterviewRound = async (req, res) => {
 exports.markInterviewConducted = async (req, res) => {
   try {
     const { studentId, interviewId } = req.params;
-    const { roundId, actualDate, actualTime, interviewer, remarks } = req.body;
+    const {
+      roundId,
+      actualDate,
+      conductedDate,
+      actualTime,
+      conductedTime,
+      interviewer,
+      remarks,
+      conductedRemarks,
+    } = req.body;
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -352,19 +370,46 @@ exports.markInterviewConducted = async (req, res) => {
       targetRound = interview.rounds[interview.rounds.length - 1];
     }
 
-    const conductedAt = actualDate ? new Date(actualDate) : new Date();
+    const dateInput = actualDate || conductedDate;
+    let conductedAt = new Date();
+    if (dateInput) {
+      const parsed = new Date(dateInput);
+      if (!isNaN(parsed.getTime())) {
+        conductedAt = parsed;
+      }
+    }
+
+    const finalTime = actualTime || conductedTime || "";
+    const finalRemarks = remarks || conductedRemarks || "";
 
     if (targetRound) {
       targetRound.status = "Conducted";
       targetRound.conductedDate = conductedAt;
-      if (actualTime) targetRound.conductedTime = actualTime;
+      if (finalTime) targetRound.conductedTime = finalTime;
       if (interviewer) targetRound.interviewer = interviewer;
-      if (remarks) targetRound.conductedRemarks = remarks;
+      if (finalRemarks) targetRound.conductedRemarks = finalRemarks;
+    } else {
+      // If no rounds exist yet, record initial Round 1 as Conducted
+      if (!interview.rounds) interview.rounds = [];
+      interview.rounds.push({
+        roundName: "Round 1",
+        roundType: "Technical",
+        date: interview.scheduleDate || conductedAt,
+        time: finalTime,
+        mode: "Offline",
+        interviewer: interviewer || "",
+        status: "Conducted",
+        conductedDate: conductedAt,
+        conductedTime: finalTime,
+        conductedRemarks: finalRemarks,
+        result: "Pending",
+      });
+      targetRound = interview.rounds[interview.rounds.length - 1];
     }
 
     interview.status = "Conducted";
     interview.conductedDate = conductedAt;
-    if (remarks) interview.statusRemark = remarks;
+    if (finalRemarks) interview.statusRemark = finalRemarks;
 
     await placement.save();
 
@@ -373,12 +418,12 @@ exports.markInterviewConducted = async (req, res) => {
       studentId: placement.studentId,
       action: "Interview Conducted",
       title: `Interview Conducted — ${targetRound ? targetRound.roundName : 'Round'}`,
-      description: `Interview actually conducted on ${conductedAt.toLocaleDateString()} at ${actualTime || targetRound?.time || 'Scheduled Time'}. ${remarks || ''}`,
+      description: `Interview actually conducted on ${conductedAt.toLocaleDateString()} at ${finalTime || targetRound?.time || 'Scheduled Time'}. ${finalRemarks || ''}`,
       meta: {
         company: interview.companyName || "Company",
         round: targetRound ? targetRound.roundName : "Round 1",
         conductedDate: conductedAt,
-        conductedTime: actualTime,
+        conductedTime: finalTime,
         interviewer
       },
       req
@@ -386,7 +431,8 @@ exports.markInterviewConducted = async (req, res) => {
 
     res.json({ success: true, message: "Interview marked as Conducted", data: interview });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("markInterviewConducted error:", error);
+    res.status(500).json({ success: false, message: error.message, error: error.message });
   }
 };
 
@@ -399,7 +445,10 @@ exports.rescheduleInterview = async (req, res) => {
 
     if (!dateValue) return res.status(400).json({ message: "rescheduleDate is required" });
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -477,7 +526,10 @@ exports.cancelInterview = async (req, res) => {
     const { studentId, interviewId } = req.params;
     const { reason, cancellationReason, statusRemark } = req.body;
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -529,7 +581,10 @@ exports.updateFinalResult = async (req, res) => {
       return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
     }
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -974,7 +1029,10 @@ exports.updateJobType = async (req, res) => {
   try {
     const { studentId, interviewId, newJobType, newJobProfile, internshipEndDate } = req.body;
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
 
     const interview = placement.PlacementinterviewRecord.id(interviewId);
@@ -1514,7 +1572,10 @@ exports.uploadPlacementDocuments = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    let placement = await StudentPlacement.findOne(placementFilter(req, { studentId }));
+    if (!placement) {
+      placement = await StudentPlacement.findOne(placementFilter(req, { _id: studentId }));
+    }
     if (!placement) return res.status(404).json({ message: "Student placement not found or access denied" });
     if (!placement.placedInfo) return res.status(400).json({ message: "Student is not placed yet" });
     if (placement.offerLetter && placement.commitmentApplication) {

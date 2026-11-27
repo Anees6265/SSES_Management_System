@@ -17,37 +17,9 @@ import { toTitleCase, smartCapitalize } from "./placementPosterUtils";
 import Avatar from "../../shared/Avatar";
 import { 
   MdSchool, MdBusiness, MdFileDownload, 
-  MdSearch, MdGridView, MdViewList, MdEdit, MdTrendingUp,
-  MdClose, MdWork, MdStars, MdRefresh, MdVisibility
+  MdSearch, MdGridView, MdViewList, MdEdit,
+  MdClose, MdWork, MdRefresh, MdVisibility
 } from "react-icons/md";
-
-/* ─── Metric Card Component ───────────────────────────────── */
-const PlacementMetricCard = ({ title, count, subtitle, icon: Icon, color = "orange" }) => {
-  const colorStyles = {
-    orange: "text-orange-500 bg-orange-50 border-orange-100",
-    emerald: "text-emerald-500 bg-emerald-50 border-emerald-100",
-    purple: "text-purple-500 bg-purple-50 border-purple-100",
-    blue: "text-blue-500 bg-blue-50 border-blue-100",
-    indigo: "text-indigo-500 bg-indigo-50 border-indigo-100",
-  }[color];
-
-  return (
-    <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between text-left group">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
-          {title}
-        </span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${colorStyles}`}>
-          <Icon size={17} />
-        </div>
-      </div>
-      <div className="mt-2.5">
-        <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{count}</p>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{subtitle}</p>
-      </div>
-    </div>
-  );
-};
 
 /* ─── Company Logo Tile ───────────────────────────────────── */
 const CompanyLogo = ({ companyName, logoUrl, size = "w-10 h-10" }) => {
@@ -112,9 +84,9 @@ const PlacementPost = () => {
   const setPackageFilter = (p) => updatePostFilter("packageFilter", p);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  // Pagination states
+  // Pagination states (Fixed 10 per page for cards and table)
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(viewMode === "grid" ? 9 : 10);
+  const pageSize = 10;
 
   const { data: placedRes, isLoading, error, refetch } = useGetNewPlacedStudentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -138,42 +110,6 @@ const PlacementPost = () => {
     }
     return map;
   }, [companiesData]);
-
-  // Calculate live statistics
-  const stats = useMemo(() => {
-    const total = allPlacedStudents.length;
-    const salaries = allPlacedStudents
-      .map((s) => Number(s.placedInfo?.salary))
-      .filter((n) => !isNaN(n) && n > 0);
-
-    const maxSalary = salaries.length > 0 ? Math.max(...salaries) : 0;
-    const maxSalaryLpa = maxSalary > 0 ? (maxSalary / 100000).toFixed(1) : "0.0";
-
-    const avgSalary =
-      salaries.length > 0
-        ? (salaries.reduce((acc, v) => acc + v, 0) / salaries.length / 100000).toFixed(1)
-        : "0.0";
-
-    const uniqueCompanies = new Set(
-      allPlacedStudents
-        .map((s) => s.placedInfo?.companyName?.trim())
-        .filter(Boolean)
-    ).size;
-
-    const uniqueCourses = new Set(
-      allPlacedStudents
-        .map((s) => s.course?.trim())
-        .filter(Boolean)
-    ).size;
-
-    return {
-      total,
-      maxSalaryLpa,
-      avgSalaryLpa: avgSalary,
-      uniqueCompanies: uniqueCompanies || (companiesData?.data?.length || 0),
-      uniqueCourses: uniqueCourses || 0,
-    };
-  }, [allPlacedStudents, companiesData]);
 
   // Dynamic filter options
   const companyOptions = useMemo(() => {
@@ -262,12 +198,12 @@ const PlacementPost = () => {
     });
   }, [allPlacedStudents, searchTerm, companyFilter, courseFilter, packageFilter]);
 
-  // Pagination slice
+  // Pagination calculation
   const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
   const paginatedStudents = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredStudents.slice(start, start + pageSize);
-  }, [filteredStudents, currentPage, pageSize]);
+    return filteredStudents.slice(startIndex, startIndex + pageSize);
+  }, [filteredStudents, startIndex, pageSize]);
 
   const hasActiveFilters =
     Boolean(searchTerm.trim()) ||
@@ -414,127 +350,95 @@ const PlacementPost = () => {
     <>
       <Header
         title="Placement Post"
+        badge={`${allPlacedStudents.length} Placed`}
         breadcrumbs={[
           { label: "Placements", path: "/placements/dashboard" },
           { label: "Placement Post" },
         ]}
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Grid vs Table View Toggle */}
+            <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/80 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("grid");
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                title="Posters View"
+              >
+                <MdGridView className="text-sm" /> Posters
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("table");
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                title="Table View"
+              >
+                <MdViewList className="text-sm" /> Table
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="h-9 w-9 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 rounded-xl transition flex items-center justify-center shadow-2xs cursor-pointer"
+              title="Refresh"
+            >
+              <MdRefresh size={16} />
+            </button>
+          </div>
+        }
       />
 
       <div className="bg-slate-50 min-h-screen pb-16">
         <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
-          {/* ── Top Metric Cards (5 Cards) ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
-            <PlacementMetricCard
-              title="Total Placements"
-              count={stats.total}
-              subtitle="Confirmed student offers"
-              icon={MdSchool}
-              color="orange"
-            />
-            <PlacementMetricCard
-              title="Highest CTC Package"
-              count={stats.maxSalaryLpa !== "0.0" ? `₹${stats.maxSalaryLpa} LPA` : "—"}
-              subtitle="Top offer recorded"
-              icon={MdStars}
-              color="emerald"
-            />
-            <PlacementMetricCard
-              title="Average Package"
-              count={stats.avgSalaryLpa !== "0.0" ? `₹${stats.avgSalaryLpa} LPA` : "—"}
-              subtitle="Mean student compensation"
-              icon={MdTrendingUp}
-              color="purple"
-            />
-            <PlacementMetricCard
-              title="Recruiting Partners"
-              count={stats.uniqueCompanies}
-              subtitle="Active hiring corporations"
-              icon={MdBusiness}
-              color="blue"
-            />
-            <PlacementMetricCard
-              title="Academic Streams"
-              count={stats.uniqueCourses}
-              subtitle="Disciplines with offers"
-              icon={MdWork}
-              color="indigo"
-            />
-          </div>
-
-          {/* ── Toolbar: Search, Filters & View Toggle ── */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 sm:p-4 space-y-3">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-              {/* Search Bar */}
-              <div className="relative flex-1 min-w-[240px] max-w-lg">
-                <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
+          {/* Top Control Bar: Search Input & Filter Dropdowns in single row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+            {/* Search Input on Left - Standard width */}
+            <div className="relative flex-1 max-w-full md:max-w-md">
+              <MdSearch size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
                     setCurrentPage(1);
                   }}
-                  className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setCurrentPage(1);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    title="Clear Search"
-                  >
-                    <MdClose size={15} />
-                  </button>
-                )}
-              </div>
-
-              {/* View Switcher & Result Summary */}
-              <div className="flex items-center justify-between lg:justify-end gap-3">
-                <div className="text-xs font-medium text-slate-400">
-                  Showing <span className="font-extrabold text-slate-700">{filteredStudents.length}</span> of {allPlacedStudents.length} offers
-                </div>
-
-                {/* Grid vs Table View Toggle */}
-                <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/80">
-                  <button
-                    onClick={() => {
-                      setViewMode("grid");
-                      setPageSize(9);
-                      setCurrentPage(1);
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      viewMode === "grid"
-                        ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
-                        : "text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    <MdGridView className="text-sm" /> Posters
-                  </button>
-                  <button
-                    onClick={() => {
-                      setViewMode("table");
-                      setPageSize(10);
-                      setCurrentPage(1);
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      viewMode === "table"
-                        ? "bg-white text-orange-600 shadow-2xs border border-slate-200"
-                        : "text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    <MdViewList className="text-sm" /> Table
-                  </button>
-                </div>
-              </div>
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear Search"
+                >
+                  <MdClose size={16} />
+                </button>
+              )}
             </div>
 
-            {/* Second Row: Dropdown Filters */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
+            {/* Filter Dropdowns on Right */}
+            <div className="flex flex-wrap items-center gap-2.5">
               {/* Company Filter */}
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-44">
                 <SelectDropdown
                   value={companyFilter}
                   onChange={(val) => {
@@ -543,6 +447,9 @@ const PlacementPost = () => {
                   }}
                   options={companyOptions}
                   placeholder="All Companies"
+                  className="w-full"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                  menuClassName="w-full min-w-[180px] z-50 shadow-xl border border-slate-100 rounded-xl max-h-60"
                 />
               </div>
 
@@ -556,11 +463,14 @@ const PlacementPost = () => {
                   }}
                   options={courseOptions}
                   placeholder="All Courses"
+                  className="w-full"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                  menuClassName="w-full min-w-[180px] z-50 shadow-xl border border-slate-100 rounded-xl max-h-60"
                 />
               </div>
 
               {/* Package CTC Filter */}
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-44">
                 <SelectDropdown
                   value={packageFilter}
                   onChange={(val) => {
@@ -569,16 +479,21 @@ const PlacementPost = () => {
                   }}
                   options={packageOptions}
                   placeholder="All Packages"
+                  className="w-full"
+                  buttonClassName="h-10 w-full flex items-center justify-between gap-1.5 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-semibold shadow-2xs hover:border-orange-500 cursor-pointer"
+                  menuClassName="w-full min-w-[180px] z-50 shadow-xl border border-slate-100 rounded-xl max-h-60"
                 />
               </div>
 
               {/* Reset Filters */}
               {hasActiveFilters && (
                 <button
+                  type="button"
                   onClick={clearAllFilters}
-                  className="px-3 py-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-xl transition cursor-pointer flex items-center gap-1 border border-orange-200"
+                  className="h-10 px-3 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                  title="Clear Filters"
                 >
-                  <MdClose size={14} /> Clear Filters
+                  <MdClose size={15} /> Clear Filters
                 </button>
               )}
             </div>
@@ -682,9 +597,9 @@ const PlacementPost = () => {
                 })}
               </div>
 
-              {/* Grid Pagination */}
+              {/* Grid Pagination Footer */}
               {filteredStudents.length > pageSize && (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:px-6 sm:py-4 shadow-2xs">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 px-4 sm:px-6 py-3 sm:py-4 shadow-2xs">
                   <Pagination
                     totalItems={filteredStudents.length}
                     currentPage={currentPage}
@@ -698,138 +613,145 @@ const PlacementPost = () => {
             </div>
           ) : (
             /* ── Data Table View ── */
-            <div className="space-y-4">
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
               {/* Desktop Table */}
-              <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                        <th className="py-3.5 px-5">Placed Student</th>
-                        <th className="py-3.5 px-5">Hiring Partner</th>
-                        <th className="py-3.5 px-5">Job Profile / Role</th>
-                        <th className="py-3.5 px-5">Offered Package</th>
-                        <th className="py-3.5 px-5">Job Type</th>
-                        <th className="py-3.5 px-5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                      {paginatedStudents.map((student, idx) => {
-                        const companyName = student.placedInfo?.companyName || "Company";
-                        const compObj =
-                          student.placedInfo?.companyRef ||
-                          companyMap[companyName.toLowerCase().trim()];
-                        const logoUrl = compObj?.companyLogo;
-                        const isDownloading =
-                          downloadingId === (student._id || `${student.firstName}_${student.lastName}`);
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                      <th className="py-3.5 px-3 text-center w-16">S.No.</th>
+                      <th className="py-3.5 px-5">Placed Student</th>
+                      <th className="py-3.5 px-5">Hiring Partner</th>
+                      <th className="py-3.5 px-5">Job Profile / Role</th>
+                      <th className="py-3.5 px-5">Offered Package</th>
+                      <th className="py-3.5 px-5">Job Type</th>
+                      <th className="py-3.5 px-5 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                    {paginatedStudents.map((student, idx) => {
+                      const companyName = student.placedInfo?.companyName || "Company";
+                      const compObj =
+                        student.placedInfo?.companyRef ||
+                        companyMap[companyName.toLowerCase().trim()];
+                      const logoUrl = compObj?.companyLogo;
+                      const isDownloading =
+                        downloadingId === (student._id || `${student.firstName}_${student.lastName}`);
 
-                        return (
-                          <tr
-                            key={student._id || idx}
-                            className="hover:bg-slate-50/70 transition group"
-                          >
-                            {/* Student Profile */}
-                            <td className="py-3.5 px-5">
-                              <div className="flex items-center gap-3">
-                                <Avatar
-                                  firstName={student.firstName}
-                                  lastName={student.lastName}
-                                  imageUrl={student.image}
-                                />
-                                <div>
-                                  <p className="font-extrabold text-slate-900 group-hover:text-orange-600 transition truncate max-w-[190px]">
-                                    {toTitleCase(student.firstName)} {toTitleCase(student.lastName)}
-                                  </p>
-                                  <span className="text-[11px] text-slate-400 font-medium">
-                                    {student.course || "Course"}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
+                      return (
+                        <tr
+                          key={student._id || idx}
+                          className="hover:bg-slate-50/70 transition group border-b border-slate-100 last:border-b-0"
+                        >
+                          {/* S.No. */}
+                          <td className="py-3.5 px-3 text-center font-semibold text-slate-500">
+                            {startIndex + idx + 1}
+                          </td>
 
-                            {/* Company */}
-                            <td className="py-3.5 px-5">
-                              <div className="flex items-center gap-2.5">
-                                <CompanyLogo companyName={companyName} logoUrl={logoUrl} size="w-9 h-9" />
-                                <div className="min-w-0">
-                                  <p className="font-extrabold text-slate-900 truncate max-w-[170px]">
-                                    {smartCapitalize(companyName)}
-                                  </p>
-                                  <span className="text-[11px] text-slate-400 font-medium truncate block max-w-[170px]">
-                                    {student.placedInfo?.location || compObj?.location || "Campus Placement"}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Job Profile */}
-                            <td className="py-3.5 px-5">
-                              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100/80 inline-block">
-                                {toTitleCase(student.placedInfo?.jobProfile || "Associate")}
-                              </span>
-                            </td>
-
-                            {/* Salary */}
-                            <td className="py-3.5 px-5">
-                              {student.placedInfo?.salary ? (
-                                <span className="font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-100/80">
-                                  ₹{(Number(student.placedInfo.salary) / 100000).toFixed(1)} LPA
+                          {/* Student Profile */}
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                firstName={student.firstName}
+                                lastName={student.lastName}
+                                imageUrl={student.image}
+                              />
+                              <div>
+                                <p className="font-extrabold text-slate-900 group-hover:text-orange-600 transition truncate max-w-[190px]">
+                                  {toTitleCase(student.firstName)} {toTitleCase(student.lastName)}
+                                </p>
+                                <span className="text-[11px] text-slate-400 font-medium">
+                                  {student.course || "Course"}
                                 </span>
-                              ) : (
-                                <span className="text-slate-400 font-medium">—</span>
-                              )}
-                            </td>
-
-                            {/* Job Type */}
-                            <td className="py-3.5 px-5">
-                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[11px] font-bold border border-purple-100">
-                                {student.placedInfo?.jobType || "Full-Time"}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-3.5 px-5 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => setPreviewStudent(student)}
-                                  className="border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold px-2.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer"
-                                  title="Preview Placement Poster"
-                                >
-                                  <MdVisibility size={14} className="text-slate-600" />
-                                  <span>View</span>
-                                </button>
-                                <button
-                                  onClick={() => downloadPost(student)}
-                                  disabled={isDownloading}
-                                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                  title="Download Poster PDF"
-                                >
-                                  <MdFileDownload size={14} />
-                                  <span>{isDownloading ? "..." : "Poster"}</span>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedStudent(student);
-                                    setCreatePostModalOpen(true);
-                                  }}
-                                  className="border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer"
-                                  title="Edit Placement Record"
-                                >
-                                  <MdEdit size={13} className="text-orange-500" />
-                                  <span>Edit</span>
-                                </button>
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            </div>
+                          </td>
+
+                          {/* Company */}
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-2.5">
+                              <CompanyLogo companyName={companyName} logoUrl={logoUrl} size="w-9 h-9" />
+                              <div className="min-w-0">
+                                <p className="font-extrabold text-slate-900 truncate max-w-[170px]">
+                                  {smartCapitalize(companyName)}
+                                </p>
+                                <span className="text-[11px] text-slate-400 font-medium truncate block max-w-[170px]">
+                                  {student.placedInfo?.location || compObj?.location || "Campus Placement"}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Job Profile */}
+                          <td className="py-3.5 px-5">
+                            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100/80 inline-block">
+                              {toTitleCase(student.placedInfo?.jobProfile || "Associate")}
+                            </span>
+                          </td>
+
+                          {/* Salary */}
+                          <td className="py-3.5 px-5">
+                            {student.placedInfo?.salary ? (
+                              <span className="font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-100/80">
+                                ₹{(Number(student.placedInfo.salary) / 100000).toFixed(1)} LPA
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium">—</span>
+                            )}
+                          </td>
+
+                          {/* Job Type */}
+                          <td className="py-3.5 px-5">
+                            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-[11px] font-bold border border-purple-100">
+                              {student.placedInfo?.jobType || "Full-Time"}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3.5 px-5 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewStudent(student)}
+                                className="border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold px-2.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Preview Placement Poster"
+                              >
+                                <MdVisibility size={14} className="text-slate-600" />
+                                <span>View</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => downloadPost(student)}
+                                disabled={isDownloading}
+                                className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50 active:scale-95"
+                                title="Download Poster PDF"
+                              >
+                                <MdFileDownload size={14} />
+                                <span>{isDownloading ? "..." : "Poster"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedStudent(student);
+                                  setCreatePostModalOpen(true);
+                                }}
+                                className="border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Edit Placement Record"
+                              >
+                                <MdEdit size={13} className="text-orange-500" />
+                                <span>Edit</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
               {/* Mobile Table Cards */}
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden divide-y divide-slate-100">
                 {paginatedStudents.map((student, idx) => {
                   const companyName = student.placedInfo?.companyName || "Company";
                   const compObj =
@@ -842,7 +764,7 @@ const PlacementPost = () => {
                   return (
                     <div
                       key={student._id || idx}
-                      className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3"
+                      className="p-4 space-y-3 hover:bg-slate-50/60 transition"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar
@@ -879,6 +801,7 @@ const PlacementPost = () => {
 
                       <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                         <button
+                          type="button"
                           onClick={() => downloadPost(student)}
                           disabled={isDownloading}
                           className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold py-2 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -887,6 +810,7 @@ const PlacementPost = () => {
                           <span>{isDownloading ? "..." : "Poster PDF"}</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedStudent(student);
                             setCreatePostModalOpen(true);
@@ -902,16 +826,16 @@ const PlacementPost = () => {
                 })}
               </div>
 
-              {/* Table Pagination */}
+              {/* Table Pagination Footer */}
               {filteredStudents.length > pageSize && (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:px-6 sm:py-4 shadow-2xs">
+                <div className="border-t border-slate-200/80 px-3 sm:px-6 py-3 sm:py-4 bg-white rounded-b-2xl sm:rounded-b-3xl">
                   <Pagination
                     totalItems={filteredStudents.length}
                     currentPage={currentPage}
                     pageSize={pageSize}
                     totalPages={totalPages}
                     onPageChange={setCurrentPage}
-                    label="records"
+                    label="placement offers"
                   />
                 </div>
               )}

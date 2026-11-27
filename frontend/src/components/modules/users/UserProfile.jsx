@@ -3,7 +3,6 @@ import {
   useGetUserByIdQuery, 
   useUpdateUserMutation, 
   useGetAllSubdepartmentsQuery, 
-  useGetLeaveRequestsQuery,
   useGetAllDepartmentsQuery,
   useChangeUserPasswordMutation,
   useAdminResetUserPasswordMutation
@@ -23,7 +22,6 @@ import {
   FiUser, 
   FiBriefcase, 
   FiShield, 
-  FiSettings, 
   FiMail, 
   FiPhone, 
   FiCalendar, 
@@ -33,10 +31,9 @@ import {
   FiExternalLink, 
   FiAlertCircle, 
   FiX, 
-  FiCheckCircle,
   FiLock,
-  FiKey,
-  FiTrash2
+  FiTrash2,
+  FiCreditCard
 } from "react-icons/fi";
 import Header from "../../shared/sidebar/Header";
 import SelectDropdown from "../../shared/form-fields/SelectDropdown";
@@ -44,42 +41,28 @@ import AvatarPickerModal from "../../shared/avatar/AvatarPickerModal";
 import { toast } from 'react-toastify';
 import { useState, useRef, useMemo, useEffect } from 'react';
 
-// Color themes mapping
-const colorThemes = {
-  orange: {
-    text: 'text-orange-600',
-    bg: 'bg-orange-500',
-    softBg: 'bg-orange-50',
-    border: 'border-orange-200/70',
-    ring: 'ring-orange-500/20'
-  },
-  purple: {
-    text: 'text-purple-600',
-    bg: 'bg-purple-500',
-    softBg: 'bg-purple-50',
-    border: 'border-purple-200/70',
-    ring: 'ring-purple-500/20'
-  },
-  blue: {
-    text: 'text-blue-600',
-    bg: 'bg-blue-500',
-    softBg: 'bg-blue-50',
-    border: 'border-blue-200/70',
-    ring: 'ring-blue-500/20'
-  },
-  emerald: {
-    text: 'text-emerald-600',
-    bg: 'bg-emerald-500',
-    softBg: 'bg-emerald-50',
-    border: 'border-emerald-200/70',
-    ring: 'ring-emerald-500/20'
-  },
-  red: {
-    text: 'text-rose-600',
-    bg: 'bg-rose-500',
-    softBg: 'bg-rose-50',
-    border: 'border-rose-200/70',
-    ring: 'ring-rose-500/20'
+const getRoleBadgeColor = (role) => {
+  switch (role?.toLowerCase()) {
+    case 'superadmin': return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'admin': return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'hod': return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'faculty': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'placement_officer': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+    case 'coordinator': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const formatRoleName = (role) => {
+  if (!role) return '—';
+  switch (role.toLowerCase()) {
+    case 'superadmin': return 'Super Admin';
+    case 'admin': return 'Admin';
+    case 'hod': return 'HOD';
+    case 'faculty': return 'Faculty';
+    case 'placement_officer': return 'Placement Officer';
+    case 'coordinator': return 'Coordinator';
+    default: return role.charAt(0).toUpperCase() + role.slice(1);
   }
 };
 
@@ -91,7 +74,6 @@ const UserProfile = () => {
   const { data, isLoading, isError, error, refetch } = useGetUserByIdQuery(id);
   const { data: subdepartmentsRes } = useGetAllSubdepartmentsQuery();
   const { data: departmentsRes } = useGetAllDepartmentsQuery();
-  const { data: leavesRes } = useGetLeaveRequestsQuery("all");
   const [updateUser, { isLoading: isUpdatingUser }] = useUpdateUserMutation();
 
   // Component state
@@ -120,7 +102,6 @@ const UserProfile = () => {
   const canEdit = isAdmin || isSelf;
 
   const subdepartments = subdepartmentsRes?.data || [];
-  const leaves = leavesRes?.data || [];
   const userData = data?.user;
 
   // Extract department names for the edit modal
@@ -141,32 +122,6 @@ const UserProfile = () => {
     });
     return [...new Set(matchedSubDepts.flatMap(sd => sd.allowedCourses || []))];
   }, [userData, subdepartments]);
-
-  // Calculate pending leaves count
-  const pendingLeavesCount = useMemo(() => {
-    return leaves.filter(l => l.status === "pending").length;
-  }, [leaves]);
-
-  // Dynamic timeline activities based on role
-  const mockActivities = useMemo(() => {
-    if (!userData?.role) return [];
-    const isAcademic = ["faculty", "hod"].includes(userData.role);
-    if (isAcademic) {
-      return [
-        { title: "Marked daily attendance spreadsheet", time: "Today • 10:15 AM", type: "attendance", icon: <FiClock /> },
-        { title: "Reviewed student leave permission request", time: "Yesterday • 04:30 PM", type: "leave", icon: <FiCalendar /> },
-        { title: "Modified course syllabus milestone checklist", time: "3 days ago • 11:20 AM", type: "curriculum", icon: <FiBookOpen /> },
-        { title: "Conducted weekly technical mock assessment", time: "5 days ago • 02:00 PM", type: "assessment", icon: <FiCheckCircle /> }
-      ];
-    } else {
-      return [
-        { title: "Modified global system permissions table", time: "Today • 09:45 AM", type: "security", icon: <FiShield /> },
-        { title: "Registered new faculty account credentials", time: "Yesterday • 02:15 PM", type: "user", icon: <FiUser /> },
-        { title: "Updated department academic structure parameter", time: "4 days ago • 03:50 PM", type: "settings", icon: <FiSettings /> },
-        { title: "Configured semester audit compliance report", time: "6 days ago • 04:15 PM", type: "audit", icon: <FiBriefcase /> }
-      ];
-    }
-  }, [userData]);
 
   // Initials for avatar fallback
   const initials = useMemo(() => {
@@ -220,10 +175,7 @@ const UserProfile = () => {
     }
 
     const userId = id || userData?._id;
-    if (!userId) {
-      toast.error('User ID not found');
-      return;
-    }
+    if (!userId) return;
 
     setIsImageUploading(true);
 
@@ -260,10 +212,7 @@ const UserProfile = () => {
   // Avatar Selection
   const handleSelectAvatar = async (dataUri) => {
     const userId = id || userData?._id;
-    if (!userId) {
-      toast.error('User ID not found');
-      return;
-    }
+    if (!userId) return;
     setIsImageUploading(true);
     try {
       await updateUser({
@@ -322,7 +271,7 @@ const UserProfile = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-slate-500">Loading professional profile...</p>
+        <p className="text-xs font-semibold text-slate-500">Loading user profile...</p>
       </div>
     );
   }
@@ -349,404 +298,461 @@ const UserProfile = () => {
     );
   }
 
+  const isGlobalRole = ['superadmin', 'admin'].includes(userData?.role?.toLowerCase());
+  const displayDepartment = isGlobalRole ? "SSISM (Institution Wide)" : (userData?.department || "—");
+
   return (
-    <>
-      {/* Full-width sticky Top Header */}
+    <div className="w-full flex-1 flex flex-col bg-gray-50/40 min-h-screen">
+      {/* ── TOP HEADER ── */}
       <Header 
-        title="Professional Profile" 
+        title={userData?.name || "User Profile"} 
+        subtitle="Employee profile details, organizational role, and access rights."
         showBack={true}
+        breadcrumbs={[
+          { label: "User Management", path: "/user-management" },
+          { label: "Users", path: "/user-management" },
+          { label: userData?.name || "Profile" },
+        ]}
+        actions={
+          canEdit && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(true)}
+                className="h-10 px-3.5 sm:px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
+                title={isSelf ? "Change Password" : "Reset Password"}
+              >
+                <FiLock className="text-orange-500" size={14} />
+                <span>{isSelf ? "Change Password" : "Reset Password"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowEditModal(true)}
+                className="h-10 px-4 sm:px-5 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs hover:shadow-md transition active:scale-95 cursor-pointer"
+              >
+                <FiEdit3 size={15} />
+                <span>Edit Profile</span>
+              </button>
+            </div>
+          )
+        }
       />
 
-      {/* Main Full-Width Content Container */}
+      {/* ── MAIN CONTENT CONTAINER ── */}
       <div className="p-3 sm:p-5 lg:p-6 space-y-5 lg:space-y-6">
         
-        {/* ── 1. Full-Width Clean Modern Hero Card ── */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-          {/* Subtle Orange-to-Amber Top Gradient Accent Line */}
-          <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400" />
-
-          {/* Profile Content inside Hero */}
-          <div className="p-4 sm:p-6 lg:p-7">
-            <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-5">
-              
-              {/* Left: Avatar & Identity Details */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left w-full md:w-auto">
-                
-                {/* Avatar */}
-                <div className="flex flex-col items-center sm:items-start shrink-0">
-                  <div className="relative">
-                    <div 
-                      onClick={() => canEdit && setShowAvatarModal(true)}
-                      className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl sm:rounded-3xl bg-slate-50 p-1 shadow-sm border-2 border-slate-200/70 overflow-hidden relative ${
-                        canEdit ? "cursor-pointer hover:border-orange-400 transition" : ""
-                      }`}
-                      title={canEdit ? "Click to change avatar or photo" : undefined}
-                    >
-                      {userData?.profileImage ? (
-                        <img
-                          src={userData.profileImage}
-                          alt={userData?.name || "Profile"}
-                          className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
-                        />
-                      ) : (
-                        <div className="w-full h-full rounded-xl sm:rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-2xl sm:text-3xl tracking-wider shadow-inner">
-                          {initials}
-                        </div>
-                      )}
-
-                      {/* Image Uploading Spinner */}
-                      {isImageUploading && (
-                        <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center rounded-xl sm:rounded-2xl">
-                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Quick Trigger Button */}
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAvatarModal(true)}
-                        disabled={isImageUploading}
-                        className="absolute -bottom-1 -right-1 w-8 h-8 sm:w-9 sm:h-9 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-md border-2 border-white transition duration-200 cursor-pointer"
-                        title="Choose an avatar or upload photo"
-                        aria-label="Change photo"
-                      >
-                        <IoSparkles size={16} />
-                      </button>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
+        {/* ── 1. MODERN IDENTITY HERO CARD ── */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-5">
+            
+            {/* Avatar & Basic Info */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left min-w-0">
+              {/* Avatar Box */}
+              <div className="relative group shrink-0">
+                <div 
+                  onClick={() => canEdit && setShowAvatarModal(true)}
+                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-50 p-1 shadow-xs border-2 border-slate-200/80 overflow-hidden relative ${
+                    canEdit ? "cursor-pointer hover:border-orange-400 transition" : ""
+                  }`}
+                  title={canEdit ? "Click to change avatar or photo" : undefined}
+                >
+                  {userData?.profileImage ? (
+                    <img
+                      src={userData.profileImage}
+                      alt={userData?.name || "Profile"}
+                      className="w-full h-full object-cover rounded-xl"
                     />
-                  </div>
+                  ) : (
+                    <div className="w-full h-full rounded-xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-2xl sm:text-3xl tracking-wider shadow-inner">
+                      {initials}
+                    </div>
+                  )}
 
-                  {/* Photo & Avatar Action Badges */}
+                  {isImageUploading && (
+                    <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center rounded-xl">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+
                   {canEdit && (
-                    <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={triggerImageUpload}
-                        disabled={isImageUploading}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-[11px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                        title="Upload photo from device"
-                      >
-                        <IoCamera size={13} className="text-slate-500" />
-                        <span>Photo</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowAvatarModal(true)}
-                        disabled={isImageUploading}
-                        className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 active:scale-95 text-orange-700 border border-orange-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                        title="Choose an institutional avatar"
-                      >
-                        <IoSparkles size={13} className="text-orange-500" />
-                        <span>Avatar</span>
-                      </button>
-
-                      {userData?.profileImage && (
-                        <button
-                          type="button"
-                          onClick={handleRemovePhoto}
-                          disabled={isImageUploading}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          title="Reset to Initials"
-                        >
-                          <FiTrash2 size={13} />
-                        </button>
-                      )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl text-white">
+                      <IoCamera size={20} />
                     </div>
                   )}
                 </div>
 
-                {/* Name, Designation, Department */}
-                <div className="min-w-0 space-y-1.5">
-                  <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
-                      {userData?.name || "Employee Name"}
-                    </h1>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      {userData?.role || "Employee"}
-                    </span>
-                  </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarModal(true)}
+                    disabled={isImageUploading}
+                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-orange-500 hover:bg-orange-600 text-white rounded-lg flex items-center justify-center shadow-md border-2 border-white transition active:scale-95 cursor-pointer"
+                    title="Change Photo / Avatar"
+                    aria-label="Change photo"
+                  >
+                    <IoSparkles size={13} />
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
 
-                  <p className="text-xs sm:text-sm font-semibold text-slate-600 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                    <span className="font-bold text-orange-600">{userData?.position || "Designation Not Assigned"}</span>
-                    <span className="text-slate-300">•</span>
-                    <span>{['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM (Institution Wide)" : (userData?.department || "General Department")}</span>
-                  </p>
+              {/* Identity Details */}
+              <div className="min-w-0 space-y-1.5">
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    {userData?.name || "Employee Name"}
+                  </h1>
 
-                  {/* Badges row: Active/Inactive & Quick Copy ID */}
-                  <div className="flex items-center justify-center sm:justify-start gap-2 pt-0.5 flex-wrap">
-                    <span className={`inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
-                      userData?.isActive 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                        userData?.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-                      }`} />
-                      {userData?.isActive ? 'Active' : 'Inactive / Suspended'}
-                    </span>
+                  {/* Role Badge */}
+                  <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold rounded-full border ${getRoleBadgeColor(userData?.role)}`}>
+                    {formatRoleName(userData?.role)}
+                  </span>
 
-                    <button
-                      onClick={() => handleCopy(userData?._id, 'Employee ID')}
-                      className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md border border-slate-200 transition cursor-pointer"
-                      title="Click to copy ID"
-                    >
-                      {copiedKey === 'Employee ID' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={12} />}
-                      <span>ID: {userData?._id ? `${userData._id.slice(0, 8)}...` : '—'}</span>
-                    </button>
-                  </div>
+                  {/* Status Badge */}
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                    userData?.isActive 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${userData?.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {userData?.isActive ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
 
-              </div>
+                {/* Designation & Department */}
+                <p className="text-xs sm:text-sm font-semibold text-slate-600 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                  <span className="font-bold text-orange-600">{userData?.position || "Designation Not Assigned"}</span>
+                  <span className="text-slate-300">•</span>
+                  <span>{displayDepartment}</span>
+                </p>
 
-              {/* Right: Quick Action Buttons */}
-              <div className="flex items-center justify-center sm:justify-end gap-2 w-full md:w-auto pt-2 md:pt-0 flex-wrap">
-                {userData?.mobileNo && (
-                  <a
-                    href={`tel:${userData.mobileNo}`}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 border border-slate-200 transition active:scale-95 cursor-pointer"
-                    title="Call mobile"
-                  >
-                    <IoCallOutline className="text-orange-500 text-sm" />
-                    <span>Call</span>
-                  </a>
-                )}
-
-                {userData?.email && (
-                  <a
-                    href={`mailto:${userData.email}`}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 border border-slate-200 transition active:scale-95 cursor-pointer"
-                    title="Send email"
-                  >
-                    <IoMailOutline className="text-orange-500 text-sm" />
-                    <span>Email</span>
-                  </a>
-                )}
-
-                {canEdit && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordModal(true)}
-                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 border border-slate-200 transition-all duration-200 cursor-pointer shadow-2xs"
-                      title={isSelf ? "Change Password" : "Reset Password"}
-                    >
-                      <FiLock className="text-orange-500 text-sm" />
-                      <span>{isSelf ? "Change Password" : "Reset Password"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowEditModal(true)}
-                      className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold tracking-wider uppercase text-xs flex items-center gap-1.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer"
-                    >
-                      <FiEdit3 size={14} />
-                      <span>Edit Profile</span>
-                    </button>
-                  </>
+                {/* Member since metadata */}
+                {userData?.createdAt && (
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Member since {new Date(userData.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
                 )}
               </div>
-
             </div>
+
+            {/* Quick Contact Reachouts */}
+            <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto flex-wrap">
+              {userData?.mobileNo && (
+                <a
+                  href={`tel:${userData.mobileNo}`}
+                  className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 border border-slate-200 transition active:scale-95 cursor-pointer"
+                  title="Call contact"
+                >
+                  <IoCallOutline className="text-orange-500" size={14} />
+                  <span>{userData.mobileNo}</span>
+                </a>
+              )}
+
+              {userData?.email && (
+                <a
+                  href={`mailto:${userData.email}`}
+                  className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 border border-slate-200 transition active:scale-95 cursor-pointer"
+                  title="Send email"
+                >
+                  <IoMailOutline className="text-orange-500" size={14} />
+                  <span className="truncate max-w-[180px]">{userData.email}</span>
+                </a>
+              )}
+            </div>
+
           </div>
         </div>
 
-        {/* ── 2. Full-Width 4 Metric Cards (2 cols on mobile, 4 cols on desktop) ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-          <ProfessionalMetricCard
-            icon={<FiBriefcase />}
-            title="Department"
-            value={['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM" : (userData?.department || "N/A")}
-            color="orange"
-            description="Academic unit group"
-          />
-          <ProfessionalMetricCard
-            icon={<FiUser />}
-            title="Position"
-            value={userData?.position || "N/A"}
-            color="purple"
-            description="Job designation"
-          />
-          <ProfessionalMetricCard
-            icon={<FiShield />}
-            title="Access Level"
-            value={userData?.role}
-            color="blue"
-            description={`${userData?.permissions?.length || 0} permissions assigned`}
-          />
-          <ProfessionalMetricCard
-            icon={<FiCalendar />}
-            title="Pending Leaves"
-            value={pendingLeavesCount}
-            color="red"
-            description="Leave requests queue"
-            onClick={() => navigate('/leave-requests')}
-          />
-        </div>
-
-        {/* ── 3. Full-Width 3-Column Detailed Grid ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+        {/* ── 2. TWO-COLUMN DETAILED PROFILE LAYOUT ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
           
-          {/* ──── Column 1: Contact Information & Active Permissions ──── */}
-          <div className="space-y-5 lg:space-y-6">
+          {/* ──── LEFT COLUMN (7 COLS): Personal & Institutional Information ──── */}
+          <div className="lg:col-span-7 space-y-5 lg:space-y-6">
             
-            {/* Contact Information Card */}
-            <DetailSection
-              title="Contact Information"
-              subtitle="Registry details and direct reachout"
-              icon={<FiMail />}
-            >
-              <div className="space-y-2.5">
-                <ProfessionalDetailRow 
-                  icon={<FiMail />} 
-                  label="Email Address" 
+            {/* Contact & Personal Information Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/70 flex items-center justify-center text-orange-500 shrink-0">
+                  <FiUser size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Personal & Contact Details</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Communication parameters and identification</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Full Name */}
+                <InfoItem
+                  icon={<FiUser size={15} />}
+                  label="Full Name"
+                  value={userData?.name}
+                />
+
+                {/* Email Address */}
+                <InfoItem
+                  icon={<FiMail size={15} />}
+                  label="Email Address"
                   value={userData?.email}
                   action={
                     userData?.email && (
                       <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => handleCopy(userData.email, 'email')}
-                          className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                           title="Copy email"
                         >
                           {copiedKey === 'email' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={13} />}
                         </button>
-                        <a
-                          href={`mailto:${userData.email}`}
-                          className="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600 transition cursor-pointer"
-                          title="Send email"
-                        >
-                          <FiExternalLink size={13} />
-                        </a>
                       </div>
                     )
                   }
                 />
 
-                <ProfessionalDetailRow 
-                  icon={<FiPhone />} 
-                  label="Mobile Number" 
-                  value={userData?.mobileNo} 
+                {/* Mobile Number */}
+                <InfoItem
+                  icon={<FiPhone size={15} />}
+                  label="Mobile Number"
+                  value={userData?.mobileNo}
                   action={
                     userData?.mobileNo && (
                       <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => handleCopy(userData.mobileNo, 'mobile')}
-                          className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                          title="Copy mobile"
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                          title="Copy phone"
                         >
                           {copiedKey === 'mobile' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={13} />}
                         </button>
-                        <a
-                          href={`tel:${userData.mobileNo}`}
-                          className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
-                          title="Call mobile"
-                        >
-                          <IoCallOutline size={14} />
-                        </a>
                       </div>
                     )
                   }
                 />
 
-                <ProfessionalDetailRow 
-                  icon={<FiUser />} 
-                  label="Full Registry Name" 
-                  value={userData?.name} 
-                />
-
-                <ProfessionalDetailRow 
-                  icon={<FiSettings />} 
-                  label="Employee Account ID" 
-                  value={userData?._id}
+                {/* Aadhar Card Number */}
+                <InfoItem
+                  icon={<FiCreditCard size={15} />}
+                  label="Aadhar Card"
+                  value={
+                    userData?.adharCard
+                      ? showAadhar
+                        ? userData.adharCard
+                        : `XXXX-XXXX-${userData.adharCard.slice(-4)}`
+                      : "Not Provided"
+                  }
                   action={
-                    userData?._id && (
-                      <button
-                        onClick={() => handleCopy(userData._id, 'account ID')}
-                        className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                        title="Copy account ID"
-                      >
-                        {copiedKey === 'account ID' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={13} />}
-                      </button>
+                    userData?.adharCard && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowAadhar(!showAadhar)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                          title={showAadhar ? "Hide full Aadhar" : "View full Aadhar"}
+                        >
+                          {showAadhar ? <IoEyeOffOutline size={14} /> : <IoEyeOutline size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(userData.adharCard, 'Aadhar')}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                          title="Copy Aadhar"
+                        >
+                          {copiedKey === 'Aadhar' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={13} />}
+                        </button>
+                      </div>
                     )
                   }
                 />
               </div>
-            </DetailSection>
+            </div>
 
-            {/* Active Permissions Card */}
-            <DetailSection
-              title="Active Permissions"
-              subtitle="Authorized system modules & access rights"
-              icon={<FiShield />}
-              badge={`${userData?.permissions?.length || 0}`}
-              headerAction={
-                isAdmin && (
+            {/* Institutional Placement Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/70 flex items-center justify-center text-orange-500 shrink-0">
+                  <FiBriefcase size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Institutional Placement</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Departmental assignment and role configuration</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Department */}
+                <InfoItem
+                  icon={<FiBriefcase size={15} />}
+                  label="Department"
+                  value={displayDepartment}
+                />
+
+                {/* Position / Designation */}
+                <InfoItem
+                  icon={<FiUser size={15} />}
+                  label="Designated Position"
+                  value={userData?.position || "—"}
+                />
+
+                {/* Access Role */}
+                <InfoItem
+                  icon={<FiShield size={15} />}
+                  label="Access Role"
+                  value={formatRoleName(userData?.role)}
+                />
+
+                {/* Account Status */}
+                <InfoItem
+                  icon={<FiLock size={15} />}
+                  label="Account Status"
+                  value={userData?.isActive ? "Active Platform Access" : "Deactivated / Suspended"}
+                />
+
+                {/* Created Date */}
+                <InfoItem
+                  icon={<FiCalendar size={15} />}
+                  label="Created Date"
+                  value={userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
+                />
+
+                {/* Last Updated */}
+                <InfoItem
+                  icon={<FiClock size={15} />}
+                  label="Last Profile Update"
+                  value={userData?.updatedAt ? new Date(userData.updatedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "—"}
+                />
+              </div>
+            </div>
+
+            {/* Department Courses Tags Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <FiBookOpen size={16} className="text-orange-500" />
+                  <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Assigned Department Courses</h3>
+                </div>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {assignedCourses.length} {assignedCourses.length === 1 ? 'Course' : 'Courses'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {assignedCourses.length > 0 ? (
+                  assignedCourses.map((course, idx) => (
+                    <span 
+                      key={idx} 
+                      className="bg-orange-50 text-orange-700 border border-orange-200 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <FiBookOpen size={12} className="text-orange-500" />
+                      <span>{course}</span>
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 italic py-2">
+                    No specialized courses tagged for this department unit.
+                  </p>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* ──── RIGHT COLUMN (5 COLS): Authorized System Permissions ──── */}
+          <div className="lg:col-span-5 space-y-5 lg:space-y-6">
+            
+            {/* Authorized Permissions Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200/70 flex items-center justify-center text-orange-500 shrink-0">
+                    <FiShield size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Authorized Permissions</h3>
+                    <p className="text-[11px] text-slate-400 font-medium">System modules permitted for this user</p>
+                  </div>
+                </div>
+
+                {isAdmin && (
                   <button
                     type="button"
                     onClick={() => navigate('/roles-permissions')}
-                    className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1"
+                    className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1 shrink-0"
+                    title="Manage Permissions Matrix"
                   >
-                    <span>Matrix</span>
-                    <FiExternalLink size={11} />
+                    <span>Manage</span>
+                    <FiExternalLink size={12} />
                   </button>
-                )
-              }
-            >
-              {/* Search permissions filter */}
-              <div className="relative mb-3">
-                <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                )}
+              </div>
+
+              {/* Search permissions inside list */}
+              <div className="relative">
+                <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                 <input
                   type="text"
                   value={permissionSearch}
                   onChange={(e) => setPermissionSearch(e.target.value)}
                   placeholder="Search permissions..."
-                  className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-orange-500 focus:outline-none transition"
+                  className="w-full pl-9 pr-8 h-9 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-orange-500 focus:outline-none transition shadow-2xs"
                 />
                 {permissionSearch && (
                   <button
+                    type="button"
                     onClick={() => setPermissionSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                   >
-                    <FiX />
+                    <FiX size={14} />
                   </button>
                 )}
               </div>
 
               {/* Permissions list */}
-              <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1 custom-scrollbar">
                 {filteredPermissions.length > 0 ? (
                   filteredPermissions.map((perm, idx) => {
                     const featureKey = perm.feature || perm.module || '';
                     const label = perm.name || featureKey.replace(/^(Page|Tab|Button|Action)_/, '').replace(/([A-Z])/g, ' $1').trim();
                     const actions = perm.access || perm.actions || [];
+                    
                     return (
-                      <div key={idx} className="p-2.5 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col gap-1.5 hover:bg-white hover:border-slate-200 transition">
+                      <div 
+                        key={idx} 
+                        className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 hover:bg-white hover:border-slate-200 transition space-y-1.5"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-bold text-slate-800 leading-snug">{label}</span>
-                          <span className="text-[9px] font-mono text-slate-400 shrink-0">
+                          <span className="text-[9px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
                             {featureKey.startsWith('Page_') ? 'PAGE' : 'ACTION'}
                           </span>
                         </div>
+
                         {perm.description && (
                           <p className="text-[10px] text-slate-500 line-clamp-1">{perm.description}</p>
                         )}
+
                         <div className="flex flex-wrap gap-1 pt-0.5">
                           {actions.map((act, i) => {
-                            const actUpper = String(act).toUpperCase();
-                            let badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                            if (actUpper === "DELETE") badgeColor = "bg-rose-50 text-rose-700 border-rose-200";
-                            if (actUpper === "UPDATE") badgeColor = "bg-amber-50 text-amber-700 border-amber-200";
-                            if (actUpper === "CREATE" || actUpper === "WRITE") badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
+                            const actLower = String(act).toLowerCase();
+                            let badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                            if (actLower === "delete") badgeStyle = "bg-rose-50 text-rose-700 border-rose-200";
+                            if (actLower === "update" || actLower === "edit") badgeStyle = "bg-amber-50 text-amber-700 border-amber-200";
+                            if (actLower === "create" || actLower === "add") badgeStyle = "bg-blue-50 text-blue-700 border-blue-200";
+                            if (actLower === "execute") badgeStyle = "bg-purple-50 text-purple-700 border-purple-200";
+
                             return (
-                              <span key={i} className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase tracking-wider border ${badgeColor}`}>
+                              <span 
+                                key={i} 
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${badgeStyle}`}
+                              >
                                 {act}
                               </span>
                             );
@@ -756,173 +762,12 @@ const UserProfile = () => {
                     );
                   })
                 ) : (
-                  <div className="py-6 text-center text-xs text-slate-400 font-medium">
-                    {permissionSearch ? "No matching permissions found" : "No permissions assigned"}
+                  <div className="py-8 text-center text-xs text-slate-400 font-medium bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                    {permissionSearch ? "No matching permissions found" : "No specific permissions assigned"}
                   </div>
                 )}
               </div>
-            </DetailSection>
-
-          </div>
-
-          {/* ──── Column 2: Professional Details & Assigned Courses ──── */}
-          <div className="space-y-5 lg:space-y-6">
-            
-            {/* Professional Details Card */}
-            <DetailSection
-              title="Professional Details"
-              subtitle="Organizational placement details"
-              icon={<FiBriefcase />}
-            >
-              <div className="space-y-2.5">
-                <ProfessionalDetailRow icon={<FiBriefcase />} label="Department" value={['superadmin', 'admin'].includes(userData?.role?.toLowerCase()) ? "SSISM (Institution Wide)" : userData?.department} />
-                <ProfessionalDetailRow icon={<FiUser />} label="Designated Position" value={userData?.position} />
-                <ProfessionalDetailRow icon={<FiShield />} label="Access Role" value={userData?.role} capitalize />
-                <ProfessionalDetailRow 
-                  icon={<FiSettings />} 
-                  label="Account Status" 
-                  value={userData?.isActive ? "Active Employee" : "Inactive / Suspended"} 
-                />
-              </div>
-            </DetailSection>
-
-            {/* Assigned Courses Card */}
-            <DetailSection
-              title="Assigned Courses"
-              subtitle="Departmental syllabus tags"
-              icon={<FiBookOpen />}
-              badge={`${assignedCourses.length}`}
-            >
-              <div className="flex flex-wrap gap-2">
-                {assignedCourses.length > 0 ? (
-                  assignedCourses.map((course, idx) => (
-                    <span 
-                      key={idx} 
-                      className="bg-orange-50 text-orange-600 border border-orange-200/70 px-3 py-1.5 rounded-xl text-xs font-bold transition hover:bg-orange-100/70 flex items-center gap-1.5"
-                    >
-                      <FiBookOpen size={12} />
-                      <span>{course}</span>
-                    </span>
-                  ))
-                ) : (
-                  <div className="w-full py-6 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-                    <FiBookOpen className="mx-auto text-slate-300 text-lg mb-1" />
-                    <span className="text-xs text-slate-400 italic font-semibold">No assigned courses in this department</span>
-                  </div>
-                )}
-              </div>
-            </DetailSection>
-
-          </div>
-
-          {/* ──── Column 3: Security & Activity Timeline ──── */}
-          <div className="space-y-5 lg:space-y-6">
-            
-            {/* System & Security Card */}
-            <DetailSection
-              title="System & Security"
-              subtitle="Account compliance metadata"
-              icon={<FiSettings />}
-            >
-              <div className="space-y-2.5">
-                <ProfessionalDetailRow 
-                  icon={<FiSettings />} 
-                  label="Aadhar Verification" 
-                  value={
-                    userData?.adharCard
-                      ? showAadhar
-                        ? userData.adharCard
-                        : `XXXX-XXXX-${userData.adharCard.slice(-4)}`
-                      : "Not Provided"
-                  } 
-                  action={
-                    userData?.adharCard && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setShowAadhar(!showAadhar)}
-                          className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                          title={showAadhar ? "Hide full Aadhar" : "View full Aadhar"}
-                        >
-                          {showAadhar ? <IoEyeOffOutline size={15} /> : <IoEyeOutline size={15} />}
-                        </button>
-                        <button
-                          onClick={() => handleCopy(userData.adharCard, 'Aadhar number')}
-                          className="p-1.5 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                          title="Copy Aadhar"
-                        >
-                          {copiedKey === 'Aadhar number' ? <IoCheckmarkOutline className="text-emerald-600" /> : <IoCopyOutline size={13} />}
-                        </button>
-                      </div>
-                    )
-                  }
-                />
-
-                <ProfessionalDetailRow 
-                  icon={<FiCalendar />} 
-                  label="Account Created" 
-                  value={userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : "N/A"} 
-                />
-
-                <ProfessionalDetailRow 
-                  icon={<FiClock />} 
-                  label="Last Updated" 
-                  value={userData?.updatedAt ? new Date(userData.updatedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "N/A"} 
-                />
-
-                <ProfessionalDetailRow 
-                  icon={<FiLock />} 
-                  label="Account Password" 
-                  value="••••••••••••" 
-                  action={
-                    canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswordModal(true)}
-                        className="px-2.5 py-1 text-[11px] font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition cursor-pointer"
-                      >
-                        {isSelf ? "Change" : "Reset"}
-                      </button>
-                    )
-                  }
-                />
-              </div>
-            </DetailSection>
-
-            {/* Activity Timeline Card */}
-            <DetailSection
-              title="Activity Timeline"
-              subtitle="Recent platform interactions"
-              icon={<FiClock />}
-            >
-              <div className="space-y-0">
-                {mockActivities.map((act, idx) => {
-                  const isLast = idx === mockActivities.length - 1;
-                  return (
-                    <div key={idx} className="flex items-start gap-3.5 group">
-                      {/* Spine: Centered Icon + Vertical Line */}
-                      <div className="flex flex-col items-center shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 border border-orange-200/80 flex items-center justify-center shrink-0 shadow-2xs">
-                          <FiClock size={14} />
-                        </div>
-                        {!isLast && (
-                          <div className="w-0.5 bg-slate-200 min-h-[22px] flex-1 my-0.5" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className={`min-w-0 flex-1 pt-1 ${isLast ? 'pb-1' : 'pb-4'}`}>
-                        <p className="text-xs font-bold text-slate-800 leading-snug">{act.title}</p>
-                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5 flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-orange-400 shrink-0" />
-                          <span>{act.time}</span>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </DetailSection>
+            </div>
 
           </div>
 
@@ -930,7 +775,7 @@ const UserProfile = () => {
 
       </div>
 
-      {/* ── 4. Quick Edit Profile Modal ── */}
+      {/* ── 3. QUICK EDIT PROFILE MODAL ── */}
       {showEditModal && (
         <EditProfileModal
           user={userData}
@@ -955,7 +800,7 @@ const UserProfile = () => {
         />
       )}
 
-      {/* ── 5. Change / Reset Password Modal ── */}
+      {/* ── 4. CHANGE / RESET PASSWORD MODAL ── */}
       {showPasswordModal && (
         <UserPasswordModal
           user={userData}
@@ -965,7 +810,7 @@ const UserProfile = () => {
         />
       )}
 
-      {/* ── 6. Professional Avatar Picker Modal ── */}
+      {/* ── 5. AVATAR PICKER MODAL ── */}
       <AvatarPickerModal
         isOpen={showAvatarModal}
         onClose={() => setShowAvatarModal(false)}
@@ -977,70 +822,20 @@ const UserProfile = () => {
         userRole={userData?.role}
       />
 
-    </>
-  );
-};
-
-// ── Metric Card ──
-const ProfessionalMetricCard = ({ icon, title, value, color = "orange", description, onClick }) => {
-  const theme = colorThemes[color] || colorThemes.orange;
-  return (
-    <div 
-      onClick={onClick}
-      className={`bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs transition duration-200 flex items-center justify-between group ${
-        onClick ? 'cursor-pointer hover:border-orange-300 hover:shadow-xs' : ''
-      }`}
-    >
-      <div className="min-w-0 flex-1 pr-2">
-        <span className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider truncate">{title}</span>
-        <h4 className={`text-sm sm:text-base font-black mt-1 truncate ${theme.text}`}>
-          {value ?? "—"}
-        </h4>
-        <span className="block text-[10px] text-slate-400 mt-0.5 font-medium truncate">{description}</span>
-      </div>
-      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center text-lg border ${theme.softBg} ${theme.text} ${theme.border} shrink-0 transition-transform duration-200 group-hover:scale-105 shadow-2xs`}>
-        {icon}
-      </div>
     </div>
   );
 };
 
-// ── Detail Section Card ──
-const DetailSection = ({ title, subtitle, icon, badge, headerAction, children }) => (
-  <div className="bg-white rounded-3xl border border-slate-200/80 p-4 sm:p-5 lg:p-6 shadow-2xs flex flex-col">
-    <div className="flex items-center justify-between gap-3 mb-4 pb-3.5 border-b border-slate-100">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200/70 flex items-center justify-center text-orange-500 shadow-2xs shrink-0">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider truncate">{title}</h3>
-            {badge && (
-              <span className="text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-orange-50 text-orange-600 border border-orange-200/60">
-                {badge}
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">{subtitle}</p>
-        </div>
-      </div>
-      {headerAction && <div className="shrink-0">{headerAction}</div>}
-    </div>
-    <div className="flex-1">{children}</div>
-  </div>
-);
-
-// ── Detail Attribute Row ──
-const ProfessionalDetailRow = ({ icon, label, value, capitalize, action }) => (
-  <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-slate-50/70 hover:bg-white border border-transparent hover:border-slate-200 transition duration-150">
-    <div className="flex items-center gap-3 min-w-0 flex-1">
-      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-slate-500 shadow-2xs shrink-0">
+// ── Neat Information Row Item ──
+const InfoItem = ({ icon, label, value, action }) => (
+  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-2.5">
+    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      <div className="text-slate-400 shrink-0">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
-        <span className={`block text-xs sm:text-sm font-semibold text-slate-800 truncate ${capitalize ? 'capitalize' : ''}`}>
+        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="block text-xs sm:text-sm font-semibold text-slate-800 truncate">
           {value || "—"}
         </span>
       </div>
@@ -1049,7 +844,7 @@ const ProfessionalDetailRow = ({ icon, label, value, capitalize, action }) => (
   </div>
 );
 
-// ── Edit Profile Modal ──
+// ── Edit Profile Modal Component ──
 const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSave }) => {
   const isGlobalRole = ['superadmin', 'admin'].includes(user?.role?.toLowerCase());
   const [formData, setFormData] = useState({
@@ -1113,23 +908,18 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-xs p-0 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg border border-slate-100 flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg border border-slate-150 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
-        {/* Mobile drag bar */}
-        <div className="sm:hidden flex justify-center pt-2.5 pb-1">
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
-        </div>
-
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 border border-orange-200/60 flex items-center justify-center font-bold">
-              <FiEdit3 size={17} />
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 border border-orange-200/60 flex items-center justify-center font-bold">
+              <FiEdit3 size={15} />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900">Edit Professional Profile</h3>
-              <p className="text-[11px] text-slate-400 font-medium">Update registry information & access parameters</p>
+              <h3 className="text-sm sm:text-base font-black text-slate-900">Edit User Profile</h3>
+              <p className="text-[11px] text-slate-400 font-medium">Update account information and departmental role</p>
             </div>
           </div>
           <button 
@@ -1142,7 +932,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           
           {/* Full Name */}
           <div>
@@ -1154,7 +944,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g. Dr. Rajesh Kumar"
-              className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
+              className={`w-full h-11 px-3.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
                 errors.name ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-orange-500'
               }`}
             />
@@ -1172,16 +962,16 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                 value={formData.position}
                 onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                 placeholder="e.g. Senior Faculty"
-                className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition"
+                className="w-full h-11 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition"
               />
             </div>
 
-            <div className="relative z-20">
+            <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Department
               </label>
               {isGlobalRole ? (
-                <div className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-100 font-bold text-slate-700 flex items-center gap-2">
+                <div className="w-full h-11 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-100 font-bold text-slate-700 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   SSISM (Institution Wide)
                 </div>
@@ -1191,11 +981,9 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                   onChange={(val) => setFormData({ ...formData, department: val })}
                   options={departmentSelectOptions}
                   placeholder="Select Department"
+                  usePortal={true}
                   className="w-full"
-                  menuClassName="w-full shadow-2xl border border-slate-100"
-                  buttonClassName={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 hover:bg-white focus:bg-white hover:border-orange-500 focus:border-orange-500 focus:outline-none transition cursor-pointer font-medium ${
-                    formData.department ? 'text-slate-800' : 'text-slate-400'
-                  }`}
+                  buttonClassName="w-full h-11 flex items-center justify-between gap-2 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 hover:bg-white focus:bg-white hover:border-orange-500 focus:border-orange-500 focus:outline-none transition cursor-pointer font-medium"
                 />
               )}
             </div>
@@ -1213,7 +1001,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                 value={formData.mobileNo}
                 onChange={(e) => setFormData({ ...formData, mobileNo: e.target.value.replace(/\D/g, '') })}
                 placeholder="9876543210"
-                className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
+                className={`w-full h-11 px-3.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
                   errors.mobileNo ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-orange-500'
                 }`}
               />
@@ -1230,7 +1018,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                 value={formData.adharCard}
                 onChange={(e) => setFormData({ ...formData, adharCard: e.target.value.replace(/\D/g, '') })}
                 placeholder="12-digit number"
-                className={`w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
+                className={`w-full h-11 px-3.5 text-xs sm:text-sm rounded-xl border bg-slate-50 focus:bg-white focus:outline-none transition ${
                   errors.adharCard ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 focus:border-orange-500'
                 }`}
               />
@@ -1240,18 +1028,18 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
 
           {/* Status (Only admins can toggle) */}
           {isAdmin && (
-            <div className="pt-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+            <div className="pt-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Account Status
               </label>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, isActive: true })}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
+                  className={`flex-1 h-10 rounded-xl text-xs font-bold border transition cursor-pointer ${
                     formData.isActive
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs'
+                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   Active
@@ -1259,10 +1047,10 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, isActive: false })}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
+                  className={`flex-1 h-10 rounded-xl text-xs font-bold border transition cursor-pointer ${
                     !formData.isActive
-                      ? 'bg-rose-50 text-rose-700 border-rose-300'
-                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                      ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-2xs'
+                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                   }`}
                 >
                   Inactive / Suspended
@@ -1274,11 +1062,11 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
         </form>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
+        <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 hover:border-gray-400 font-bold tracking-wider uppercase text-xs rounded-xl transition-all duration-200 active:scale-[0.97] shadow-2xs hover:shadow-xs cursor-pointer"
+            className="px-4 py-2 border border-gray-200 text-gray-700 bg-white hover:bg-slate-50 font-bold tracking-wider uppercase text-xs rounded-xl transition cursor-pointer"
           >
             Cancel
           </button>
@@ -1286,7 +1074,7 @@ const EditProfileModal = ({ user, departments, isAdmin, isLoading, onClose, onSa
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+            className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
           >
             {isLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             <span>Save Changes</span>
@@ -1351,124 +1139,126 @@ const UserPasswordModal = ({ user, isSelf, onClose, onSuccess }) => {
           id: user?._id || user?.id,
           newPassword,
         }).unwrap();
-        toast.success(res?.message || `Password for ${user?.name} reset successfully!`);
+        toast.success(res?.message || "Password reset successfully!");
       }
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast.error(err?.data?.message || err?.message || "Failed to update password");
+      toast.error(err?.data?.message || "Failed to update password");
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md border border-slate-150 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-xs">
-              <FiLock size={20} />
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 border border-orange-200/60 flex items-center justify-center font-bold">
+              <FiLock size={15} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-                {isSelf ? "Change Password" : "Reset Password"}
+              <h3 className="text-sm sm:text-base font-black text-slate-900">
+                {isSelf ? "Change Password" : "Reset User Password"}
               </h3>
-              <p className="text-[11px] text-slate-400 font-medium truncate">
-                {isSelf ? "Update your active account password" : `Setting new password for ${user?.name || "employee"}`}
+              <p className="text-[11px] text-slate-400 font-medium">
+                {isSelf ? "Update your personal account credentials" : `Set new password for ${user?.name}`}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
           >
             <FiX size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Modal Body Form */}
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-3.5">
           {isSelf && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Password</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Current Password <span className="text-rose-500">*</span>
+              </label>
               <div className="relative">
                 <input
                   type={showCurrent ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Enter current password"
-                  className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
-                  required
+                  className="w-full h-11 px-3.5 pr-10 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
-                  {showCurrent ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                  {showCurrent ? <IoEyeOffOutline size={16} /> : <IoEyeOutline size={16} />}
                 </button>
               </div>
             </div>
           )}
 
-          {!isSelf && (
-            <div className="flex items-center justify-between pb-1">
-              <span className="text-xs text-slate-500">Need a secure password?</span>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                className="text-xs font-bold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <FiKey size={13} /> Autogenerate
-              </button>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                New Password <span className="text-rose-500">*</span>
+              </label>
+              {!isSelf && (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                >
+                  Auto-generate
+                </button>
+              )}
             </div>
-          )}
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">New Password (min 6 chars)</label>
             <div className="relative">
               <input
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
-                required
+                placeholder="At least 6 characters"
+                className="w-full h-11 px-3.5 pr-10 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition"
               />
               <button
                 type="button"
                 onClick={() => setShowNew(!showNew)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                {showNew ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                {showNew ? <IoEyeOffOutline size={16} /> : <IoEyeOutline size={16} />}
               </button>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confirm New Password</label>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Confirm Password <span className="text-rose-500">*</span>
+            </label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter new password"
-                className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 bg-white focus:outline-none focus:border-orange-500 transition"
-                required
+                className="w-full h-11 px-3.5 pr-10 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none transition"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                {showConfirm ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                {showConfirm ? <IoEyeOffOutline size={16} /> : <IoEyeOutline size={16} />}
               </button>
             </div>
           </div>
 
-          {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+          {/* Modal Footer */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
@@ -1479,7 +1269,7 @@ const UserPasswordModal = ({ user, isSelf, onClose, onSuccess }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 text-xs font-bold tracking-wider uppercase text-white bg-orange-500 hover:bg-orange-600 active:bg-orange-700 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
             >
               {isLoading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
               <span>{isSelf ? "Update Password" : "Reset Password"}</span>

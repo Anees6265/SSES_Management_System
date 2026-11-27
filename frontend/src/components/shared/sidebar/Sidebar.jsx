@@ -145,7 +145,7 @@ const Sidebar = ({ children }) => {
     ) {
       return ["Placements"];
     }
-    if (path.startsWith("/user-")) {
+    if (path.startsWith("/user-") || path.startsWith("/roles-")) {
       return ["User Management"];
     }
     return [];
@@ -260,7 +260,15 @@ const Sidebar = ({ children }) => {
       return (
         path === "/user-management" ||
         path.startsWith("/user-management/") ||
-        path.startsWith("/user-profile/") ||
+        path.startsWith("/user-profile/")
+      );
+    }
+
+    if (subPath === "/roles-permissions") {
+      return (
+        path === "/roles-permissions" ||
+        path.startsWith("/roles-permissions/") ||
+        path === "/roles-and-permissions" ||
         path === "/user-permission"
       );
     }
@@ -316,6 +324,7 @@ const Sidebar = ({ children }) => {
       permission: "Page_UserManagement",
       subMenu: [
         { name: "Users", path: "/user-management", permission: "Page_UserManagement" },
+        { name: "Roles & Permissions", path: "/roles-permissions", permission: "Page_UserManagement" },
       ],
     },
   ];

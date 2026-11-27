@@ -60,6 +60,9 @@ const routeTitleMap = {
     "/": "Dashboard",
     "/attendance-details": "Attendance Details",
     "/user-management": "User Management",
+    "/roles-permissions": "Roles & Permissions",
+    "/roles-and-permissions": "Roles & Permissions",
+    "/user-permission": "Roles & Permissions",
     "/student-detail-table": "Student Records",
     "/leave-requests": "Leave Requests",
     "/student-permission": "Student Permissions",
@@ -151,6 +154,8 @@ const Layout = () => {
                     <Route path="/subdepartments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SubDepartment /></ProtectedRoute>} />
                     <Route path="/levels" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><ShowLevels /></ProtectedRoute>} />
                     <Route path="/user-permission" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UserPermission /></ProtectedRoute>} />
+                    <Route path="/roles-permissions" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UserPermission /></ProtectedRoute>} />
+                    <Route path="/roles-and-permissions" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><UserPermission /></ProtectedRoute>} />
                     <Route path="/settings" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><SettingFIle /></ProtectedRoute>} />
                     <Route path="/support" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Supportfile /></ProtectedRoute>} />
                     <Route path="/curriculum-management" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><CurriculumManagement /></ProtectedRoute>} />

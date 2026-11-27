@@ -1,19 +1,8 @@
-import Header from "../../shared/sidebar/Header";
+import React from 'react';
+import RolesPermissions from "./RolesPermissions";
 
 const UserPermission = () => {
-  return (
-    <>
-      <Header
-        title="Permission Management"
-        showBack={false}
-      />
-      <div className="p-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p>User Permission Management Content</p>
-        </div>
-      </div>
-    </>
-  );
+  return <RolesPermissions />;
 };
 
 export default UserPermission;

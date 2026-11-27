@@ -1,28 +1,26 @@
 
 
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../../redux/auth/authSlice';
 import { toast } from 'react-toastify';
 import { confirmToast } from '../../../utils/confirmToast';
-import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus, Key, Lock, ShieldCheck } from 'lucide-react';
+import { Trash2, Edit, X, Eye, EyeOff, Phone, User as UserIcon, Plus, Key, Lock, Search, MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetAllUsersQuery, useDeleteUserMutation, useEditUserMutation, useSignupMutation, useGetAllDepartmentsQuery, useAdminResetUserPasswordMutation } from '../../../redux/api/authApi';
 import CommonTable from '../../shared/table/CommonTable';
 import Pagination from '../../shared/pagination/Pagination';
-import TabsCommon from '../../shared/table/TabsCommon';
 import Loader from '../../shared/loader/Loader';
 import InputField from '../../shared/form-fields/InputField';
 import CustomDropdown from '../../shared/form-fields/CustomDropdown';
+import SelectDropdown from '../../shared/form-fields/SelectDropdown';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { buttonStyles } from '../../../styles/buttonStyles';
 import profile from '../../../assets/images/profile-img.png';
-import RolesPermissions from './RolesPermissions';
-import GlobalPermissionMatrix from './GlobalPermissionMatrix';
 import OrangeButton from '../../shared/sidebar/OrangeButton';
 import { usePermissions } from '../../../hooks/usePermissions';
-import SearchBox from '../../shared/search-export/SearchBox';
 import ExportDropdown from '../../shared/search-export/ExportDropdown';
 import Header from '../../shared/sidebar/Header';
 import EmptyState from '../../shared/empty-state/EmptyState';
@@ -36,12 +34,11 @@ const UsersManagement = () => {
     const { hasPermission } = usePermissions();
     const createUserFormRef = useRef();
     const editUserFormRef = useRef();
-    const [activeTab, setActiveTab] = usePersistentState('users_mgmt_tab', 'Users');
     const [searchTerm, setSearchTerm] = usePersistentState('users_mgmt_search', '');
+    const [departmentFilter, setDepartmentFilter] = usePersistentState('users_mgmt_dept_filter', 'all');
     const [filteredUsers, setFilteredUsers] = useState(null);
     const [editModal, setEditModal] = useState({ show: false, user: null });
     const [resetPassModal, setResetPassModal] = useState({ show: false, user: null });
-    const [permissionMatrixUser, setPermissionMatrixUser] = useState(null);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [mobilePage, setMobilePage] = useState(1);
     const mobilePageSize = 10;
@@ -116,8 +113,37 @@ const UsersManagement = () => {
         isActive: Yup.boolean(),
     });
 
-    const tabs = ['Users', 'Roles & Permissions'];
     const users = usersData?.users || [];
+
+    const departmentFilterOptions = useMemo(() => {
+        return [
+            { value: "all", label: "All Departments" },
+            ...departmentOptions
+        ];
+    }, [departmentOptions]);
+
+    const activeUserChips = useMemo(() => {
+        const chips = [];
+        if (departmentFilter && departmentFilter !== 'all') {
+            chips.push({
+                key: 'department',
+                label: 'Department',
+                value: departmentFilter,
+                displayValue: departmentFilter,
+                onRemove: () => setDepartmentFilter('all'),
+            });
+        }
+        if (searchTerm) {
+            chips.push({
+                key: 'search',
+                label: 'Search',
+                value: searchTerm,
+                displayValue: `"${searchTerm}"`,
+                onRemove: () => setSearchTerm(''),
+            });
+        }
+        return chips;
+    }, [departmentFilter, searchTerm]);
 
     const filterableColumns = [
         { label: 'Role', key: 'role' },
@@ -126,18 +152,22 @@ const UsersManagement = () => {
     ];
 
     const displayData = useMemo(() => {
-        const base = filteredUsers ?? users;
+        let base = filteredUsers ?? users;
+        if (departmentFilter && departmentFilter !== 'all') {
+            base = base.filter((u) => u.department?.toLowerCase() === departmentFilter.toLowerCase());
+        }
         if (!searchTerm) return base;
+        const q = searchTerm.toLowerCase().trim();
         return base.filter((u) =>
-            [u.name, u.email, u.mobileNo].some((v) =>
-                v?.toLowerCase().includes(searchTerm.toLowerCase())
+            [u.name, u.email, u.mobileNo, u.role, u.department, u.position].some((v) =>
+                v?.toLowerCase().includes(q)
             )
         );
-    }, [filteredUsers, users, searchTerm]);
+    }, [filteredUsers, users, departmentFilter, searchTerm]);
 
     useEffect(() => {
         setMobilePage(1);
-    }, [searchTerm]);
+    }, [searchTerm, departmentFilter]);
 
     const totalMobilePages = Math.ceil(displayData.length / mobilePageSize) || 1;
     const paginatedMobileUsers = useMemo(() => {
@@ -145,7 +175,7 @@ const UsersManagement = () => {
         return displayData.slice(start, start + mobilePageSize);
     }, [displayData, mobilePage, mobilePageSize]);
 
-    const exportData = useMemo(() => users.map(u => ({
+    const exportData = useMemo(() => displayData.map(u => ({
         Name: u.name || '',
         Email: u.email || '',
         'Contact No': u.mobileNo || '',
@@ -153,7 +183,7 @@ const UsersManagement = () => {
         Department: u.department || '',
         Position: u.position || '',
         Status: u.isActive ? 'Active' : 'Inactive'
-    })), [users]);
+    })), [displayData]);
 
     const handleDeleteUser = async (userId, userName) => {
         if (await confirmToast(`Are you sure you want to delete ${userName}?`, { confirmButtonClass: "bg-red-500 hover:bg-red-600 text-white" })) {
@@ -302,6 +332,7 @@ const UsersManagement = () => {
                                     name="role" 
                                     type="select" 
                                     placeholder="Select role"
+                                    usePortal={true}
                                     options={[
                                         { value: 'faculty', label: 'Faculty' },
                                         { value: 'hod', label: 'HOD' },
@@ -327,6 +358,7 @@ const UsersManagement = () => {
                                         name="department" 
                                         type="select" 
                                         placeholder="Select department"
+                                        usePortal={true}
                                         options={departmentOptions} 
                                     />
                                 )}
@@ -336,6 +368,7 @@ const UsersManagement = () => {
                                 name="position" 
                                 type="select" 
                                 placeholder="Select designated position"
+                                usePortal={true}
                                 options={[{ value: 'Assistant Professor', label: 'Assistant Professor' }, { value: 'Associate Professor', label: 'Associate Professor' }, { value: 'Professor', label: 'Professor' }, { value: 'Lecturer', label: 'Lecturer' }, { value: 'Chairman', label: 'Chairman' }, { value: 'CEO', label: 'CEO' }]} 
                             />
                         </div>
@@ -420,13 +453,124 @@ const UsersManagement = () => {
         );
     };
 
+// ── USER ACTION THREE DOTS DROPDOWN ──────────────────────────────────────────
+const UserActionDropdown = ({
+  user,
+  canResetPassword,
+  canDelete,
+  onResetPassword,
+  onEdit,
+  onDelete,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+
+  const toggleDropdown = (e) => {
+    e.stopPropagation();
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const dropdownHeight = 130;
+    const openUpward = window.innerHeight - rect.bottom < dropdownHeight && rect.top > dropdownHeight;
+    setCoords({
+      top: openUpward ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+      left: Math.max(16, rect.right - 170),
+    });
+    setIsOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener("click", handleClose);
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
+    return () => {
+      window.removeEventListener("click", handleClose);
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative inline-flex items-center justify-center text-center" onClick={(e) => e.stopPropagation()}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggleDropdown}
+        className="w-8 h-8 rounded-xl border border-gray-200 bg-white hover:bg-orange-50/70 hover:border-orange-300 text-gray-500 hover:text-orange-600 flex items-center justify-center transition-all duration-150 cursor-pointer shadow-2xs active:scale-95 mx-auto"
+        title="User Actions"
+      >
+        <MoreVertical size={16} />
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              zIndex: 999999,
+            }}
+            className="w-44 rounded-xl bg-white border border-gray-200 shadow-xl p-1.5 animate-in fade-in zoom-in-95 duration-100 space-y-0.5 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {canResetPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onResetPassword(user);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors cursor-pointer text-left"
+              >
+                <Key size={14} className="text-amber-500 shrink-0" />
+                <span>Reset Password</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                onEdit(user);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors cursor-pointer text-left"
+            >
+              <Edit size={14} className="text-blue-500 shrink-0" />
+              <span>Edit User</span>
+            </button>
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onDelete(user);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-left"
+              >
+                <Trash2 size={14} className="text-rose-500 shrink-0" />
+                <span>Delete User</span>
+              </button>
+            )}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+
     const columns = [
         {
-            key: 'name', label: 'Name',
+            key: 'name',
+            label: 'Name',
+            align: 'center',
             render: (user) => (
-                <div className="flex items-center min-w-0 max-w-xs">
+                <div className="flex items-center min-w-0 max-w-xs mx-auto">
                     <img className="h-9 w-9 rounded-full object-cover mr-3 shrink-0 border border-slate-200" src={user.profileImage || profile} alt={user.name} />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 text-left">
                         <div className="font-bold text-gray-900 truncate">{user.name}</div>
                         <div className="text-xs text-gray-500 truncate">{user.position || 'Employee'}</div>
                     </div>
@@ -436,8 +580,9 @@ const UsersManagement = () => {
         { 
             key: 'email', 
             label: 'Email',
+            align: 'center',
             render: (user) => (
-                <span className="text-xs sm:text-sm text-gray-600 block truncate max-w-[200px]" title={user.email}>
+                <span className="text-xs sm:text-sm text-gray-600 block truncate max-w-[200px] mx-auto text-center" title={user.email}>
                     {user.email}
                 </span>
             )
@@ -445,14 +590,17 @@ const UsersManagement = () => {
         { 
             key: 'mobileNo', 
             label: 'Contact No.',
+            align: 'center',
             render: (user) => (
-                <span className="text-xs sm:text-sm text-gray-600">
+                <span className="text-xs sm:text-sm text-gray-600 block text-center">
                     {user.mobileNo || '—'}
                 </span>
             )
         },
         {
-            key: 'role', label: 'Role',
+            key: 'role',
+            label: 'Role',
+            align: 'center',
             render: (user) => (
                 <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold rounded-full border ${getRoleBadgeColor(user.role)}`}>
                     {formatRoleName(user.role)}
@@ -462,6 +610,7 @@ const UsersManagement = () => {
         { 
             key: 'department', 
             label: 'Department',
+            align: 'center',
             render: (user) => (
                 <span className={`text-xs sm:text-sm font-medium ${['superadmin', 'admin'].includes(user?.role) ? 'text-purple-700 font-semibold' : 'text-gray-700'}`}>
                     {['superadmin', 'admin'].includes(user?.role) ? 'SSISM' : (user.department || '—')}
@@ -469,7 +618,9 @@ const UsersManagement = () => {
             )
         },
         {
-            key: 'isActive', label: 'Status',
+            key: 'isActive',
+            label: 'Status',
+            align: 'center',
             render: (user) => (
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-full border ${
                     user.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -482,36 +633,14 @@ const UsersManagement = () => {
     ];
 
     const actionButton = (user) => (
-        <div className="flex space-x-2">
-            {(hasPermission('Button_ManagePermissions', 'read') || isHod || currentUser?.role === 'superadmin') && (
-                <button
-                    type="button"
-                    onClick={() => setPermissionMatrixUser(user)}
-                    className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
-                    title="Manage Permissions"
-                >
-                    <ShieldCheck size={14} />
-                </button>
-            )}
-            {!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
-                <button
-                    type="button"
-                    onClick={() => setResetPassModal({ show: true, user })}
-                    className="p-2 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
-                    title="Reset Password"
-                >
-                    <Key size={14} />
-                </button>
-            )}
-            <button onClick={() => setEditModal({ show: true, user })} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Edit User">
-                <Edit size={14} />
-            </button>
-            {!isHod && currentUser?.role === 'superadmin' && (
-                <button onClick={() => handleDeleteUser(user._id || user.id, user.name)} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer" title="Delete User">
-                    <Trash2 size={14} />
-                </button>
-            )}
-        </div>
+        <UserActionDropdown
+            user={user}
+            canResetPassword={Boolean(!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin'))}
+            canDelete={Boolean(!isHod && currentUser?.role === 'superadmin')}
+            onResetPassword={(u) => setResetPassModal({ show: true, user: u })}
+            onEdit={(u) => setEditModal({ show: true, user: u })}
+            onDelete={(u) => handleDeleteUser(u._id || u.id, u.name)}
+        />
     );
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader /></div>;
@@ -519,9 +648,15 @@ const UsersManagement = () => {
 
     return (
         <>
-            <Header title="User Management">
+            <Header
+                title="User Management"
+                badge={`${displayData.length} Users`}
+                breadcrumbs={[
+                    { label: "User Management", path: "/user-management" },
+                    { label: "Users" },
+                ]}
+            >
                 <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-wrap">
-                    <ExportDropdown data={exportData} sectionName="users" />
                     {hasPermission('Button_CreateUser', 'read') && (
                         <>
                             <button
@@ -548,39 +683,57 @@ const UsersManagement = () => {
                 </div>
             </Header>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-4 py-1 sm:py-0 gap-2">
-                <div className="flex-1 min-w-0">
-                    <TabsCommon tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-                </div>
-                {activeTab === 'Users' && !permissionMatrixUser && (
-                    <div className="flex-shrink-0 self-end sm:self-auto">
-                        <SearchBox searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search users..." />
-                    </div>
-                )}
-            </div>
+            <div className="p-3 sm:p-5 lg:p-6 w-full min-h-screen bg-gray-50/40 space-y-4 sm:space-y-6">
+                {/* Top Action & Search Bar */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xs">
+                            {/* Search Input on Left */}
+                            <div className="relative flex-1 max-w-full md:max-w-md">
+                                <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Search users..."
+                                    className="w-full pl-9 pr-8 h-10 text-xs sm:text-sm font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 hover:bg-white text-slate-800 placeholder-slate-400 transition shadow-2xs"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchTerm("")}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                                        aria-label="Clear search"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
 
-            <div className="p-2.5 sm:p-4 md:p-6">
-                {permissionMatrixUser ? (
-                    <GlobalPermissionMatrix
-                        user={permissionMatrixUser}
-                        onBack={() => setPermissionMatrixUser(null)}
-                    />
-                ) : activeTab === 'Users' ? (
-                    <>
+                            {/* Department Filter & Download Dropdown on Right */}
+                            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+                                <SelectDropdown
+                                    value={departmentFilter}
+                                    onChange={(val) => setDepartmentFilter(val || "all")}
+                                    options={departmentFilterOptions}
+                                    className="w-full sm:w-48"
+                                    buttonClassName="h-10 w-full flex items-center justify-between gap-2 px-3 border border-slate-200 bg-white rounded-xl text-xs text-slate-700 font-bold transition hover:border-orange-400 shadow-2xs cursor-pointer"
+                                />
+
+                                <ExportDropdown
+                                    data={exportData}
+                                    sectionName="users"
+                                    className="w-full sm:w-auto"
+                                />
+                            </div>
+                        </div>
+
                         {/* Active Filter Chips */}
-                        {searchTerm && (
+                        {activeUserChips.length > 0 && (
                             <ActiveFilterChips
-                                chips={[
-                                    {
-                                        key: 'search',
-                                        label: 'Search',
-                                        value: searchTerm,
-                                        displayValue: `"${searchTerm}"`,
-                                        onRemove: () => setSearchTerm(''),
-                                    },
-                                ]}
-                                onClearAll={() => setSearchTerm('')}
-                                className="mb-2"
+                                chips={activeUserChips}
+                                onClearAll={() => {
+                                    setDepartmentFilter('all');
+                                    setSearchTerm('');
+                                }}
                             />
                         )}
 
@@ -707,44 +860,7 @@ const UsersManagement = () => {
                                                     </button>
 
                                                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                                    {(hasPermission('Button_ManagePermissions', 'read') || isHod || currentUser?.role === 'superadmin') && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setPermissionMatrixUser(user)}
-                                                            className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
-                                                            title="Manage Permissions"
-                                                        >
-                                                            <ShieldCheck size={14} />
-                                                        </button>
-                                                    )}
-                                                    {!isHod && (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setResetPassModal({ show: true, user })}
-                                                            className="p-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 transition"
-                                                            title="Reset Password"
-                                                        >
-                                                            <Key size={14} />
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setEditModal({ show: true, user })}
-                                                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                                                        title="Edit User"
-                                                    >
-                                                        <Edit size={14} />
-                                                    </button>
-                                                    {!isHod && currentUser?.role === 'superadmin' && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDeleteUser(user._id || user.id, user.name)}
-                                                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition"
-                                                            title="Delete User"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    )}
+                                                    {actionButton(user)}
                                                 </div>
                                             </div>
                                         </div>
@@ -766,10 +882,6 @@ const UsersManagement = () => {
                                 </>
                             )}
                         </div>
-                    </>
-                ) : (
-                    <RolesPermissions />
-                )}
             </div>
 
             <OrangeButton
@@ -823,6 +935,7 @@ const UsersManagement = () => {
                                             name="position" 
                                             type="select" 
                                             placeholder="Select designated position"
+                                            usePortal={true}
                                             options={[{ value: 'Assistant Professor', label: 'Assistant Professor' }, { value: 'Associate Professor', label: 'Associate Professor' }, { value: 'Professor', label: 'Professor' }, { value: 'Lecturer', label: 'Lecturer' }, { value: 'Chairman', label: 'Chairman' }, { value: 'CEO', label: 'CEO' }]} 
                                         />
                                     </div>
@@ -850,6 +963,7 @@ const UsersManagement = () => {
                                             name="role" 
                                             type="select" 
                                             placeholder="Select role"
+                                            usePortal={true}
                                             options={[
                                                 { value: 'faculty', label: 'Faculty' },
                                                 { value: 'hod', label: 'HOD' },
@@ -875,6 +989,7 @@ const UsersManagement = () => {
                                                 name="department" 
                                                 type="select" 
                                                 placeholder="Select department"
+                                                usePortal={true}
                                                 options={departmentOptions} 
                                             />
                                         )}

@@ -144,6 +144,7 @@ const CommonTable = ({
       cols.push({
         header: "Action",
         id: "action",
+        align: "center",
         enableSorting: false,
         cell: ({ row }) => actionButton(row.original),
       });

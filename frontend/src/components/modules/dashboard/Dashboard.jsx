@@ -56,6 +56,8 @@ const Dashboard = () => {
           <Route path="/user-management" element={<UsersManagement />} />
           <Route path="/user-profile/:id" element={<UserProfile />} />
           <Route path="/user-permission" element={<UserPermission />} />
+          <Route path="/roles-permissions" element={<UserPermission />} />
+          <Route path="/roles-and-permissions" element={<UserPermission />} />
         </>
       )}
       

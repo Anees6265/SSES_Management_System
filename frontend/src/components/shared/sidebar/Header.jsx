@@ -125,6 +125,9 @@ const Header = ({
                   </span>
                 )}
               </div>
+              {subtitle && (
+                <p className="text-[11px] text-gray-500 truncate mt-0.5">{subtitle}</p>
+              )}
             </div>
           </div>
 
@@ -166,6 +169,9 @@ const Header = ({
                   </span>
                 )}
               </div>
+              {subtitle && (
+                <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2.5 flex-shrink-0">

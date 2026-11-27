@@ -322,12 +322,16 @@ const extractCellValue = (row, col) => {
     const customVal = col.accessorFn(row);
     if (customVal !== undefined && customVal !== null) return String(customVal).trim();
   }
+  if (typeof col.accessor === "function") {
+    const customVal = col.accessor(row);
+    if (customVal !== undefined && customVal !== null) return String(customVal).trim();
+  }
 
-  const key = col.key || col.id || col.accessorKey;
-  let val = row[key];
+  const key = col.key || col.id || col.accessorKey || (typeof col.accessor === "string" ? col.accessor : "");
+  let val = key ? row[key] : undefined;
 
-  if ((val === null || val === undefined) && row.raw) val = row.raw[key];
-  if ((val === null || val === undefined) && row.student) val = row.student[key];
+  if ((val === null || val === undefined) && key && row.raw) val = row.raw[key];
+  if ((val === null || val === undefined) && key && row.student) val = row.student[key];
 
   // Specific student/person name extraction
   if (key === "student" || key === "name" || key === "fullName" || key === "candidate") {
@@ -384,7 +388,7 @@ export const exportGenericToExcel = (data = [], columns = [], options = {}) => {
 
   const validCols = columns.filter((c) => {
     if (!c) return false;
-    const key = c.key || c.id || c.accessorKey || "";
+    const key = c.key || c.id || c.accessorKey || (typeof c.accessor === "string" ? c.accessor : "") || "";
     const label = typeof c.label === "string" ? c.label : typeof c.header === "string" ? c.header : "";
 
     if (["select", "action", "taskboard", "extra"].includes(key) || ["select", "action", "taskboard", "extra"].includes(c.id)) {
@@ -412,7 +416,8 @@ export const exportGenericToExcel = (data = [], columns = [], options = {}) => {
   const ws = XLSX.utils.json_to_sheet(formatted);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Records");
-  XLSX.writeFile(wb, options.filename || `export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const exportFileName = options.filename || options.fileName || `export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, exportFileName);
 };
 
 /**
@@ -423,7 +428,7 @@ export const exportGenericToPDF = (data = [], columns = [], options = {}) => {
 
   const validCols = columns.filter((c) => {
     if (!c) return false;
-    const key = c.key || c.id || c.accessorKey || "";
+    const key = c.key || c.id || c.accessorKey || (typeof c.accessor === "string" ? c.accessor : "") || "";
     const label = typeof c.label === "string" ? c.label : typeof c.header === "string" ? c.header : "";
 
     if (["select", "action", "taskboard", "extra"].includes(key) || ["select", "action", "taskboard", "extra"].includes(c.id)) {
@@ -515,5 +520,6 @@ export const exportGenericToPDF = (data = [], columns = [], options = {}) => {
     },
   });
 
-  doc.save(options.filename || `export_${new Date().toISOString().slice(0, 10)}.pdf`);
+  const exportFileName = options.filename || options.fileName || `export_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(exportFileName);
 };

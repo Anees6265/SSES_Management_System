@@ -8,6 +8,7 @@ import EmptyState from "../../shared/empty-state/EmptyState";
 import Loader from "../../shared/loader/Loader";
 import {
   useGetActivityLogsQuery,
+  useLazyGetActivityLogsQuery,
   useGetActivityLogStatsQuery,
   useGetActivityLogUsersQuery,
   useGetAllUsersQuery,
@@ -186,6 +187,8 @@ export default function ActivityLogs() {
     { refetchOnMountOrArgChange: true }
   );
 
+  const [triggerGetLogs, { isFetching: isExportFetching }] = useLazyGetActivityLogsQuery();
+
   const { data: statsData } = useGetActivityLogStatsQuery(undefined, {
     pollingInterval: 30000,
   });
@@ -290,56 +293,101 @@ export default function ActivityLogs() {
 
   // Export handlers
   const exportColumns = [
-    { header: "Date & Time", accessor: "formattedDate" },
-    { header: "User", accessor: "userName" },
-    { header: "Email", accessor: "userEmail" },
-    { header: "Role", accessor: "role" },
-    { header: "Department", accessor: "departmentName" },
-    { header: "Action", accessor: "action" },
-    { header: "Module", accessor: "module" },
-    { header: "Description", accessor: "description" },
-    { header: "Status", accessor: "status" },
-    { header: "IP Address", accessor: "ipAddress" },
-    { header: "Device", accessor: "device" },
+    { key: "formattedDate", id: "formattedDate", accessorKey: "formattedDate", accessor: "formattedDate", header: "Date & Time", label: "Date & Time" },
+    { key: "userName", id: "userName", accessorKey: "userName", accessor: "userName", header: "User", label: "User" },
+    { key: "userEmail", id: "userEmail", accessorKey: "userEmail", accessor: "userEmail", header: "Email", label: "Email" },
+    { key: "role", id: "role", accessorKey: "role", accessor: "role", header: "Role", label: "Role" },
+    { key: "departmentName", id: "departmentName", accessorKey: "departmentName", accessor: "departmentName", header: "Department", label: "Department" },
+    { key: "action", id: "action", accessorKey: "action", accessor: "action", header: "Action", label: "Action" },
+    { key: "module", id: "module", accessorKey: "module", accessor: "module", header: "Module", label: "Module" },
+    { key: "description", id: "description", accessorKey: "description", accessor: "description", header: "Description", label: "Description" },
+    { key: "status", id: "status", accessorKey: "status", accessor: "status", header: "Status", label: "Status" },
+    { key: "ipAddress", id: "ipAddress", accessorKey: "ipAddress", accessor: "ipAddress", header: "IP Address", label: "IP Address" },
+    { key: "device", id: "device", accessorKey: "device", accessor: "device", header: "Device", label: "Device" },
   ];
 
-  const handleExportExcel = () => {
-    const formatted = logs.map((l) => ({
+  const formatLogsForExport = (items = []) => {
+    return items.map((l) => ({
       ...l,
-      formattedDate: new Date(l.createdAt).toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
+      formattedDate: l.createdAt
+        ? new Date(l.createdAt).toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "—",
+      userName: l.userName || "System",
+      userEmail: l.userEmail || "—",
+      role: l.role ? String(l.role).toUpperCase() : "—",
+      departmentName: l.departmentName || "All Departments",
+      action: l.action || "—",
+      module: l.module || "—",
+      description: l.description || "—",
+      status: l.status || "—",
+      ipAddress: l.ipAddress || "—",
+      device: l.device || "—",
     }));
-    exportGenericToExcel(formatted, exportColumns, {
-      fileName: `Activity_Audit_Logs_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      sheetName: "Activity Logs",
-    });
   };
 
-  const handleExportPDF = () => {
-    const formatted = logs.map((l) => ({
-      ...l,
-      formattedDate: new Date(l.createdAt).toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
-    }));
+  const fetchAllLogsForExport = async () => {
+    try {
+      const res = await triggerGetLogs({
+        page: 1,
+        limit: 5000,
+        isExport: "true",
+        search: search.trim(),
+        userName: userNameFilter !== "ALL" ? userNameFilter : "",
+        role: roleFilter,
+        action: actionFilter,
+        module: moduleFilter,
+        dateRange,
+        threatOnly: threatOnly ? "true" : "false",
+      }).unwrap();
+
+      const items = res?.data?.logs || [];
+      return items.length > 0 ? items : (logs || []);
+    } catch (err) {
+      console.warn("Failed to fetch full logs for export, falling back to current page logs:", err);
+      return logs || [];
+    }
+  };
+
+  const handleExportExcel = async () => {
+    toast.info("Preparing Activity Logs export...");
+    const rawItems = await fetchAllLogsForExport();
+    if (!rawItems || rawItems.length === 0) {
+      toast.warning("No activity logs found to export.");
+      return;
+    }
+    const formatted = formatLogsForExport(rawItems);
+    exportGenericToExcel(formatted, exportColumns, {
+      fileName: `Activity_Audit_Logs_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      filename: `Activity_Audit_Logs_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      sheetName: "Activity Logs",
+    });
+    toast.success(`Exported ${formatted.length} activity logs successfully!`);
+  };
+
+  const handleExportPDF = async () => {
+    toast.info("Preparing Activity Logs PDF...");
+    const rawItems = await fetchAllLogsForExport();
+    if (!rawItems || rawItems.length === 0) {
+      toast.warning("No activity logs found to export.");
+      return;
+    }
+    const formatted = formatLogsForExport(rawItems);
     exportGenericToPDF(formatted, exportColumns, {
       fileName: `Activity_Audit_Logs_${new Date().toISOString().slice(0, 10)}.pdf`,
+      filename: `Activity_Audit_Logs_${new Date().toISOString().slice(0, 10)}.pdf`,
       title: "System Activity & Audit Logs",
       subtitle: isHod
         ? `Department: ${loggedInUser?.department || "Department"}`
         : "Institutional Security & Activity Trail",
     });
+    toast.success(`Exported ${formatted.length} activity logs to PDF successfully!`);
   };
 
   return (

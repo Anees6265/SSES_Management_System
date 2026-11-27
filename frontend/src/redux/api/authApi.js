@@ -2472,6 +2472,7 @@ export const {
   useChangeUserPasswordMutation,
   useAdminResetUserPasswordMutation,
   useGetActivityLogsQuery,
+  useLazyGetActivityLogsQuery,
   useGetActivityLogStatsQuery,
   useGetActivityLogUsersQuery,
   usePurgeUnnecessaryActivityLogsMutation,

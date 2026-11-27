@@ -154,9 +154,10 @@ exports.getActivityLogs = async (req, res) => {
       query.createdAt = dateQuery;
     }
 
+    const isExport = req.query.isExport === "true" || limit === "all";
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 15));
-    const skip = (pageNum - 1) * limitNum;
+    const limitNum = isExport ? 5000 : Math.min(100, Math.max(1, parseInt(limit, 10) || 15));
+    const skip = isExport ? 0 : (pageNum - 1) * limitNum;
 
     const [logs, total] = await Promise.all([
       ActivityLog.find(query)
